@@ -135,7 +135,7 @@ jobs:
           ./pkg/whisper-server --help > help.txt 2>&1
           head -3 help.txt
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ matrix.os }}-${{ matrix.variant }}
           path: out/*
@@ -145,7 +145,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with: { path: dist }
       - name: SHA256SUMS.txt und sidecar-manifest.json
         shell: python
@@ -164,7 +164,7 @@ jobs:
           manifest = {"tag": tag, "commit": commit, "vulkanSdk": os.environ["VULKAN_VERSION"], "files": entries}
           (out / "sidecar-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
           print((out / "SHA256SUMS.txt").read_text())
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: sidecar-manifest
           path: manifest/*

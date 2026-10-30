@@ -15,6 +15,7 @@ Ziele: `win-x64` (windows-latest) und `linux-x64` (ubuntu-24.04, bewusst nicht `
 - Auslöser: `workflow_dispatch` (Eingaben `whisper_tag`, `whisper_commit`) und Push auf `ci/whisper-server`.
 - Klont whisper.cpp am festen Tag (kein Submodul) und bricht ab, wenn der Commit nicht dem gepinnten entspricht.
 - Vulkan SDK von LunarG mit gepinnter Version und SHA256 (`VULKAN_VERSION`, `VULKAN_SHA256_*`). Unter Linux kommt der Loader `libvulkan.so` aus apt (`libvulkan-dev`), weil das SDK-Tarball ihn nicht mehr enthält.
+- Actions auf Commit-SHA gepinnt (Versionskommentar dahinter). Neue SHA über den Tag ermitteln: `gh api repos/actions/<name>/git/ref/tags/<vX.Y.Z>` (Typ `commit`; bei `tag` über `.object.url` dereferenzieren).
 - CMake: `BUILD_SHARED_LIBS=OFF`, `GGML_NATIVE=OFF`, `GGML_OPENMP=OFF`, `GGML_VULKAN=ON|OFF`; Windows zusätzlich statische MSVC-Laufzeit. Ergebnis ist eine einzelne Datei ohne vcruntime/vcomp/libgomp. Der Vulkan-Build braucht zur Laufzeit nur den Vulkan-Loader des Grafiktreibers (`vulkan-1.dll` bzw. `libvulkan.so.1`).
 - Artefakte (Name = Artefakt im Lauf):
   - `win-vulkan`, `win-cpu`: `whisper-server-<tag>-win-x64-<variante>.zip`
