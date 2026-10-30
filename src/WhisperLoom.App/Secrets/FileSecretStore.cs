@@ -65,6 +65,11 @@ internal sealed class FileSecretStore(string filePath, string prefix) : ISecretS
         {
             return [];
         }
+        // Eine von außen gelockerte Datei (z. B. 644 nach einem Kopieren) wird vor dem Lesen wieder auf 600 gesetzt.
+        if (!OperatingSystem.IsWindows() && File.GetUnixFileMode(filePath) != OwnerOnly)
+        {
+            File.SetUnixFileMode(filePath, OwnerOnly);
+        }
         try
         {
             return JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(filePath)) ?? [];
@@ -80,7 +85,9 @@ internal sealed class FileSecretStore(string filePath, string prefix) : ISecretS
         Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
         var tmp = filePath + ".tmp";
         // Doku: learn.microsoft.com/dotnet/api/system.io.filestreamoptions.unixcreatemode (abgerufen 2026-10-30).
-        var options = new FileStreamOptions { Mode = FileMode.Create, Access = FileAccess.Write };
+        // Eine liegengebliebene .tmp (Absturz) könnte weitere Rechte haben: löschen und neu mit 600 anlegen.
+        File.Delete(tmp);
+        var options = new FileStreamOptions { Mode = FileMode.CreateNew, Access = FileAccess.Write };
         if (!OperatingSystem.IsWindows())
         {
             options.UnixCreateMode = OwnerOnly;

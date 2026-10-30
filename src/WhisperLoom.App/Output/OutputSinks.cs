@@ -31,30 +31,37 @@ public sealed class FileOutputSink(string path) : IOutputSink
 /// Linux über <c>wl-copy</c> (Wayland) bzw. <c>xclip</c> (X11). Diese Hilfsprogramme halten den Inhalt auch,
 /// wenn kein Avalonia-Fenster offen ist; die Avalonia-Zwischenablage braucht ein TopLevel.
 /// </summary>
-internal sealed class ClipboardOutputSink(IProcessRunner runner) : IOutputSink
+internal sealed class ClipboardOutputSink(
+    IProcessRunner runner,
+    IReadOnlyList<(string File, string[] Args)>? tools = null,
+    TimeSpan? timeout = null) : IOutputSink
 {
+    /// <summary>Zeitgrenze je Werkzeug; danach gilt die Ausgabe als gescheitert (Diktat bleibt im Verlauf/auf der Bühne).</summary>
+    public static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(5);
+
     public string Kind => "clipboard";
 
+    /// <param name="ct">Abbruch; die Zeitgrenze gilt zusätzlich, auch bei <see cref="CancellationToken.None"/>.</param>
     public async Task WriteAsync(string text, CancellationToken ct)
     {
-        if (OperatingSystem.IsWindows())
+        if (tools is null && OperatingSystem.IsWindows())
         {
             Win32Clipboard.SetText(text);
             return;
         }
-        var wayland = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("WAYLAND_DISPLAY"));
-        (string File, string[] Args)[] tools = wayland
-            ? [("wl-copy", []), ("xclip", ["-selection", "clipboard"])]
-            : [("xclip", ["-selection", "clipboard"]), ("wl-copy", [])];
-        foreach (var (file, args) in tools)
+        foreach (var (file, args) in tools ?? LinuxTools())
         {
             try
             {
-                var r = await runner.RunAsync(file, args, text, ct).ConfigureAwait(false);
-                if (r.ExitCode == 0)
+                // xclip/wl-copy lassen ein Kind mit offenen Handles zurück: nur auf den Exit des Elternprozesses warten.
+                if (await runner.RunUntilExitAsync(file, args, text, timeout ?? DefaultTimeout, ct).ConfigureAwait(false) == 0)
                 {
                     return;
                 }
+            }
+            catch (TimeoutException e)
+            {
+                throw new IOException($"Zwischenablage: {file} antwortet nicht.", e);
             }
             catch (System.ComponentModel.Win32Exception)
             {
@@ -63,6 +70,11 @@ internal sealed class ClipboardOutputSink(IProcessRunner runner) : IOutputSink
         }
         throw new IOException("Zwischenablage nicht erreichbar: wl-copy bzw. xclip fehlt oder scheitert.");
     }
+
+    private static (string File, string[] Args)[] LinuxTools() =>
+        string.IsNullOrEmpty(Environment.GetEnvironmentVariable("WAYLAND_DISPLAY"))
+            ? [("xclip", ["-selection", "clipboard"]), ("wl-copy", [])]
+            : [("wl-copy", []), ("xclip", ["-selection", "clipboard"])];
 }
 
 // Doku: learn.microsoft.com/windows/win32/dataxchg/using-the-clipboard#copying-information-to-the-clipboard (abgerufen 2026-10-30).

@@ -35,6 +35,37 @@ public class SecretStoreTest
     }
 
     [Fact]
+    public async Task File_store_tightens_loosened_rights_and_replaces_a_stale_tmp()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Skip("Unix-Rechte nur unter Linux");
+            return;
+        }
+        var dir = Path.Combine(Path.GetTempPath(), "wl-sec-" + Guid.NewGuid().ToString("N"));
+        var path = Path.Combine(dir, "secrets.json");
+        var store = new FileSecretStore(path, "WhisperLoom-Test-unit:");
+        const UnixFileMode loose = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupRead | UnixFileMode.OtherRead;
+        try
+        {
+            await store.SetAsync(SecretNames.Stt, Key, CancellationToken.None);
+            File.SetUnixFileMode(path, loose);
+            Assert.Equal(Key, await store.GetAsync(SecretNames.Stt, CancellationToken.None));
+            Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, File.GetUnixFileMode(path));
+
+            await File.WriteAllTextAsync(path + ".tmp", "{}");
+            File.SetUnixFileMode(path + ".tmp", loose);
+            await store.SetAsync(SecretNames.Llm, Key, CancellationToken.None);
+            Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, File.GetUnixFileMode(path));
+            Assert.False(File.Exists(path + ".tmp"));
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task Rejects_unknown_names_and_empty_values_without_echoing_the_value()
     {
         var store = new FileSecretStore(Path.Combine(Path.GetTempPath(), "wl-unused", "s.json"), "WhisperLoom-Test-unit:");
@@ -101,5 +132,8 @@ public class SecretStoreTest
             Calls.Add((file, args.ToList(), stdin));
             return Task.FromResult(Result);
         }
+
+        public Task<int> RunUntilExitAsync(string file, IReadOnlyList<string> args, string stdin, TimeSpan timeout, CancellationToken ct) =>
+            throw new NotSupportedException("secret-tool braucht die Ausgabe");
     }
 }

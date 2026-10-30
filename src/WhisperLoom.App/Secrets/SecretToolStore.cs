@@ -11,6 +11,15 @@ internal interface IProcessRunner
 {
     /// <exception cref="System.ComponentModel.Win32Exception">Programm nicht gefunden.</exception>
     Task<ProcessResult> RunAsync(string file, IReadOnlyList<string> args, string? stdin, CancellationToken ct);
+
+    /// <summary>
+    /// Für Werkzeuge, die ein Kind im Hintergrund lassen (xclip, wl-copy): nur stdin wird umgeleitet, gewartet wird
+    /// nur auf den Exit des Elternprozesses, nicht auf EOF von stdout/stderr — die hält das Kind offen.
+    /// </summary>
+    /// <returns>Exit-Code des Elternprozesses.</returns>
+    /// <exception cref="System.ComponentModel.Win32Exception">Programm nicht gefunden.</exception>
+    /// <exception cref="TimeoutException">Nicht innerhalb von <paramref name="timeout"/> beendet; der Prozess wird beendet.</exception>
+    Task<int> RunUntilExitAsync(string file, IReadOnlyList<string> args, string stdin, TimeSpan timeout, CancellationToken ct);
 }
 
 internal sealed class ProcessRunner : IProcessRunner
@@ -40,6 +49,33 @@ internal sealed class ProcessRunner : IProcessRunner
         var stderr = process.StandardError.ReadToEndAsync(ct);
         await process.WaitForExitAsync(ct).ConfigureAwait(false);
         return new ProcessResult(process.ExitCode, await stdout.ConfigureAwait(false), await stderr.ConfigureAwait(false));
+    }
+
+    public async Task<int> RunUntilExitAsync(string file, IReadOnlyList<string> args, string stdin, TimeSpan timeout, CancellationToken ct)
+    {
+        // Doku: learn.microsoft.com/dotnet/api/system.diagnostics.process.waitforexitasync — wartet bei umgeleiteten
+        // Strömen auch auf deren EOF; deshalb hier nur stdin umleiten (abgerufen 2026-10-30).
+        var info = new ProcessStartInfo(file) { RedirectStandardInput = true, UseShellExecute = false };
+        foreach (var a in args)
+        {
+            info.ArgumentList.Add(a);
+        }
+        using var process = Process.Start(info) ?? throw new IOException($"{file} startet nicht.");
+        using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        limit.CancelAfter(timeout);
+        try
+        {
+            await process.StandardInput.WriteAsync(stdin.AsMemory(), limit.Token).ConfigureAwait(false);
+            process.StandardInput.Close();
+            await process.WaitForExitAsync(limit.Token).ConfigureAwait(false);
+            return process.ExitCode;
+        }
+        catch (Exception e) when (e is OperationCanceledException or IOException && !ct.IsCancellationRequested)
+        {
+            // Nur der eigene Prozess (dieses Process-Objekt), nicht sein Kind im Hintergrund.
+            process.Kill();
+            throw new TimeoutException($"{file} hat nicht innerhalb von {timeout.TotalSeconds:0} s geendet.", e);
+        }
     }
 }
 
