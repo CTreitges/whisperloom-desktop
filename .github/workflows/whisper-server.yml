@@ -1,0 +1,164 @@
+# Baut whisper-server aus whisper.cpp als Begleitprozess (Vulkan + CPU, win-x64 + linux-x64).
+# Doku: docs/whisper-server-build.md
+name: whisper-server
+on:
+  workflow_dispatch:
+    inputs:
+      whisper_tag:
+        description: "whisper.cpp-Build-Tag (bNNNN)"
+        required: true
+        default: "b5454"
+      whisper_commit:
+        description: "Commit des Tags (wird geprüft)"
+        required: true
+        default: "d1be6fde11ac6e0407606b4e42fe72d34add8037"
+  push:
+    branches: [ci/whisper-server]
+
+permissions:
+  contents: read
+
+env:
+  # b5454 = gleicher Commit wie v1.9.5 (Android nutzt v1.9.3).
+  WHISPER_TAG: ${{ inputs.whisper_tag || 'b5454' }}
+  WHISPER_COMMIT: ${{ inputs.whisper_commit || 'd1be6fde11ac6e0407606b4e42fe72d34add8037' }}
+  # Doku: https://vulkan.lunarg.com/sdk/versions (abgerufen 2026-10-30), SHA256 von sdk.lunarg.com/sdk/sha/…
+  VULKAN_VERSION: "1.4.363.0"
+  VULKAN_SHA256_WIN: "94a82d378f7a5e3e54c9db7d2fb7016af136e14ac0a18dbf0f2f67a36352d141"
+  VULKAN_SHA256_LINUX: "197962f5cbf80baf2775a03336a01cee7c8745686c65aaa70d3f751ade4d7e43"
+
+jobs:
+  build:
+    name: ${{ matrix.os }}-${{ matrix.variant }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: win, variant: vulkan, runner: windows-latest }
+          - { os: win, variant: cpu, runner: windows-latest }
+          - { os: linux, variant: vulkan, runner: ubuntu-latest }
+          - { os: linux, variant: cpu, runner: ubuntu-latest }
+    runs-on: ${{ matrix.runner }}
+    steps:
+      # Kein Submodul: whisper.cpp wird zum Build-Zeitpunkt am festen Tag geklont und gegen den Commit geprüft.
+      - name: Clone whisper.cpp
+        shell: bash
+        run: |
+          git clone --depth 1 --branch "$WHISPER_TAG" https://github.com/ggml-org/whisper.cpp.git whisper.cpp
+          actual=$(git -C whisper.cpp rev-parse HEAD)
+          echo "whisper.cpp $WHISPER_TAG = $actual"
+          test "$actual" = "$WHISPER_COMMIT"
+
+      - name: Install Vulkan SDK (Windows)
+        if: matrix.os == 'win' && matrix.variant == 'vulkan'
+        shell: pwsh
+        run: |
+          $exe = "$env:RUNNER_TEMP\vulkansdk.exe"
+          curl.exe -fsSL -o $exe "https://sdk.lunarg.com/sdk/download/$env:VULKAN_VERSION/windows/vulkansdk-windows-X64-$env:VULKAN_VERSION.exe"
+          $sha = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLower()
+          if ($sha -ne $env:VULKAN_SHA256_WIN) { throw "Vulkan SDK SHA256 $sha" }
+          & $exe --accept-licenses --default-answer --confirm-command install
+          if ($LASTEXITCODE -ne 0) { throw "Vulkan SDK install exit $LASTEXITCODE" }
+          Add-Content $env:GITHUB_ENV "VULKAN_SDK=C:\VulkanSDK\$env:VULKAN_VERSION"
+          Add-Content $env:GITHUB_PATH "C:\VulkanSDK\$env:VULKAN_VERSION\Bin"
+
+      - name: Install Vulkan SDK (Linux)
+        if: matrix.os == 'linux' && matrix.variant == 'vulkan'
+        shell: bash
+        run: |
+          tarball="$RUNNER_TEMP/vulkansdk.tar.xz"
+          curl -fsSL -o "$tarball" "https://sdk.lunarg.com/sdk/download/$VULKAN_VERSION/linux/vulkansdk-linux-x86_64-$VULKAN_VERSION.tar.xz"
+          echo "$VULKAN_SHA256_LINUX  $tarball" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/vulkan" && tar -xJf "$tarball" -C "$RUNNER_TEMP/vulkan"
+          sdk="$RUNNER_TEMP/vulkan/$VULKAN_VERSION/x86_64"
+          echo "VULKAN_SDK=$sdk" >> "$GITHUB_ENV"
+          echo "$sdk/bin" >> "$GITHUB_PATH"
+          echo "LD_LIBRARY_PATH=$sdk/lib" >> "$GITHUB_ENV"
+
+      # Statisch gelinkt: eine einzelne Datei ohne DLL-/so-Abhängigkeiten außer System und Vulkan-Loader.
+      # GGML_NATIVE=OFF: Baseline AVX2/FMA/F16C statt der CPU des Runners.
+      # GGML_OPENMP=OFF: eigener Threadpool statt vcomp140.dll bzw. libgomp.so.
+      - name: Configure
+        shell: bash
+        run: |
+          gpu=OFF; [ "${{ matrix.variant }}" = vulkan ] && gpu=ON
+          extra=()
+          if [ "${{ matrix.os }}" = win ]; then
+            extra+=(-A x64 -DCMAKE_POLICY_DEFAULT_CMP0091=NEW -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded)
+          fi
+          cmake -S whisper.cpp -B build "${extra[@]}" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DGGML_NATIVE=OFF \
+            -DGGML_OPENMP=OFF \
+            -DGGML_VULKAN=$gpu \
+            -DWHISPER_BUILD_TESTS=OFF \
+            -DWHISPER_BUILD_EXAMPLES=ON \
+            -DWHISPER_BUILD_SERVER=ON
+
+      - name: Build
+        shell: bash
+        run: cmake --build build --config Release --target whisper-server -j 4
+
+      - name: Package
+        shell: bash
+        run: |
+          mkdir pkg
+          if [ "${{ matrix.os }}" = win ]; then
+            cp build/bin/Release/whisper-server.exe pkg/
+          else
+            cp build/bin/whisper-server pkg/
+          fi
+          cp whisper.cpp/LICENSE pkg/LICENSE-whisper.cpp.txt
+          echo "whisper.cpp $WHISPER_TAG ($WHISPER_COMMIT), variant ${{ matrix.variant }}, vulkan-sdk $VULKAN_VERSION" > pkg/BUILD-INFO.txt
+          base="whisper-server-$WHISPER_TAG-${{ matrix.os }}-x64-${{ matrix.variant }}"
+          mkdir out
+          if [ "${{ matrix.os }}" = win ]; then
+            (cd pkg && 7z a -tzip "../out/$base.zip" .)
+          else
+            tar -czf "out/$base.tar.gz" -C pkg .
+          fi
+          ls -l out
+
+      # Nur CPU: der Vulkan-Build braucht zur Laufzeit den Vulkan-Loader des Grafiktreibers.
+      - name: Smoke --help
+        if: matrix.variant == 'cpu'
+        shell: bash
+        run: |
+          ./pkg/whisper-server --help > help.txt 2>&1
+          head -3 help.txt
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.os }}-${{ matrix.variant }}
+          path: out/*
+          if-no-files-found: error
+
+  manifest:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with: { path: dist }
+      - name: SHA256SUMS.txt und sidecar-manifest.json
+        shell: python
+        run: |
+          import hashlib, json, os, pathlib
+          tag, commit = os.environ["WHISPER_TAG"], os.environ["WHISPER_COMMIT"]
+          entries = []
+          for path in sorted(pathlib.Path("dist").rglob("whisper-server-*")):
+              os_name, variant = path.parent.name.split("-")
+              sha = hashlib.sha256(path.read_bytes()).hexdigest()
+              entries.append({"tag": tag, "commit": commit, "file": path.name, "sha256": sha,
+                              "variant": variant, "os": os_name, "arch": "x64"})
+          assert len(entries) == 4, entries
+          out = pathlib.Path("manifest"); out.mkdir()
+          (out / "SHA256SUMS.txt").write_text("".join(f"{e['sha256']}  {e['file']}\n" for e in entries))
+          manifest = {"tag": tag, "commit": commit, "vulkanSdk": os.environ["VULKAN_VERSION"], "files": entries}
+          (out / "sidecar-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+          print((out / "SHA256SUMS.txt").read_text())
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sidecar-manifest
+          path: manifest/*
+          if-no-files-found: error
