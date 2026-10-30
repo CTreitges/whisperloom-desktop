@@ -1,7 +1,8 @@
 name: CI
 on:
   push: { branches: [main] }
-  pull_request: { branches: [main] }
+  # Alle PRs, auch gestapelte (Base ≠ main).
+  pull_request:
 
 jobs:
   dotnet:
