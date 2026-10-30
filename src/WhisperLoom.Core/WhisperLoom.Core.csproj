@@ -6,5 +6,7 @@
   <ItemGroup>
     <!-- Prompt-Fragmente je Sprache: Ressourcenname WhisperLoom.Core.Prompts.<de|en>.<name>.txt. -->
     <EmbeddedResource Include="Prompts\**\*.txt" WithCulture="false" />
+    <!-- Anbieter-Katalog (Parität mit ProviderCatalog.kt: tools/check_provider_parity.py). -->
+    <EmbeddedResource Include="Api/providers.json" LogicalName="WhisperLoom.Core.Api.providers.json" />
   </ItemGroup>
 </Project>
