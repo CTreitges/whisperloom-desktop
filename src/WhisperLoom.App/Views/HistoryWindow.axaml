@@ -1,0 +1,35 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:WhisperLoom.App.ViewModels"
+        xmlns:l="using:WhisperLoom.App.Localization"
+        x:Class="WhisperLoom.App.Views.HistoryWindow"
+        x:DataType="vm:HistoryViewModel"
+        Title="{Binding [History_Title], Source={x:Static l:Loc.Instance}}"
+        Icon="/Assets/whisperloom.ico"
+        Width="800" Height="600"
+        Background="{StaticResource WlBackground}">
+  <DockPanel Margin="16">
+    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="12" Margin="0,0,0,12">
+      <Button Content="{Binding [History_Clear], Source={x:Static l:Loc.Instance}}" Command="{Binding ClearCommand}" />
+      <TextBlock Text="{Binding [History_Empty], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center"
+                 IsVisible="{Binding !Items.Count}" Foreground="{StaticResource WlOnSurfaceVariant}" />
+    </StackPanel>
+    <ListBox x:Name="Entries" ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="vm:HistoryItem">
+          <StackPanel Spacing="4" Margin="0,4">
+            <TextBlock Text="{Binding Header}" Foreground="{StaticResource WlAccent}" />
+            <SelectableTextBlock Text="{Binding Text}" TextWrapping="Wrap" FontSize="16" />
+            <SelectableTextBlock Text="{Binding Raw}" TextWrapping="Wrap" Foreground="{StaticResource WlOnSurfaceVariant}" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button Content="{Binding [Action_Copy], Source={x:Static l:Loc.Instance}}" Click="OnCopy" Tag="{Binding Text}" />
+              <Button Content="{Binding [Action_Delete], Source={x:Static l:Loc.Instance}}"
+                      Command="{Binding $parent[ListBox].((vm:HistoryViewModel)DataContext).DeleteCommand}"
+                      CommandParameter="{Binding}" />
+            </StackPanel>
+          </StackPanel>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+  </DockPanel>
+</Window>

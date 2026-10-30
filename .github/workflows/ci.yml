@@ -30,3 +30,30 @@ jobs:
         with: { python-version: "3.12" }
       - run: python -m unittest discover -s tools/tests -v
       - run: python tools/test_parity.py --android android --mapping docs/test-mapping-contracts.md
+
+  # Demo-Pakete der App (self-contained). Doku: learn.microsoft.com/dotnet/core/deploying/ (abgerufen 2026-10-30),
+  # github.com/actions/upload-artifact (v7, abgerufen 2026-10-30).
+  publish:
+    needs: dotnet
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, rid: win-x64, archive: win-x64.zip }
+          - { os: ubuntu-latest, rid: linux-x64, archive: linux-x64.tar.gz }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with: { global-json-file: global.json }
+      - run: dotnet publish src/WhisperLoom.App -c Release -r ${{ matrix.rid }} --self-contained -o publish/${{ matrix.rid }}
+      - if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path publish/win-x64/* -DestinationPath ${{ matrix.archive }}
+      - if: runner.os == 'Linux'
+        run: tar -czf ${{ matrix.archive }} -C publish/linux-x64 .
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.archive }}
+          path: ${{ matrix.archive }}
+          if-no-files-found: error

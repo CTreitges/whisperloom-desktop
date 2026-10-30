@@ -1,0 +1,141 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:WhisperLoom.App.ViewModels"
+        xmlns:v="using:WhisperLoom.App.Views"
+        xmlns:l="using:WhisperLoom.App.Localization"
+        x:Class="WhisperLoom.App.Views.SettingsWindow"
+        x:DataType="vm:SettingsViewModel"
+        Title="{Binding [Settings_Title], Source={x:Static l:Loc.Instance}}"
+        Icon="/Assets/whisperloom.ico"
+        Width="900" Height="680"
+        Background="{StaticResource WlBackground}">
+  <Window.Styles>
+    <Style Selector="TextBlock.h">
+      <Setter Property="FontSize" Value="16" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource WlAccent}" />
+      <Setter Property="Margin" Value="0,12,0,4" />
+    </Style>
+    <Style Selector="TextBlock.f">
+      <Setter Property="Foreground" Value="{StaticResource WlOnSurfaceVariant}" />
+      <Setter Property="Margin" Value="0,6,0,2" />
+    </Style>
+    <Style Selector="ComboBox, TextBox">
+      <Setter Property="MinWidth" Value="320" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
+  </Window.Styles>
+
+  <DockPanel Margin="16">
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="12" Margin="0,12,0,0">
+      <Button x:Name="SaveButton" Content="{Binding [Action_Save], Source={x:Static l:Loc.Instance}}" Command="{Binding SaveCommand}" />
+      <Button Content="{Binding [Action_Close], Source={x:Static l:Loc.Instance}}" Click="OnClose" />
+      <TextBlock Text="{Binding SaveStatus}" VerticalAlignment="Center" Foreground="{StaticResource WlAccent}" />
+    </StackPanel>
+
+    <TabControl>
+      <!-- Erkennung -->
+      <TabItem x:Name="TabRecognition" Header="{Binding [Settings_Recognition], Source={x:Static l:Loc.Instance}}">
+        <ScrollViewer>
+          <StackPanel Margin="4">
+            <TextBlock Classes="f" Text="{Binding [Settings_Provider], Source={x:Static l:Loc.Instance}}" />
+            <ComboBox ItemsSource="{Binding SttProviders}" SelectedItem="{Binding SttProvider}" />
+            <TextBlock Classes="f" Text="{Binding [Settings_ApiKey], Source={x:Static l:Loc.Instance}}" />
+            <v:KeyFieldView x:Name="SttKeyView" DataContext="{Binding SttKey}" />
+            <TextBlock Classes="f" Text="{Binding [Settings_BaseUrl], Source={x:Static l:Loc.Instance}}" />
+            <TextBox Text="{Binding SttBaseUrl}" />
+            <TextBlock Classes="f" Text="{Binding [Settings_Model], Source={x:Static l:Loc.Instance}}" />
+            <TextBox Text="{Binding SttModel}" />
+            <TextBlock Classes="f" Text="{Binding [Language_Label], Source={x:Static l:Loc.Instance}}" />
+            <ComboBox ItemsSource="{Binding Languages}" SelectedItem="{Binding Language}" />
+            <TextBlock Classes="h" Text="{Binding [Settings_Fallback], Source={x:Static l:Loc.Instance}}" />
+            <CheckBox IsChecked="{Binding SttFallbackEnabled}" Content="{Binding [Settings_FallbackEnabled], Source={x:Static l:Loc.Instance}}" />
+            <ComboBox ItemsSource="{Binding SttProviders}" SelectedItem="{Binding SttFallbackProvider}" />
+            <v:KeyFieldView x:Name="SttFallbackKeyView" DataContext="{Binding SttFallbackKey}" />
+            <TextBlock Classes="f" Text="{Binding [Settings_Model], Source={x:Static l:Loc.Instance}}" />
+            <TextBox Text="{Binding SttFallbackModel}" />
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <!-- Text -->
+      <TabItem x:Name="TabText" Header="{Binding [Settings_Text], Source={x:Static l:Loc.Instance}}">
+        <ScrollViewer>
+          <StackPanel Margin="4">
+            <TextBlock Classes="f" Text="{Binding [Stage_Label], Source={x:Static l:Loc.Instance}}" />
+            <ComboBox ItemsSource="{Binding Stages}" SelectedItem="{Binding Stage}" />
+            <CheckBox IsChecked="{Binding PromptEnabled}" Content="{Binding [Settings_PromptEnabled], Source={x:Static l:Loc.Instance}}" />
+            <TextBlock Classes="h" Text="{Binding [Settings_LlmAccess], Source={x:Static l:Loc.Instance}}" />
+            <ComboBox ItemsSource="{Binding LlmProviders}" SelectedItem="{Binding LlmProvider}" />
+            <v:KeyFieldView x:Name="LlmKeyView" DataContext="{Binding LlmKey}" />
+            <TextBlock Classes="f" Text="{Binding [Settings_BaseUrl], Source={x:Static l:Loc.Instance}}" />
+            <TextBox Text="{Binding LlmBaseUrl}" />
+            <TextBlock Classes="f" Text="{Binding [Settings_Model], Source={x:Static l:Loc.Instance}}" />
+            <TextBox Text="{Binding LlmModel}" />
+            <TextBlock Classes="h" Text="{Binding [Settings_StageModels], Source={x:Static l:Loc.Instance}}" />
+            <TextBlock Classes="f" Text="{Binding [Stage_polish], Source={x:Static l:Loc.Instance}}" />
+            <TextBox Text="{Binding ModelPolish}" />
+            <TextBlock Classes="f" Text="{Binding [Stage_beautify], Source={x:Static l:Loc.Instance}}" />
+            <TextBox Text="{Binding ModelBeautify}" />
+            <TextBlock Classes="f" Text="{Binding [Stage_summarize], Source={x:Static l:Loc.Instance}}" />
+            <TextBox Text="{Binding ModelSummarize}" />
+            <TextBlock Classes="f" Text="{Binding [Stage_prompt], Source={x:Static l:Loc.Instance}}" />
+            <TextBox Text="{Binding ModelPrompt}" />
+            <TextBlock Classes="h" Text="{Binding [Settings_Fallback], Source={x:Static l:Loc.Instance}}" />
+            <CheckBox IsChecked="{Binding LlmFallbackEnabled}" Content="{Binding [Settings_FallbackEnabled], Source={x:Static l:Loc.Instance}}" />
+            <ComboBox ItemsSource="{Binding LlmFallbackProviders}" SelectedItem="{Binding LlmFallbackProvider}" />
+            <v:KeyFieldView x:Name="LlmFallbackKeyView" DataContext="{Binding LlmFallbackKey}" />
+            <TextBlock Classes="f" Text="{Binding [Settings_Model], Source={x:Static l:Loc.Instance}}" />
+            <TextBox Text="{Binding LlmFallbackModel}" />
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <!-- Kontext-Wörter -->
+      <TabItem x:Name="TabVocabulary" Header="{Binding [Settings_Vocabulary], Source={x:Static l:Loc.Instance}}">
+        <StackPanel Margin="4">
+          <TextBlock Classes="f" Text="{Binding [Settings_VocabularyHint], Source={x:Static l:Loc.Instance}}" />
+          <TextBox Text="{Binding Vocabulary}" AcceptsReturn="True" Height="260" MinWidth="560" TextWrapping="Wrap" />
+          <TextBlock Classes="f" Text="{Binding [Settings_VocabularyFile], Source={x:Static l:Loc.Instance}}" />
+          <TextBox Text="{Binding VocabularyFile}" MinWidth="560" />
+        </StackPanel>
+      </TabItem>
+
+      <!-- Netzwerk -->
+      <TabItem x:Name="TabNetwork" Header="{Binding [Settings_Network], Source={x:Static l:Loc.Instance}}">
+        <StackPanel Margin="4">
+          <TextBlock Classes="f" Text="{Binding [Settings_Proxy], Source={x:Static l:Loc.Instance}}" />
+          <ComboBox ItemsSource="{Binding ProxyModes}" SelectedItem="{Binding ProxyMode}" />
+          <TextBlock Classes="f" Text="{Binding [Settings_ProxyUrl], Source={x:Static l:Loc.Instance}}" />
+          <TextBox Text="{Binding ProxyUrl}" PlaceholderText="http://proxy:3128" />
+        </StackPanel>
+      </TabItem>
+
+      <!-- Datenschutz -->
+      <TabItem x:Name="TabPrivacy" Header="{Binding [Settings_Privacy], Source={x:Static l:Loc.Instance}}">
+        <StackPanel Margin="4">
+          <CheckBox IsChecked="{Binding HistoryEnabled}" Content="{Binding [Settings_HistoryEnabled], Source={x:Static l:Loc.Instance}}" />
+          <TextBlock Classes="f" Text="{Binding [Settings_HistorySize], Source={x:Static l:Loc.Instance}}" />
+          <ComboBox ItemsSource="{Binding HistorySizes}" SelectedItem="{Binding HistorySize}" />
+          <TextBlock Classes="f" TextWrapping="Wrap" Text="{Binding [Settings_PrivacyNote], Source={x:Static l:Loc.Instance}}" />
+          <TextBlock Classes="h" Text="{Binding [Settings_KeyStore], Source={x:Static l:Loc.Instance}}" />
+          <TextBlock x:Name="SecretStoreKindText" Text="{Binding SecretStoreKind}" />
+          <TextBlock x:Name="SecretFileHint" IsVisible="{Binding SecretStoreIsFile}" TextWrapping="Wrap"
+                     Foreground="{StaticResource WlError}" Text="{Binding [Settings_KeyFileHint], Source={x:Static l:Loc.Instance}}" />
+        </StackPanel>
+      </TabItem>
+
+      <!-- Ausgabe und Oberfläche -->
+      <TabItem x:Name="TabOutput" Header="{Binding [Settings_Output], Source={x:Static l:Loc.Instance}}">
+        <StackPanel Margin="4">
+          <TextBlock Classes="f" Text="{Binding [Settings_Output], Source={x:Static l:Loc.Instance}}" />
+          <ComboBox ItemsSource="{Binding Outputs}" SelectedItem="{Binding Output}" />
+          <TextBlock Classes="f" Text="{Binding [Settings_Microphone], Source={x:Static l:Loc.Instance}}" />
+          <ComboBox ItemsSource="{Binding Microphones}" SelectedItem="{Binding Microphone}" />
+          <TextBlock Classes="f" Text="{Binding [Settings_UiLanguage], Source={x:Static l:Loc.Instance}}" />
+          <ComboBox x:Name="UiLanguageBox" ItemsSource="{Binding UiLanguages}" SelectedItem="{Binding UiLanguage}" />
+        </StackPanel>
+      </TabItem>
+    </TabControl>
+  </DockPanel>
+</Window>
