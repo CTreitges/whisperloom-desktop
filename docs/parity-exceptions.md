@@ -10,3 +10,12 @@ Geprüft von `tools/check_prompt_parity.py`. Fragment exakt wie in der Ausgabe d
 
 | Fragment | Seite | Begründung |
 |---|---|---|
+
+## Anbieter
+
+Geprüft von `tools/check_provider_parity.py` (`ProviderCatalog.kt` ↔ `src/WhisperLoom.Core/Api/providers.json`).
+Schlüssel: `<id>.<feld>`, `<id>.<sttModels|llmModels>[<modell>].<feld>`, `<id>.<sttModels|llmModels>.order`, `<id>`,
+`providers.order`, `catalogDate`.
+
+| Unterschied | Begründung |
+|---|---|
