@@ -215,7 +215,7 @@ public class UiTest
         using (f)
         {
             vm.UiLanguage = vm.UiLanguages.First(c => c.Value == "en");
-            vm.Save();
+            await vm.Save();
             Assert.Equal("en", Loc.Instance.Language);
             Assert.Equal("WhisperLoom — Settings", window.Title);
             var json = await File.ReadAllTextAsync(f.Store.FilePath);

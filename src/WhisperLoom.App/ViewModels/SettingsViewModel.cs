@@ -131,9 +131,9 @@ public sealed partial class SettingsViewModel : ObservableObject
     public Task LoadKeysAsync() =>
         Task.WhenAll(SttKey.LoadAsync(), SttFallbackKey.LoadAsync(), LlmKey.LoadAsync(), LlmFallbackKey.LoadAsync());
 
-    /// <summary>Übernimmt die Kopie: App, settings.json und Oberflächensprache.</summary>
+    /// <summary>Übernimmt die Kopie: App, settings.json und Oberflächensprache. „Verlauf aus“ leert den Verlauf.</summary>
     [RelayCommand]
-    public void Save()
+    public async Task Save()
     {
         _s.Stt.ProviderId = SttProvider.Value;
         _s.SttFallback.ProviderId = SttFallbackProvider.Value;
@@ -147,9 +147,16 @@ public sealed partial class SettingsViewModel : ObservableObject
         _desktop.Microphone = Microphone.Value;
         _desktop.UiLanguage = UiLanguage.Value;
         SettingsStore.SetDesktop(_s, _desktop);
-        _controller.ApplySettings(SettingsJson.Deserialize(SettingsJson.Serialize(_s)));
         Loc.Instance.SetLanguage(UiLanguage.Value);
-        SaveStatus = Loc.Instance["Settings_Saved"];
+        try
+        {
+            await _controller.ApplySettingsAsync(SettingsJson.Deserialize(SettingsJson.Serialize(_s)));
+            SaveStatus = Loc.Instance["Settings_Saved"];
+        }
+        catch (IOException)
+        {
+            SaveStatus = Loc.Instance["Settings_HistoryClearError"];
+        }
     }
 
     private string StageModel(string stage) => _s.Llm.StageModels.GetValueOrDefault(stage, "");

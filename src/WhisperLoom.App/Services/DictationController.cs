@@ -248,11 +248,21 @@ public sealed partial class DictationController : ObservableObject
         return target;
     }
 
-    /// <summary>Übernimmt geänderte Einstellungen (Einstellungsfenster) und speichert sie.</summary>
-    public void ApplySettings(WhisperLoomSettings settings)
+    /// <summary>
+    /// Übernimmt geänderte Einstellungen (Einstellungsfenster) und speichert sie. Schaltet die Änderung den Verlauf
+    /// aus, wird er geleert (wie Android <c>History.setEnabled(false)</c>): danach liegt kein Diktattext mehr ab.
+    /// </summary>
+    /// <exception cref="IOException">Verlauf ließ sich nicht leeren (die Einstellung ist trotzdem übernommen).</exception>
+    public async Task ApplySettingsAsync(WhisperLoomSettings settings)
     {
+        var historyTurnedOff = Settings.History.Enabled && !settings.History.Enabled;
         _saveSettings(settings);
         Settings = settings;
+        if (historyTurnedOff)
+        {
+            await _history.ClearAsync(CancellationToken.None);
+            _log.Event("history.cleared", ("reason", "disabled"));
+        }
     }
 
     private async Task ProcessAsync(AudioBuffer audio, CancellationToken ct)

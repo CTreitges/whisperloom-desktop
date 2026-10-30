@@ -112,6 +112,35 @@ public class DictationControllerTest
     }
 
     [Fact]
+    public async Task Switching_history_off_clears_existing_entries()
+    {
+        using var f = new ControllerFixture();
+        f.Controller.Start();
+        await f.Controller.StopAsync();
+        Assert.Single(await f.History.ListAsync(CancellationToken.None));
+
+        // Wie das Einstellungsfenster: eine geänderte Kopie übernehmen.
+        var changed = SettingsJson.Deserialize(SettingsJson.Serialize(f.Controller.Settings));
+        changed.History.Enabled = false;
+        await f.Controller.ApplySettingsAsync(changed);
+
+        Assert.Empty(await f.History.ListAsync(CancellationToken.None));
+        Assert.Contains("history.cleared reason=disabled", f.LogText);
+    }
+
+    [Fact]
+    public async Task Other_setting_changes_keep_history()
+    {
+        using var f = new ControllerFixture();
+        f.Controller.Start();
+        await f.Controller.StopAsync();
+        var changed = SettingsJson.Deserialize(SettingsJson.Serialize(f.Controller.Settings));
+        changed.Language = "en";
+        await f.Controller.ApplySettingsAsync(changed);
+        Assert.Single(await f.History.ListAsync(CancellationToken.None));
+    }
+
+    [Fact]
     public async Task History_off_stores_nothing()
     {
         var settings = new WhisperLoomSettings { History = new HistorySettings { Enabled = false } };

@@ -101,7 +101,7 @@ public sealed partial class StageViewModel : ObservableObject
         var desktop = SettingsStore.Desktop(settings);
         desktop.StageFontSize = FontSize;
         SettingsStore.SetDesktop(settings, desktop);
-        Controller.ApplySettings(settings);
+        _ = Controller.ApplySettingsAsync(settings);
     }
 
     private void OnControllerChanged(object? sender, PropertyChangedEventArgs e) => RefreshTexts();
