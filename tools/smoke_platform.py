@@ -2,6 +2,7 @@
 
 Windows: Credential Manager über advapi32 (CredReadW/CredDeleteW), Ziel "<präfix><name>".
 Linux: secret-tool (service = Präfix ohne ":", account = Name) bzw. <Datenordner>/secrets.json mit Rechten 600.
+Tray (nur Windows): Ist das Symbol der App-PID beim Shell registriert? (Shell_NotifyIconGetRect, siehe tray_icon.)
 """
 from __future__ import annotations
 
@@ -82,6 +83,70 @@ def cleanup_secrets(platform: str, prefix: str, data_dir: Path) -> None:
     for name in NAMES:
         subprocess.run(["secret-tool", "clear", "service", prefix.rstrip(":"), "account", name], capture_output=True)
     (data_dir / "secrets.json").unlink(missing_ok=True)
+
+
+# Avalonia (Win32): TrayIconImpl meldet das Symbol mit hWnd = Win32Platform.Instance.Handle (verstecktes Fenster der
+# Klasse "AvaloniaMessageWindow <guid>") und uID = 1, 2, … an.
+# Doku: github.com/AvaloniaUI/Avalonia src/Windows/Avalonia.Win32/TrayIconImpl.cs und Win32Platform.cs (abgerufen 2026-10-30);
+# learn.microsoft.com/windows/win32/api/shellapi/nf-shellapi-shell_notifyicongetrect (abgerufen 2026-10-30).
+TRAY_WINDOW_CLASS = "AvaloniaMessageWindow "
+MAX_TRAY_IDS = 4
+
+
+def tray_owner_windows(pid: int, windows) -> list[int]:
+    """Fenster der Prozess-PID, über die Avalonia Tray-Symbole anmeldet. windows: (hwnd, pid, Klassenname)."""
+    return [hwnd for hwnd, owner, cls in windows if owner == pid and cls.startswith(TRAY_WINDOW_CLASS)]
+
+
+def find_tray_icon(pid: int, windows, icon_rect) -> str | None:
+    """Beschreibung des ersten registrierten Symbols der PID, sonst None. icon_rect(hwnd, uid) → Rechteck oder None."""
+    for hwnd in tray_owner_windows(pid, windows):
+        for uid in range(1, MAX_TRAY_IDS + 1):
+            rect = icon_rect(hwnd, uid)
+            if rect:
+                return f"hwnd=0x{hwnd:x} uid={uid} rect={rect}"
+    return None
+
+
+def win_windows() -> list[tuple[int, int, str]]:
+    """Alle Top-Level-Fenster (auch unsichtbare) als (hwnd, pid, Klassenname)."""
+    from ctypes import wintypes
+
+    user32 = ctypes.WinDLL("user32", use_last_error=True)
+    found: list[tuple[int, int, str]] = []
+    proc = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+
+    def visit(hwnd, _):
+        pid = wintypes.DWORD()
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+        name = ctypes.create_unicode_buffer(256)
+        user32.GetClassNameW(hwnd, name, 256)
+        found.append((hwnd or 0, pid.value, name.value))
+        return True
+
+    user32.EnumWindows(proc(visit), 0)
+    return found
+
+
+def win_icon_rect(hwnd: int, uid: int) -> tuple[int, int, int, int] | None:
+    """Rechteck des Symbols (hwnd, uid) im Infobereich; None, wenn der Shell es nicht kennt."""
+    from ctypes import wintypes
+
+    class NOTIFYICONIDENTIFIER(ctypes.Structure):
+        _fields_ = [("cbSize", wintypes.DWORD), ("hWnd", wintypes.HWND), ("uID", wintypes.UINT), ("guidItem", ctypes.c_ubyte * 16)]
+
+    ident = NOTIFYICONIDENTIFIER(ctypes.sizeof(NOTIFYICONIDENTIFIER), hwnd, uid)
+    rect = wintypes.RECT()
+    shell32 = ctypes.WinDLL("shell32")
+    shell32.Shell_NotifyIconGetRect.restype = ctypes.c_long
+    if shell32.Shell_NotifyIconGetRect(ctypes.byref(ident), ctypes.byref(rect)) != 0:
+        return None
+    return rect.left, rect.top, rect.right, rect.bottom
+
+
+def tray_icon(pid: int) -> str | None:
+    """Tray-Symbol der App (nur Windows); liest nur, klickt nichts."""
+    return find_tray_icon(pid, win_windows(), win_icon_rect)
 
 
 def read_clipboard(platform: str) -> str | None:

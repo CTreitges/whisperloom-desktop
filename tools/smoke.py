@@ -9,6 +9,8 @@ Suites:
   Key-Präfix WhisperLoom-Test-<ID>: (Testeinträge werden gelöscht). Keine echte Eingabe, keine Zwischenablage.
 - full: echte Pipeline gegen tools/fake_api.py über den Fake-Proxy (Goal-File A2.2, tools/smoke_full.py):
   toggle-output, language-en, proxy, history, fallback-stt, secret-store, anthropic-prompt, logs-clean, no-audio-stored.
+- ui: echte Pipeline gegen tools/fake_api.py, Ausgabe in die echte Zwischenablage — clipboard-real, unter Windows
+  zusätzlich tray-visible (Symbol der App-PID beim Shell registriert).
 - ui / input: echte Zwischenablage bzw. Eingaben — nur mit gültigem Lock <work>/ui-smoke.lock für --id
   ({"id": "<ID>", "until": "<ISO-Zeit>"}), sonst Abbruch mit Exit 3.
 
@@ -264,21 +266,42 @@ def check_secret_store(platform: str, run: AppRun, data: Path, prefix: str) -> t
 
 
 def suite_ui(args, work: Path, report: Report) -> None:
+    with smoke_full.FakeApi() as fake:
+        ui_checks(args, work, report, fake)
+
+
+def wait_for(probe, seconds: float, step: float = 0.3):
+    """Ruft probe() bis zu <seconds> lang auf, bis es etwas liefert; sonst das letzte Ergebnis (None/False)."""
+    deadline = time.time() + seconds
+    while True:
+        value = probe()
+        if value or time.time() >= deadline:
+            return value
+        time.sleep(step)
+
+
+def ui_checks(args, work: Path, report: Report, fake: smoke_full.FakeApi) -> None:
+    """Echte Pipeline gegen die Fake-API (direkt), Ausgabe in die echte Zwischenablage; Windows zusätzlich das Tray-Symbol."""
     data = args.data_dir or work / args.id / "smoke-data-ui"
     fresh_dir(data)
     wav = work / args.id / "smoke-test.wav"
     write_test_wav(wav)
-    run = AppRun(args.app, data, f"WhisperLoom-Test-{args.id}:", ["--test-audio", str(wav)])
+    (data / "settings.json").write_text(json.dumps(smoke_full.fake_settings(fake, via_proxy=False)), encoding="utf-8")
+    prefix = f"WhisperLoom-Test-{args.id}:"
+    run = AppRun(args.app, data, prefix, ["--test-audio", str(wav)])
     try:
         run.start()
-        run.cli("toggle")
-        time.sleep(0.5)
-        run.cli("toggle")
-        s = run.status() or {}
+        if args.platform == "win":
+            where = wait_for(lambda: plat.tray_icon(run.proc.pid), 10)
+            report.check("tray-visible", where, f"kein Tray-Symbol der PID {run.proc.pid} beim Shell registriert")
+        s = smoke_full.dictate(run)
+        result = str(s.get("lastResult") or "")
         clip = plat.read_clipboard(args.platform)
-        report.check("clipboard-real", clip is not None and clip == s.get("lastResult"), f"clip={clip!r:.40}")
+        report.check("clipboard-real", result.startswith("[fake-llm]") and clip == result,
+                     f"clip={clip!r:.40} result={result!r:.40} error={s.get('lastError')}")
     finally:
         run.stop()
+        plat.cleanup_secrets(args.platform, prefix, data)
 
 
 def main(argv: list[str] | None = None) -> int:
