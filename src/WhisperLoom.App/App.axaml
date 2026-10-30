@@ -1,12 +1,21 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="WhisperLoom.App.App"
+             Name="WhisperLoom"
              RequestedThemeVariant="Dark">
   <Application.Resources>
-    <!-- Farben aus der Android-UX-Spec (docs/design/ux-spec-v3.md im Android-Repo). -->
+    <!-- Farben aus der Android-UX-Spec v3 §3.1 (docs/design/ux-spec-v3.md im Android-Repo). -->
     <SolidColorBrush x:Key="WlBackground" Color="#0E1116" />
+    <SolidColorBrush x:Key="WlSurface" Color="#1A1F26" />
+    <SolidColorBrush x:Key="WlSurfaceHigh" Color="#2E353E" />
+    <SolidColorBrush x:Key="WlOnSurface" Color="#E4E8EE" />
+    <SolidColorBrush x:Key="WlOnSurfaceVariant" Color="#B8C0CC" />
     <SolidColorBrush x:Key="WlAccent" Color="#6FD9C7" />
+    <SolidColorBrush x:Key="WlSecondary" Color="#A9C4E8" />
+    <SolidColorBrush x:Key="WlTertiaryContainer" Color="#54368A" />
+    <SolidColorBrush x:Key="WlOnTertiaryContainer" Color="#EEDCFF" />
     <SolidColorBrush x:Key="WlRecording" Color="#FF4D4D" />
+    <SolidColorBrush x:Key="WlError" Color="#FFB4AB" />
   </Application.Resources>
   <Application.Styles>
     <FluentTheme />

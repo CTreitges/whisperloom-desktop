@@ -5,11 +5,18 @@
     <AssemblyName>WhisperLoom</AssemblyName>
     <RootNamespace>WhisperLoom.App</RootNamespace>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <ApplicationIcon>Assets/whisperloom.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.Desktop" />
     <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="PortAudioSharp2" />
+  </ItemGroup>
+  <ItemGroup>
+    <AvaloniaResource Include="Assets/**" />
+    <EmbeddedResource Include="Localization/*.json" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../WhisperLoom.Core/WhisperLoom.Core.csproj" />

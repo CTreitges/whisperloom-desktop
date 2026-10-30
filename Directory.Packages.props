@@ -9,6 +9,13 @@
     <PackageVersion Include="Avalonia.Desktop" Version="$(AvaloniaVersion)" />
     <PackageVersion Include="Avalonia.Themes.Fluent" Version="$(AvaloniaVersion)" />
     <PackageVersion Include="Avalonia.Headless.XUnit" Version="$(AvaloniaVersion)" />
+    <PackageVersion Include="Avalonia.Skia" Version="$(AvaloniaVersion)" />
+    <PackageVersion Include="Avalonia.Fonts.Inter" Version="$(AvaloniaVersion)" />
+    <!-- MVVM-Helfer. Doku: learn.microsoft.com/dotnet/communitytoolkit/mvvm/ (abgerufen 2026-10-30). -->
+    <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <!-- Audio für Windows und Linux, native PortAudio für win-x64/linux-x64 enthalten.
+         Doku: nuget.org/packages/PortAudioSharp2 (abgerufen 2026-10-30). -->
+    <PackageVersion Include="PortAudioSharp2" Version="1.0.6" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
     <!-- xUnit v3 auf 3.2.x: Avalonia.Headless.XUnit 12.1.4 ist gegen xunit.v3.extensibility.core 3.2.2 gebaut. -->
     <PackageVersion Include="xunit.v3" Version="3.2.2" />

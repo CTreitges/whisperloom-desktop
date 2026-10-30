@@ -1,0 +1,23 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:WhisperLoom.App.ViewModels"
+             xmlns:l="using:WhisperLoom.App.Localization"
+             x:Class="WhisperLoom.App.Views.KeyFieldView"
+             x:DataType="vm:KeyFieldViewModel">
+  <!-- Key nur maskiert; kein Aufdecken. Die Ersetzen-Eingabe zeigt Maskenzeichen (RevealPassword bleibt aus). -->
+  <StackPanel Spacing="6">
+    <StackPanel Orientation="Horizontal" Spacing="8">
+      <TextBlock x:Name="MaskText" Text="{Binding MaskText}" FontFamily="monospace" MinWidth="160" VerticalAlignment="Center" />
+      <Button x:Name="ReplaceButton" Content="{Binding [Key_Replace], Source={x:Static l:Loc.Instance}}" Command="{Binding ReplaceCommand}" />
+      <Button x:Name="DeleteButton" Content="{Binding [Key_Delete], Source={x:Static l:Loc.Instance}}" Command="{Binding DeleteCommand}" IsEnabled="{Binding IsSet}" />
+      <Button x:Name="CheckButton" Content="{Binding [Key_Check], Source={x:Static l:Loc.Instance}}" Command="{Binding CheckCommand}" />
+    </StackPanel>
+    <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsReplacing}">
+      <TextBox x:Name="NewKeyBox" Text="{Binding NewValue}" PasswordChar="•" RevealPassword="False" Width="320"
+               PlaceholderText="{Binding [Key_NewWatermark], Source={x:Static l:Loc.Instance}}" />
+      <Button x:Name="SaveKeyButton" Content="{Binding [Action_Save], Source={x:Static l:Loc.Instance}}" Command="{Binding SaveKeyCommand}" />
+      <Button Content="{Binding [Action_Cancel], Source={x:Static l:Loc.Instance}}" Command="{Binding CancelReplaceCommand}" />
+    </StackPanel>
+    <TextBlock Text="{Binding Status}" Foreground="{StaticResource WlOnSurfaceVariant}" />
+  </StackPanel>
+</UserControl>
