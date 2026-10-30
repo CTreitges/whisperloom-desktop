@@ -21,4 +21,8 @@
   <ItemGroup>
     <ProjectReference Include="../../src/WhisperLoom.App/WhisperLoom.App.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Derselbe lokale Fake-HTTP-Server wie in den Core-Tests (Fake-Proxy für AppPipelineTest). -->
+    <Compile Include="../WhisperLoom.Core.Tests/Support/FakeServer.cs" Link="Support/FakeServer.cs" />
+  </ItemGroup>
 </Project>

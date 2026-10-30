@@ -8,20 +8,20 @@ using WhisperLoom.App.Secrets;
 using WhisperLoom.App.Services;
 using WhisperLoom.Core.Contracts;
 using WhisperLoom.Core.Contracts.Settings;
-using WhisperLoom.Core.Testing;
+using WhisperLoom.Core.Api;
+using WhisperLoom.Core.History;
 
 namespace WhisperLoom.App;
 
 /// <summary>
-/// Setzt die App zusammen und führt CLI-Befehle aus. Bis WLD-INT arbeitet sie gegen die
-/// <see cref="FakeDictationPipeline"/> und einen Verlauf im Speicher.
+/// Setzt die App zusammen und führt CLI-Befehle aus: echte <see cref="AppPipeline"/>, Verlauf als Dateien im Datenordner.
 /// </summary>
 public sealed class AppHost
 {
     internal AppHost(
         AppOptions options,
         ISecretStore secrets,
-        IDictationPipeline pipeline,
+        Func<Func<WhisperLoomSettings>, IDictationPipeline> pipeline,
         IAudioRecorder recorder,
         IOutputSink output)
     {
@@ -39,8 +39,8 @@ public sealed class AppHost
             Log.Event("settings", ("status", "unreadable"), ("errorClass", e.GetType().Name));
             settings = new WhisperLoomSettings();
         }
-        History = new InMemoryHistoryStore(() => Controller!.Settings.History);
-        Controller = new DictationController(recorder, pipeline, output, History, Log, settings, Store.Save);
+        History = new FileHistoryStore(Path.Combine(options.DataDir, "history"), () => Controller!.Settings.History);
+        Controller = new DictationController(recorder, pipeline(() => Controller!.Settings), output, History, Log, settings, Store.Save);
         Loc.Instance.SetLanguage(SettingsStore.Desktop(settings).UiLanguage);
     }
 
@@ -65,7 +65,8 @@ public sealed class AppHost
         var secrets = await SecretStoreFactory.CreateAsync(options.DataDir, options.SecretPrefix, ct).ConfigureAwait(false);
         IAudioRecorder recorder = options.TestAudio is null ? new PortAudioRecorder() : new WavFileRecorder(options.TestAudio);
         IOutputSink output = options.OutputFile is null ? new ClipboardOutputSink(ProcessRunner.Instance) : new FileOutputSink(options.OutputFile);
-        return new AppHost(options, secrets, new FakeDictationPipeline(), recorder, output);
+        var cache = new ModelCache(Path.Combine(options.DataDir, "model-cache.json"));
+        return new AppHost(options, secrets, settings => new AppPipeline(settings, secrets, cache), recorder, output);
     }
 
     /// <summary>Führt ein Verb aus (aus der IPC oder vom eigenen Start). Läuft auf dem UI-Thread.</summary>

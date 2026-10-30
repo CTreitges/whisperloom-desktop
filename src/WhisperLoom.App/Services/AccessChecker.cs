@@ -1,30 +1,14 @@
 using System.Net;
 using System.Net.Http.Headers;
+using WhisperLoom.Core.Api;
 
 namespace WhisperLoom.App.Services;
 
-/// <summary>
-/// Anbieter für die Auswahllisten der Einstellungen. IDs und Basis-URLs wie <c>ProviderCatalog.kt</c> (Android 3.9.5).
-/// Übergang bis WLD-INT: dann liefert der Core-Katalog (<c>providers.json</c>, WLD-P1b) Liste und Modelle.
-/// </summary>
+/// <summary>Anbieter für die Auswahllisten der Einstellungen, aus dem Core-Katalog (<c>providers.json</c>).</summary>
 public sealed record ProviderChoice(string Id, string Name, string BaseUrl, bool Stt, bool Llm)
 {
     public static readonly IReadOnlyList<ProviderChoice> All =
-    [
-        new("openai", "OpenAI", "https://api.openai.com/v1", true, true),
-        new("groq", "Groq", "https://api.groq.com/openai/v1", true, true),
-        new("mistral", "Mistral (Voxtral)", "https://api.mistral.ai/v1", true, true),
-        new("elevenlabs", "ElevenLabs (Scribe)", "https://api.elevenlabs.io/v1", true, false),
-        new("together", "Together AI", "https://api.together.ai/v1", true, true),
-        new("deepinfra", "DeepInfra", "https://api.deepinfra.com/v1/openai", true, true),
-        new("openrouter", "OpenRouter", "https://openrouter.ai/api/v1", true, true),
-        new("anthropic", "Anthropic (Claude)", "https://api.anthropic.com/v1", false, true),
-        new("gemini", "Google Gemini", "https://generativelanguage.googleapis.com/v1beta/openai", false, true),
-        new("deepseek", "DeepSeek", "https://api.deepseek.com", false, true),
-        new("ollama", "Ollama (lokal)", "http://127.0.0.1:11434", false, true),
-        new("ollama-cloud", "Ollama Cloud", "https://ollama.com", false, true),
-        new("custom", "Eigener Server (OpenAI-kompatibel)", "", true, true),
-    ];
+        [.. ProviderCatalog.Providers.Select(p => new ProviderChoice(p.Id, p.Name, p.BaseUrl, p.HasStt, p.HasLlm))];
 
     public static ProviderChoice? Find(string id) => All.FirstOrDefault(p => p.Id == id);
 
@@ -94,23 +78,16 @@ public sealed class HttpAccessChecker(Func<HttpClient> client) : IAccessChecker
     }
 }
 
-/// <summary>HttpClient nach der Proxy-Einstellung: System (Standard), aus oder manuell.</summary>
-// Doku: learn.microsoft.com/dotnet/api/system.net.http.httpclienthandler.proxy (abgerufen 2026-10-30).
+/// <summary>HttpClient nach der Proxy-Einstellung: System (Standard), aus oder manuell — über den Core-Handler (<see cref="Http"/>).</summary>
 public static class HttpClients
 {
-    public static HttpClient Create(DesktopSettings desktop)
+    /// <summary>Eine manuelle Adresse, die keine absolute URL ist, gilt als System-Proxy.</summary>
+    public static HttpProxyOptions Proxy(DesktopSettings desktop) => desktop.ProxyMode switch
     {
-        var handler = new HttpClientHandler();
-        switch (desktop.ProxyMode)
-        {
-            case "off":
-                handler.UseProxy = false;
-                break;
-            case "manual" when Uri.TryCreate(desktop.ProxyUrl, UriKind.Absolute, out var proxy):
-                handler.Proxy = new WebProxy(proxy);
-                handler.UseProxy = true;
-                break;
-        }
-        return new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(90) };
-    }
+        "off" => new HttpProxyOptions(ProxyMode.None),
+        "manual" when Uri.TryCreate(desktop.ProxyUrl, UriKind.Absolute, out _) => new HttpProxyOptions(ProxyMode.Manual, desktop.ProxyUrl),
+        _ => new HttpProxyOptions(ProxyMode.System),
+    };
+
+    public static HttpClient Create(DesktopSettings desktop) => Http.CreateClient(Proxy(desktop));
 }

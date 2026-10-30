@@ -4,6 +4,7 @@ using WhisperLoom.App.Audio;
 using WhisperLoom.App.Output;
 using WhisperLoom.Core.Contracts;
 using WhisperLoom.Core.Contracts.Settings;
+using WhisperLoom.Core.History;
 
 namespace WhisperLoom.App.Services;
 
@@ -334,7 +335,7 @@ public sealed partial class DictationController : ObservableObject
         }
         var now = _now();
         var entry = new HistoryEntry(
-            InMemoryHistoryStore.NewId(now),
+            FileHistoryStore.NewId(now),
             now,
             result.Language,
             result.DurationMs,
