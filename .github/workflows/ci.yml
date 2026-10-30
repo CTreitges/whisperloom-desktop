@@ -1,0 +1,19 @@
+name: CI
+on:
+  push: { branches: [main] }
+  pull_request: { branches: [main] }
+
+jobs:
+  dotnet:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with: { global-json-file: global.json }
+      - run: dotnet restore WhisperLoom.slnx
+      - run: dotnet build WhisperLoom.slnx -c Release --no-restore
+      - run: dotnet test WhisperLoom.slnx -c Release --no-build
