@@ -3,4 +3,8 @@
   <ItemGroup>
     <InternalsVisibleTo Include="WhisperLoom.Core.Tests" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Prompt-Fragmente je Sprache: Ressourcenname WhisperLoom.Core.Prompts.<de|en>.<name>.txt. -->
+    <EmbeddedResource Include="Prompts\**\*.txt" WithCulture="false" />
+  </ItemGroup>
 </Project>
