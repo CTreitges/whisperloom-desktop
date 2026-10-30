@@ -3,4 +3,8 @@
   <ItemGroup>
     <InternalsVisibleTo Include="WhisperLoom.Core.Tests" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Anbieter-Katalog (Parität mit ProviderCatalog.kt: tools/check_provider_parity.py). -->
+    <EmbeddedResource Include="Api/providers.json" LogicalName="WhisperLoom.Core.Api.providers.json" />
+  </ItemGroup>
 </Project>
