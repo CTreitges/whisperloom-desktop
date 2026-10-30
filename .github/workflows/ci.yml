@@ -17,3 +17,15 @@ jobs:
       - run: dotnet restore WhisperLoom.slnx
       - run: dotnet build WhisperLoom.slnx -c Release --no-restore
       - run: dotnet test WhisperLoom.slnx -c Release --no-build
+
+  tools:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # Paritätsquelle: öffentliches Android-Repo (nur lesen).
+      - uses: actions/checkout@v7
+        with: { repository: CTreitges/whisperloom-android, path: android }
+      - uses: actions/setup-python@v7
+        with: { python-version: "3.12" }
+      - run: python -m unittest discover -s tools/tests -v
+      - run: python tools/test_parity.py --android android --mapping docs/test-mapping-contracts.md
