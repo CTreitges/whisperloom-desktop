@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/WhisperLoom.Core/WhisperLoom.Core.csproj" />
+    <Project Path="src/WhisperLoom.App/WhisperLoom.App.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/WhisperLoom.Core.Tests/WhisperLoom.Core.Tests.csproj" />
+    <Project Path="tests/WhisperLoom.App.Tests/WhisperLoom.App.Tests.csproj" />
+  </Folder>
+</Solution>

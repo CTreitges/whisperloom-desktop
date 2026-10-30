@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Avalonia-Desktop-App. Doku: Context7 /avaloniaui/avalonia-docs, docs/fundamentals/coded-ui.md (abgerufen 2026-10-30). -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <AssemblyName>WhisperLoom</AssemblyName>
+    <RootNamespace>WhisperLoom.App</RootNamespace>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../WhisperLoom.Core/WhisperLoom.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="WhisperLoom.App.Tests" />
+  </ItemGroup>
+</Project>

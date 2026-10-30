@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- OS-freier Fachkern: keine Avalonia-, System.Windows- oder Microsoft.Win32-Abhängigkeiten. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="WhisperLoom.Core.Tests" />
+  </ItemGroup>
+</Project>

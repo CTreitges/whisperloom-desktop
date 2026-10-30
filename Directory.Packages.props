@@ -1,0 +1,17 @@
+<Project>
+  <!-- Zentrale Paketversionen. Avalonia 12: Context7 /avaloniaui/avalonia-docs (abgerufen 2026-10-30). -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <AvaloniaVersion>12.1.4</AvaloniaVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="Avalonia" Version="$(AvaloniaVersion)" />
+    <PackageVersion Include="Avalonia.Desktop" Version="$(AvaloniaVersion)" />
+    <PackageVersion Include="Avalonia.Themes.Fluent" Version="$(AvaloniaVersion)" />
+    <PackageVersion Include="Avalonia.Headless.XUnit" Version="$(AvaloniaVersion)" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
+    <!-- xUnit v3 auf 3.2.x: Avalonia.Headless.XUnit 12.1.4 ist gegen xunit.v3.extensibility.core 3.2.2 gebaut. -->
+    <PackageVersion Include="xunit.v3" Version="3.2.2" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
+  </ItemGroup>
+</Project>
