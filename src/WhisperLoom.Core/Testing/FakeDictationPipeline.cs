@@ -16,6 +16,9 @@ public enum FakeFailure
     /// <summary>Erkennung nicht eingerichtet: <see cref="ApiNotConfiguredException"/>.</summary>
     SttNotConfigured,
 
+    /// <summary>Lokale Erkennung nicht bereit: <see cref="LocalNotAvailableException"/>.</summary>
+    SttLocalNotAvailable,
+
     /// <summary>Verbesserung scheitert: Ergebnis = Rohtext, <see cref="RefinedText.Skipped"/> gesetzt (kein Wurf).</summary>
     Refine,
 }
@@ -57,6 +60,8 @@ public sealed class FakeDictationPipeline : IDictationPipeline
                 throw new ApiNetworkException("Fake-Erkennung: nicht erreichbar");
             case FakeFailure.SttNotConfigured:
                 throw new ApiNotConfiguredException();
+            case FakeFailure.SttLocalNotAvailable:
+                throw new LocalNotAvailableException("Fake-Erkennung: lokales Modell fehlt");
         }
 
         var language = request.Language == "auto" ? "de" : request.Language;

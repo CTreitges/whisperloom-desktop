@@ -1,3 +1,6 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
 namespace WhisperLoom.Core.Contracts.Settings;
 
 /// <summary>
@@ -41,6 +44,14 @@ public sealed class WhisperLoomSettings
 
     /// <summary>Modellwahl mit der aktuellen Liste des Anbieters statt der Katalog-Empfehlungen.</summary>
     public bool ServerModelsEnabled { get; set; }
+
+    /// <summary>
+    /// Unbekannte Felder der obersten Ebene (z. B. ein <c>android</c>-Abschnitt oder Abschnitte einer neueren
+    /// Desktop-Version): bleiben beim Speichern erhalten. Unbekannte Felder innerhalb bekannter Abschnitte gehen
+    /// dagegen verloren — neue Felder deshalb nur mit Standardwert und ohne Bedeutungswechsel einführen.
+    /// </summary>
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
 }
 
 public sealed class SttSettings
@@ -109,7 +120,11 @@ public sealed class LlmFallbackSettings
 
 public sealed class RefineSettings
 {
-    /// <summary>Gespeicherte Stufe (Schlüssel). "prompt" gilt nur mit <see cref="PromptEnabled"/>, sonst als "polish".</summary>
+    /// <summary>
+    /// Gespeicherte Stufe (Schlüssel). "prompt" gilt nur mit <see cref="PromptEnabled"/>, sonst als "polish".
+    /// Der Altwert "paragraphs" (frühere Stufe „Absätze“, kann aus Android kommen) gilt als "polish" —
+    /// nicht über <see cref="RefineModes.FromKey"/> lesen, das ergäbe "off" (Regel wie <c>Prefs.refineMode</c>).
+    /// </summary>
     public string Stage { get; set; } = "off";
 
     /// <summary>Stufe „Prompt“ anbieten (auf Android eine Pro-Funktion).</summary>

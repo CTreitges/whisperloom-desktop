@@ -69,6 +69,18 @@ public class SettingsJsonTest
     }
 
     [Fact]
+    public void UnbekannteAbschnitteUeberlebenDasSpeichern()
+    {
+        var s = SettingsJson.Deserialize("""{ "android": { "floatX": 24 }, "language": "en" }""");
+
+        var json = SettingsJson.Serialize(s);
+
+        Assert.Contains("\"android\"", json);
+        Assert.Contains("\"floatX\": 24", json);
+        Assert.DoesNotContain("\"extra\"", json);
+    }
+
+    [Fact]
     public void NeueresSchemaWirdAbgelehnt()
     {
         Assert.Throws<NotSupportedException>(() => SettingsJson.Deserialize("""{ "schemaVersion": 2 }"""));

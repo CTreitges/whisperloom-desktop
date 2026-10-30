@@ -41,6 +41,7 @@ public class FakeDictationPipelineTest
     [InlineData(FakeFailure.SttHttp, typeof(ApiHttpException))]
     [InlineData(FakeFailure.SttNetwork, typeof(ApiNetworkException))]
     [InlineData(FakeFailure.SttNotConfigured, typeof(ApiNotConfiguredException))]
+    [InlineData(FakeFailure.SttLocalNotAvailable, typeof(LocalNotAvailableException))]
     public async Task ErkennungsfehlerWerdenGeworfen(FakeFailure failure, Type expected)
     {
         var fake = new FakeDictationPipeline { Failure = failure };

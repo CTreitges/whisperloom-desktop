@@ -7,8 +7,10 @@ Die Verträge trennen Core-Text, Core-API und App-Shell, damit diese Teile paral
 
 ## Gemeinsame Regeln
 
-- **Threading:** Alles mit I/O ist `async` und nimmt ein `CancellationToken`. Abbruch wirft
-  `OperationCanceledException` (bzw. `TaskCanceledException`) und wird nie in einen anderen Fehler umgedeutet.
+- **Threading:** Alles mit I/O ist `async` und nimmt ein `CancellationToken`. `OperationCanceledException`
+  (bzw. `TaskCanceledException`) heißt **nur** „Token abgebrochen“ (`ct.IsCancellationRequested`) und wird nie in einen
+  anderen Fehler umgedeutet. Ein HttpClient-Zeitlimit wirft ebenfalls `TaskCanceledException`, ohne dass der Token
+  abgebrochen ist — Implementierungen wandeln das in `ApiNetworkException` um, damit der Fallback greift.
   Implementierungen blockieren den UI-Thread nicht und sind ohne Synchronisationskontext aufrufbar
   (`ConfigureAwait(false)`). Reine Funktionen (`IRefinePromptBuilder`, `ITextPolisher`) sind synchron und
   threadsicher.
@@ -39,7 +41,8 @@ Zweck: der ganze Weg eines Diktats — Stille trimmen → Erkennung (`FallbackBa
 | `Task<RefinedText> RefineAsync(string raw, string language, Refinement, CancellationToken)` | Neu verarbeiten aus dem Rohtext, ohne Audio. Wirft nur bei Abbruch. |
 
 Fake: `WhisperLoom.Core.Testing.FakeDictationPipeline` (Rohtext einstellbar, Ergebnis `"[<stufe>] <roh>"`,
-Fehler über `FakeFailure`, Verzögerung über `Delay`).
+Fehler über `FakeFailure` — `SttHttp`, `SttNetwork`, `SttNotConfigured`, `SttLocalNotAvailable`, `Refine` —,
+Verzögerung über `Delay`).
 
 ### `ITranscriptionBackend`
 Zweck: Spracherkennung über einen Anbieter oder lokal (Port von `TranscriptionBackend`).
@@ -47,7 +50,7 @@ Zweck: Spracherkennung über einen Anbieter oder lokal (Port von `TranscriptionB
 | Member | Verhalten |
 |---|---|
 | `string Label` | Anzeige ("OpenAI", "Lokal"); bei der Fallback-Kombination der zuletzt genutzte. |
-| `Task<TranscriptResult> TranscribeAsync(AudioBuffer, string language, CancellationToken)` | 16 kHz Mono PCM16. Wirft `ApiNotConfigured`, `ApiHttp`, `ApiNetwork`. Nach Abbruch kein zweiter Upload beim Fallback. |
+| `Task<TranscriptResult> TranscribeAsync(AudioBuffer, string language, CancellationToken)` | 16 kHz Mono PCM16. Wirft `ApiNotConfigured`, `ApiHttp`, `ApiNetwork`, lokal (`ILocalStt`) `LocalNotAvailable`. Nach Abbruch kein zweiter Upload beim Fallback. |
 
 Fallback-Regel (Phase 1, wie Android 3.9.1): scheitert der erste, erkennt der Fallback dieselbe Aufnahme und bleibt
 für den Auftrag gesetzt; scheitern beide, geht der Fehler des ersten raus.
@@ -100,6 +103,10 @@ Tests nutzen das Präfix `WhisperLoom-Test-<id>:` und löschen ihre Einträge.
 | `Task DeleteAsync(name, ct)` | Nichts gespeichert ist kein Fehler. |
 
 Namen: `SecretNames.Stt`, `SttFallback`, `Llm`, `LlmFallback`. Werte erscheinen nie in Logs, Exporten oder Meldungen.
+**Abweichung vom Goal** (dort `WhisperLoom:<anbieter>`): je Zugang statt je Anbieter, wie die Key-Felder in
+`Prefs.kt`. Grund: Erkennung, Verbesserung und die beiden Fallbacks können beim selben Anbieter verschiedene Keys
+haben (z. B. eigener Server mit anderem Token); „wie Erkennung“ (`llm.providerId = same`) liest den Key `stt`.
+Credential-Manager-Ziele heißen damit `WhisperLoom:stt`, `WhisperLoom:llm`, … (passt zu `WhisperLoom:*` in A2.2).
 
 ### `IHistoryStore`
 Zweck: Verlauf nur als Text (Roh, Ergebnis, Stufe, Anbieter, Zeit), abschaltbar, Standard 50 Einträge.
@@ -147,7 +154,14 @@ Ablagefehler: `IOException`.
   Stufe), Verbesserungs-Fallback, Stufe des Diktats mit Bereinigung/Form/Absätzen, Share-Abschnitt (ohne Funktion,
   für den Sync), Nachbearbeitung (Füllwörter, Großschreibung, Leerzeichen), Lokal, Verlauf.
 - Stufen, Bereinigung und Form stehen als Schlüssel; Unbekanntes gilt wie auf Android als Standard.
+  Ausnahme `refine.stage = "paragraphs"` (Altwert der früheren Stufe „Absätze“, kann aus Android kommen): gilt als
+  `polish`, wie `Prefs.refineMode`. `RefineModes.FromKey("paragraphs")` ergäbe `Off` — beim Lesen der Stufe beachten.
 - **Keine Keys** im Modell — die liegen im `ISecretStore`.
-- Lesen: unbekannte Felder ignoriert, fehlende mit Standardwert, `null` für einen Abschnitt → `JsonException`,
-  neueres Schema → `NotSupportedException`. Migration kommt mit dem ersten Schema-Wechsel.
+- **Nicht übernommen** (Android-UI, auf Desktop ohne Bedeutung): `vocab_file_name`, `welcome_seen`, `overlay_skipped`,
+  `setup_skip_*`, `tutorial_seen`, `float_x`/`float_y`, `agent_enabled`, `agent_tutorial_seen`, Legacy `agent_url`/`agent_token`.
+  `stt.vocabularyFile` ist ein Dateipfad (Android: `content://`-URI) und wird **nicht** synchronisiert.
+- Lesen: unbekannte Felder werden toleriert, fehlende bekommen ihren Standardwert, `null` für einen Abschnitt →
+  `JsonException`, neueres Schema → `NotSupportedException`. Migration kommt mit dem ersten Schema-Wechsel.
+- Speichern: unbekannte Felder der **obersten Ebene** (z. B. `android`) bleiben über `Extra` (`[JsonExtensionData]`)
+  erhalten; unbekannte Felder **innerhalb** bekannter Abschnitte gehen verloren.
 - Spätere Phasen ergänzen additiv (z. B. Desktop-Abschnitt mit Hotkeys, Ausgabe, Proxy; Policy für Provisioning).

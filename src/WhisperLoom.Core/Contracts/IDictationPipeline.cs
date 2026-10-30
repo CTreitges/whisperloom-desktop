@@ -13,6 +13,7 @@ public interface IDictationPipeline
     /// <exception cref="ApiNotConfiguredException">Erkennung nicht eingerichtet.</exception>
     /// <exception cref="ApiHttpException">Erkennung (und ggf. Fallback) mit Fehlerstatus gescheitert.</exception>
     /// <exception cref="ApiNetworkException">Erkennung (und ggf. Fallback) nicht erreichbar.</exception>
+    /// <exception cref="LocalNotAvailableException">Lokale Erkennung gewählt, aber Modell oder Begleitprozess fehlt.</exception>
     /// <exception cref="OperationCanceledException">Abgebrochen über <paramref name="ct"/>.</exception>
     Task<DictationResult> RunAsync(DictationRequest request, CancellationToken ct);
 
