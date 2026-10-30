@@ -8,7 +8,7 @@ WhisperLoom erkennt Sprache lokal über `whisper-server` aus [whisper.cpp](https
 | `vulkan` | ggml-vulkan | NVIDIA, AMD, Intel mit Vulkan-1.2-Treiber |
 | `cpu` | ggml-cpu (AVX2-Baseline) | jede x64-CPU mit AVX2 (Rückfall) |
 
-Ziele: `win-x64` (windows-latest) und `linux-x64` (ubuntu-latest), also vier Archive.
+Ziele: `win-x64` (windows-latest) und `linux-x64` (ubuntu-24.04, bewusst nicht `ubuntu-latest` = 26.04 mit glibc 2.43), also vier Archive.
 
 ## Workflow
 `.github/workflows/whisper-server.yml`:
