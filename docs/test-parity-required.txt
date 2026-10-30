@@ -1,0 +1,38 @@
+# Soll-Liste für tools/test_parity.py --require-file (Akzeptanz A1.2, Phase 1).
+# Jede Klasse muss in einer Mapping-Datei als "portiert" oder begründet "ausgenommen" stehen.
+
+# Reine JUnit-Klassen (18 Dateien; WavEncoderTest.kt enthält drei Klassen)
+TextPolisherTest
+ParagrapherTest
+PolishPlanTest
+RefineDecisionTest
+RefinementTest
+VocabularyTest
+AudioChunksTest
+WavEncoderTest
+WavHeaderTest
+WavSamplesTest
+api/RefinePromptTest
+TextCleanupTest
+PromptCleanupTest
+ChatPayloadTest
+TranscriptionRequestTest
+ElevenLabsSttTest
+ProviderCatalogTest
+AccessResolverTest
+ApiErrorsTest
+agent/AutoStopDetectorTest
+
+# Robolectric-Klassen mit fachlichem Wert
+RefinePipelineTest
+FallbackPipelineTest
+FallbackBackendTest
+TranscriptionEngineTest
+StageModelTest
+TextRefinerRetryTest
+TemperatureMemoTest
+HttpTest
+ModelListsTest
+OllamaApiTest
+LocalRefinerTest
+history/HistoryTest
