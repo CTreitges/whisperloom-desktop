@@ -301,13 +301,16 @@ public sealed partial class DictationController : ObservableObject
         {
             _log.Event("dictation", ("status", "cancelled"), ("processingMs", watch.ElapsedMilliseconds));
         }
-        catch (Exception e) when (e is ApiHttpException or ApiNetworkException or ApiNotConfiguredException or LocalNotAvailableException)
+        // IOException: die Key-Ablage ist nicht erreichbar (Ausgabe und Verlauf fangen ihre eigenen oben ab).
+        catch (Exception e) when (e is ApiHttpException or ApiNetworkException or ApiNotConfiguredException or LocalNotAvailableException
+                                      or IOException)
         {
             var key = e switch
             {
                 ApiNotConfiguredException => "Error_NotConfigured",
                 ApiHttpException => "Error_Http",
                 ApiNetworkException => "Error_Network",
+                IOException => "Key_StoreError",
                 _ => "Error_Local",
             };
             Fail(key, e.GetType().Name);

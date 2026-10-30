@@ -101,7 +101,8 @@ Tray → **Stage view** (or `WhisperLoom show`):
 
 Audio stays in memory and is never written to disk. The history keeps text only (raw, result, stage, provider,
 time; on/off and size in **Privacy**). Logs (`~/.config/whisperloom/logs/`) contain metadata only: duration,
-provider, status, error class.
+status, stage, error class. Provider and model labels that contain spaces are left out on purpose (logged as
+`(verworfen)`): the log never takes free text.
 
 ## Troubleshooting
 
