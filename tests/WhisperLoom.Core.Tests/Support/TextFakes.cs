@@ -13,18 +13,6 @@ public static class Keys
     public const string K4 = "test-key-not-real-4";
 }
 
-/// <summary>Grund für Tests, deren Kotlin-Erwartung echte Text-Bausteine aus WLD-P1a braucht.</summary>
-public static class P1a
-{
-    public const string Reason = "Needs P1a: echte Text-Bausteine (TextPolisher/RefinePrompt) — WLD-INT schaltet scharf";
-
-    /// <summary>Platzhalter für den echten Prompt-Builder aus WLD-P1a.</summary>
-    public static IRefinePromptBuilder Prompts => throw new NotImplementedException("kommt mit WLD-P1a");
-
-    /// <summary>Platzhalter für den echten TextPolisher aus WLD-P1a.</summary>
-    public static ITextPolisher Polisher => throw new NotImplementedException("kommt mit WLD-P1a");
-}
-
 /// <summary>
 /// Prompt-Builder für Tests: der System-Prompt nennt seine Argumente, damit die Tests prüfen können, WAS die
 /// Pipeline verlangt (Stufe, Sprache, Füllwörter, Absätze, kurz). Der Text selbst ist Sache von WLD-P1a.

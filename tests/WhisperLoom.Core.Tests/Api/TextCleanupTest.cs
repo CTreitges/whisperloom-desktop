@@ -1,12 +1,13 @@
 using WhisperLoom.Core.Api;
 using WhisperLoom.Core.Contracts;
+using WhisperLoom.Core.Pipeline;
 using WhisperLoom.Core.Tests.Support;
 
 namespace WhisperLoom.Core.Tests.Api;
 
 /// <summary>
 /// Port von <c>api/TextCleanupTest.kt</c> (<c>TextRefiner.cleanText</c>/<c>finish</c>). Die Füllsilben kommen auf
-/// Android aus <c>TextPolisher.builtinFillers</c> (WLD-P1a); hier mit einer festen Liste, der echte Fall als Skip.
+/// Android aus <c>TextPolisher.builtinFillers</c> (WLD-P1a); hier mit einer festen Liste, ein Fall mit der echten.
 /// </summary>
 public class TextCleanupTest
 {
@@ -78,12 +79,11 @@ public class TextCleanupTest
     }
 
     /// <summary>Wie oben, aber mit der echten Füllwort-Liste aus WLD-P1a (Kotlin: TextPolisher.builtinFillers de + en).</summary>
-    [Fact(Skip = P1a.Reason)]
-    [Trait("Needs", "P1a")]
+    [Fact]
     public void DiktierteEinleitungMitFuellsilbenDerEchtenListe()
     {
         const string glaetten = "Okay, hier ist der neue Text:\nLiebe Frau Müller,\nich komme am Montag.";
-        var cleanup = TextCleanup.For(P1a.Polisher);
+        var cleanup = TextCleanup.For(CoreText.Polisher);
         Assert.Equal(glaetten, cleanup.CleanText("ähm okay hier ist der neue Text äh liebe Frau Müller ich komme am Montag", glaetten));
     }
 

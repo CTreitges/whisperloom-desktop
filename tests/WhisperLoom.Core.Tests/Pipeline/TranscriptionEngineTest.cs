@@ -8,8 +8,8 @@ namespace WhisperLoom.Core.Tests.Pipeline;
 
 /// <summary>
 /// Port von <c>TranscriptionEngineTest.kt</c>: Backend-Wahl und der ganze Diktat-Pfad gegen einen „eigenen Server“
-/// (Fake): Multipart-Felder, Header, Chat-Body, Nacharbeit. Die Text-Literale nach dem TextPolisher (WLD-P1a) prüfen
-/// die Skip-Fälle; aktiv geprüft wird, was die Pipeline an Polisher und Prompt-Builder übergibt.
+/// (Fake): Multipart-Felder, Header, Chat-Body, Nacharbeit. Meist mit Aufzeichnern geprüft (was die Pipeline an Polisher
+/// und Prompt-Builder übergibt); die Kotlin-Text-Literale prüfen die Fälle mit <c>RealText</c> (<see cref="CoreText"/>).
 /// </summary>
 public sealed class TranscriptionEngineTest : IAsyncLifetime
 {
@@ -186,10 +186,13 @@ public sealed class TranscriptionEngineTest : IAsyncLifetime
         Assert.Single(_h.Trimmed);
     }
 
-    [Fact(Skip = P1a.Reason)]
-    [Trait("Needs", "P1a")]
-    public void DiktatOhneKiNachDenVollenRegeln() =>
-        Assert.Equal("Also hallo welt", P1a.Polisher.Polish(Raw, new PolishOptions(Language: "de")));
+    [Fact]
+    public async Task DiktatOhneKiNachDenVollenRegeln()
+    {
+        _h.UseLocalServer();
+        _h.RealText = true;
+        Assert.Equal("Also hallo welt", await Transcribe()); // Füllwort weg, Satzanfang groß
+    }
 
     [Fact]
     public async Task DiktatMitKiGlaettungGegenEigenenServer()
@@ -207,14 +210,16 @@ public sealed class TranscriptionEngineTest : IAsyncLifetime
         Assert.Equal((Build(RefineMode.Polish), $"<diktat>\n{Raw}\n</diktat>"), Messages(_chat));
     }
 
-    [Fact(Skip = P1a.Reason)]
-    [Trait("Needs", "P1a")]
-    public void GlaettenSchicktDenKorrekturPrompt()
+    [Fact]
+    public async Task GlaettenSchicktDenKorrekturPrompt()
     {
-        var system = P1a.Prompts.Build(RefineMode.Polish, true, false, true, true);
-        Assert.Contains("nur Satzzeichen", system, StringComparison.Ordinal);
+        _h.UseLocalServer();
+        _h.RealText = true;
+        _h.Stage(RefineMode.Polish);
+        Assert.Equal("Hallo Welt.", await Transcribe());
+        var (system, user) = Messages(_chat!);
         Assert.Contains("Du korrigierst in diktiertem Text nur Satzzeichen", system, StringComparison.Ordinal);
-        Assert.Equal("<diktat>\nalso ähm hallo welt\n</diktat>", P1a.Prompts.UserText(Raw, true));
+        Assert.Equal("<diktat>\nalso ähm hallo welt\n</diktat>", user);
     }
 
     [Fact]
@@ -276,13 +281,17 @@ public sealed class TranscriptionEngineTest : IAsyncLifetime
         Assert.Equal(Build(RefineMode.Polish, smartFillers: true), Messages(_ollama!).System);
     }
 
-    [Fact(Skip = P1a.Reason)]
-    [Trait("Needs", "P1a")]
-    public void DieFuellwortListeFaengtResteNachDerKi()
+    [Fact]
+    public async Task DieFuellwortListeFaengtResteNachDerKi()
     {
-        var options = new PolishOptions(Language: "de", CustomFillers: ["sozusagen"], KeepLineBreaks: true);
-        Assert.Equal("Also, hallo Welt.", P1a.Polisher.Polish("Also, ähm, hallo Welt, sozusagen.", options));
-        Assert.Contains("nie Wörter außer Füllwörtern", P1a.Prompts.Build(RefineMode.Polish, true, true, true, true), StringComparison.Ordinal);
+        UseOllama("ollama");
+        _h.RealText = true;
+        _h.Settings.Refine.PolishCleanup = "clean";
+        _h.Settings.Polish.CustomFillers = ["sozusagen"];
+        // Ein kleines Modell übersieht ein „ähm“ — die Liste fängt es danach.
+        _ollamaResponse = """{"message":{"content":"Also, ähm, hallo Welt, sozusagen."}}""";
+        Assert.Equal("Also, hallo Welt.", await Transcribe());
+        Assert.Contains("nie Wörter außer Füllwörtern", Messages(_ollama!).System, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -379,14 +388,22 @@ public sealed class TranscriptionEngineTest : IAsyncLifetime
         Assert.True(_h.Polisher.Last.Options.KeepLineBreaks);
     }
 
-    [Fact(Skip = P1a.Reason)]
-    [Trait("Needs", "P1a")]
-    public void AbsaetzeZiehtDerPolisherZusammen()
+    [Fact]
+    public async Task AbsaetzeZiehtDerPolisherZusammen()
     {
-        Assert.Equal("Erster Absatz. Zweiter Absatz.", P1a.Polisher.Polish("Erster Absatz.\n\nZweiter Absatz.", new PolishOptions(Language: "de")));
-        Assert.Equal("Kurz gesagt. - Eins. - Zwei.", P1a.Polisher.Polish("Kurz gesagt.\n- Eins.\n- Zwei.", new PolishOptions(Language: "de")));
-        Assert.Contains("einen einzigen durchgehenden Absatz", P1a.Prompts.Build(RefineMode.Polish, true, false, false, true), StringComparison.Ordinal);
-        Assert.Contains("ohne Liste und ohne Zeilenumbruch", P1a.Prompts.Build(RefineMode.Summarize, true, false, false, true), StringComparison.Ordinal);
+        UseOllama("ollama");
+        _h.RealText = true;
+        // Auch wenn das Modell die Anweisung ignoriert: die Nachbearbeitung zieht zusammen.
+        _h.Settings.Refine.ParagraphsPolish = false;
+        _ollamaResponse = """{"message":{"content":"Erster Absatz.\n\nZweiter Absatz."}}""";
+        Assert.Equal("Erster Absatz. Zweiter Absatz.", await Transcribe());
+        Assert.Contains("einen einzigen durchgehenden Absatz", Messages(_ollama!).System, StringComparison.Ordinal);
+
+        _h.Stage(RefineMode.Summarize);
+        _h.Settings.Refine.SummarizeForm = "prose";
+        _ollamaResponse = """{"message":{"content":"Kurz gesagt.\n- Eins.\n- Zwei."}}""";
+        Assert.Equal("Kurz gesagt. - Eins. - Zwei.", await Transcribe());
+        Assert.Contains("ohne Liste und ohne Zeilenumbruch", Messages(_ollama!).System, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -488,11 +505,34 @@ public sealed class TranscriptionEngineTest : IAsyncLifetime
         Assert.Contains("name=\"prompt\"\r\n\r\nTreitges, WhisperLoom, Anna, Kubernetes\r\n", _stt!.Latin1, StringComparison.Ordinal);
     }
 
-    [Fact(Skip = P1a.Reason)]
-    [Trait("Needs", "P1a")]
-    public void VokabularAusListeUndDateiGehtAlsPrompt() =>
-        // Kotlin: apiPrompt „Anna\nKubernetes“ + Datei „# Namen\n- Treitges\n- anna“ → „Treitges, Anna, Kubernetes“ (Vocabulary, WLD-P1a).
-        throw new NotImplementedException("Vocabulary aus WLD-P1a");
+    [Fact]
+    public async Task VokabularAusListeUndDateiGehtAlsPrompt()
+    {
+        _h.UseLocalServer();
+        var dir = Directory.CreateTempSubdirectory("wl-vocab-");
+        try
+        {
+            var file = Path.Combine(dir.FullName, "vokabular.md");
+            await File.WriteAllTextAsync(file, "# Namen\n- Treitges\n- anna\n", Ct);
+            _h.Settings.Stt.Vocabulary = "Anna\nKubernetes";
+            _h.Settings.Stt.VocabularyFile = file;
+            var pipeline = new DictationPipeline(() => _h.Settings, _h.Secrets, _h.Http, _h.Prompts, _h.Polisher, CoreText.Options());
+            var request = new DictationRequest(PipelineHarness.Speech, "de", Refinement.Off);
+
+            await pipeline.RunAsync(request, Ct);
+            // Datei vorn, eigene Begriffe am Ende (Whisper beachtet das Ende); „anna“ doppelt → fällt weg.
+            Assert.Contains("name=\"prompt\"\r\n\r\nTreitges, Anna, Kubernetes\r\n", _stt!.Latin1, StringComparison.Ordinal);
+
+            // Bei jedem Diktat neu gelesen: eine Änderung an der Datei wirkt sofort.
+            await File.WriteAllTextAsync(file, "- Treitges\n- WhisperLoom\n", Ct);
+            await pipeline.RunAsync(request, Ct);
+            Assert.Contains("name=\"prompt\"\r\n\r\nTreitges, WhisperLoom, Anna, Kubernetes\r\n", _stt!.Latin1, StringComparison.Ordinal);
+        }
+        finally
+        {
+            dir.Delete(recursive: true);
+        }
+    }
 
     [Fact]
     public async Task VerschwundeneDateiBrichtKeinDiktatAb()
@@ -686,10 +726,15 @@ public sealed class TranscriptionEngineTest : IAsyncLifetime
         Assert.DoesNotContain("name=\"language\"", _stt!.Latin1, StringComparison.Ordinal);
     }
 
-    [Fact(Skip = P1a.Reason)]
-    [Trait("Needs", "P1a")]
-    public void AutoSpracheMitEnglischenFuellwoertern() =>
-        Assert.Equal("I think so", P1a.Polisher.Polish("i um think so", new PolishOptions(Language: "en")));
+    [Fact]
+    public async Task AutoSpracheMitEnglischenFuellwoertern()
+    {
+        _h.UseLocalServer();
+        _h.RealText = true;
+        _h.Settings.Language = "auto";
+        _sttResponse = """{"text":"i um think so","language":"en"}""";
+        Assert.Equal("I think so", await Transcribe());
+    }
 
     [Fact]
     public async Task LeereAntwortBleibtLeer()

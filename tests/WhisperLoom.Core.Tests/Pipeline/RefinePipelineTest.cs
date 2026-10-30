@@ -8,8 +8,8 @@ namespace WhisperLoom.Core.Tests.Pipeline;
 /// <summary>
 /// Port von <c>RefinePipelineTest.kt</c>: die Textverbesserung nach der Entscheidungstabelle, end-to-end über
 /// <see cref="DictationPipeline"/>. Offline-Erkennung, Netz und lokales Textmodell als Fakes, der eigene Online-Zugang
-/// als lokaler Fake-Server, der jede Anfrage zählt. Statt „Also hallo welt“ (TextPolisher, WLD-P1a) prüfen die Tests,
-/// dass der Rohtext mit den vollen Regeln an den Polisher geht; das Literal steht im Skip-Fall.
+/// als lokaler Fake-Server, der jede Anfrage zählt. Statt „Also hallo welt“ prüfen die Tests meist,
+/// dass der Rohtext mit den vollen Regeln an den Polisher geht; das Literal mit echten Regeln prüft ein eigener Fall.
 /// </summary>
 public sealed class RefinePipelineTest : IAsyncLifetime
 {
@@ -74,11 +74,18 @@ public sealed class RefinePipelineTest : IAsyncLifetime
 
     private int LocalCalls => _h.LocalRefiner.Calls.Count;
 
-    [Fact(Skip = P1a.Reason)]
-    [Trait("Needs", "P1a")]
-    public void OhneKiKommtDerRohtextMitDenVollenRegeln() =>
+    [Fact]
+    public async Task OhneKiKommtDerRohtextMitDenVollenRegeln()
+    {
         // Kotlin: „Also hallo welt“ — volle Regeln ohne KI: „ähm“ weg, Satzanfang groß.
-        Assert.Equal("Also hallo welt", P1a.Polisher.Polish(Raw, new PolishOptions(Language: "de")));
+        _h.Offline(OfflineRefineRule.Local);
+        _h.OwnAccess();
+        _h.LocalRefiner.Ready = false;
+        _h.RealText = true;
+        var run = await Transcribe();
+        Assert.Equal("Also hallo welt", run.Text);
+        Assert.Equal(RefinePlan.MsgLocalMissing, run.Skipped);
+    }
 
     [Fact]
     public async Task OfflineLokalMitModellRechnetLokalUndSchicktNichts()

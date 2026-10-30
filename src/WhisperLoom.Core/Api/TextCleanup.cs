@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using WhisperLoom.Core.Contracts;
+using WhisperLoom.Core.Prompts;
 
 namespace WhisperLoom.Core.Api;
 
@@ -11,9 +12,6 @@ namespace WhisperLoom.Core.Api;
 /// zählen — auf Android <c>TextPolisher.builtinFillers("de") + ("en")</c>, siehe <see cref="For"/>.</param>
 public sealed partial class TextCleanup(IEnumerable<string> fillerSyllables)
 {
-    /// <summary>Unter so vielen Wörtern gilt ein Diktat als kurz (Port von <c>RefinePrompt.SHORT_WORDS</c>).</summary>
-    public const int ShortWords = 15;
-
     private const int MaxGrowth = 2;
     private const int GrowthSlack = 30;
     private const string Quotes = "\"„“”«»";
@@ -50,15 +48,13 @@ public sealed partial class TextCleanup(IEnumerable<string> fillerSyllables)
     [GeneratedRegex(@"[^\p{L}\p{N}]+")]
     private static partial Regex NonWord();
 
-    [GeneratedRegex(@"\s+")]
-    private static partial Regex Whitespace();
-
     [GeneratedRegex(@"\r\n|\n|\r")]
     private static partial Regex LineBreak();
 
-    public static int WordCount(string text) => Whitespace().Split(text).Count(w => w.Length > 0);
+    /// <summary>Wörter wie im Prompt-Builder (<see cref="RefinePrompt.WordCount"/>).</summary>
+    public static int WordCount(string text) => RefinePrompt.WordCount(text);
 
-    public static bool IsShort(string raw) => WordCount(raw) < ShortWords;
+    public static bool IsShort(string raw) => RefinePrompt.IsShort(raw);
 
     /// <summary>Qwen3 &amp; Co. schreiben ihr Nachdenken als &lt;think&gt;…&lt;/think&gt; in den Text — das gehört nie ins Diktat.</summary>
     public static string StripThinking(string content) => ThinkBlock().Replace(content, "", 1);
