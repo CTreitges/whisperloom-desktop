@@ -18,6 +18,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: whisper-server-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   # b5454 = gleicher Commit wie v1.9.5 (Android nutzt v1.9.3).
   WHISPER_TAG: ${{ inputs.whisper_tag || 'b5454' }}
