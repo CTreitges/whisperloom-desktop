@@ -29,7 +29,10 @@ jobs:
       - uses: actions/setup-python@v7
         with: { python-version: "3.12" }
       - run: python -m unittest discover -s tools/tests -v
-      - run: python tools/test_parity.py --android android --mapping docs/test-mapping-contracts.md
+      - run: python tools/test_parity.py --android android --mapping docs/test-mapping-contracts.md --mapping docs/test-mapping-text.md --mapping docs/test-mapping-api.md
+      - run: python tools/check_prompt_parity.py --android android
+      - run: python tools/check_provider_parity.py --android android
+      - run: python tools/check_i18n.py
 
   # Demo-Pakete der App (self-contained). Doku: learn.microsoft.com/dotnet/core/deploying/ (abgerufen 2026-10-30),
   # github.com/actions/upload-artifact (v7, abgerufen 2026-10-30).
