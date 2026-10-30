@@ -1,0 +1,203 @@
+{
+  "catalogDate": "2026-10-08",
+  "providers": [
+    {
+      "id": "openai",
+      "name": "OpenAI",
+      "baseUrl": "https://api.openai.com/v1",
+      "keyUrl": "https://platform.openai.com/api-keys",
+      "sttMaxBytes": 26214400,
+      "sttModels": [
+        { "id": "gpt-transcribe", "label": "GPT Transcribe (empfohlen)", "note": "$0.0045/min. Nutzt languages[] statt language, kennt keywords[] + prompt.", "languageField": "languages[]" },
+        { "id": "gpt-4o-transcribe", "label": "GPT-4o Transcribe (Auslauf 02/2027)", "note": "$0.006/min, nur response_format=json, Shutdown 2027-02-26." },
+        { "id": "gpt-4o-mini-transcribe", "label": "GPT-4o mini Transcribe (Auslauf 02/2027)", "note": "$0.003/min, nur json, Shutdown 2027-02-26." },
+        { "id": "whisper-1", "label": "Whisper v2 (Legacy, Auslauf 02/2027)", "note": "$0.006/min, prompt max 224 Token." }
+      ],
+      "llmModels": [
+        { "id": "gpt-6-luna", "label": "GPT-6 Luna", "note": "$0.10/$0.50 je 1M. Reasoning-Modell: kein temperature, reasoning_effort=none senden. Empfohlen zum Glätten.", "temperatureSupported": false, "reasoningEffort": "none" },
+        { "id": "gpt-6-sol", "label": "GPT-6 Sol", "note": "$2/$10 je 1M. Kein temperature; reasoning_effort=none. Empfohlen zum Umformulieren.", "temperatureSupported": false, "reasoningEffort": "none" },
+        { "id": "gpt-4o-mini", "label": "GPT-4o mini", "note": "$0.15/$0.60 je 1M. Schnell, günstig, klassisch." },
+        { "id": "gpt-4.1-mini", "label": "GPT-4.1 mini", "note": "$0.40/$1.60 je 1M." },
+        { "id": "gpt-5.6-luna", "label": "GPT-5.6 Luna", "note": "$0.20/$1.20 je 1M. Reasoning-Modell: kein temperature, reasoning_effort=none senden.", "temperatureSupported": false, "reasoningEffort": "none" },
+        { "id": "gpt-5.4-nano", "label": "GPT-5.4 nano (Auslauf 04/2027)", "note": "$0.20/$1.25 je 1M. Kein temperature; reasoning_effort=none. Shutdown 2027-04-01, Nachfolger GPT-6 Luna.", "temperatureSupported": false, "reasoningEffort": "none" },
+        { "id": "gpt-5-mini", "label": "GPT-5 mini (Auslauf 12/2026)", "note": "$0.25/$2.00. Kein temperature; reasoning_effort=minimal. Shutdown 2026-12-11.", "temperatureSupported": false, "reasoningEffort": "minimal" },
+        { "id": "gpt-5-nano", "label": "GPT-5 nano (Auslauf 12/2026)", "note": "$0.05/$0.40. Kein temperature; reasoning_effort=minimal. Shutdown 2026-12-11.", "temperatureSupported": false, "reasoningEffort": "minimal" }
+      ],
+      "notes": "Bezahlpflichtig (Tier 1 ab $5). 25-MB-Limit. Alle 4o-/whisper-STT-Modelle enden 2027-02-26.",
+      "rewriteLlmModel": "gpt-6-sol"
+    },
+    {
+      "id": "groq",
+      "name": "Groq",
+      "baseUrl": "https://api.groq.com/openai/v1",
+      "keyUrl": "https://console.groq.com/keys",
+      "sttMaxBytes": 26214400,
+      "sttModels": [
+        { "id": "whisper-large-v3-turbo", "label": "Whisper Large v3 Turbo", "note": "$0.04/h. Free-Plan: 2 h Audio/Std, 8 h/Tag. Sehr schnell." },
+        { "id": "whisper-large-v3", "label": "Whisper Large v3", "note": "$0.111/h. Höhere Genauigkeit (WER 8,4 %)." }
+      ],
+      "llmModels": [
+        { "id": "openai/gpt-oss-20b", "label": "GPT-OSS 20B", "note": "$0.075/$0.30 je 1M. Free: 30 RPM, 1000/Tag. Reasoning separat im Feld reasoning; reasoning_effort=low empfohlen.", "reasoningEffort": "low" },
+        { "id": "openai/gpt-oss-120b", "label": "GPT-OSS 120B", "note": "$0.15/$0.60 je 1M. Free: 30 RPM, 1000/Tag.", "reasoningEffort": "low" },
+        { "id": "qwen/qwen3.8-27b", "label": "Qwen 3.8 27B (Preview)", "note": "$0.80/$4.00 je 1M, Preview. reasoning_effort=none senden, sonst <think>-Tags im Text.", "reasoningEffort": "none" }
+      ],
+      "notes": "Free-Plan ohne Zahlungsmittel. 25 MB (Free) / 100 MB (Dev). Llama-Modelle seit 2026-08-16 abgeschaltet.",
+      "rewriteLlmModel": "openai/gpt-oss-120b"
+    },
+    {
+      "id": "mistral",
+      "name": "Mistral (Voxtral)",
+      "baseUrl": "https://api.mistral.ai/v1",
+      "keyUrl": "https://console.mistral.ai/api-keys",
+      "sttSendsPrompt": false,
+      "sttSendsResponseFormat": false,
+      "sttModels": [
+        { "id": "voxtral-mini-latest", "label": "Voxtral Mini Transcribe 2", "note": "$0.003/min. 13 Sprachen inkl. Deutsch, bis 3 h. prompt/response_format nicht dokumentiert -> nicht senden." }
+      ],
+      "llmModels": [
+        { "id": "mistral-small-latest", "label": "Mistral Small 4", "note": "$0.15/$0.60 je 1M. Denkt ab Werk nicht nach. Empfohlen zum Glätten." },
+        { "id": "mistral-large-2512", "label": "Mistral Large 3", "note": "$0.50/$1.50 je 1M. Ohne Nachdenken, gutes Deutsch. Empfohlen zum Umformulieren." },
+        { "id": "ministral-8b-latest", "label": "Ministral 3 8B", "note": "Sehr günstig, klein." }
+      ],
+      "notes": "EU-Anbieter. Experiment-Plan gratis (Telefonverifizierung, 1 req/s). Kompatibilität der Extra-Felder live testen.",
+      "rewriteLlmModel": "mistral-large-2512"
+    },
+    {
+      "id": "elevenlabs",
+      "name": "ElevenLabs (Scribe)",
+      "baseUrl": "https://api.elevenlabs.io/v1",
+      "keyUrl": "https://elevenlabs.io/app/settings/api-keys",
+      "api": "ELEVENLABS",
+      "sttModels": [
+        { "id": "scribe_v2", "label": "Scribe v2", "note": "$0.22/h, 90+ Sprachen." },
+        { "id": "scribe_v2_medical", "label": "Scribe v2 Medical", "note": "$0.22/h. Für medizinische Diktate." }
+      ],
+      "notes": "Eigenes Protokoll (xi-api-key, model_id), nur Erkennung. Vokabular geht als keyterms (ca. +20 % Kosten)."
+    },
+    {
+      "id": "together",
+      "name": "Together AI",
+      "baseUrl": "https://api.together.ai/v1",
+      "keyUrl": "https://api.together.ai/settings/api-keys",
+      "sttMaxBytes": 83886080,
+      "sttModels": [
+        { "id": "openai/whisper-large-v3", "label": "Whisper Large v3", "note": "$0.0015/min. prompt unterstützt, language ISO-639-1 oder auto. 80 MB." }
+      ],
+      "notes": "OpenAI-kompatibel. Startguthaben für neue Konten. LLM-IDs nicht verifiziert -> vorerst nur STT."
+    },
+    {
+      "id": "deepinfra",
+      "name": "DeepInfra",
+      "baseUrl": "https://api.deepinfra.com/v1/openai",
+      "keyUrl": "https://deepinfra.com/dash/api_keys",
+      "sttPathOverride": "https://api.deepinfra.com/v1/audio/transcriptions",
+      "sttModels": [
+        { "id": "openai/whisper-large-v3-turbo", "label": "Whisper Large v3 Turbo", "note": "$0.0002/min." },
+        { "id": "openai/whisper-large-v3", "label": "Whisper Large v3", "note": "$0.00045/min." }
+      ],
+      "notes": "Audio-Endpunkt liegt unter /v1/audio/transcriptions (nicht /v1/openai) -> Pfad-Override nötig; live testen."
+    },
+    {
+      "id": "openrouter",
+      "name": "OpenRouter",
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "keyUrl": "https://openrouter.ai/settings/keys",
+      "sttMaxBytes": 26214400,
+      "sttSendsPrompt": false,
+      "sttModels": [
+        { "id": "mistralai/voxtral-mini-transcribe", "label": "Voxtral Mini Transcribe (via OpenRouter)", "note": "$0.003/min. 60-s-Timeout, 25 MB." },
+        { "id": "openai/gpt-4o-mini-transcribe", "label": "GPT-4o mini Transcribe (via OpenRouter)", "note": "Token-Preis $1.25/$5 je 1M (~$0.003/min)." },
+        { "id": "openai/whisper-large-v3-turbo", "label": "Whisper Large v3 Turbo (via OpenRouter)", "note": "Sekundenpreis, günstig." }
+      ],
+      "llmModels": [
+        { "id": "anthropic/claude-haiku-5.5", "label": "Claude Haiku 5.5", "note": "$0.10/$0.50 je 1M. Kein temperature. Empfohlen zum Glätten.", "temperatureSupported": false },
+        { "id": "anthropic/claude-sonnet-5.5", "label": "Claude Sonnet 5.5", "note": "$2/$10 je 1M. Kein temperature. Empfohlen zum Umformulieren.", "temperatureSupported": false },
+        { "id": "openai/gpt-6-luna", "label": "GPT-6 Luna", "note": "$0.10/$0.50 je 1M. Kein temperature; reasoning_effort=none.", "temperatureSupported": false, "reasoningEffort": "none" },
+        { "id": "openai/gpt-4o-mini", "label": "GPT-4o mini", "note": "$0.15/$0.60 je 1M." },
+        { "id": "google/gemini-3.8-flash", "label": "Gemini 3.8 Flash", "note": "$0.75/$3.75 je 1M. Reasoning nicht abschaltbar, reasoning_effort=low hält es schnell. Kein temperature.", "temperatureSupported": false, "reasoningEffort": "low" },
+        { "id": "mistralai/mistral-small-2603", "label": "Mistral Small 4", "note": "$0.15/$0.60 je 1M, EU-Provider wählbar." },
+        { "id": "anthropic/claude-haiku-4.5", "label": "Claude Haiku 4.5 (Legacy)", "note": "$1/$5 je 1M, 10x teurer als Haiku 5.5." }
+      ],
+      "notes": "Ein Key für viele Modelle. :free-Modelle 20 RPM / 50-1000 RPD. prompt bei STT nicht dokumentiert -> nicht senden.",
+      "rewriteLlmModel": "anthropic/claude-sonnet-5.5"
+    },
+    {
+      "id": "anthropic",
+      "name": "Anthropic (Claude)",
+      "baseUrl": "https://api.anthropic.com/v1",
+      "keyUrl": "https://platform.claude.com/settings/keys",
+      "llmModels": [
+        { "id": "claude-haiku-5-5", "label": "Claude Haiku 5.5", "note": "$0.10/$0.50 je 1M (bis 100k Token Eingabe). Schnell. Empfohlen zum Glätten.", "temperatureSupported": false, "thinkingType": "disabled" },
+        { "id": "claude-sonnet-5-5", "label": "Claude Sonnet 5.5", "note": "$2/$10 je 1M. Empfohlen zum Umformulieren.", "temperatureSupported": false, "thinkingType": "between_tools" },
+        { "id": "claude-opus-5-5", "label": "Claude Opus 5.5", "note": "$4/$20 je 1M. Höchste Textqualität, langsamer.", "temperatureSupported": false },
+        { "id": "claude-sonnet-5", "label": "Claude Sonnet 5", "note": "$2/$10 je 1M.", "temperatureSupported": false, "thinkingType": "disabled" },
+        { "id": "claude-haiku-4-5", "label": "Claude Haiku 4.5 (Legacy)", "note": "$1/$5 je 1M. Abschaltung frühestens 2026-10-15." }
+      ],
+      "notes": "Nur Textverbesserung. OpenAI-Kompatibilitätsschicht offiziell 'zum Testen', funktional stabil.",
+      "rewriteLlmModel": "claude-sonnet-5-5"
+    },
+    {
+      "id": "gemini",
+      "name": "Google Gemini",
+      "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai",
+      "keyUrl": "https://aistudio.google.com/apikey",
+      "llmModels": [
+        { "id": "gemini-3.5-flash-lite", "label": "Gemini 3.5 Flash-Lite", "note": "$0.30/$2.50 je 1M. Googles Empfehlung für neue Projekte. Reasoning nicht abschaltbar, kein temperature.", "temperatureSupported": false },
+        { "id": "gemini-3.8-flash", "label": "Gemini 3.8 Flash", "note": "$0.75/$3.75 je 1M bis Ende 2026, ab 2027 $1.50/$7.50. reasoning_effort=low. Kein temperature. Empfohlen zum Umformulieren.", "temperatureSupported": false, "reasoningEffort": "low" },
+        { "id": "gemini-2.5-flash-lite", "label": "Gemini 2.5 Flash-Lite (nur Bestandskonten)", "note": "$0.10/$0.40 je 1M, Free-Tier. reasoning_effort=none möglich.", "reasoningEffort": "none" },
+        { "id": "gemini-2.5-flash", "label": "Gemini 2.5 Flash (nur Bestandskonten)", "note": "$0.30/$2.50 je 1M, Free-Tier. reasoning_effort=none möglich.", "reasoningEffort": "none" }
+      ],
+      "notes": "Nur Textverbesserung. Free-Tier: Inhalte werden zum Training genutzt -> Warnhinweis in der App.",
+      "rewriteLlmModel": "gemini-3.8-flash"
+    },
+    {
+      "id": "deepseek",
+      "name": "DeepSeek",
+      "baseUrl": "https://api.deepseek.com",
+      "keyUrl": "https://platform.deepseek.com/api_keys",
+      "llmModels": [
+        { "id": "deepseek-flash", "label": "DeepSeek Flash (V4.1)", "note": "$0.15/$0.60 je 1M außerhalb der Spitzenzeit, sonst doppelt. Denken aus. Empfohlen zum Glätten.", "thinkingType": "disabled" },
+        { "id": "deepseek-v4-pro", "label": "DeepSeek V4 Pro", "note": "$0.66/$1.98 je 1M außerhalb der Spitzenzeit, sonst doppelt. Denken aus. Empfohlen zum Umformulieren.", "thinkingType": "disabled" },
+        { "id": "deepseek-v4-flash", "label": "DeepSeek V4 Flash (alter Name)", "note": "Wird noch angenommen, das Modell dahinter ist aber abgelöst (V4.1-Flash).", "thinkingType": "disabled" }
+      ],
+      "notes": "Nur Textverbesserung. Kein Free-Tier. Server in China -> Datenschutz-Hinweis.",
+      "rewriteLlmModel": "deepseek-v4-pro"
+    },
+    {
+      "id": "ollama",
+      "name": "Ollama (lokal)",
+      "baseUrl": "",
+      "needsKey": false,
+      "allowsHttp": true,
+      "defaultReadTimeoutSec": 600,
+      "api": "OLLAMA",
+      "notes": "Eigener Ollama-Server im Heimnetz/VPN, z. B. http://homeserver:11434. Modelle kommen per /api/tags vom Server. Auf dem Server OLLAMA_HOST=0.0.0.0 setzen, sonst lauscht Ollama nur auf localhost. Empfehlung: gemma4:12b zum Glätten (schwache Hardware: gemma4:e4b), gemma4:26b zum Umformulieren (24-GB-GPU: gemma4:31b)."
+    },
+    {
+      "id": "ollama-cloud",
+      "name": "Ollama Cloud",
+      "baseUrl": "https://ollama.com",
+      "keyUrl": "https://ollama.com/settings/keys",
+      "api": "OLLAMA",
+      "llmModels": [
+        { "id": "gemma4:31b", "label": "Gemma 4 31B (empfohlen)", "note": "Schnell, denkt nicht nach — gut für Diktate." },
+        { "id": "mistral-large-3:675b", "label": "Mistral Large 3", "note": "Denkt nicht nach, gutes Deutsch. Empfohlen zum Umformulieren (Tempo ungemessen)." },
+        { "id": "glm-5.3-flash", "label": "GLM 5.3 Flash", "note": "Schnell, denkt kurz nach." },
+        { "id": "gpt-oss:20b", "label": "GPT-OSS 20B", "note": "Denkt nach (think=low), dadurch langsamer." },
+        { "id": "gpt-oss:120b", "label": "GPT-OSS 120B", "note": "Groß, denkt nach (think=low)." }
+      ],
+      "notes": "Cloud-Modelle auf ollama.com, Key unter ollama.com/settings/keys. Weitere Modelle per /api/tags.",
+      "rewriteLlmModel": "mistral-large-3:675b"
+    },
+    {
+      "id": "custom",
+      "name": "Eigener Server (OpenAI-kompatibel)",
+      "baseUrl": "",
+      "needsKey": false,
+      "keyUrl": "",
+      "allowsHttp": true,
+      "defaultReadTimeoutSec": 600,
+      "notes": "Freie Base-URL + Modell-IDs (z. B. faster-whisper-server, speaches, LocalAI). Für Ollama gibt es eigene Einträge. Key optional."
+    }
+  ]
+}
