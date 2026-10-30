@@ -40,16 +40,25 @@ internal static class Program
         }
 
         var endpoint = new InstanceEndpoint(request.Options.DataDir);
+        if (request.NeedsRunningInstance)
+        {
+            // Nie den Lock nehmen: sonst hielte ein status-Aufruf eine gerade startende Instanz für die zweite.
+            if (Forward(endpoint, request, attempts: 1) is { } code)
+            {
+                return code;
+            }
+            Console.WriteLine(request.Json ? "{\"running\":false}" : "WhisperLoom läuft nicht.");
+            return 3;
+        }
         var instanceLock = endpoint.TryAcquireLock();
         if (instanceLock is null)
         {
-            return Forward(endpoint, request);
-        }
-        if (request.NeedsRunningInstance)
-        {
-            instanceLock.Dispose();
-            Console.WriteLine(request.Json ? "{\"running\":false}" : "WhisperLoom läuft nicht.");
-            return 3;
+            if (Forward(endpoint, request, attempts: 50) is { } code)
+            {
+                return code;
+            }
+            Console.Error.WriteLine("WhisperLoom antwortet nicht.");
+            return 1;
         }
 
         Startup = (request, instanceLock);
@@ -60,23 +69,25 @@ internal static class Program
     public static AppBuilder BuildAvaloniaApp() =>
         AppBuilder.Configure<App>().UsePlatformDetect();
 
-    /// <summary>Reicht das Verb an die laufende Instanz weiter; ohne Verb holt sie die Bühnenansicht nach vorn.</summary>
-    private static int Forward(InstanceEndpoint endpoint, CliRequest request)
+    /// <summary>
+    /// Reicht das Verb an die laufende Instanz weiter; ohne Verb holt sie die Bühnenansicht nach vorn.
+    /// </summary>
+    /// <param name="attempts">Versuche im Abstand von 100 ms (die erste Instanz kann gerade erst starten).</param>
+    /// <returns>Exit-Code, oder null, wenn keine Instanz antwortet.</returns>
+    private static int? Forward(InstanceEndpoint endpoint, CliRequest request, int attempts)
     {
         IpcResponse? response = null;
-        // Die erste Instanz kann gerade erst starten: einige Versuche.
-        for (var attempt = 0; attempt < 50 && response is null; attempt++)
+        for (var attempt = 0; attempt < attempts && response is null; attempt++)
         {
-            response = SendAsync(endpoint, request).GetAwaiter().GetResult();
-            if (response is null)
+            if (attempt > 0)
             {
                 Thread.Sleep(100);
             }
+            response = SendAsync(endpoint, request).GetAwaiter().GetResult();
         }
         if (response is null)
         {
-            Console.Error.WriteLine("WhisperLoom antwortet nicht.");
-            return 1;
+            return null;
         }
         if (request.Json)
         {

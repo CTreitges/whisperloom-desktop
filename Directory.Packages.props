@@ -10,6 +10,7 @@
     <PackageVersion Include="Avalonia.Themes.Fluent" Version="$(AvaloniaVersion)" />
     <PackageVersion Include="Avalonia.Headless.XUnit" Version="$(AvaloniaVersion)" />
     <PackageVersion Include="Avalonia.Skia" Version="$(AvaloniaVersion)" />
+    <PackageVersion Include="Avalonia.Fonts.Inter" Version="$(AvaloniaVersion)" />
     <!-- MVVM-Helfer. Doku: learn.microsoft.com/dotnet/communitytoolkit/mvvm/ (abgerufen 2026-10-30). -->
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <!-- Audio für Windows und Linux, native PortAudio für win-x64/linux-x64 enthalten.

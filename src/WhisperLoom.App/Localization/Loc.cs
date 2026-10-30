@@ -46,6 +46,8 @@ public sealed class Loc : INotifyPropertyChanged
         }
         Language = lang;
         _current = _tables[lang];
+        // Avalonia-Indexer-Bindungen hören auf "Item", WPF-artige auf "Item[]": beide melden.
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Item"));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Item[]"));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Language)));
     }
