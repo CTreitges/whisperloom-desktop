@@ -34,12 +34,17 @@ internal static class Program
         {
             AttachParentConsole();
         }
+        var endpoint = new InstanceEndpoint(request.Options.DataDir);
         if (request.IsLocal)
         {
-            return request.Verb == "bench" ? RunBench(request) : RunKeyCommand(request);
+            return request.Verb switch
+            {
+                "bench" => RunBench(request),
+                "key" => RunKeyCommand(request),
+                _ => RunSyncCommand(request, endpoint),
+            };
         }
 
-        var endpoint = new InstanceEndpoint(request.Options.DataDir);
         if (request.NeedsRunningInstance)
         {
             // Nie den Lock nehmen: sonst hielte ein status-Aufruf eine gerade startende Instanz für die zweite.
@@ -120,7 +125,7 @@ internal static class Program
         }
     }
 
-    /// <summary><c>key set &lt;name&gt;</c> (Wert von stdin) und <c>key delete &lt;name&gt;</c>. Der Wert wird nie ausgegeben.</summary>
+    /// <summary><c>key set|delete &lt;name&gt;</c> über <see cref="KeyCommand"/>; gesperrte Keys der Richtlinie werden abgelehnt.</summary>
     private static int RunKeyCommand(CliRequest request)
     {
         var (action, name) = (request.Args[0], request.Args[1]);
@@ -128,17 +133,17 @@ internal static class Program
         {
             var store = SecretStoreFactory.CreateAsync(request.Options.DataDir, request.Options.SecretPrefix, CancellationToken.None)
                 .GetAwaiter().GetResult();
-            if (action == "set")
+            Core.Settings.PolicySettings policy;
+            try
             {
-                var value = Console.In.ReadToEnd().Trim();
-                store.SetAsync(name, value, CancellationToken.None).GetAwaiter().GetResult();
+                policy = new Services.PolicyStore(request.Options.DataDir).Load();
             }
-            else
+            catch (JsonException)
             {
-                store.DeleteAsync(name, CancellationToken.None).GetAwaiter().GetResult();
+                policy = Core.Settings.PolicySettings.None; // wie beim App-Start: kaputte policy.json = keine Richtlinie
             }
-            Console.WriteLine($"ok {action} {name} ({store.Kind})");
-            return 0;
+            return KeyCommand.RunAsync(action, name, () => Console.In.ReadToEnd(), store, policy, Console.Out, Console.Error, CancellationToken.None)
+                .GetAwaiter().GetResult();
         }
         catch (Exception e) when (e is ArgumentException or IOException)
         {
@@ -160,6 +165,32 @@ internal static class Program
             Console.Error.WriteLine($"bench: {e.GetType().Name}: {e.Message}");
             return 1;
         }
+    }
+
+    /// <summary>
+    /// <c>provision</c>, <c>import</c>, <c>export</c> im eigenen Prozess; danach lädt eine laufende Instanz Einstellungen
+    /// und Richtlinie neu (sonst überschriebe sie die Datei beim nächsten Speichern mit ihrem alten Stand).
+    /// </summary>
+    private static int RunSyncCommand(CliRequest request, InstanceEndpoint endpoint)
+    {
+        int code;
+        try
+        {
+            var store = SecretStoreFactory.CreateAsync(request.Options.DataDir, request.Options.SecretPrefix, CancellationToken.None)
+                .GetAwaiter().GetResult();
+            code = new SyncCommands(request.Options.DataDir, store, Console.Out, Console.Error)
+                .RunAsync(request.Verb!, request.Args[0], request.DryRun, CancellationToken.None).GetAwaiter().GetResult();
+        }
+        catch (Exception e) when (e is ArgumentException or IOException)
+        {
+            Console.Error.WriteLine($"error {e.Message}");
+            return 1;
+        }
+        if (code == 0 && request.Verb is "provision" or "import" && !request.DryRun)
+        {
+            Forward(endpoint, request with { Verb = "reload", Args = [], Json = false }, attempts: 1);
+        }
+        return code;
     }
 
     /// <summary>

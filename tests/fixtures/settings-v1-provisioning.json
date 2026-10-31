@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "language": "de",
+  "stt": {
+    "providerId": "groq",
+    "model": "whisper-large-v3-turbo"
+  },
+  "llm": {
+    "providerId": "openai",
+    "stageModels": {
+      "polish": "gpt-5-mini"
+    }
+  },
+  "refine": {
+    "stage": "polish"
+  },
+  "polish": {
+    "customFillers": [
+      "sozusagen"
+    ]
+  },
+  "desktop": {
+    "proxyMode": "system"
+  },
+  "secrets": {
+    "groq": "test-key-not-real-1",
+    "openai": "test-key-not-real-2"
+  },
+  "policy": {
+    "lockSettings": true,
+    "historyEnabled": false,
+    "updatesEnabled": false,
+    "allowedProviders": [
+      "groq",
+      "openai"
+    ]
+  }
+}

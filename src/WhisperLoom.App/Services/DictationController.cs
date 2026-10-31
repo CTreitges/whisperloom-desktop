@@ -5,6 +5,7 @@ using WhisperLoom.App.Output;
 using WhisperLoom.Core.Contracts;
 using WhisperLoom.Core.Contracts.Settings;
 using WhisperLoom.Core.History;
+using WhisperLoom.Core.Settings;
 
 namespace WhisperLoom.App.Services;
 
@@ -223,10 +224,22 @@ public sealed partial class DictationController : ObservableObject
         }
     }
 
-    /// <summary><c>next</c> oder ein Stufen-Schlüssel; „prompt“ nur, wenn freigeschaltet.</summary>
+    /// <summary>Richtlinie der IT (policy.json); <see cref="PolicySettings.None"/> ohne Provisioning.</summary>
+    public PolicySettings Policy { get; set; } = PolicySettings.None;
+
+    /// <summary>Die Stufe ist von IT festgelegt (<c>refine.stage</c> gesperrt).</summary>
+    public bool StageLocked => Policy.IsLocked("refine.stage");
+
+    /// <summary><c>next</c> oder ein Stufen-Schlüssel; „prompt“ nur, wenn freigeschaltet. Gesperrt: bleibt, wie sie ist.</summary>
     /// <exception cref="ArgumentException">Unbekannte oder nicht wählbare Stufe.</exception>
     public RefineMode SetStage(string name)
     {
+        if (StageLocked)
+        {
+            // Hotkey, Tray und CLI ändern eine von IT festgelegte Stufe nicht.
+            _log.Event("stage.locked");
+            return Stage;
+        }
         var choices = RefineModes.SettingsFor(Settings.Refine.PromptEnabled);
         RefineMode target;
         if (name == "next")

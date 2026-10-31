@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "language": "de",
+  "engine": "online",
+  "stt": {
+    "providerId": "groq",
+    "baseUrl": "",
+    "model": "whisper-large-v3-turbo",
+    "readTimeoutSec": 0,
+    "vocabulary": "WhisperLoom\nKubernetes\nTreitges",
+    "vocabularyFile": ""
+  },
+  "sttFallback": {
+    "enabled": true,
+    "providerId": "openai",
+    "baseUrl": "",
+    "model": ""
+  },
+  "llm": {
+    "providerId": "same",
+    "baseUrl": "",
+    "model": "",
+    "stageModels": {
+      "polish": "llama-3.1-8b-instant",
+      "summarize": "llama-3.3-70b-versatile"
+    }
+  },
+  "llmFallback": {
+    "enabled": false,
+    "providerId": "openai",
+    "baseUrl": "",
+    "model": ""
+  },
+  "refine": {
+    "stage": "polish",
+    "promptEnabled": true,
+    "polishCleanup": "clean",
+    "summarizeForm": "auto",
+    "paragraphsPolish": true,
+    "paragraphsBeautify": false
+  },
+  "share": {
+    "stage": "beautify",
+    "polishCleanup": "plain",
+    "summarizeForm": "prose",
+    "hideFillers": true
+  },
+  "polish": {
+    "removeFillers": true,
+    "autoCapitalize": true,
+    "trailingSpace": false,
+    "customFillers": [
+      "sozusagen",
+      "quasi"
+    ],
+    "disabledFillers": [
+      "also"
+    ]
+  },
+  "offline": {
+    "model": "small",
+    "accurate": true,
+    "refine": "local",
+    "localLlmModel": "gemma4_e2b"
+  },
+  "history": {
+    "enabled": true,
+    "size": 100
+  },
+  "serverModelsEnabled": false,
+  "desktop": {
+    "uiLanguage": "de",
+    "output": "clipboard",
+    "microphone": "",
+    "stageFontSize": 32,
+    "proxyMode": "system",
+    "proxyUrl": ""
+  },
+  "android": {
+    "agentEnabled": false,
+    "welcomeSeen": true
+  }
+}

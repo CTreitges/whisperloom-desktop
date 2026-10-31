@@ -29,6 +29,10 @@ public sealed class DesktopSettings
 
     /// <summary>Nur bei <see cref="ProxyMode"/> "manual", z. B. http://proxy:3128.</summary>
     public string ProxyUrl { get; set; } = "";
+
+    /// <summary>Unbekannte Felder (neuere Version, Sync von Android) bleiben beim Speichern erhalten.</summary>
+    [System.Text.Json.Serialization.JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
 }
 
 /// <summary>Liest und schreibt settings.json im Datenordner. Fehlt die Datei, gelten die Standardwerte.</summary>

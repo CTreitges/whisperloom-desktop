@@ -15,4 +15,8 @@
   <ItemGroup>
     <ProjectReference Include="../../src/WhisperLoom.Core/WhisperLoom.Core.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Format-Fixtures (docs/settings-format.md), dieselben Dateien nutzt Android (WLD-P5c). -->
+    <None Include="../fixtures/settings-v1*.json" Link="fixtures/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>
