@@ -159,3 +159,20 @@ public sealed class SyncCommandsTest : IDisposable
         Assert.False(host.Controller.Policy.IsActive);
     }
 }
+
+public class DesktopSectionTest
+{
+    [Fact]
+    public void Unknown_desktop_fields_survive_a_save_from_the_settings_window()
+    {
+        var s = SettingsJson.Deserialize("""{"desktop":{"proxyMode":"off","hotkeys":{"toggle":"Ctrl+Alt+Space"}}}""");
+
+        var desktop = SettingsStore.Desktop(s);
+        desktop.ProxyMode = "manual";
+        SettingsStore.SetDesktop(s, desktop);
+
+        var tree = JsonNode.Parse(SettingsJson.Serialize(s))!["desktop"]!;
+        Assert.Equal("manual", tree["proxyMode"]!.GetValue<string>());
+        Assert.Equal("Ctrl+Alt+Space", tree["hotkeys"]!["toggle"]!.GetValue<string>());
+    }
+}
