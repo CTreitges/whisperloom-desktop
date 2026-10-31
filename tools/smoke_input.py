@@ -65,13 +65,15 @@ class Target:
         return self
 
     def focus(self) -> None:
+        """Holt das TestTarget nach vorn: zuerst SetForegroundWindow, ein Klick nur, wenn unter dem Punkt wirklich das
+        TestTarget liegt (kein blinder Klick). Sonst NotForeground."""
         for _ in range(3):
-            l, t, r, b = wi.window_rect(self.hwnd)
-            self.keys.click((l + r) // 2, (t + b) // 2)
-            if wait_for(lambda: wi.foreground() == self.hwnd, 2, 0.05):
-                return
             wi.force_foreground(self.hwnd)
             if wait_for(lambda: wi.foreground() == self.hwnd, 1, 0.05):
+                return
+            l, t, r, b = wi.window_rect(self.hwnd)
+            self.keys.click((l + r) // 2, (t + b) // 2, allowed=lambda root: root == self.hwnd)
+            if wait_for(lambda: wi.foreground() == self.hwnd, 2, 0.05):
                 return
         raise wi.NotForeground(f"TestTarget nicht im Vordergrund (vorn: {wi.process_name(wi.foreground())})")
 
@@ -235,6 +237,9 @@ def paste_checks(args, work, report, smoke, fake, keys, exe) -> None:
 
 def pause_check(run, keys, exe, out, report, focus_open: bool) -> None:
     """Pause per Knopf: Dauer steht still; Klicks auf Overlay-Knöpfe nehmen dem Ziel nicht den Fokus."""
+    def app_window(root: int) -> bool:
+        return root != 0 and wi.window_pid(root) == run.proc.pid  # nur Fenster der App (Overlay)
+
     with Target(exe, out, keys) as t:
         keys.combo("ctrl", "space")
         s = overlay_open(run)
@@ -244,17 +249,17 @@ def pause_check(run, keys, exe, out, report, focus_open: bool) -> None:
             report.check("pause", False, f"keine Knopf-Position: {s.get('input')}")
             report.check("no-focus-steal", False, "kein Overlay")
             return
-        keys.click(*buttons["pause"])
+        keys.click(*buttons["pause"], allowed=app_window)
         paused = wait_for(lambda: (lambda x: x if x.get("state") == "paused" else None)(run.status() or {}), 3) or {}
         fg_click = wi.foreground() == t.hwnd
         e1 = paused.get("elapsedMs", -1)
         time.sleep(1.2)
         e2 = (run.status() or {}).get("elapsedMs", -2)
-        keys.click(*buttons["pause"])
+        keys.click(*buttons["pause"], allowed=app_window)
         time.sleep(0.5)
         resumed = (run.status() or {}).get("state")
         s2 = run.status() or {}
-        keys.click(*((s2.get("input") or {}).get("buttons") or buttons)["send"])
+        keys.click(*((s2.get("input") or {}).get("buttons") or buttons)["send"], allowed=app_window)
         s, d = inserted(t, run)
         fg_after = wi.foreground() == t.hwnd
         report.check("pause", e1 >= 0 and e1 == e2 and resumed == "recording" and d.get("text") == s.get("lastResult"),

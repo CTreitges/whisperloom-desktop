@@ -90,8 +90,13 @@ class Keyboard:
             self._send(self._key(vk, True))
         self.held.clear()
 
-    def click(self, x: int, y: int) -> None:
-        """Linksklick an Bildschirm-Pixeln (Prozess ist Per-Monitor-DPI-aware)."""
+    def click(self, x: int, y: int, allowed) -> None:
+        """Linksklick an Bildschirm-Pixeln (Prozess ist Per-Monitor-DPI-aware). Sicherung: das Wurzelfenster unter dem Punkt
+        muss allowed(hwnd) erfüllen (TestTarget bzw. Overlay der App), sonst NotForeground ohne Klick — sonst träfe der
+        Klick ein Fenster des Nutzers."""
+        root = root_window_at(x, y)
+        if not allowed(root):
+            raise NotForeground(f"Klickziel ({x},{y}) gehört {process_name(root) or hex(root)} — kein Klick")
         u = self.user32
         left, top = u.GetSystemMetrics(76), u.GetSystemMetrics(77)
         width, height = u.GetSystemMetrics(78), u.GetSystemMetrics(79)
@@ -101,6 +106,9 @@ class Keyboard:
         mk = lambda flags: self.INPUT(0, self.INPUT._fields_[1][1](mi=self.MOUSEINPUT(nx, ny, 0, flags, 0, 0)))  # noqa: E731
         self._send(mk(move))
         time.sleep(0.05)
+        root = root_window_at(x, y)
+        if not allowed(root):  # in der Zwischenzeit aufgetaucht
+            raise NotForeground(f"Klickziel ({x},{y}) gehört {process_name(root) or hex(root)} — kein Klick")
         self._send(mk(move | 0x0002), mk(move | 0x0004))  # LEFTDOWN, LEFTUP
         time.sleep(0.1)
 
@@ -117,6 +125,25 @@ def force_foreground(hwnd: int) -> None:
     k = Keyboard()
     k._send(k._key(0xE8, False), k._key(0xE8, True))
     _user32().SetForegroundWindow(hwnd)
+
+
+def root_window_at(x: int, y: int) -> int:
+    """Oberstes Fenster (Wurzel) am Bildschirmpunkt."""
+    from ctypes import wintypes
+    u = _user32()
+    u.WindowFromPoint.argtypes = [wintypes.POINT]
+    u.WindowFromPoint.restype = wintypes.HWND
+    u.GetAncestor.argtypes = [wintypes.HWND, wintypes.UINT]
+    u.GetAncestor.restype = wintypes.HWND
+    hwnd = u.WindowFromPoint(wintypes.POINT(x, y))
+    return (u.GetAncestor(hwnd, 2) or hwnd or 0) if hwnd else 0  # GA_ROOT
+
+
+def window_pid(hwnd: int) -> int:
+    from ctypes import wintypes
+    pid = wintypes.DWORD()
+    _user32().GetWindowThreadProcessId(wintypes.HWND(hwnd), ctypes.byref(pid))
+    return pid.value
 
 
 def foreground() -> int:
