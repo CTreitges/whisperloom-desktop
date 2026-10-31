@@ -1,0 +1,69 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:o="using:WhisperLoom.App.Platform.Windows.Overlay"
+        xmlns:l="using:WhisperLoom.App.Localization"
+        x:Class="WhisperLoom.App.Platform.Windows.Overlay.OverlayWindow"
+        x:DataType="o:OverlayViewModel"
+        Title="WhisperLoom Overlay"
+        Width="560" SizeToContent="Height"
+        Background="Transparent" TransparencyLevelHint="Transparent">
+  <!-- Fokusfreies Overlay der Umschalt-Kombi; Farben aus der Android-UX-Spec v3 (App.axaml). -->
+  <Window.Styles>
+    <Style Selector="Ellipse#Dot">
+      <Setter Property="Fill" Value="{StaticResource WlSurfaceHigh}" />
+    </Style>
+    <Style Selector="Ellipse#Dot.recording">
+      <Setter Property="Fill" Value="{StaticResource WlRecording}" />
+      <Style.Animations>
+        <Animation Duration="0:0:1.2" IterationCount="INFINITE" PlaybackDirection="Alternate">
+          <KeyFrame Cue="0%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0.35" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <Style Selector="Ellipse#Dot.error">
+      <Setter Property="Fill" Value="{StaticResource WlError}" />
+    </Style>
+    <Style Selector="Button">
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="Padding" Value="12,6" />
+      <Setter Property="Focusable" Value="False" />
+    </Style>
+    <Style Selector="Button.primary">
+      <Setter Property="Background" Value="{StaticResource WlAccent}" />
+      <Setter Property="Foreground" Value="{StaticResource WlBackground}" />
+    </Style>
+  </Window.Styles>
+
+  <Border Background="{StaticResource WlSurface}" CornerRadius="14" Padding="16,12"
+          BorderBrush="{StaticResource WlSurfaceHigh}" BorderThickness="1">
+    <StackPanel Spacing="10">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <Ellipse x:Name="Dot" Width="18" Height="18" VerticalAlignment="Center"
+                 Classes.recording="{Binding IsRecording}" Classes.error="{Binding IsError}" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" Margin="12,0" VerticalAlignment="Center">
+          <TextBlock x:Name="StateLabel" Text="{Binding StateText}" FontSize="16" FontWeight="SemiBold"
+                     Foreground="{StaticResource WlOnSurface}" TextTrimming="CharacterEllipsis" MaxWidth="300" />
+          <TextBlock Text="{Binding ElapsedText}" FontSize="16" Foreground="{StaticResource WlOnSurfaceVariant}"
+                     IsVisible="{Binding CanAct}" />
+        </StackPanel>
+        <TextBlock Grid.Column="2" Text="{Binding Stage}" FontSize="14" VerticalAlignment="Center"
+                   Foreground="{StaticResource WlAccent}" />
+      </Grid>
+      <ProgressBar Minimum="0" Maximum="1" Value="{Binding Level}" Height="4" MinHeight="4"
+                   Foreground="{StaticResource WlAccent}" Background="{StaticResource WlSurfaceHigh}"
+                   IsIndeterminate="{Binding State, Converter={x:Static o:OverlayWindow.IsProcessing}}" />
+      <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+        <Button x:Name="PauseButton" Content="{Binding PauseText}" Command="{Binding PauseResumeCommand}" IsEnabled="{Binding CanAct}" />
+        <Button x:Name="DiscardButton" Content="{Binding [Overlay_Discard], Source={x:Static l:Loc.Instance}}"
+                Command="{Binding DiscardCommand}" IsEnabled="{Binding CanAct}" />
+        <Button x:Name="SendButton" Classes="primary" Content="{Binding [Overlay_Send], Source={x:Static l:Loc.Instance}}"
+                Command="{Binding SendCommand}" IsEnabled="{Binding CanAct}" />
+        <Button x:Name="SendEnterButton" Classes="primary" Content="{Binding [Overlay_SendEnter], Source={x:Static l:Loc.Instance}}"
+                Command="{Binding SendEnterCommand}" IsEnabled="{Binding CanAct}" />
+      </StackPanel>
+      <TextBlock Text="{Binding [Overlay_Keys], Source={x:Static l:Loc.Instance}}" FontSize="12"
+                 Foreground="{StaticResource WlOnSurfaceVariant}" IsVisible="{Binding CanAct}" />
+    </StackPanel>
+  </Border>
+</Window>

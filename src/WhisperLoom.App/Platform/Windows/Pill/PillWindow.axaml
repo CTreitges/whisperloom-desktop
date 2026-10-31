@@ -1,0 +1,21 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:p="using:WhisperLoom.App.Platform.Windows.Pill"
+        x:Class="WhisperLoom.App.Platform.Windows.Pill.PillWindow"
+        x:DataType="p:PillViewModel"
+        Title="WhisperLoom Pill"
+        Width="200" Height="44"
+        Background="Transparent" TransparencyLevelHint="Transparent">
+  <!-- Pegel-Pille beim Halten: fokusfrei, unten mittig auf dem Monitor des Ziels. -->
+  <Border Background="{StaticResource WlSurface}" CornerRadius="22" Padding="16,0"
+          BorderBrush="{StaticResource WlSurfaceHigh}" BorderThickness="1">
+    <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
+      <Ellipse Width="14" Height="14" Fill="{StaticResource WlRecording}" IsVisible="{Binding !Processing}" />
+      <Ellipse Width="14" Height="14" Fill="{StaticResource WlAccent}" IsVisible="{Binding Processing}" />
+      <ProgressBar Grid.Column="1" Margin="12,0,0,0" Minimum="0" Maximum="1" Value="{Binding Level}"
+                   Height="6" MinHeight="6" MinWidth="0" VerticalAlignment="Center"
+                   Foreground="{StaticResource WlAccent}" Background="{StaticResource WlSurfaceHigh}"
+                   IsIndeterminate="{Binding Processing}" />
+    </Grid>
+  </Border>
+</Window>

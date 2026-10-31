@@ -28,8 +28,9 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly DesktopSettings _desktop;
 
     /// <param name="local">Lokale Teile der App (Modelle, Begleitprozess, Ollama); null = Tab „Lokal“ ohne Downloads.</param>
+    /// <param name="recordHotkey">Rekorder des globalen Hooks (Windows, Phase 3); null = Tastenkürzel nur anzeigen.</param>
     public SettingsViewModel(DictationController controller, ISecretStore secrets, IAccessChecker checker, IReadOnlyList<string>? microphones = null,
-        Platform.Sidecar.LocalParts? local = null)
+        Platform.Sidecar.LocalParts? local = null, Func<Task<string?>>? recordHotkey = null)
     {
         _controller = controller;
         _s = SettingsJson.Deserialize(SettingsJson.Serialize(controller.Settings));
@@ -53,6 +54,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         Outputs = [new Choice("clipboard", loc["Output_clipboard"])];
         UiLanguages = [new Choice("", loc["Ui_System"]), new Choice("de", "Deutsch"), new Choice("en", "English")];
         Microphones = [new Choice("", loc["Mic_Default"]), .. (microphones ?? []).Select(m => new Choice(m, m))];
+        InsertModes = [.. new[] { "paste", "type", "clipboard" }.Select(m => new Choice(m, loc["Insert_" + m]))];
+        Hotkeys = new HotkeysViewModel(_desktop, recordHotkey);
 
         _sttProvider = Pick(SttProviders, _s.Stt.ProviderId);
         _sttFallbackProvider = Pick(SttProviders, _s.SttFallback.ProviderId);
@@ -64,6 +67,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         _output = Pick(Outputs, _desktop.Output);
         _uiLanguage = Pick(UiLanguages, _desktop.UiLanguage);
         _microphone = Pick(Microphones, _desktop.Microphone);
+        _insertMode = Pick(InsertModes, _desktop.InsertMode);
         _historySize = HistorySizes.Contains(_s.History.Size) ? _s.History.Size : HistorySettings.DefaultSize;
 
         SttKey = new KeyFieldViewModel(SecretNames.Stt, secrets, checker, () => (SttProvider.Value, SttBaseUrl)) { Editable = KeyEditable(SecretNames.Stt) };
@@ -98,6 +102,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     public IReadOnlyList<Choice> Outputs { get; }
     public IReadOnlyList<Choice> UiLanguages { get; }
     public IReadOnlyList<Choice> Microphones { get; }
+    public IReadOnlyList<Choice> InsertModes { get; }
+
+    /// <summary>Windows: Tastenkürzel-Seite (Phase 3).</summary>
+    public HotkeysViewModel Hotkeys { get; }
 
     public KeyFieldViewModel SttKey { get; }
     public KeyFieldViewModel SttFallbackKey { get; }
@@ -150,6 +158,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private Choice _output;
     [ObservableProperty] private Choice _microphone;
     [ObservableProperty] private Choice _uiLanguage;
+    [ObservableProperty] private Choice _insertMode;
 
     [ObservableProperty] private string _saveStatus = "";
 
@@ -171,6 +180,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         _desktop.Output = Output.Value;
         _desktop.Microphone = Microphone.Value;
         _desktop.UiLanguage = UiLanguage.Value;
+        _desktop.InsertMode = InsertMode.Value;
+        Hotkeys.Apply();
         SettingsStore.SetDesktop(_s, _desktop);
         Local.Apply();
         var result = SettingsJson.Deserialize(SettingsJson.Serialize(_s));

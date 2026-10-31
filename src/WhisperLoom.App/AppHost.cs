@@ -29,6 +29,7 @@ public sealed class AppHost
     {
         Options = options;
         Secrets = secrets;
+        Output = output;
         Store = new SettingsStore(options.DataDir);
         Log = new AppLog(options.DataDir);
         WhisperLoomSettings settings;
@@ -101,6 +102,12 @@ public sealed class AppHost
 
     public DictationController Controller { get; }
 
+    /// <summary>Die Ausgabe-Senke (unter Windows mit Einfügen per Tastenkürzel, Phase 3).</summary>
+    public IOutputSink Output { get; }
+
+    /// <summary>Stand der Windows-Bedienung für <c>status --json</c> (Overlay, Pille, Hinweis); null = keine Hotkeys.</summary>
+    public Func<JsonObject>? InputStatus { get; set; }
+
     /// <summary>Lokale Erkennung und Textverbesserung (WLD-P4b); null in Tests ohne lokale Teile.</summary>
     public LocalParts? Local { get; private set; }
 
@@ -113,10 +120,17 @@ public sealed class AppHost
         var secrets = await SecretStoreFactory.CreateAsync(options.DataDir, options.SecretPrefix, ct).ConfigureAwait(false);
         IAudioRecorder recorder = options.TestAudio is null ? new PortAudioRecorder() : new WavFileRecorder(options.TestAudio);
         IOutputSink output = options.OutputFile is null ? new ClipboardOutputSink(ProcessRunner.Instance) : new FileOutputSink(options.OutputFile);
+        AppHost? host = null;
+        if (OperatingSystem.IsWindows() && options.OutputFile is null)
+        {
+            // Einfügen per Tastenkürzel; der Modus folgt den Einstellungen des fertigen Hosts.
+            output = Platform.Windows.Input.WindowsInput.CreateSink(output, () =>
+                Platform.Windows.TextOutput.InsertModes.FromKey(host is null ? null : SettingsStore.Desktop(host.Controller.Settings).InsertMode));
+        }
         var cache = new ModelCache(Path.Combine(options.DataDir, "model-cache.json"));
         LocalParts? local = null;
         var desktop = SettingsStore.Desktop(TryLoad(options.DataDir));
-        var host = new AppHost(options, secrets, settings =>
+        host = new AppHost(options, secrets, settings =>
         {
             local = new LocalParts(options, settings, desktop);
             return new AppPipeline(settings, secrets, cache, local.Stt, local.Refiner);
@@ -254,6 +268,7 @@ public sealed class AppHost
             ["dataDir"] = Options.DataDir,
             ["output"] = Options.OutputFile is null ? "clipboard" : "file",
             ["local"] = LocalStatus(),
+            ["input"] = InputStatus?.Invoke(),
         };
     }
 }
