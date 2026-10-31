@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text.Json.Nodes;
+using Avalonia.Headless.XUnit;
 using WhisperLoom.App.Cli;
 using WhisperLoom.App.Output;
 using WhisperLoom.App.Services;
@@ -128,7 +129,8 @@ public sealed class SyncCommandsTest : IDisposable
         Assert.Throws<UsageException>(() => CommandLine.Parse(["provision"]));
     }
 
-    [Fact]
+    // AppHost läuft auf dem UI-Thread (setzt die UI-Sprache, an der Bindungen hängen).
+    [AvaloniaFact]
     public async Task Running_instance_reloads_policy_and_refuses_locked_stage_changes()
     {
         var host = new AppHost(new AppOptions(_dir), _secrets, _ => new FakeDictationPipeline(), new FakeRecorder(), new CaptureSink());
@@ -149,7 +151,8 @@ public sealed class SyncCommandsTest : IDisposable
         Assert.False(stage.Status["history"]!["enabled"]!.GetValue<bool>());
     }
 
-    [Fact]
+    // AppHost läuft auf dem UI-Thread (setzt die UI-Sprache, an der Bindungen hängen).
+    [AvaloniaFact]
     public void Broken_policy_file_counts_as_no_policy()
     {
         File.WriteAllText(Path.Combine(_dir, "policy.json"), "{ kaputt");
