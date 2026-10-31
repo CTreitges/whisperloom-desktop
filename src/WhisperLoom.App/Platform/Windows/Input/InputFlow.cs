@@ -152,6 +152,16 @@ public sealed class InputFlow
         status["mode"] = ModeName;
         status["overlayState"] = Overlay.State.ToString().ToLowerInvariant();
         status["lastInsert"] = _sink.LastOutcome?.ToString();
+        status["lastInsertWindow"] = _sink.LastReport is { } r
+            ? new JsonObject
+            {
+                ["hwnd"] = (long)r.Window,
+                ["target"] = (long)r.Target,
+                ["sameTarget"] = r.SameTarget,
+                ["process"] = r.Process,
+                ["focusClass"] = r.FocusClass,
+            }
+            : null;
         return status;
     }
 

@@ -125,6 +125,10 @@ internal sealed class FakeWindows(Steps steps) : IWindowAdapter
 
     public bool IsProtected(IntPtr window) => Elevated.Contains(window);
 
+    public string ProcessName(IntPtr window) => $"proc-{(long)window}";
+
+    public string FocusClass(IntPtr window) => window == 42 ? "Edit" : "";
+
     public bool Activate(IntPtr window)
     {
         steps.Add("activate");
@@ -193,4 +197,26 @@ internal sealed class FakePresenter : IInputPresenter
         Hints.Add((kind, caption, message));
 
     public JsonObject Status() => new() { ["overlay"] = Overlay, ["pill"] = Pill };
+}
+
+/// <summary>Aktiviert scheinbar das Ziel, meldet danach aber ein anderes Vordergrundfenster.</summary>
+internal sealed class SwitchingWindows(FakeWindows inner, IntPtr other) : IWindowAdapter
+{
+    private bool _activated;
+
+    public IntPtr Foreground() => _activated ? other : inner.Foreground();
+
+    public bool Exists(IntPtr window) => inner.Exists(window);
+
+    public bool IsProtected(IntPtr window) => inner.IsProtected(window);
+
+    public bool Activate(IntPtr window)
+    {
+        _activated = true;
+        return true;
+    }
+
+    public string ProcessName(IntPtr window) => inner.ProcessName(window);
+
+    public string FocusClass(IntPtr window) => inner.FocusClass(window);
 }

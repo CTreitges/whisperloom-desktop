@@ -108,6 +108,47 @@ internal sealed class Win32Windows : IWindowAdapter
         return GetForegroundWindow() == window;
     }
 
+    public string ProcessName(IntPtr window)
+    {
+        GetWindowThreadProcessId(window, out var pid);
+        try
+        {
+            using var process = Process.GetProcessById((int)pid);
+            return process.ProcessName;
+        }
+        catch (Exception e) when (e is ArgumentException or InvalidOperationException or Win32Exception)
+        {
+            return "";
+        }
+    }
+
+    // Doku: learn.microsoft.com/windows/win32/api/winuser/nf-winuser-getguithreadinfo (abgerufen 2026-10-31).
+    public string FocusClass(IntPtr window)
+    {
+        var thread = GetWindowThreadProcessId(window, out _);
+        var info = new GuiThreadInfo { Size = Marshal.SizeOf<GuiThreadInfo>() };
+        if (thread == 0 || !GetGUIThreadInfo(thread, ref info) || info.Focus == IntPtr.Zero)
+        {
+            return "";
+        }
+        var name = new System.Text.StringBuilder(256);
+        return GetClassNameW(info.Focus, name, name.Capacity) > 0 ? name.ToString() : "";
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct GuiThreadInfo
+    {
+        public int Size;
+        public uint Flags;
+        public IntPtr Active;
+        public IntPtr Focus;
+        public IntPtr Capture;
+        public IntPtr MenuOwner;
+        public IntPtr MoveSize;
+        public IntPtr Caret;
+        public Rect CaretRect;
+    }
+
     private static bool? Elevated(IntPtr process)
     {
         if (!OpenProcessToken(process, TokenQuery, out var token))
@@ -127,6 +168,12 @@ internal sealed class Win32Windows : IWindowAdapter
 #pragma warning disable SYSLIB1054 // DllImport reicht hier; LibraryImport bräuchte AllowUnsafeBlocks.
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern IntPtr OpenProcess(uint access, bool inherit, uint pid);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool GetGUIThreadInfo(uint thread, ref GuiThreadInfo info);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetClassNameW(IntPtr hwnd, System.Text.StringBuilder name, int max);
 
     [DllImport("kernel32.dll")]
     private static extern bool CloseHandle(IntPtr handle);

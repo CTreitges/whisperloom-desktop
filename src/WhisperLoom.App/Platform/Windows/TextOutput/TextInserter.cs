@@ -33,6 +33,15 @@ public enum InsertOutcome
     InputRejected,
 }
 
+/// <summary>
+/// Wohin die letzte Eingabe ging (nur Metadaten, nie Text): gemerktes Ziel, tatsächliches Vordergrundfenster beim Senden,
+/// dessen Prozess und die Fensterklasse des Steuerelements mit Tastaturfokus.
+/// </summary>
+public sealed record InsertReport(IntPtr Target, IntPtr Window, string Process, string FocusClass)
+{
+    public bool SameTarget => Window == Target;
+}
+
 public static class InsertModes
 {
     public static InsertMode FromKey(string? key) => key switch
@@ -68,9 +77,13 @@ public sealed class TextInserter(IClipboardAdapter clipboard, IKeySender keys, I
     /// <summary>Höchste Wartezeit auf losgelassene Modifier (sonst würde aus Strg+V z. B. Win+V).</summary>
     public static readonly TimeSpan ModifierWait = TimeSpan.FromSeconds(2);
 
+    /// <summary>Ziel der letzten echten Eingabe (Strg+V bzw. Tippen); null, wenn keine gesendet wurde.</summary>
+    public InsertReport? LastReport { get; private set; }
+
     /// <exception cref="IOException">Zwischenablage belegt.</exception>
     public async Task<InsertOutcome> InsertAsync(IntPtr target, string text, InsertMode mode, bool pressEnter, CancellationToken ct)
     {
+        LastReport = null;
         if (text.Length == 0)
         {
             return InsertOutcome.Empty;
@@ -95,6 +108,7 @@ public sealed class TextInserter(IClipboardAdapter clipboard, IKeySender keys, I
         }
         if (mode == InsertMode.Type)
         {
+            LastReport = Describe(target);
             if (!keys.Type(text))
             {
                 return Fallback(text, InsertOutcome.InputRejected);
@@ -114,6 +128,7 @@ public sealed class TextInserter(IClipboardAdapter clipboard, IKeySender keys, I
         {
             clipboard.SetText(text, @private: true);
             var ours = clipboard.SequenceNumber;
+            LastReport = Describe(target);
             if (!keys.SendCtrlV())
             {
                 restore = false;
@@ -135,6 +150,12 @@ public sealed class TextInserter(IClipboardAdapter clipboard, IKeySender keys, I
                 Restore(snapshot);
             }
         }
+    }
+
+    private InsertReport Describe(IntPtr target)
+    {
+        var window = windows.Foreground();
+        return new InsertReport(target, window, windows.ProcessName(window), windows.FocusClass(window));
     }
 
     private void Restore(ClipboardSnapshot snapshot)

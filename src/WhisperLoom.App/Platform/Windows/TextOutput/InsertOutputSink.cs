@@ -19,6 +19,9 @@ public sealed class InsertOutputSink(IOutputSink inner, TextInserter inserter, F
 
     public InsertOutcome? LastOutcome { get; private set; }
 
+    /// <summary>Wohin die letzte Eingabe ging (Fenster, Prozess, Fokus-Klasse); null ohne Eingabe.</summary>
+    public InsertReport? LastReport => inserter.LastReport;
+
     /// <summary>Das nächste Diktat geht in <paramref name="target"/>; einmalig.</summary>
     public void Arm(IntPtr target, bool pressEnter = false)
     {

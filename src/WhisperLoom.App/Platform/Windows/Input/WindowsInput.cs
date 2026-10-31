@@ -30,11 +30,14 @@ public sealed class WindowsInput : IDisposable
         var windows = new Win32Windows();
         Flow = new InputFlow(controller, sink, new InputPresenter(TargetCenter), windows.Foreground,
             active => _hook!.Update(m => m.OverlayKeysActive = active));
-        Flow.FallbackToast += outcome => Dispatcher.UIThread.Post(() =>
-        {
-            _log.Event("insert", ("status", outcome.ToString()));
-            Flow.ShowFallback(outcome);
-        });
+        Flow.FallbackToast += outcome => Dispatcher.UIThread.Post(() => Flow.ShowFallback(outcome));
+        // Log nur Metadaten: Ergebnis, Prozess und Fokus-Klasse des Fensters, das die Eingabe bekam — nie Text.
+        sink.Inserted += outcome => Dispatcher.UIThread.Post(() => _log.Event(
+            "insert",
+            ("status", outcome.ToString()),
+            ("process", sink.LastReport?.Process),
+            ("sameTarget", sink.LastReport?.SameTarget),
+            ("focusClass", sink.LastReport?.FocusClass)));
         _hook = new KeyboardHook(_machine, OnHookAction);
         _tick.Tick += (_, _) => Flow.Tick();
         _tick.Start();

@@ -130,6 +130,68 @@ class ForegroundGuardTest(unittest.TestCase):
         self.assertIn("SMOKE hold-insert FAIL abgebrochen: vorn: code.exe", out.getvalue())
 
 
+class InsertTargetTest(unittest.TestCase):
+    """Prüfrunde 2: Der Smoke wird rot, wenn die App nicht ins TestTarget eingefügt hat, und wartet auf dessen Bereit-Signal."""
+
+    @staticmethod
+    def status(**window):
+        return {"input": {"lastInsertWindow": window or None}}
+
+    def test_insert_into_the_test_target_is_ok(self):
+        ok, where = smoke_input.went_to(self.status(hwnd=0x42, sameTarget=True, process="WhisperLoom.TestTarget",
+                                                    focusClass="WindowsForms10.EDIT.app.0"), 0x42)
+        self.assertTrue(ok)
+        self.assertIn("WhisperLoom.TestTarget", where)
+
+    def test_insert_into_another_window_fails_and_names_it(self):
+        ok, where = smoke_input.went_to(self.status(hwnd=0x99, sameTarget=False, process="Code", focusClass="Chrome_WidgetWin_1"), 0x42)
+        self.assertFalse(ok)
+        self.assertIn("Code", where)
+
+    def test_same_hwnd_but_not_the_remembered_target_fails(self):
+        self.assertFalse(smoke_input.went_to(self.status(hwnd=0x42, sameTarget=False, process="x"), 0x42)[0])
+
+    def test_no_reported_insert_fails(self):
+        ok, where = smoke_input.went_to({"input": {}}, 0x42)
+        self.assertFalse(ok)
+        self.assertIn("keine Eingabe", where)
+
+    def test_inserted_marks_landed_only_with_text_and_app_report(self):
+        run = types.SimpleNamespace(status=lambda: {"state": "idle", "lastResult": "Hallo", "input": {
+            "mode": "none", "lastInsertWindow": {"hwnd": 0x42, "sameTarget": True, "process": "WhisperLoom.TestTarget"}}})
+        target = types.SimpleNamespace(hwnd=0x42, read=lambda: {"text": "Hallo"})
+        _, d = smoke_input.inserted(target, run)
+        self.assertTrue(d["_landed"])
+
+        other = types.SimpleNamespace(hwnd=0x43, read=lambda: {"text": "Hallo"})
+        _, d = smoke_input.inserted(other, run)
+        self.assertFalse(d["_landed"])
+
+    def test_target_is_ready_only_after_shown_with_hwnd(self):
+        self.assertFalse(smoke_input.target_ready({}))
+        self.assertFalse(smoke_input.target_ready({"hwnd": 0x42}))
+        self.assertFalse(smoke_input.target_ready({"ready": True}))
+        self.assertTrue(smoke_input.target_ready({"hwnd": 0x42, "ready": True}))
+
+    def test_focus_waits_for_the_focused_text_box(self):
+        sent: list = []
+        k = ForegroundGuardTest.mouse(ForegroundGuardTest(), sent)
+        target = smoke_input.Target("x.exe", Path("t.json"), k)
+        target.hwnd = 0x42
+        states = iter([{"focused": False}] * 2 + [{"focused": True}] * 10)  # 1. Prüfung nach Vordergrund, 2. nach Klick
+        target.read = lambda: next(states)
+
+        def wait_for(probe, seconds, step=0.1):
+            return probe()
+
+        with mock.patch.object(wi, "force_foreground"), mock.patch.object(wi, "foreground", return_value=0x42), \
+                mock.patch.object(wi, "window_rect", return_value=(0, 0, 200, 100)), \
+                mock.patch.object(wi, "root_window_at", return_value=0x42), \
+                mock.patch.object(smoke_input, "wait_for", side_effect=wait_for), mock.patch.object(wi.time, "sleep"):
+            target.focus()
+        self.assertEqual(len(sent), 3)  # vorn, aber Textfeld ohne Fokus → genau ein Klick ins Textfeld
+
+
 class InputSuiteGateTest(unittest.TestCase):
     def test_input_without_lock_is_refused(self):
         with tempfile.TemporaryDirectory() as d:

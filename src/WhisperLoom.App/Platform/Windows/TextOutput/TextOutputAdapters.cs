@@ -49,4 +49,10 @@ public interface IWindowAdapter
 
     /// <summary>Holt das Fenster nach vorn; true, wenn es danach im Vordergrund ist.</summary>
     bool Activate(IntPtr window);
+
+    /// <summary>Prozessname (z. B. "notepad"); "" wenn nicht lesbar. Nur für Status/Log.</summary>
+    string ProcessName(IntPtr window);
+
+    /// <summary>Fensterklasse des Steuerelements mit Tastaturfokus im Thread des Fensters; "" wenn keins.</summary>
+    string FocusClass(IntPtr window);
 }

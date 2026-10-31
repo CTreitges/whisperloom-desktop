@@ -50,11 +50,13 @@ class Target:
     def __enter__(self) -> Target:
         self.out.unlink(missing_ok=True)
         self.proc = subprocess.Popen([self.exe, "--out", str(self.out), "--seconds", "90"])
-        state = wait_for(lambda: self.read().get("hwnd"), 15)
+        state = wait_for(lambda: (lambda d: d if target_ready(d) else None)(self.read()), 15)
         if not state:
-            raise RuntimeError("TestTarget meldet sich nicht")
-        self.hwnd = int(state)
-        time.sleep(0.3)
+            if self.proc:
+                self.proc.kill()
+                self.proc.wait(timeout=10)
+            raise RuntimeError("TestTarget meldet nicht bereit")
+        self.hwnd = int(state["hwnd"])
         try:
             self.focus()
         except wi.NotForeground:
@@ -67,13 +69,15 @@ class Target:
     def focus(self) -> None:
         """Holt das TestTarget nach vorn: zuerst SetForegroundWindow, ein Klick nur, wenn unter dem Punkt wirklich das
         TestTarget liegt (kein blinder Klick). Sonst NotForeground."""
+        ready = lambda: wi.foreground() == self.hwnd and self.read().get("focused")  # noqa: E731
         for _ in range(3):
             wi.force_foreground(self.hwnd)
-            if wait_for(lambda: wi.foreground() == self.hwnd, 1, 0.05):
+            if wait_for(ready, 1, 0.05):
                 return
+            # Vorn, aber Textfeld ohne Fokus, oder gar nicht vorn: Klick ins Textfeld, nur wenn es dort sichtbar ist.
             l, t, r, b = wi.window_rect(self.hwnd)
             self.keys.click((l + r) // 2, (t + b) // 2, allowed=lambda root: root == self.hwnd)
-            if wait_for(lambda: wi.foreground() == self.hwnd, 2, 0.05):
+            if wait_for(ready, 2, 0.05):
                 return
         raise wi.NotForeground(f"TestTarget nicht im Vordergrund (vorn: {wi.process_name(wi.foreground())})")
 
@@ -82,6 +86,11 @@ class Target:
         if self.proc:
             self.proc.kill()  # nur der eigene Prozess (gespeicherte PID)
             self.proc.wait(timeout=10)
+
+
+def target_ready(state: dict) -> bool:
+    """TestTarget ist sichtbar und hat sein Textfeld fokussiert (schreibt ready erst nach Shown)."""
+    return bool(state.get("ready") and state.get("hwnd"))
 
 
 def wait_for(probe, seconds: float, step: float = 0.1):
@@ -101,10 +110,23 @@ def idle(run) -> dict:
     return wait_for(probe, 20, 0.2) or (run.status() or {})
 
 
+def went_to(status: dict, hwnd: int) -> tuple[bool, str]:
+    """Hat die App ins TestTarget eingefügt? Laut Status ging die letzte Eingabe an hwnd (= gemerktes Ziel)."""
+    w = (status.get("input") or {}).get("lastInsertWindow")
+    if not w:
+        return False, "eingefügt: keine Eingabe gemeldet"
+    where = f"eingefügt: {w.get('process') or '?'} hwnd={w.get('hwnd')} fokus={w.get('focusClass') or '-'}"
+    return w.get("hwnd") == hwnd and bool(w.get("sameTarget")), where
+
+
 def inserted(target: Target, run) -> tuple[dict, dict]:
+    """Wartet auf das Ende; d["_landed"] = Text im TestTarget und laut App dorthin eingefügt, d["_where"] = wohin."""
     s = idle(run)
     want = s.get("lastResult") or ""
     t = wait_for(lambda: (lambda d: d if d.get("text") == want and want else None)(target.read()), 5) or target.read()
+    went, where = went_to(s, target.hwnd)
+    t["_landed"] = bool(want) and t.get("text") == want and went
+    t["_where"] = where
     return s, t
 
 
@@ -173,8 +195,8 @@ def paste_checks(args, work, report, smoke, fake, keys, exe) -> None:
                 seen.add(wi.foreground())
                 time.sleep(0.02)
             s, d = inserted(t, run)
-            report.check("hold-insert", d.get("text") == s.get("lastResult") and s.get("lastResult") and d.get("enter") == 0,
-                         f"ziel={d.get('text')!r:.40} result={s.get('lastResult')!r:.40} error={s.get('lastError')}")
+            report.check("hold-insert", d["_landed"] and s.get("lastResult") and d.get("enter") == 0,
+                         f"{d['_where']} ziel={d.get('text')!r:.40} result={s.get('lastResult')!r:.40} error={s.get('lastError')}")
             foreign = [h for h in seen if h != t.hwnd]
             names = sorted({wi.process_name(h) for h in foreign})
             report.check("start-menu-suppressed", not foreign and wi.foreground() == t.hwnd,
@@ -188,8 +210,8 @@ def paste_checks(args, work, report, smoke, fake, keys, exe) -> None:
             time.sleep(0.5)
             keys.combo("ctrl", "space")
             s, d = inserted(t, run)
-            report.check("toggle-second-press", s.get("lastResult") and d.get("text") == s.get("lastResult") and d.get("enter") == 0,
-                         f"ziel={d.get('text')!r:.40} result={s.get('lastResult')!r:.40}")
+            report.check("toggle-second-press", s.get("lastResult") and d["_landed"] and d.get("enter") == 0,
+                         f"{d['_where']} ziel={d.get('text')!r:.40} result={s.get('lastResult')!r:.40}")
             focus_open = fg_open
 
         # Enter im Overlay = einfügen (das Ziel bekommt kein Enter).
@@ -199,8 +221,8 @@ def paste_checks(args, work, report, smoke, fake, keys, exe) -> None:
             time.sleep(0.4)
             keys.combo("enter")
             s, d = inserted(t, run)
-            report.check("toggle-enter", d.get("text") == s.get("lastResult") and d.get("enter") == 0,
-                         f"ziel={d.get('text')!r:.40} enter={d.get('enter')}")
+            report.check("toggle-enter", d["_landed"] and d.get("enter") == 0,
+                         f"{d['_where']} ziel={d.get('text')!r:.40} enter={d.get('enter')}")
 
         # Strg+Enter = einfügen + Enter.
         with Target(exe, out, keys) as t:
@@ -209,9 +231,10 @@ def paste_checks(args, work, report, smoke, fake, keys, exe) -> None:
             time.sleep(0.4)
             keys.combo("ctrl", "enter")
             s, d = inserted(t, run)
-            d = wait_for(lambda: (lambda x: x if x.get("enter") == 1 else None)(t.read()), 3) or t.read()
-            report.check("ctrl-enter", d.get("text") == s.get("lastResult") and d.get("enter") == 1,
-                         f"ziel={d.get('text')!r:.40} enter={d.get('enter')}")
+            later = wait_for(lambda: (lambda x: x if x.get("enter") == 1 else None)(t.read()), 3) or t.read()
+            d.update(text=later.get("text"), enter=later.get("enter"))
+            report.check("ctrl-enter", d["_landed"] and d.get("enter") == 1,
+                         f"{d['_where']} ziel={d.get('text')!r:.40} enter={d.get('enter')}")
 
         # Rücktaste = verwerfen: Ziel bleibt unverändert, die Rücktaste kommt dort nicht an.
         with Target(exe, out, keys) as t:
@@ -262,8 +285,8 @@ def pause_check(run, keys, exe, out, report, focus_open: bool) -> None:
         keys.click(*((s2.get("input") or {}).get("buttons") or buttons)["send"], allowed=app_window)
         s, d = inserted(t, run)
         fg_after = wi.foreground() == t.hwnd
-        report.check("pause", e1 >= 0 and e1 == e2 and resumed == "recording" and d.get("text") == s.get("lastResult"),
-                     f"elapsed {e1}→{e2} resumed={resumed} ziel={d.get('text')!r:.30}")
+        report.check("pause", e1 >= 0 and e1 == e2 and resumed == "recording" and d["_landed"],
+                     f"elapsed {e1}→{e2} resumed={resumed} {d['_where']} ziel={d.get('text')!r:.30}")
         report.check("no-focus-steal", focus_open and fg_click and fg_after,
                      f"overlay={focus_open} klick={fg_click} danach={fg_after}")
 
@@ -281,8 +304,8 @@ def clipboard_checks(run, keys, exe, out, report) -> None:
         s, d = inserted(t, run)
         time.sleep(0.8)
     clip = plat.read_clipboard("win")
-    report.check("clipboard-restore", d.get("text") == s.get("lastResult") and clip == sentinel,
-                 f"clip={clip!r:.40} ziel={d.get('text')!r:.30}")
+    report.check("clipboard-restore", d["_landed"] and clip == sentinel,
+                 f"clip={clip!r:.40} {d['_where']} ziel={d.get('text')!r:.30}")
     ok, why = wi.clipboard_private(watch.observations)
     report.check("clipboard-history-excluded", ok, why)
 
@@ -316,9 +339,9 @@ def type_checks(args, work, report, smoke, fake, keys, exe) -> None:
             keys.up("ctrl")
             s, d = inserted(t, run)
         result = s.get("lastResult") or ""
-        report.check("type-mode", d.get("text") == result and "Grüße" in result and "ß" in result
+        report.check("type-mode", d["_landed"] and "Grüße" in result and "ß" in result
                      and plat.read_clipboard("win") == sentinel,
-                     f"ziel={d.get('text')!r:.50} result={result!r:.50}")
+                     f"{d['_where']} ziel={d.get('text')!r:.50} result={result!r:.50}")
     finally:
         run.stop()
         plat.cleanup_secrets("win", prefix, data)

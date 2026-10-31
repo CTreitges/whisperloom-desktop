@@ -21,6 +21,38 @@ public class TextInserterTest
     }
 
     [Fact]
+    public async Task Report_names_the_window_that_got_the_paste()
+    {
+        Assert.Null(_rig.Inserter.LastReport);
+        await Insert();
+        var report = _rig.Inserter.LastReport!;
+        Assert.Equal((IntPtr)42, report.Window);
+        Assert.True(report.SameTarget);
+        Assert.Equal("proc-42", report.Process);
+        Assert.Equal("Edit", report.FocusClass);
+    }
+
+    [Fact]
+    public async Task Report_flags_a_different_foreground_window()
+    {
+        // Activate meldet Erfolg, beim Senden ist aber ein anderes Fenster vorn (Wettlauf mit dem Nutzer).
+        _rig.Windows.Alive.Add(7);
+        var inserter = new TextInserter(_rig.Clipboard, _rig.Keys, new SwitchingWindows(_rig.Windows, 7), TimeSpan.Zero);
+        await inserter.InsertAsync(42, "x", InsertMode.Paste, false, CancellationToken.None);
+        Assert.False(inserter.LastReport!.SameTarget);
+        Assert.Equal("proc-7", inserter.LastReport.Process);
+    }
+
+    [Fact]
+    public async Task Report_is_empty_when_nothing_was_sent()
+    {
+        await Insert();
+        _rig.Windows.Alive.Clear();
+        await Insert();
+        Assert.Null(_rig.Inserter.LastReport);
+    }
+
+    [Fact]
     public async Task Paste_restores_an_empty_clipboard_as_empty()
     {
         _rig.Clipboard.Text = null;

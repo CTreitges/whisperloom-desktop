@@ -163,6 +163,11 @@ public sealed class InputFlowTest : IDisposable
         Assert.False(_ui.Pill);
         Assert.Equal(_f.Controller.LastResult, _rig.Keys.Target);
         Assert.Equal("alt", _rig.Clipboard.Text);
+        var where = _flow.Status()["lastInsertWindow"]!;
+        Assert.Equal(42L, (long)where["hwnd"]!);
+        Assert.True((bool)where["sameTarget"]!);
+        Assert.Equal("proc-42", (string)where["process"]!);
+        Assert.Equal("Edit", (string)where["focusClass"]!);
     }
 
     [AvaloniaFact]

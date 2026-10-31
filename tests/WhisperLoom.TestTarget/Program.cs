@@ -4,7 +4,7 @@ namespace WhisperLoom.TestTarget;
 
 /// <summary>
 /// Testziel für Einfügen und Tippen: ein Fenster "WhisperLoom TestTarget" mit Textfeld. Jede Änderung schreibt
-/// <c>{"text", "enter", "backspace", "focused"}</c> nach <c>--out &lt;datei&gt;</c>. Enter (ohne Umschalt) fügt keinen
+/// <c>{"text", "enter", "backspace", "hwnd", "ready", "focused"}</c> nach <c>--out &lt;datei&gt;</c>. Enter (ohne Umschalt) fügt keinen
 /// Umbruch ein, sondern zählt nur — wie ein Chat, der abschickt. Beendet sich nach <c>--seconds</c> (Standard 120) selbst.
 /// </summary>
 internal static class Program
@@ -37,6 +37,7 @@ internal sealed class TargetForm : Form
     private readonly TextBox _box = new() { Multiline = true, AcceptsReturn = true, Dock = DockStyle.Fill, Font = new Font("Segoe UI", 14) };
     private int _enter;
     private int _backspace;
+    private bool _ready;
 
     public TargetForm(string outPath, TimeSpan lifetime)
     {
@@ -48,12 +49,21 @@ internal sealed class TargetForm : Form
         Controls.Add(_box);
         _box.KeyDown += OnKeyDown;
         _box.TextChanged += (_, _) => Save();
+        _box.GotFocus += (_, _) => Save();
+        _box.LostFocus += (_, _) => Save();
         Activated += (_, _) => Save();
-        Shown += (_, _) => _box.Focus();
+        Deactivate += (_, _) => Save();
+        // Bereit erst, wenn das Fenster sichtbar ist und das Textfeld den Fokus hat: vorher meldet die Datei kein hwnd,
+        // damit der Smoke nicht zu früh Tasten drückt (Fall hold-insert beim kalten ersten Start).
+        Shown += (_, _) =>
+        {
+            _box.Focus();
+            _ready = true;
+            Save();
+        };
         var timer = new System.Windows.Forms.Timer { Interval = (int)lifetime.TotalMilliseconds };
         timer.Tick += (_, _) => Close();
         timer.Start();
-        Save();
     }
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
@@ -79,7 +89,12 @@ internal sealed class TargetForm : Form
 
     private void Save()
     {
-        var json = JsonSerializer.Serialize(new { text = _box.Text, enter = _enter, backspace = _backspace, hwnd = Handle.ToInt64() });
+        if (!_ready)
+        {
+            return;
+        }
+        var focused = _box.Focused && ContainsFocus;
+        var json = JsonSerializer.Serialize(new { text = _box.Text, enter = _enter, backspace = _backspace, hwnd = Handle.ToInt64(), ready = true, focused });
         var tmp = _outPath + ".tmp";
         File.WriteAllText(tmp, json);
         File.Move(tmp, _outPath, overwrite: true);
