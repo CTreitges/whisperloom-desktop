@@ -115,10 +115,11 @@ public partial class App : Application
             case "settings":
                 if (_settingsWindow is null)
                 {
-                    var vm = new SettingsViewModel(host.Controller, host.Secrets, new HttpAccessChecker(() => HttpClients.Create(SettingsStore.Desktop(host.Controller.Settings))), Microphones(host));
+                    var vm = new SettingsViewModel(host.Controller, host.Secrets, new HttpAccessChecker(() => HttpClients.Create(SettingsStore.Desktop(host.Controller.Settings))), Microphones(host), host.Local);
                     _settingsWindow = new SettingsWindow(vm);
                     _settingsWindow.Closed += (_, _) => _settingsWindow = null;
                     _ = vm.LoadKeysAsync();
+                    _ = vm.Local.RefreshOllamaCommand.ExecuteAsync(null);
                 }
                 Activate(_settingsWindow);
                 break;
@@ -163,6 +164,10 @@ public partial class App : Application
         if (_server is not null)
         {
             await _server.DisposeAsync();
+        }
+        if (_host?.Local is { } local)
+        {
+            await local.DisposeAsync();
         }
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {

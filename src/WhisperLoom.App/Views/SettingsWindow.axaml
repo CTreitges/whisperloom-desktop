@@ -91,6 +91,11 @@
         </ScrollViewer>
       </TabItem>
 
+      <!-- Lokal (WLD-P4b) -->
+      <TabItem x:Name="TabLocal" Header="{Binding [Settings_Local], Source={x:Static l:Loc.Instance}}">
+        <v:LocalSettingsView DataContext="{Binding Local}" />
+      </TabItem>
+
       <!-- Kontext-Wörter -->
       <TabItem x:Name="TabVocabulary" Header="{Binding [Settings_Vocabulary], Source={x:Static l:Loc.Instance}}">
         <StackPanel Margin="4">
