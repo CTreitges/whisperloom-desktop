@@ -94,7 +94,7 @@ public sealed class LocalStt : ILocalStt, IAsyncDisposable
                 {
                     return Started(await StartAsync(SidecarVariant.Vulkan, path, progress, ct).ConfigureAwait(false));
                 }
-                catch (Exception e) when (e is SidecarStartException or DownloadException or IOException && !ct.IsCancellationRequested)
+                catch (Exception e) when (IsStartFailure(e) && !ct.IsCancellationRequested)
                 {
                     _vulkanFailed = true; // für diese Sitzung: CPU
                 }
@@ -103,7 +103,7 @@ public sealed class LocalStt : ILocalStt, IAsyncDisposable
             {
                 return Started(await StartAsync(SidecarVariant.Cpu, path, progress, ct).ConfigureAwait(false));
             }
-            catch (Exception e) when (e is SidecarStartException or DownloadException or IOException && !ct.IsCancellationRequested)
+            catch (Exception e) when (IsStartFailure(e) && !ct.IsCancellationRequested)
             {
                 throw new LocalNotAvailableException($"{MsgSidecarFailed}: {e.Message}");
             }
@@ -134,6 +134,9 @@ public sealed class LocalStt : ILocalStt, IAsyncDisposable
         _http.Dispose();
         _gate.Dispose();
     }
+
+    private static bool IsStartFailure(Exception e) =>
+        e is SidecarStartException or DownloadException or IOException or UnauthorizedAccessException or HttpRequestException;
 
     private OfflineModel Model() => ModelCatalog.ById(_settings().Offline.Model);
 

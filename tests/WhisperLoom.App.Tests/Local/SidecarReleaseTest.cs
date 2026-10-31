@@ -74,6 +74,21 @@ public sealed class SidecarReleaseTest : IAsyncLifetime
         Assert.Equal(before, _server.Paths.Count);
     }
 
+    /// <summary>Einstellungen und Diktat installieren gleichzeitig: genau ein Download, beide bekommen die Exe.</summary>
+    [Fact]
+    public async Task ParalleleInstallationLaedtNurEinmal()
+    {
+        var release = Release();
+        _server.SlowChunkMs = 20;
+        var ct = TestContext.Current.CancellationToken;
+        var both = await Task.WhenAll(release.EnsureAsync(SidecarVariant.Cpu, null, ct), release.EnsureAsync(SidecarVariant.Cpu, null, ct));
+        Assert.Equal(both[0], both[1]);
+        // Eine Installation: Manifest einmal, Archiv einmal HEAD + einmal GET.
+        Assert.Single(_server.Paths, p => p.EndsWith("sidecar-manifest.json", StringComparison.Ordinal));
+        Assert.Equal(2, _server.Paths.Count(p => p.EndsWith(_file, StringComparison.Ordinal)));
+        Assert.Equal(_exe, await File.ReadAllBytesAsync(both[0], ct));
+    }
+
     [Fact]
     public async Task ManifestOhnePassendePruefsummeWirdAbgelehnt()
     {

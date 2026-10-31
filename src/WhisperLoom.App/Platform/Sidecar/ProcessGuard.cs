@@ -35,7 +35,9 @@ internal sealed class ProcessGuard : IDisposable
             guard._job = CreateJob();
             if (!AssignProcessToJobObject(guard._job, child.Handle))
             {
-                throw new InvalidOperationException($"AssignProcessToJobObject: Fehler {Marshal.GetLastWin32Error()}");
+                var error = Marshal.GetLastWin32Error();
+                guard.Dispose();
+                throw new InvalidOperationException($"AssignProcessToJobObject: Fehler {error}");
             }
         }
         else
@@ -54,7 +56,14 @@ internal sealed class ProcessGuard : IDisposable
     {
         var psi = new ProcessStartInfo("/bin/sh") { UseShellExecute = false, RedirectStandardInput = false };
         foreach (var a in new[] { "-c", WatchScript, "whisperloom-watch", appPid.ToString(), childPid.ToString() }) psi.ArgumentList.Add(a);
-        return Process.Start(psi) ?? throw new InvalidOperationException("Wächter startet nicht");
+        try
+        {
+            return Process.Start(psi) ?? throw new InvalidOperationException("Wächter startet nicht");
+        }
+        catch (System.ComponentModel.Win32Exception e)
+        {
+            throw new InvalidOperationException($"Wächter startet nicht ({e.NativeErrorCode})");
+        }
     }
 
     /// <summary>Gibt Handle bzw. Wächter frei. Unter Windows beendet das Schließen des Jobs den Begleitprozess.</summary>

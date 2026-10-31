@@ -79,7 +79,18 @@ public sealed partial class WhisperServerProcess : IAsyncDisposable
         {
             throw new SidecarStartException($"whisper-server startet nicht ({e.NativeErrorCode})");
         }
-        var server = new WhisperServerProcess(process, port, model);
+        WhisperServerProcess server;
+        try
+        {
+            server = new WhisperServerProcess(process, port, model);
+        }
+        catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            // Ohne Schutz kein Begleitprozess: er würde die App überleben.
+            process.Kill();
+            process.Dispose();
+            throw new SidecarStartException($"whisper-server ohne Prozess-Schutz beendet ({e.Message})");
+        }
         process.OutputDataReceived += (_, e) => server.OnLog(e.Data);
         process.ErrorDataReceived += (_, e) => server.OnLog(e.Data);
         process.BeginOutputReadLine();

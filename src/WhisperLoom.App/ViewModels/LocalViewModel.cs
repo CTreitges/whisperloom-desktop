@@ -43,13 +43,13 @@ public sealed partial class LocalModelViewModel(OfflineModel model, LocalParts? 
                 Status = Loc.Instance["Local_Paused"];
             }
         }
-        catch (DownloadException e)
-        {
-            Status = e.Message;
-        }
         catch (OperationCanceledException)
         {
             Status = Loc.Instance["Local_Paused"];
+        }
+        catch (Exception e) when (e is DownloadException or IOException or UnauthorizedAccessException or HttpRequestException)
+        {
+            Status = e.Message;
         }
         finally
         {
@@ -65,9 +65,16 @@ public sealed partial class LocalModelViewModel(OfflineModel model, LocalParts? 
     [RelayCommand]
     public async Task Delete()
     {
-        if (parts is null) return;
+        if (parts is null || _download is not null) return; // erst anhalten, dann löschen
         await parts.Stt.StopAsync();
-        Status = parts.Stt.Models.Delete(Model) ? "" : Loc.Instance["Local_DeleteFailed"];
+        try
+        {
+            Status = parts.Stt.Models.Delete(Model) ? "" : Loc.Instance["Local_DeleteFailed"];
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            Status = Loc.Instance["Local_DeleteFailed"];
+        }
         OnPropertyChanged(nameof(Installed));
     }
 
@@ -143,13 +150,16 @@ public sealed partial class LocalViewModel : ObservableObject
     {
         if (_parts is null) return;
         var models = await OllamaLocalRefiner.ListModelsAsync(_parts.OllamaHttp, LocalParts.OllamaUrl(_s));
+        var chosen = OllamaModel ?? "";
         OllamaMissing = models is null;
         OllamaModels.Clear();
         foreach (var m in models ?? []) OllamaModels.Add(m);
+        if (chosen.Length > 0 && !OllamaModels.Contains(chosen)) OllamaModels.Add(chosen);
+        OllamaModel = chosen; // die ComboBox setzt beim Leeren null
         OllamaStatus = models is null ? Loc.Instance["Local_OllamaMissing"]
             : models.Count == 0 ? Loc.Instance["Local_OllamaEmpty"]
             : string.Format(Loc.Instance["Local_OllamaFound"], models.Count);
-        if (OllamaModel.Length == 0 && models is { Count: > 0 }) OllamaModel = models[0];
+        if (string.IsNullOrEmpty(OllamaModel) && models is { Count: > 0 }) OllamaModel = models[0];
     }
 
     /// <summary>Übernimmt die Auswahl in die Einstellungs-Kopie (vor dem Speichern).</summary>

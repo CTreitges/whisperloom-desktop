@@ -32,6 +32,13 @@ public sealed class SidecarRelease(HttpClient http, string dir)
 
     public const string MsgManifest = "Begleitprozess: Manifest des Releases passt nicht";
 
+    public const string MsgExtract = "Begleitprozess konnte nicht entpackt werden";
+
+    /// <summary>Eine Installation zur Zeit (Einstellungen und Diktat teilen sich Teildatei und Zielordner).</summary>
+    private static readonly SemaphoreSlim InstallGate = new(1, 1);
+
+    private static readonly TimeSpan MetaTimeout = TimeSpan.FromSeconds(30);
+
     public string Dir { get; } = dir;
 
     /// <summary>Für Tests: andere Release-Adresse (lokaler Fake) und andere Manifest-Prüfsumme.</summary>
@@ -60,27 +67,45 @@ public sealed class SidecarRelease(HttpClient http, string dir)
         {
             throw new DownloadException("Begleitprozess gibt es nur für x64", false);
         }
-        var archive = await ArchiveAsync(variant, ct).ConfigureAwait(false);
-        var store = new ModelStore(Dir);
-        if (!await new ModelDownloader(http).DownloadAsync(archive, store, progress, ct).ConfigureAwait(false))
+        await InstallGate.WaitAsync(ct).ConfigureAwait(false);
+        try
         {
-            throw new OperationCanceledException(ct);
+            if (File.Exists(exe)) return exe; // inzwischen von einem anderen Aufrufer installiert
+            var archive = await ArchiveAsync(variant, ct).ConfigureAwait(false);
+            var store = new ModelStore(Dir);
+            if (!await new ModelDownloader(http).DownloadAsync(archive, store, progress, ct).ConfigureAwait(false))
+            {
+                throw new OperationCanceledException(ct);
+            }
+            try
+            {
+                Extract(store.File(archive), Path.GetDirectoryName(exe)!);
+                File.Delete(store.File(archive));
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException)
+            {
+                throw new DownloadException(MsgExtract, false, DownloadException.Kinds.Storage, e);
+            }
+            if (!File.Exists(exe)) throw new DownloadException($"Archiv ohne {ExeName}", false);
+            return exe;
         }
-        Extract(store.File(archive), Path.GetDirectoryName(exe)!);
-        File.Delete(store.File(archive));
-        if (!File.Exists(exe)) throw new DownloadException($"Archiv ohne {ExeName}", false);
-        return exe;
+        finally
+        {
+            InstallGate.Release();
+        }
     }
 
     /// <summary>Archiv der Variante aus dem geprüften Manifest; die Größe kommt vom Server (HEAD).</summary>
     internal async Task<OfflineModel> ArchiveAsync(SidecarVariant variant, CancellationToken ct)
     {
         byte[] manifest;
+        using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        limit.CancelAfter(MetaTimeout);
         try
         {
-            manifest = await http.GetByteArrayAsync(BaseUrl + "sidecar-manifest.json", ct).ConfigureAwait(false);
+            manifest = await http.GetByteArrayAsync(BaseUrl + "sidecar-manifest.json", limit.Token).ConfigureAwait(false);
         }
-        catch (HttpRequestException e)
+        catch (Exception e) when (e is HttpRequestException or OperationCanceledException && !ct.IsCancellationRequested)
         {
             throw new DownloadException(ModelDownloader.MsgNet, true, DownloadException.Kinds.Network, e);
         }
@@ -95,7 +120,16 @@ public sealed class SidecarRelease(HttpClient http, string dir)
         var sha = (string)entry["sha256"]!;
         if (file.Contains('/') || file.Contains('\\')) throw new DownloadException(MsgManifest, false);
         using var head = new HttpRequestMessage(HttpMethod.Head, BaseUrl + file);
-        using var response = await http.SendAsync(head, ct).ConfigureAwait(false);
+        HttpResponseMessage response;
+        try
+        {
+            response = await http.SendAsync(head, limit.Token).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is HttpRequestException or OperationCanceledException && !ct.IsCancellationRequested)
+        {
+            throw new DownloadException(ModelDownloader.MsgNet, true, DownloadException.Kinds.Network, e);
+        }
+        using var _ = response;
         var bytes = response.Content.Headers.ContentLength ?? 0;
         if (!response.IsSuccessStatusCode || bytes <= 0) throw new DownloadException(ModelDownloader.MsgHttp((int)response.StatusCode), true, DownloadException.Kinds.Network);
         return new OfflineModel("whisper-server", "whisper-server", file, BaseUrl + file, bytes, sha);

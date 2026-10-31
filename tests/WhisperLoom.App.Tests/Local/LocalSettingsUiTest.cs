@@ -109,6 +109,32 @@ public sealed class LocalSettingsUiTest
         }
     }
 
+    /// <summary>Prüfer-Befund 5: Neuladen leert die Liste, die gebundene ComboBox setzt null — die Auswahl bleibt, kein Absturz.</summary>
+    [AvaloniaFact]
+    public async Task OllamaNeuLadenBehaeltDieAuswahlOhneOllama()
+    {
+        Loc.Instance.SetLanguage("de");
+        var listener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+        listener.Start();
+        var dead = $"http://127.0.0.1:{((System.Net.IPEndPoint)listener.LocalEndpoint).Port}";
+        listener.Stop();
+        var settings = new WhisperLoomSettings();
+        LocalSettings.Set(settings, new LocalSettings { OllamaModel = "qwen3:4b", OllamaUrl = dead });
+        using var f = new ControllerFixture(settings);
+        await using var parts = new LocalParts(new Cli.AppOptions(f.DataDir), () => f.Controller.Settings, new Services.DesktopSettings());
+        var vm = new SettingsViewModel(f.Controller, new MemorySecretStore(), new FakeAccessChecker(), local: parts);
+        var window = new SettingsWindow(vm);
+        window.Show();
+        window.GetLogicalDescendants().OfType<TabItem>().Single(t => t.Name == "TabLocal").IsSelected = true;
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+        await vm.Local.RefreshOllama();
+        Assert.True(vm.Local.OllamaMissing);
+        Assert.Equal("qwen3:4b", vm.Local.OllamaModel);
+        Assert.Contains("Ollama nicht gefunden", vm.Local.OllamaStatus, StringComparison.Ordinal);
+        window.Close();
+    }
+
     [Fact]
     public void UnbekannteWerteFallenAufStandard()
     {
