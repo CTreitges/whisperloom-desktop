@@ -11,6 +11,8 @@ Suites:
   toggle-output, language-en, proxy, history, fallback-stt, secret-store, anthropic-prompt, logs-clean, no-audio-stored.
 - ui: echte Pipeline gegen tools/fake_api.py, Ausgabe in die echte Zwischenablage — clipboard-real, unter Windows
   zusätzlich tray-visible (Symbol der App-PID beim Shell registriert).
+- input (nur Windows): echte Tastenkürzel per SendInput gegen tests/WhisperLoom.TestTarget (tools/smoke_input.py,
+  Goal-File A3.1); App mit --test-audio --hotkeys gegen tools/fake_api.py. --target <exe> statt Build des TestTargets.
 - ui / input: echte Zwischenablage bzw. Eingaben — nur mit gültigem Lock <work>/ui-smoke.lock für --id
   ({"id": "<ID>", "until": "<ISO-Zeit>"}), sonst Abbruch mit Exit 3.
 
@@ -313,6 +315,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--work-dir", type=Path)
     parser.add_argument("--data-dir", type=Path)
     parser.add_argument("--lock", type=Path)
+    parser.add_argument("--target", help="TestTarget-Exe für --suite input (sonst aus dem Repo gebaut)")
     args = parser.parse_args(argv)
     args.app = str(Path(args.app).resolve())
     work = args.work_dir or default_work_dir(args.platform)
@@ -329,9 +332,12 @@ def main(argv: list[str] | None = None) -> int:
         suite_ui(args, work, report)
     elif args.suite == "full":
         smoke_full.run(args, work, report, sys.modules[__name__])
-    else:
-        print("SMOKE input SKIP Eingaben kommen mit WLD-P3")
+    elif args.platform != "win":
+        print("SMOKE input SKIP nur Windows (Linux-Hotkeys sind Out-of-Scope)")
         return 0
+    else:
+        import smoke_input
+        smoke_input.run_suite(args, work, report, sys.modules[__name__])
     return report.finish(args.suite)
 
 

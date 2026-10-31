@@ -13,7 +13,7 @@
       <Ellipse Width="14" Height="14" Fill="{StaticResource WlRecording}" IsVisible="{Binding !Processing}" />
       <Ellipse Width="14" Height="14" Fill="{StaticResource WlAccent}" IsVisible="{Binding Processing}" />
       <ProgressBar Grid.Column="1" Margin="12,0,0,0" Minimum="0" Maximum="1" Value="{Binding Level}"
-                   Height="6" MinHeight="6" VerticalAlignment="Center"
+                   Height="6" MinHeight="6" MinWidth="0" VerticalAlignment="Center"
                    Foreground="{StaticResource WlAccent}" Background="{StaticResource WlSurfaceHigh}"
                    IsIndeterminate="{Binding Processing}" />
     </Grid>

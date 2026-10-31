@@ -79,14 +79,16 @@ internal sealed class Win32TextClipboard : IClipboardAdapter
             {
                 return;
             }
-            var all = items.Where(i => !IsPrivacyFormat(i.Format)).ToList();
+            var all = new List<(uint Format, byte[] Data)>();
             if (@private)
             {
                 // Laut Doku: ExcludeClipboardContentFromMonitorProcessing mit beliebigem Inhalt, die beiden anderen als DWORD 0.
+                // Zuerst, damit kein Beobachter den Text ohne diese Kennzeichen sieht.
                 all.Add((ExcludeFormat, new byte[4]));
                 all.Add((HistoryFormat, new byte[4]));
                 all.Add((CloudFormat, new byte[4]));
             }
+            all.AddRange(items.Where(i => !IsPrivacyFormat(i.Format)));
             foreach (var (format, data) in all)
             {
                 var handle = GlobalAlloc(GmemMoveable, (UIntPtr)Math.Max(data.Length, 1));
