@@ -1,4 +1,5 @@
 using WhisperLoom.Core.Api;
+using WhisperLoom.Core.Text;
 using WhisperLoom.Core.Tests.Support;
 
 namespace WhisperLoom.Core.Tests.Api;
@@ -82,7 +83,7 @@ public class ElevenLabsSttTest
 
     /// <summary>
     /// Kotlin kappt über <c>Vocabulary.prompt</c> (WLD-P1a). Hier der Teil, der ElevenLabs betrifft: ein am Schnitt
-    /// mit „…“ markiertes Stück kommt nicht an — mit und ohne „…“. Die Kappung selbst prüft der Skip-Fall unten.
+    /// mit „…“ markiertes Stück kommt nicht an — mit und ohne „…“. Die Kappung selbst prüft der Fall unten.
     /// </summary>
     [Fact]
     public void KappungDesVokabularsVerwirftDasAngeschnitteneStueck()
@@ -94,11 +95,21 @@ public class ElevenLabsSttTest
         Assert.DoesNotContain("Begriff Num", terms);
     }
 
-    [Fact(Skip = P1a.Reason)]
-    [Trait("Needs", "P1a")]
-    public void KappungDesVokabularsVerwirftDasAngeschnitteneStueckMitVocabulary() =>
-        // Kotlin: Vocabulary.prompt(listOf(legacy)).cut == true, letztes Stück endet auf „…“, keyterms nur ganze Begriffe.
-        throw new NotImplementedException("Vocabulary aus WLD-P1a");
+    [Fact]
+    public void KappungDesVokabularsVerwirftDasAngeschnitteneStueckMitVocabulary()
+    {
+        // Alter Freitext in einer Zeile, länger als 800 Zeichen: Vocabulary schneidet ihn am Wortende.
+        var legacy = string.Join(", ", Enumerable.Range(1, 200).Select(i => $"Begriff Nummer {i}"));
+        var prompt = Vocabulary.Prompt([legacy]);
+        Assert.True(prompt.Cut);
+        var cutPiece = prompt.Text[(prompt.Text.LastIndexOf(", ", StringComparison.Ordinal) + 2)..];
+        Assert.EndsWith("…", cutPiece, StringComparison.Ordinal);
+        var terms = ElevenLabsStt.Keyterms(prompt.Text);
+        Assert.NotEmpty(terms);
+        // Nur ganze Begriffe — das Stück am Schnitt kommt weder mit noch ohne „…“ an.
+        Assert.All(terms, t => Assert.Matches(@"^Begriff Nummer \d+$", t));
+        Assert.DoesNotContain(cutPiece[..^1], terms);
+    }
 
     [Fact]
     public void ErkannteSpracheWirdZuIso6391()

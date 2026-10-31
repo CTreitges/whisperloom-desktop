@@ -177,10 +177,15 @@ public sealed class FallbackPipelineTest : IAsyncLifetime
         Assert.Null(d.Result.Model);
     }
 
-    [Fact(Skip = P1a.Reason)]
-    [Trait("Needs", "P1a")]
-    public void ScheiternBeideKommtDerRohtextMitDenVollenRegeln() =>
-        Assert.Equal("Erster anbieter", P1a.Polisher.Polish("erster anbieter", new PolishOptions(Language: "de")));
+    [Fact]
+    public async Task ScheiternBeideKommtDerRohtextMitDenVollenRegeln()
+    {
+        LlmFallback();
+        _h.RealText = true;
+        _firstChat.Status = 500;
+        _fallbackChat.Status = 401;
+        Assert.Equal("Erster anbieter", (await Transcribe()).Text);
+    }
 
     [Fact]
     public async Task OhneFallbackKommtDerTextOhneKiWieBisher()

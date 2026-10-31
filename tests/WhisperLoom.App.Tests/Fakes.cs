@@ -1,6 +1,7 @@
 using WhisperLoom.App.Audio;
 using WhisperLoom.App.Output;
 using WhisperLoom.App.Services;
+using WhisperLoom.Core.History;
 using WhisperLoom.Core.Contracts;
 using WhisperLoom.Core.Contracts.Settings;
 using WhisperLoom.Core.Testing;
@@ -88,7 +89,7 @@ internal sealed class ControllerFixture : IDisposable
         Log = new AppLog(DataDir);
         Store = new SettingsStore(DataDir);
         var s = settings ?? new WhisperLoomSettings();
-        History = new InMemoryHistoryStore(() => s.History);
+        History = new FileHistoryStore(Path.Combine(DataDir, "history"), () => Controller!.Settings.History);
         Controller = new DictationController(Recorder, Pipeline, Sink, History, Log, s, Store.Save, () => Now);
     }
 
@@ -106,7 +107,7 @@ internal sealed class ControllerFixture : IDisposable
 
     public SettingsStore Store { get; }
 
-    public InMemoryHistoryStore History { get; }
+    public FileHistoryStore History { get; }
 
     public DictationController Controller { get; }
 

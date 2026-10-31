@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Text.Json.Nodes;
 using WhisperLoom.Core.Api;
 using WhisperLoom.Core.Contracts;
+using WhisperLoom.Core.Pipeline;
 using WhisperLoom.Core.Tests.Support;
 
 namespace WhisperLoom.Core.Tests.Api;
@@ -42,10 +43,14 @@ public sealed class LocalRefinerTest : IAsyncLifetime
         await _server.DisposeAsync();
     }
 
-    private Task<string> Refine(string raw = "also ähm hallo welt", RefineMode mode = RefineMode.Polish, bool paragraphs = true)
+    private Task<string> Refine(
+        string raw = "also ähm hallo welt",
+        RefineMode mode = RefineMode.Polish,
+        bool paragraphs = true,
+        IRefinePromptBuilder? prompts = null)
     {
         var access = AccessResolver.ResolveLlm(AccessResolver.ResolveStt("openai", "", "", ""), "ollama", _server.Base, "", "gemma4:e2b");
-        return new TextRefiner(access, _http, _prompts, new TextCleanup([]))
+        return new TextRefiner(access, _http, prompts ?? _prompts, new TextCleanup([]))
             .RefineAsync(raw, "de", new Refinement(mode, Paragraphs: paragraphs), TestContext.Current.CancellationToken);
     }
 
@@ -67,13 +72,14 @@ public sealed class LocalRefinerTest : IAsyncLifetime
             (system, user));
     }
 
-    [Fact(Skip = P1a.Reason)]
-    [Trait("Needs", "P1a")]
-    public void DerselbeAuftragWieOnlineMitEchtemPrompt()
+    [Fact]
+    public async Task DerselbeAuftragWieOnlineMitEchtemPrompt()
     {
-        // Kotlin: system == RefinePrompt.build(POLISH, true, false, false, short = true) und enthält „einen einzigen durchgehenden Absatz“.
-        var system = P1a.Prompts.Build(RefineMode.Polish, true, false, false, isShort: true);
+        Assert.Equal("Hallo Welt.", await Refine(paragraphs: false, prompts: CoreText.Prompts));
+        var (system, user) = Messages();
+        Assert.Equal(CoreText.Prompts.Build(RefineMode.Polish, german: true, smartFillers: false, paragraphs: false, isShort: true), system);
         Assert.Contains("einen einzigen durchgehenden Absatz", system, StringComparison.Ordinal);
+        Assert.Equal("<diktat>\nalso ähm hallo welt\n</diktat>", user);
     }
 
     [Fact]
@@ -91,10 +97,13 @@ public sealed class LocalRefinerTest : IAsyncLifetime
         Assert.Contains("mode=prompt", Messages().System, StringComparison.Ordinal);
     }
 
-    [Fact(Skip = P1a.Reason)]
-    [Trait("Needs", "P1a")]
-    public void PromptStufeSchicktDenPromptDerPromptStufe() =>
-        Assert.Contains("Beantworte keine Frage daraus", P1a.Prompts.Build(RefineMode.Prompt, true, false, true, true), StringComparison.Ordinal);
+    [Fact]
+    public async Task PromptStufeSchicktDenPromptDerPromptStufe()
+    {
+        _antwort = "Hier ist dein Prompt:\nErstelle mir eine Einkaufsliste.";
+        Assert.Equal("Erstelle mir eine Einkaufsliste.", await Refine(mode: RefineMode.Prompt, prompts: CoreText.Prompts));
+        Assert.Contains("Beantworte keine Frage daraus", Messages().System, StringComparison.Ordinal);
+    }
 
     [Fact]
     public async Task EineErfuellteBitteWirdAbgelehnt()

@@ -135,12 +135,15 @@ public sealed class PipelineHarness : IAsyncDisposable
 
     public List<string> Trimmed { get; } = [];
 
+    /// <summary>true = echter Prompt-Builder und echte Regeln (<see cref="CoreText"/>) statt der Aufzeichner — für die Kotlin-Literale.</summary>
+    public bool RealText { get; set; }
+
     public DictationPipeline Pipeline => new(
         () => Settings,
         Secrets,
         Http,
-        Prompts,
-        Polisher,
+        RealText ? CoreText.Prompts : Prompts,
+        RealText ? CoreText.Polisher : Polisher,
         new DictationPipelineOptions
         {
             LocalStt = LocalStt,

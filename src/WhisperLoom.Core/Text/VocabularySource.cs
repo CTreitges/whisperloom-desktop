@@ -1,4 +1,5 @@
 using System.Text;
+using WhisperLoom.Core.Contracts.Settings;
 
 namespace WhisperLoom.Core.Text;
 
@@ -14,6 +15,10 @@ public static class VocabularySource
 
     // Doku: https://learn.microsoft.com/dotnet/api/system.text.codepagesencodingprovider (abgerufen 2026-10-30)
     private static readonly Encoding Windows1252 = CodePagesEncodingProvider.Instance.GetEncoding(1252)!;
+
+    /// <summary>Was an den Erkenner geht: eigene Einträge plus Datei-Begriffe (eine unlesbare Datei zählt als leer).</summary>
+    public static VocabularyPrompt Prompt(SttSettings stt) =>
+        Vocabulary.Prompt(Vocabulary.Entries(stt.Vocabulary), FileTerms(stt.VocabularyFile) ?? []);
 
     /// <summary>Begriffe der Datei; leer ohne Datei (leerer Pfad), null wenn sie nicht lesbar ist.</summary>
     public static IReadOnlyList<string>? FileTerms(string path)

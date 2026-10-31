@@ -43,9 +43,17 @@ public sealed class SettingsStore
 
     public string FilePath { get; }
 
+    /// <summary>
+    /// Ohne gewählte Erkennung gilt „online“: der Desktop hat keinen Einrichtungs-Bildschirm wie Android, und die lokale
+    /// Erkennung kommt erst mit Phase 4. Sonst bliebe jedes Diktat bei „nicht eingerichtet“ stehen.
+    /// </summary>
     /// <exception cref="JsonException">Datei ist kein gültiges JSON.</exception>
-    public WhisperLoomSettings Load() =>
-        File.Exists(FilePath) ? SettingsJson.Deserialize(File.ReadAllText(FilePath)) : new WhisperLoomSettings();
+    public WhisperLoomSettings Load()
+    {
+        var settings = File.Exists(FilePath) ? SettingsJson.Deserialize(File.ReadAllText(FilePath)) : new WhisperLoomSettings();
+        settings.Engine ??= "online";
+        return settings;
+    }
 
     public void Save(WhisperLoomSettings settings)
     {

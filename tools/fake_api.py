@@ -1,8 +1,11 @@
 """Lokale Fake-Anbieter für Tests und Smokes — nie echte Anbieter.
 
 - OpenAI-kompatibel: POST /v1/audio/transcriptions (multipart), POST /v1/chat/completions, GET /v1/models
-- Anthropic-kompatibel: POST /anthropic/v1/messages, GET /anthropic/v1/models
-- Proxy-Fake (zweiter Port): leitet Anfragen in absoluter Form (http://…) weiter und markiert sie
+- Anthropic-kompatibel: POST /anthropic/v1/chat/completions (OpenAI-Kompatibilität, so ruft die App Anthropic),
+  POST /anthropic/v1/messages, GET /anthropic/v1/models
+- Proxy-Fake (zweiter Port): leitet Anfragen in absoluter Form (http://…) weiter und markiert sie. Hosts auf
+  ".invalid" (z. B. http://fake-api.invalid:<port>) gehen an 127.0.0.1 — so erreicht die App die Fake-API nur über
+  den Proxy (Loopback-Ziele umgehen jeden Proxy).
 - Steuerung: POST /_control {"fail": {"<pfad>": {"status": 500, "count": 1}}, "stt_text": "…"}
   GET /_requests → aufgezeichnete Anfragen (nur Metadaten: Pfad, Felder language/model, Prompt-Anfang,
   ob ein Key kam, ob über den Proxy) · POST /_reset
@@ -17,10 +20,13 @@ import json
 import re
 import sys
 import threading
+import urllib.error
+import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 DEFAULT_STT_TEXT = "This is a fake transcript."
+FAKE_HOST_SUFFIX = ".invalid"
 
 
 class State:
@@ -137,13 +143,13 @@ def make_handler(state: State):
                 user = next((m.get("content", "") for m in messages if m.get("role") == "user"), "")
                 if isinstance(user, list):
                     user = " ".join(p.get("text", "") for p in user if isinstance(p, dict))
-                entry.update({"model": payload.get("model"), "system_start": str(system)[:80]})
+                entry.update({"model": payload.get("model"), "system_start": str(system)[:80], "user_start": str(user)[:40]})
                 state.record(entry)
                 if failure:
                     self._send(failure, {"error": {"message": "fake failure"}})
                     return
                 text = f"[fake-llm] {user}"
-                if path == "/anthropic/v1/messages":
+                if path.endswith("/messages"):
                     self._send(200, {"content": [{"type": "text", "text": text}], "stop_reason": "end_turn"})
                 else:
                     self._send(200, {"choices": [{"message": {"role": "assistant", "content": text}, "finish_reason": "stop"}]})
@@ -152,6 +158,14 @@ def make_handler(state: State):
             self._send(404, {"error": "not found"})
 
     return Handler
+
+
+def target(url: str) -> str:
+    """Wohin der Proxy weiterleitet: Hosts auf ".invalid" an 127.0.0.1 (gleicher Port), alles andere unverändert."""
+    parts = urllib.parse.urlsplit(url)
+    if not (parts.hostname or "").endswith(FAKE_HOST_SUFFIX):
+        return url
+    return urllib.parse.urlunsplit(parts._replace(netloc=f"127.0.0.1:{parts.port or 80}"))
 
 
 def make_proxy_handler(state: State):
@@ -170,7 +184,7 @@ def make_proxy_handler(state: State):
             headers = {k: v for k, v in self.headers.items() if k.lower() not in ("proxy-connection", "connection", "host")}
             headers["X-Fake-Proxy"] = "1"
             state.record({"method": self.command, "path": "proxy:" + self.path.split("?")[0], "has_key": False, "via_proxy": True})
-            request = urllib.request.Request(self.path, data=body, headers=headers, method=self.command)
+            request = urllib.request.Request(target(self.path), data=body, headers=headers, method=self.command)
             opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
             try:
                 with opener.open(request, timeout=30) as response:
@@ -189,11 +203,19 @@ def make_proxy_handler(state: State):
     return Proxy
 
 
+class QuietServer(ThreadingHTTPServer):
+    """Ohne Traceback, wenn ein Client die Verbindung schließt (die App verwirft Verbindungen aus ihrem Pool)."""
+
+    def handle_error(self, request, client_address) -> None:
+        if not isinstance(sys.exc_info()[1], ConnectionError):
+            super().handle_error(request, client_address)
+
+
 def serve(port: int = 0, proxy_port: int = 0) -> tuple[ThreadingHTTPServer, ThreadingHTTPServer, State]:
     """Startet API und Proxy in Hintergrund-Threads (für Tests)."""
     state = State()
-    api = ThreadingHTTPServer(("127.0.0.1", port), make_handler(state))
-    proxy = ThreadingHTTPServer(("127.0.0.1", proxy_port), make_proxy_handler(state))
+    api = QuietServer(("127.0.0.1", port), make_handler(state))
+    proxy = QuietServer(("127.0.0.1", proxy_port), make_proxy_handler(state))
     for server in (api, proxy):
         threading.Thread(target=server.serve_forever, daemon=True).start()
     return api, proxy, state

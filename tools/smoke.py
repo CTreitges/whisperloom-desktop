@@ -4,10 +4,13 @@ Aufruf: py -3 -X utf8 tools/smoke.py --platform win|linux --suite shell|full|ui|
 Je Prüfung eine Zeile "SMOKE <name> OK" bzw. "SMOKE <name> FAIL <grund>", am Ende "SMOKE SUITE <suite> OK|FAIL n/m".
 
 Suites:
-- shell: App gegen die eingebaute Fake-Pipeline — ipc-toggle, single-instance, status-json, secret-store,
-  no-audio-stored, logs-clean, history, test-audio. Ausgabe-Senke --output-file, eigener Datenordner,
+- shell: App-Hülle gegen tools/fake_api.py (direkt, ohne Proxy) — ipc-toggle, single-instance, status-json,
+  secret-store, no-audio-stored, logs-clean, history, test-audio. Ausgabe-Senke --output-file, eigener Datenordner,
   Key-Präfix WhisperLoom-Test-<ID>: (Testeinträge werden gelöscht). Keine echte Eingabe, keine Zwischenablage.
-- full: echte Pipeline gegen tools/fake_api.py (ab WLD-INT): toggle-output, language-en, fallback-stt, proxy.
+- full: echte Pipeline gegen tools/fake_api.py über den Fake-Proxy (Goal-File A2.2, tools/smoke_full.py):
+  toggle-output, language-en, proxy, history, fallback-stt, secret-store, anthropic-prompt, logs-clean, no-audio-stored.
+- ui: echte Pipeline gegen tools/fake_api.py, Ausgabe in die echte Zwischenablage — clipboard-real, unter Windows
+  zusätzlich tray-visible (Symbol der App-PID beim Shell registriert).
 - ui / input: echte Zwischenablage bzw. Eingaben — nur mit gültigem Lock <work>/ui-smoke.lock für --id
   ({"id": "<ID>", "until": "<ISO-Zeit>"}), sonst Abbruch mit Exit 3.
 
@@ -31,6 +34,7 @@ import wave
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import smoke_full  # noqa: E402
 import smoke_platform as plat  # noqa: E402
 
 AUDIO_EXT = (".wav", ".pcm", ".opus")
@@ -177,13 +181,18 @@ def fresh_dir(path: Path) -> None:
 
 
 def suite_shell(args, work: Path, report: Report) -> None:
+    with smoke_full.FakeApi() as fake:
+        shell_checks(args, work, report, fake)
+
+
+def shell_checks(args, work: Path, report: Report, fake: smoke_full.FakeApi) -> None:
     data = args.data_dir or work / args.id / "smoke-data"
     fresh_dir(data)
     wav = work / args.id / "smoke-test.wav"
     out = work / args.id / "smoke-output.txt"
     write_test_wav(wav)
     out.unlink(missing_ok=True)
-    (data / "settings.json").write_text(json.dumps({"language": "en", "refine": {"stage": "prompt", "promptEnabled": True}}), encoding="utf-8")
+    (data / "settings.json").write_text(json.dumps(smoke_full.fake_settings(fake, via_proxy=False)), encoding="utf-8")
     prefix = f"WhisperLoom-Test-{args.id}:"
     since = time.time() - 1
     run = AppRun(args.app, data, prefix, ["--test-audio", str(wav), "--output-file", str(out)])
@@ -257,21 +266,42 @@ def check_secret_store(platform: str, run: AppRun, data: Path, prefix: str) -> t
 
 
 def suite_ui(args, work: Path, report: Report) -> None:
+    with smoke_full.FakeApi() as fake:
+        ui_checks(args, work, report, fake)
+
+
+def wait_for(probe, seconds: float, step: float = 0.3):
+    """Ruft probe() bis zu <seconds> lang auf, bis es etwas liefert; sonst das letzte Ergebnis (None/False)."""
+    deadline = time.time() + seconds
+    while True:
+        value = probe()
+        if value or time.time() >= deadline:
+            return value
+        time.sleep(step)
+
+
+def ui_checks(args, work: Path, report: Report, fake: smoke_full.FakeApi) -> None:
+    """Echte Pipeline gegen die Fake-API (direkt), Ausgabe in die echte Zwischenablage; Windows zusätzlich das Tray-Symbol."""
     data = args.data_dir or work / args.id / "smoke-data-ui"
     fresh_dir(data)
     wav = work / args.id / "smoke-test.wav"
     write_test_wav(wav)
-    run = AppRun(args.app, data, f"WhisperLoom-Test-{args.id}:", ["--test-audio", str(wav)])
+    (data / "settings.json").write_text(json.dumps(smoke_full.fake_settings(fake, via_proxy=False)), encoding="utf-8")
+    prefix = f"WhisperLoom-Test-{args.id}:"
+    run = AppRun(args.app, data, prefix, ["--test-audio", str(wav)])
     try:
         run.start()
-        run.cli("toggle")
-        time.sleep(0.5)
-        run.cli("toggle")
-        s = run.status() or {}
+        if args.platform == "win":
+            where = wait_for(lambda: plat.tray_icon(run.proc.pid), 10)
+            report.check("tray-visible", where, f"kein Tray-Symbol der PID {run.proc.pid} beim Shell registriert")
+        s = smoke_full.dictate(run)
+        result = str(s.get("lastResult") or "")
         clip = plat.read_clipboard(args.platform)
-        report.check("clipboard-real", clip is not None and clip == s.get("lastResult"), f"clip={clip!r:.40}")
+        report.check("clipboard-real", result.startswith("[fake-llm]") and clip == result,
+                     f"clip={clip!r:.40} result={result!r:.40} error={s.get('lastError')}")
     finally:
         run.stop()
+        plat.cleanup_secrets(args.platform, prefix, data)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -298,8 +328,7 @@ def main(argv: list[str] | None = None) -> int:
     elif args.suite == "ui":
         suite_ui(args, work, report)
     elif args.suite == "full":
-        import smoke_full  # noqa: PLC0415 — erst ab WLD-INT sinnvoll
-        smoke_full.run(args, work, report, AppRun, fresh_dir, write_test_wav)
+        smoke_full.run(args, work, report, sys.modules[__name__])
     else:
         print("SMOKE input SKIP Eingaben kommen mit WLD-P3")
         return 0

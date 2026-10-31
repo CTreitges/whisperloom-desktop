@@ -126,6 +126,21 @@ class FakeApiTest(unittest.TestCase):
         self.assertTrue(any(r["path"].startswith("proxy:") for r in reqs))
         self.assertTrue(any(r["path"] == "/v1/chat/completions" and r["via_proxy"] for r in reqs))
 
+    def test_proxy_sends_invalid_hosts_to_the_fake(self):
+        port = self.api.server_address[1]
+        self.assertEqual(fake_api.target(f"http://fake-api.invalid:{port}/v1/x?a=1"), f"http://127.0.0.1:{port}/v1/x?a=1")
+        self.assertEqual(fake_api.target("http://example.org/v1/x"), "http://example.org/v1/x")
+        via = urllib.request.build_opener(urllib.request.ProxyHandler({"http": f"http://127.0.0.1:{self.proxy.server_address[1]}"}))
+        req = urllib.request.Request(f"http://fake-api.invalid:{port}/anthropic/v1/chat/completions", method="POST",
+                                     data=json.dumps({"model": "claude-x", "messages": [{"role": "user", "content": "<dictation>\nhi\n</dictation>"}]}).encode(),
+                                     headers={"Content-Type": "application/json", "Authorization": "Bearer test-key-not-real-1"})
+        with via.open(req, timeout=10) as r:
+            self.assertEqual(json.loads(r.read())["choices"][0]["message"]["content"], "[fake-llm] <dictation>\nhi\n</dictation>")
+        last = self.requests()[-1]
+        self.assertEqual((last["path"], last["via_proxy"], last["has_key"], last["model"]),
+                         ("/anthropic/v1/chat/completions", True, True, "claude-x"))
+        self.assertEqual(last["user_start"], "<dictation>\nhi\n</dictation>")
+
 
 class SmokeGuardTest(unittest.TestCase):
     def lock(self, d: Path, data) -> Path:
