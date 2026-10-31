@@ -34,7 +34,7 @@ internal static class Program
 internal sealed class TargetForm : Form
 {
     private readonly string _outPath;
-    private readonly TextBox _box = new() { Multiline = true, AcceptsReturn = false, Dock = DockStyle.Fill, Font = new Font("Segoe UI", 14) };
+    private readonly TextBox _box = new() { Multiline = true, AcceptsReturn = true, Dock = DockStyle.Fill, Font = new Font("Segoe UI", 14) };
     private int _enter;
     private int _backspace;
 
