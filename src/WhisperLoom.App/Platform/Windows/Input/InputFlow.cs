@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Text.Json.Nodes;
 using WhisperLoom.App.Localization;
 using WhisperLoom.App.Platform.Windows.Overlay;
@@ -61,6 +62,7 @@ public sealed class InputFlow
         _foreground = foreground;
         _overlayKeys = overlayKeys;
         Overlay = new OverlayViewModel(PauseResume, Discard, enter => _ = SendAsync(enter));
+        controller.PropertyChanged += OnControllerChanged;
         sink.Inserted += outcome =>
         {
             if (outcome.IsFallback())
@@ -88,20 +90,21 @@ public sealed class InputFlow
                 }
                 break;
             case HotkeyAction.HoldEnd when _mode == Mode.Hold:
+                // Modus zuerst zurück: das Ende kommt von uns, nicht von außen (OnControllerChanged).
+                _mode = Mode.None;
                 _ui.SetPill(0, processing: true);
                 var result = await _controller.StopAsync();
                 _ui.HidePill();
-                _mode = Mode.None;
                 if (result == "error")
                 {
                     Toast(_controller.LastErrorKey ?? "Overlay_Error");
                 }
                 break;
             case HotkeyAction.HoldCancel when _mode == Mode.Hold:
+                _mode = Mode.None;
                 _controller.Cancel();
                 _sink.Disarm();
                 _ui.HidePill();
-                _mode = Mode.None;
                 break;
             case HotkeyAction.Toggle when _mode == Mode.Toggle && _controller.IsRecording:
                 await SendAsync(false);
@@ -173,11 +176,11 @@ public sealed class InputFlow
         {
             return;
         }
+        _mode = Mode.None;
         _overlayKeys(false);
         _sink.SetPressEnter(pressEnter);
         Overlay.State = OverlayState.Processing;
         var result = await _controller.StopAsync();
-        _mode = Mode.None;
         if (result == "error")
         {
             Overlay.ErrorKey = _controller.LastErrorKey;
@@ -198,11 +201,37 @@ public sealed class InputFlow
         {
             return;
         }
+        _mode = Mode.None;
         _overlayKeys(false);
         _controller.Cancel();
         _sink.Disarm();
         _ui.HideOverlay();
+    }
+
+    /// <summary>
+    /// Aufnahme endet von außen (Tray „Stopp“, CLI/IPC toggle/stop/cancel): Overlay-Tasten sofort freigeben, Overlay bzw.
+    /// Pille schließen und nichts ins gemerkte Ziel einfügen — das Ergebnis geht wie bei Tray/CLI in die Zwischenablage.
+    /// Eigene Enden setzen <see cref="_mode"/> vorher zurück und landen nicht hier.
+    /// </summary>
+    private void OnControllerChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(DictationController.State) || _mode == Mode.None
+            || _controller.State is DictationState.Recording or DictationState.Paused)
+        {
+            return;
+        }
+        var mode = _mode;
         _mode = Mode.None;
+        _overlayKeys(false);
+        _sink.Disarm();
+        if (mode == Mode.Toggle)
+        {
+            _ui.HideOverlay();
+        }
+        else
+        {
+            _ui.HidePill();
+        }
     }
 
     private void PauseResume()

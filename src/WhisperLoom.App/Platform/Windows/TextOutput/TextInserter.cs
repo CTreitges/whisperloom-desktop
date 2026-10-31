@@ -99,7 +99,7 @@ public sealed class TextInserter(IClipboardAdapter clipboard, IKeySender keys, I
             {
                 return Fallback(text, InsertOutcome.InputRejected);
             }
-            if (pressEnter)
+            if (pressEnter && windows.Foreground() == target)
             {
                 keys.SendEnter();
             }
@@ -107,29 +107,46 @@ public sealed class TextInserter(IClipboardAdapter clipboard, IKeySender keys, I
         }
 
         var snapshot = clipboard.Save();
-        clipboard.SetText(text, @private: true);
-        var ours = clipboard.SequenceNumber;
-        if (!keys.SendCtrlV())
+        // Wiederherstellen in jedem Fall (auch wenn Setzen scheitert oder abgebrochen wird) — außer der Text soll bewusst
+        // in der Zwischenablage bleiben (abgewiesene Eingabe) oder jemand anderes hat inzwischen kopiert.
+        var restore = true;
+        try
         {
-            return Fallback(text, InsertOutcome.InputRejected);
-        }
-        await Task.Delay(pasteDelay ?? DefaultPasteDelay, ct).ConfigureAwait(false);
-        if (pressEnter)
-        {
-            keys.SendEnter();
-        }
-        if (clipboard.SequenceNumber == ours)
-        {
-            try
+            clipboard.SetText(text, @private: true);
+            var ours = clipboard.SequenceNumber;
+            if (!keys.SendCtrlV())
             {
-                clipboard.Restore(snapshot);
+                restore = false;
+                return Fallback(text, InsertOutcome.InputRejected);
             }
-            catch (IOException)
+            await Task.Delay(pasteDelay ?? DefaultPasteDelay, ct).ConfigureAwait(false);
+            // Enter nur ins Ziel: hat der Nutzer inzwischen das Fenster gewechselt, träfe es (z. B. als Absenden) ein anderes.
+            if (pressEnter && windows.Foreground() == target)
             {
-                // Belegt: dann bleibt das Diktat in der Zwischenablage; der Text ist eingefügt.
+                keys.SendEnter();
+            }
+            restore = clipboard.SequenceNumber == ours;
+            return InsertOutcome.Pasted;
+        }
+        finally
+        {
+            if (restore)
+            {
+                Restore(snapshot);
             }
         }
-        return InsertOutcome.Pasted;
+    }
+
+    private void Restore(ClipboardSnapshot snapshot)
+    {
+        try
+        {
+            clipboard.Restore(snapshot);
+        }
+        catch (IOException)
+        {
+            // Belegt: dann bleibt das Diktat in der Zwischenablage.
+        }
     }
 
     private InsertOutcome Fallback(string text, InsertOutcome outcome)

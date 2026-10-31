@@ -19,6 +19,9 @@ internal sealed class FakeClipboard(Steps steps) : IClipboardAdapter
     /// <summary>Simuliert ein anderes Programm, das während des Einfügens kopiert.</summary>
     public bool ChangedByOthers { get; set; }
 
+    /// <summary>Privates Setzen scheitert nach dem Leeren (Zwischenablage belegt).</summary>
+    public bool FailPrivateSet { get; set; }
+
     public ClipboardSnapshot Save()
     {
         steps.Add("save");
@@ -28,6 +31,11 @@ internal sealed class FakeClipboard(Steps steps) : IClipboardAdapter
     public void SetText(string text, bool @private)
     {
         steps.Add(@private ? "set-private" : "set");
+        if (@private && FailPrivateSet)
+        {
+            Text = null;
+            throw new IOException("belegt");
+        }
         Text = text;
         Private = @private;
         SequenceNumber++;
@@ -59,6 +67,9 @@ internal sealed class FakeKeys(Steps steps, FakeClipboard clipboard) : IKeySende
 
     public int Enters { get; private set; }
 
+    /// <summary>Läuft nach Strg+V (z. B. der Nutzer wechselt das Fenster).</summary>
+    public Action? AfterPaste { get; set; }
+
     public Task WaitForModifiersReleasedAsync(TimeSpan max, CancellationToken ct)
     {
         steps.Add("wait-modifiers");
@@ -74,6 +85,7 @@ internal sealed class FakeKeys(Steps steps, FakeClipboard clipboard) : IKeySende
         }
         Target += clipboard.Text;
         clipboard.OnPaste();
+        AfterPaste?.Invoke();
         return true;
     }
 
@@ -92,6 +104,7 @@ internal sealed class FakeKeys(Steps steps, FakeClipboard clipboard) : IKeySende
             return false;
         }
         Target += text;
+        AfterPaste?.Invoke();
         return true;
     }
 }

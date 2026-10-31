@@ -37,6 +37,44 @@ public class TextInserterTest
     }
 
     [Fact]
+    public async Task Enter_is_not_sent_when_the_user_switched_windows_after_the_paste()
+    {
+        _rig.Windows.Alive.Add(7);
+        _rig.Keys.AfterPaste = () => _rig.Windows.Current = 7;
+        Assert.Equal(InsertOutcome.Pasted, await Insert(enter: true));
+        Assert.Equal(0, _rig.Keys.Enters);
+        Assert.Contains("restore", _rig.Steps);
+    }
+
+    [Fact]
+    public async Task Enter_after_typing_also_needs_the_target_in_front()
+    {
+        _rig.Windows.Alive.Add(7);
+        _rig.Keys.AfterPaste = () => _rig.Windows.Current = 7;
+        Assert.Equal(InsertOutcome.Typed, await Insert("x", InsertMode.Type, enter: true));
+        Assert.Equal(0, _rig.Keys.Enters);
+    }
+
+    [Fact]
+    public async Task Clipboard_is_restored_when_setting_the_private_text_fails()
+    {
+        _rig.Clipboard.FailPrivateSet = true;
+        await Assert.ThrowsAsync<IOException>(() => Insert());
+        Assert.Equal(["wait-modifiers", "activate", "save", "set-private", "restore"], _rig.Steps);
+        Assert.Equal("alt", _rig.Clipboard.Text);
+    }
+
+    [Fact]
+    public async Task Clipboard_is_restored_when_cancelled_after_the_paste()
+    {
+        using var cts = new CancellationTokenSource();
+        _rig.Keys.AfterPaste = cts.Cancel;
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => _rig.Inserter.InsertAsync(42, "Hallo", InsertMode.Paste, true, cts.Token));
+        Assert.Equal("alt", _rig.Clipboard.Text);
+        Assert.Equal(0, _rig.Keys.Enters);
+    }
+
+    [Fact]
     public async Task Restore_is_skipped_when_someone_else_copied_meanwhile()
     {
         _rig.Clipboard.ChangedByOthers = true;

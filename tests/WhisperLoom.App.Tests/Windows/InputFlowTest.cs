@@ -18,18 +18,21 @@ public sealed class InputFlowTest : IDisposable
     private readonly ControllerFixture _f;
     private readonly InputFlow _flow;
     private readonly List<bool> _overlayKeys = [];
+    private readonly CaptureSink _inner = new();
 
     public InputFlowTest()
     {
         // Keine Sprachumschaltung hier: Loc ist global, die UI-Tests schalten sie auf dem UI-Thread.
         var settings = new WhisperLoomSettings { Refine = new RefineSettings { Stage = "off" } };
-        Sink = new InsertOutputSink(new CaptureSink(), _rig.Inserter, () => InsertMode.Paste);
+        Sink = new InsertOutputSink(_inner, _rig.Inserter, () => InsertMode.Paste);
         _f = new ControllerFixture(settings, Sink);
         _f.Pipeline.RawText = "Hallo Welt";
         _flow = new InputFlow(_f.Controller, Sink, _ui, () => _rig.Windows.Current, _overlayKeys.Add);
     }
 
     private InsertOutputSink Sink { get; }
+
+    private List<string> InnerWritten => _inner.Written;
 
     public void Dispose() => _f.Dispose();
 
@@ -105,6 +108,48 @@ public sealed class InputFlowTest : IDisposable
         await WaitFor(() => _f.Controller.State == DictationState.Idle && !_ui.Overlay);
         Assert.Equal(1, _rig.Keys.Enters);
         Assert.False(_ui.Overlay);
+    }
+
+    [AvaloniaFact]
+    public async Task Stop_from_tray_or_cli_frees_overlay_keys_and_goes_to_the_clipboard_path()
+    {
+        await _flow.HandleAsync(HotkeyAction.Toggle);
+        Assert.Equal([true], _overlayKeys);
+        // Tray „Stopp“ bzw. IPC stop/toggle beendet die Aufnahme an der Overlay-Logik vorbei.
+        await _f.Controller.StopAsync();
+        Assert.Equal([true, false], _overlayKeys);
+        Assert.False(_ui.Overlay);
+        Assert.Equal("none", _flow.ModeName);
+        Assert.Equal("", _rig.Keys.Target);
+        Assert.Equal([_f.Controller.LastResult], InnerWritten);
+        // Overlay-Tasten danach wirkungslos, neues Umschalten geht wieder.
+        await _flow.HandleAsync(HotkeyAction.OverlaySend);
+        await _flow.HandleAsync(HotkeyAction.Toggle);
+        Assert.True(_ui.Overlay);
+        Assert.Equal([true, false, true], _overlayKeys);
+    }
+
+    [AvaloniaFact]
+    public async Task Cancel_from_cli_frees_overlay_keys_and_disarms()
+    {
+        await _flow.HandleAsync(HotkeyAction.Toggle);
+        _f.Controller.Cancel();
+        Assert.Equal([true, false], _overlayKeys);
+        Assert.False(_ui.Overlay);
+        _f.Controller.Start();
+        await _f.Controller.StopAsync();
+        Assert.Empty(_rig.Steps);
+    }
+
+    [AvaloniaFact]
+    public async Task Hold_stopped_from_outside_hides_the_pill()
+    {
+        await _flow.HandleAsync(HotkeyAction.HoldStart);
+        _f.Controller.Cancel();
+        Assert.False(_ui.Pill);
+        Assert.Equal("none", _flow.ModeName);
+        await _flow.HandleAsync(HotkeyAction.HoldEnd);
+        Assert.Equal(0, _f.Pipeline.Runs);
     }
 
     [AvaloniaFact]

@@ -92,12 +92,25 @@ internal sealed class Win32TextClipboard : IClipboardAdapter
             foreach (var (format, data) in all)
             {
                 var handle = GlobalAlloc(GmemMoveable, (UIntPtr)Math.Max(data.Length, 1));
+                if (handle == IntPtr.Zero)
+                {
+                    throw ClipboardBusyException.FromLastError("kein Speicher");
+                }
                 var target = GlobalLock(handle);
+                if (target == IntPtr.Zero)
+                {
+                    var error = ClipboardBusyException.FromLastError("Speicher nicht sperrbar");
+                    GlobalFree(handle);
+                    throw error;
+                }
                 Marshal.Copy(data, 0, target, data.Length);
                 GlobalUnlock(handle);
+                // Nach Erfolg gehört der Speicher dem System; sonst selbst freigeben.
                 if (SetClipboardData(format, handle) == IntPtr.Zero)
                 {
-                    throw ClipboardBusyException.FromLastError("Schreiben fehlgeschlagen");
+                    var error = ClipboardBusyException.FromLastError("Schreiben fehlgeschlagen");
+                    GlobalFree(handle);
+                    throw error;
                 }
             }
         }
@@ -162,5 +175,8 @@ internal sealed class Win32TextClipboard : IClipboardAdapter
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern UIntPtr GlobalSize(IntPtr handle);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern IntPtr GlobalFree(IntPtr handle);
 #pragma warning restore SYSLIB1054
 }
