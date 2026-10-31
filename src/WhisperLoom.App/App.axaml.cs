@@ -149,6 +149,13 @@ public partial class App : Application
                     var vm = new SettingsViewModel(host.Controller, host.Secrets, new HttpAccessChecker(() => HttpClients.Create(SettingsStore.Desktop(host.Controller.Settings))), Microphones(host), host.Local, RecordHotkey);
                     _settingsWindow = new SettingsWindow(vm);
                     _settingsWindow.Closed += (_, _) => _settingsWindow = null;
+                    // Nach einem Import ist die Kopie des Fensters veraltet: neu öffnen statt sie später zurückzuspeichern.
+                    vm.Sync.Applied += () => Dispatcher.UIThread.Post(() =>
+                    {
+                        _settingsWindow?.Close();
+                        _settingsWindow = null;
+                        Open("settings");
+                    });
                     _ = vm.LoadKeysAsync();
                     _ = vm.Local.RefreshOllamaCommand.ExecuteAsync(null);
                 }

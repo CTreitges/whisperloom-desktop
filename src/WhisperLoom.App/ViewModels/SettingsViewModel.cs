@@ -4,6 +4,7 @@ using WhisperLoom.App.Localization;
 using WhisperLoom.App.Services;
 using WhisperLoom.Core.Contracts;
 using WhisperLoom.Core.Contracts.Settings;
+using WhisperLoom.Core.Settings;
 
 namespace WhisperLoom.App.ViewModels;
 
@@ -34,12 +35,18 @@ public sealed partial class SettingsViewModel : ObservableObject
         _controller = controller;
         _s = SettingsJson.Deserialize(SettingsJson.Serialize(controller.Settings));
         _desktop = SettingsStore.Desktop(_s);
+        _policy = controller.Policy;
+        Editable = new LockMap(_policy);
+        Sync = new SyncViewModel(controller);
         SecretStoreKind = secrets.Kind;
         var loc = Loc.Instance;
 
-        SttProviders = [.. ProviderChoice.All.Where(p => p.Stt).Select(p => new Choice(p.Id, p.Name))];
-        LlmProviders = [new Choice(LlmSettings.Same, loc["Settings_LlmSame"]), .. ProviderChoice.All.Where(p => p.Llm).Select(p => new Choice(p.Id, p.Name))];
-        LlmFallbackProviders = [.. ProviderChoice.All.Where(p => p.Llm).Select(p => new Choice(p.Id, p.Name))];
+        // Von IT nicht freigegebene Anbieter erscheinen nicht; der aktuelle bleibt sichtbar, sonst wechselte er still.
+        var used = new[] { _s.Stt.ProviderId, _s.SttFallback.ProviderId, _s.Llm.ProviderId, _s.LlmFallback.ProviderId };
+        var offered = ProviderChoice.All.Where(p => _policy.IsProviderAllowed(p.Id) || used.Contains(p.Id)).ToList();
+        SttProviders = [.. offered.Where(p => p.Stt).Select(p => new Choice(p.Id, p.Name))];
+        LlmProviders = [new Choice(LlmSettings.Same, loc["Settings_LlmSame"]), .. offered.Where(p => p.Llm).Select(p => new Choice(p.Id, p.Name))];
+        LlmFallbackProviders = [.. offered.Where(p => p.Llm).Select(p => new Choice(p.Id, p.Name))];
         Languages = [.. RecognitionLanguages.Select(l => new Choice(l, l == "auto" ? loc["Language_auto"] : l.ToUpperInvariant()))];
         Stages = [.. RefineModes.SettingsFor(true).Select(m => new Choice(m.Key(), loc["Stage_" + m.Key()]))];
         ProxyModes = [.. new[] { "system", "off", "manual" }.Select(m => new Choice(m, loc["Proxy_" + m]))];
@@ -63,12 +70,24 @@ public sealed partial class SettingsViewModel : ObservableObject
         _insertMode = Pick(InsertModes, _desktop.InsertMode);
         _historySize = HistorySizes.Contains(_s.History.Size) ? _s.History.Size : HistorySettings.DefaultSize;
 
-        SttKey = new KeyFieldViewModel(SecretNames.Stt, secrets, checker, () => (SttProvider.Value, SttBaseUrl));
-        SttFallbackKey = new KeyFieldViewModel(SecretNames.SttFallback, secrets, checker, () => (SttFallbackProvider.Value, SttFallbackBaseUrl));
-        LlmKey = new KeyFieldViewModel(SecretNames.Llm, secrets, checker, () => (LlmProvider.Value == LlmSettings.Same ? SttProvider.Value : LlmProvider.Value, LlmBaseUrl));
-        LlmFallbackKey = new KeyFieldViewModel(SecretNames.LlmFallback, secrets, checker, () => (LlmFallbackProvider.Value, LlmFallbackBaseUrl));
+        SttKey = new KeyFieldViewModel(SecretNames.Stt, secrets, checker, () => (SttProvider.Value, SttBaseUrl)) { Editable = KeyEditable(SecretNames.Stt) };
+        SttFallbackKey = new KeyFieldViewModel(SecretNames.SttFallback, secrets, checker, () => (SttFallbackProvider.Value, SttFallbackBaseUrl)) { Editable = KeyEditable(SecretNames.SttFallback) };
+        LlmKey = new KeyFieldViewModel(SecretNames.Llm, secrets, checker, () => (LlmProvider.Value == LlmSettings.Same ? SttProvider.Value : LlmProvider.Value, LlmBaseUrl)) { Editable = KeyEditable(SecretNames.Llm) };
+        LlmFallbackKey = new KeyFieldViewModel(SecretNames.LlmFallback, secrets, checker, () => (LlmFallbackProvider.Value, LlmFallbackBaseUrl)) { Editable = KeyEditable(SecretNames.LlmFallback) };
         Local = new LocalViewModel(_s, local);
     }
+
+    private readonly PolicySettings _policy;
+
+    /// <summary>Welche Felder änderbar sind; gesperrte (von IT festgelegte) sind ausgegraut.</summary>
+    public LockMap Editable { get; }
+
+    /// <summary>Hinweis „von IT festgelegt“ zeigen.</summary>
+    public bool HasPolicy => _policy.IsActive;
+
+    public SyncViewModel Sync { get; }
+
+    private bool KeyEditable(string name) => !_policy.IsLocked("secrets." + name);
 
     /// <summary>Tab „Lokal“ (WLD-P4b).</summary>
     public LocalViewModel Local { get; }
@@ -165,10 +184,22 @@ public sealed partial class SettingsViewModel : ObservableObject
         Hotkeys.Apply();
         SettingsStore.SetDesktop(_s, _desktop);
         Local.Apply();
+        var result = SettingsJson.Deserialize(SettingsJson.Serialize(_s));
+        if (_policy.IsActive)
+        {
+            // Wie ein Import: gesperrte Felder bleiben, fester Verlauf gilt, nicht freigegebene Anbieter werden abgelehnt.
+            var preview = SyncImport.Preview(_controller.Settings, SyncDocument.Parse(SettingsJson.Serialize(result)), _policy);
+            if (!preview.CanApply)
+            {
+                SaveStatus = string.Join(Environment.NewLine, preview.Errors);
+                return;
+            }
+            result = preview.Settings!;
+        }
         Loc.Instance.SetLanguage(UiLanguage.Value);
         try
         {
-            await _controller.ApplySettingsAsync(SettingsJson.Deserialize(SettingsJson.Serialize(_s)));
+            await _controller.ApplySettingsAsync(result);
             SaveStatus = Loc.Instance["Settings_Saved"];
         }
         catch (IOException)

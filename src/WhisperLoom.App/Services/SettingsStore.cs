@@ -44,6 +44,10 @@ public sealed class DesktopSettings
 
     /// <summary>Windows, Diktat per Tastenkürzel: "paste" (einfügen), "type" (direkt tippen) oder "clipboard" (nur Zwischenablage).</summary>
     public string InsertMode { get; set; } = "paste";
+
+    /// <summary>Unbekannte Felder (neuere Version, Sync von Android) bleiben beim Speichern erhalten.</summary>
+    [System.Text.Json.Serialization.JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
 }
 
 /// <summary>Liest und schreibt settings.json im Datenordner. Fehlt die Datei, gelten die Standardwerte.</summary>
