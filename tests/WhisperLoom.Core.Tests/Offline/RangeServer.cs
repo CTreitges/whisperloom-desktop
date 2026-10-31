@@ -26,6 +26,9 @@ public sealed class RangeServer : IAsyncDisposable
 
     public byte[] Body { get; set; }
 
+    /// <summary>Eigene Inhalte je Pfad; sonst <see cref="Body"/>.</summary>
+    public Dictionary<string, byte[]> Files { get; } = [];
+
     public bool RangeSupported { get; set; } = true;
 
     public int SlowChunkMs { get; set; }
@@ -85,7 +88,7 @@ public sealed class RangeServer : IAsyncDisposable
                     await WriteHeadAsync(stream, StatusOverride, 0, null);
                     return;
                 }
-                var body = Body;
+                var body = Files.TryGetValue(path, out var file) ? file : Body;
                 var from = 0;
                 var status = 200;
                 string? contentRange = null;

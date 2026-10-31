@@ -164,6 +164,10 @@ public partial class App : Application
         {
             await _server.DisposeAsync();
         }
+        if (_host?.Local is { } local)
+        {
+            await local.DisposeAsync();
+        }
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             desktop.Shutdown();
