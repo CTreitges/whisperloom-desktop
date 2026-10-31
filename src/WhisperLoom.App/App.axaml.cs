@@ -115,10 +115,11 @@ public partial class App : Application
             case "settings":
                 if (_settingsWindow is null)
                 {
-                    var vm = new SettingsViewModel(host.Controller, host.Secrets, new HttpAccessChecker(() => HttpClients.Create(SettingsStore.Desktop(host.Controller.Settings))), Microphones(host));
+                    var vm = new SettingsViewModel(host.Controller, host.Secrets, new HttpAccessChecker(() => HttpClients.Create(SettingsStore.Desktop(host.Controller.Settings))), Microphones(host), host.Local);
                     _settingsWindow = new SettingsWindow(vm);
                     _settingsWindow.Closed += (_, _) => _settingsWindow = null;
                     _ = vm.LoadKeysAsync();
+                    _ = vm.Local.RefreshOllamaCommand.ExecuteAsync(null);
                 }
                 Activate(_settingsWindow);
                 break;

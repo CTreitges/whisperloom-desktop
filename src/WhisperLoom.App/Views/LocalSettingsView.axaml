@@ -1,0 +1,52 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:WhisperLoom.App.ViewModels"
+             xmlns:l="using:WhisperLoom.App.Localization"
+             x:Class="WhisperLoom.App.Views.LocalSettingsView"
+             x:DataType="vm:LocalViewModel">
+  <!-- Tab „Lokal“ (WLD-P4b): Erkennung online/lokal, Modelle, Rechenweg, Ollama. Keine Auto-Installation von Ollama. -->
+  <ScrollViewer>
+    <StackPanel Margin="4">
+      <TextBlock Classes="f" Text="{Binding [Local_Engine], Source={x:Static l:Loc.Instance}}" />
+      <ComboBox x:Name="EngineBox" ItemsSource="{Binding Engines}" SelectedItem="{Binding Engine}" />
+
+      <TextBlock Classes="h" Text="{Binding [Local_Models], Source={x:Static l:Loc.Instance}}" />
+      <ItemsControl ItemsSource="{Binding Models}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:LocalModelViewModel">
+            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2">
+              <TextBlock Text="{Binding Label}" Width="220" VerticalAlignment="Center" />
+              <TextBlock Text="✓" IsVisible="{Binding Installed}" Foreground="{StaticResource WlAccent}" VerticalAlignment="Center" Width="14" />
+              <Button Content="{Binding [Local_Download], Source={x:Static l:Loc.Instance}}" Command="{Binding DownloadCommand}" />
+              <Button Content="{Binding [Local_Cancel], Source={x:Static l:Loc.Instance}}" Command="{Binding CancelCommand}" />
+              <Button Content="{Binding [Local_Delete], Source={x:Static l:Loc.Instance}}" Command="{Binding DeleteCommand}" />
+              <TextBlock Text="{Binding Status}" VerticalAlignment="Center" />
+            </StackPanel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+      <TextBlock Classes="f" Text="{Binding [Local_Model], Source={x:Static l:Loc.Instance}}" />
+      <ComboBox x:Name="ModelBox" ItemsSource="{Binding ModelChoices}" SelectedItem="{Binding SelectedModel}" />
+      <CheckBox IsChecked="{Binding Accurate}" Content="{Binding [Local_Accurate], Source={x:Static l:Loc.Instance}}" />
+
+      <TextBlock Classes="f" Text="{Binding [Local_Backend], Source={x:Static l:Loc.Instance}}" />
+      <ComboBox ItemsSource="{Binding Backends}" SelectedItem="{Binding Backend}" />
+      <StackPanel Orientation="Horizontal" Spacing="6">
+        <TextBlock Classes="f" Text="{Binding [Local_BackendNow], Source={x:Static l:Loc.Instance}}" />
+        <TextBlock x:Name="BackendInfoText" Classes="f" Text="{Binding BackendInfo}" />
+      </StackPanel>
+
+      <TextBlock Classes="h" Text="{Binding [Local_Rule], Source={x:Static l:Loc.Instance}}" />
+      <ComboBox ItemsSource="{Binding Rules}" SelectedItem="{Binding Rule}" />
+
+      <TextBlock Classes="f" Text="{Binding [Local_Ollama], Source={x:Static l:Loc.Instance}}" />
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <ComboBox x:Name="OllamaBox" ItemsSource="{Binding OllamaModels}" SelectedItem="{Binding OllamaModel}" />
+        <Button Content="{Binding [Local_OllamaRefresh], Source={x:Static l:Loc.Instance}}" Command="{Binding RefreshOllamaCommand}" />
+      </StackPanel>
+      <TextBlock x:Name="OllamaStatusText" Classes="f" TextWrapping="Wrap" Text="{Binding OllamaStatus}" />
+      <SelectableTextBlock x:Name="OllamaLink" IsVisible="{Binding OllamaMissing}" Text="{Binding OllamaDownloadUrl}"
+                           Foreground="{StaticResource WlAccent}" />
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>
