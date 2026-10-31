@@ -41,6 +41,10 @@ def _input_types():
     return INPUT, KEYBDINPUT, MOUSEINPUT
 
 
+class NotForeground(RuntimeError):
+    pass
+
+
 class Keyboard:
     """Drückt und löst Tasten wie ein Mensch (ohne die App-Kennung in dwExtraInfo); merkt sich gedrückte Tasten."""
 
@@ -48,6 +52,7 @@ class Keyboard:
         self.user32 = _user32()
         self.INPUT, self.KEYBDINPUT, self.MOUSEINPUT = _input_types()
         self.held: list[int] = []
+        self.guard = None  # Callable: True, solange Tasten das Ziel treffen; sonst Abbruch vor dem Drücken.
 
     def _send(self, *inputs) -> None:
         arr = (self.INPUT * len(inputs))(*inputs)
@@ -58,6 +63,9 @@ class Keyboard:
         return self.INPUT(1, self.INPUT._fields_[1][1](ki=self.KEYBDINPUT(vk, 0, flags, 0, 0)))
 
     def down(self, name: str) -> None:
+        if self.guard is not None and not self.guard():
+            self.release_all()
+            raise NotForeground(f"Vordergrund ist nicht das Ziel ({process_name(foreground())}) — Taste {name} nicht gesendet")
         vk = VK[name]
         self._send(self._key(vk, False))
         self.held.append(vk)
@@ -102,6 +110,13 @@ def dpi_aware() -> None:
         _user32().SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))  # PER_MONITOR_AWARE_V2
     except (AttributeError, OSError):
         pass
+
+
+def force_foreground(hwnd: int) -> None:
+    """SetForegroundWindow nach eigener (unbelegter) Taste: so gilt dieser Prozess als Absender der letzten Eingabe."""
+    k = Keyboard()
+    k._send(k._key(0xE8, False), k._key(0xE8, True))
+    _user32().SetForegroundWindow(hwnd)
 
 
 def foreground() -> int:

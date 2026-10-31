@@ -55,12 +55,28 @@ class Target:
             raise RuntimeError("TestTarget meldet sich nicht")
         self.hwnd = int(state)
         time.sleep(0.3)
-        l, t, r, b = wi.window_rect(self.hwnd)
-        self.keys.click((l + r) // 2, (t + b) // 2)
-        wait_for(lambda: wi.foreground() == self.hwnd, 3, 0.05)
+        try:
+            self.focus()
+        except wi.NotForeground:
+            self.__exit__()
+            raise
+        # Sicherung: jede Taste nur, solange das TestTarget vorn ist (sonst träfe sie das Fenster des Nutzers).
+        self.keys.guard = lambda: wi.foreground() == self.hwnd
         return self
 
+    def focus(self) -> None:
+        for _ in range(3):
+            l, t, r, b = wi.window_rect(self.hwnd)
+            self.keys.click((l + r) // 2, (t + b) // 2)
+            if wait_for(lambda: wi.foreground() == self.hwnd, 2, 0.05):
+                return
+            wi.force_foreground(self.hwnd)
+            if wait_for(lambda: wi.foreground() == self.hwnd, 1, 0.05):
+                return
+        raise wi.NotForeground(f"TestTarget nicht im Vordergrund (vorn: {wi.process_name(wi.foreground())})")
+
     def __exit__(self, *exc) -> None:
+        self.keys.guard = None
         if self.proc:
             self.proc.kill()  # nur der eigene Prozess (gespeicherte PID)
             self.proc.wait(timeout=10)
@@ -94,6 +110,15 @@ def overlay_open(run) -> dict:
     return wait_for(lambda: (lambda s: s if ((s or {}).get("input") or {}).get("overlay") else None)(run.status()), 5) or {}
 
 
+def guarded(report, names: list[str], fn) -> None:
+    """Führt einen Fall aus; ist das Ziel nicht vorn, meldet er FAIL statt Tasten ins falsche Fenster zu schicken."""
+    try:
+        fn()
+    except wi.NotForeground as e:
+        for name in names:
+            report.check(name, False, f"abgebrochen: {e}")
+
+
 def run_suite(args, work: Path, report, smoke) -> None:
     wi.dpi_aware()
     keys = wi.Keyboard()
@@ -101,8 +126,8 @@ def run_suite(args, work: Path, report, smoke) -> None:
     saved = plat.read_clipboard("win")
     try:
         with smoke_full.FakeApi() as fake:
-            paste_checks(args, work, report, smoke, fake, keys, exe)
-            type_checks(args, work, report, smoke, fake, keys, exe)
+            guarded(report, ["paste-suite"], lambda: paste_checks(args, work, report, smoke, fake, keys, exe))
+            guarded(report, ["type-mode"], lambda: type_checks(args, work, report, smoke, fake, keys, exe))
     finally:
         keys.release_all()
         if saved is not None:
