@@ -10,6 +10,7 @@ using WhisperLoom.Core.Contracts;
 using WhisperLoom.Core.Contracts.Settings;
 using WhisperLoom.Core.Api;
 using WhisperLoom.Core.History;
+using WhisperLoom.Core.Settings;
 
 namespace WhisperLoom.App;
 
@@ -39,9 +40,52 @@ public sealed class AppHost
             Log.Event("settings", ("status", "unreadable"), ("errorClass", e.GetType().Name));
             settings = new WhisperLoomSettings();
         }
+        Policies = new PolicyStore(options.DataDir);
+        var policy = LoadPolicy();
+        policy.Enforce(settings);
         History = new FileHistoryStore(Path.Combine(options.DataDir, "history"), () => Controller!.Settings.History);
-        Controller = new DictationController(recorder, pipeline(() => Controller!.Settings), output, History, Log, settings, Store.Save);
+        Controller = new DictationController(recorder, pipeline(() => Controller!.Settings), output, History, Log, settings, Store.Save)
+        {
+            Policy = policy,
+        };
         Loc.Instance.SetLanguage(SettingsStore.Desktop(settings).UiLanguage);
+    }
+
+    public PolicyStore Policies { get; }
+
+    /// <summary>Eine kaputte policy.json gilt als keine Richtlinie (geloggt), statt den Start zu verhindern.</summary>
+    private PolicySettings LoadPolicy()
+    {
+        try
+        {
+            return Policies.Load();
+        }
+        catch (Exception e) when (e is System.Text.Json.JsonException or IOException)
+        {
+            Log.Event("policy", ("status", "unreadable"), ("errorClass", e.GetType().Name));
+            return PolicySettings.None;
+        }
+    }
+
+    /// <summary>Nach <c>provision</c>/<c>import</c> aus einem zweiten Prozess: Einstellungen und Richtlinie neu lesen.</summary>
+    private async Task<string> ReloadAsync()
+    {
+        try
+        {
+            var settings = Store.Load();
+            var policy = LoadPolicy();
+            policy.Enforce(settings);
+            Controller.Policy = policy;
+            await Controller.ApplySettingsAsync(settings);
+            Loc.Instance.SetLanguage(SettingsStore.Desktop(settings).UiLanguage);
+            Log.Event("settings.reload", ("policy", policy.IsActive));
+            return "reloaded";
+        }
+        catch (Exception e) when (e is System.Text.Json.JsonException or NotSupportedException or IOException)
+        {
+            Log.Event("settings.reload", ("status", "failed"), ("errorClass", e.GetType().Name));
+            return "error";
+        }
     }
 
     internal AppOptions Options { get; }
@@ -83,6 +127,11 @@ public sealed class AppHost
             case "pause": message = Controller.Pause(); break;
             case "resume": message = Controller.Resume(); break;
             case "status": message = "status"; break;
+            case "reload": message = await ReloadAsync(); break;
+            case "stage" when Controller.StageLocked:
+                ok = false;
+                message = "stage-locked";
+                break;
             case "stage":
                 try
                 {
@@ -104,6 +153,15 @@ public sealed class AppHost
         }
         return new IpcResponse(ok, message, await StatusAsync());
     }
+
+    private static JsonObject PolicyStatus(PolicySettings p) => new()
+    {
+        ["active"] = p.IsActive,
+        ["locked"] = new JsonArray([.. p.Locked.Select(l => (JsonNode)l)]),
+        ["historyEnabled"] = p.HistoryEnabled,
+        ["updatesEnabled"] = p.UpdatesEnabled,
+        ["allowedProviders"] = p.AllowedProviders is null ? null : new JsonArray([.. p.AllowedProviders.Select(a => (JsonNode)a)]),
+    };
 
     /// <summary>Stand für <c>status --json</c>. Keys nur als vorhanden/fehlt, nie der Wert.</summary>
     public async Task<JsonObject> StatusAsync()
@@ -153,6 +211,7 @@ public sealed class AppHost
             },
             ["secretStore"] = Secrets.Kind,
             ["keys"] = keys,
+            ["policy"] = PolicyStatus(c.Policy),
             ["dataDir"] = Options.DataDir,
             ["output"] = Options.OutputFile is null ? "clipboard" : "file",
         };

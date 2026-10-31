@@ -33,8 +33,13 @@ public sealed partial class KeyFieldViewModel : ObservableObject
     public string Name { get; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(MaskText))]
+    [NotifyPropertyChangedFor(nameof(MaskText), nameof(CanDelete))]
     private bool _isSet;
+
+    /// <summary>false = Key von IT festgelegt (Richtlinie): Ersetzen und Löschen ausgegraut, Prüfen bleibt.</summary>
+    public bool Editable { get; init; } = true;
+
+    public bool CanDelete => IsSet && Editable;
 
     [ObservableProperty]
     private bool _isReplacing;

@@ -33,27 +33,30 @@
       <TextBlock Text="{Binding SaveStatus}" VerticalAlignment="Center" Foreground="{StaticResource WlAccent}" />
     </StackPanel>
 
+    <TextBlock x:Name="PolicyHint" DockPanel.Dock="Top" IsVisible="{Binding HasPolicy}" TextWrapping="Wrap" Margin="0,0,0,8"
+               Foreground="{StaticResource WlAccent}" Text="{Binding [Policy_Hint], Source={x:Static l:Loc.Instance}}" />
+
     <TabControl>
       <!-- Erkennung -->
       <TabItem x:Name="TabRecognition" Header="{Binding [Settings_Recognition], Source={x:Static l:Loc.Instance}}">
         <ScrollViewer>
           <StackPanel Margin="4">
             <TextBlock Classes="f" Text="{Binding [Settings_Provider], Source={x:Static l:Loc.Instance}}" />
-            <ComboBox ItemsSource="{Binding SttProviders}" SelectedItem="{Binding SttProvider}" />
+            <ComboBox IsEnabled="{Binding Editable[stt.providerId]}" ItemsSource="{Binding SttProviders}" SelectedItem="{Binding SttProvider}" />
             <TextBlock Classes="f" Text="{Binding [Settings_ApiKey], Source={x:Static l:Loc.Instance}}" />
             <v:KeyFieldView x:Name="SttKeyView" DataContext="{Binding SttKey}" />
             <TextBlock Classes="f" Text="{Binding [Settings_BaseUrl], Source={x:Static l:Loc.Instance}}" />
-            <TextBox Text="{Binding SttBaseUrl}" />
+            <TextBox IsEnabled="{Binding Editable[stt.baseUrl]}" Text="{Binding SttBaseUrl}" />
             <TextBlock Classes="f" Text="{Binding [Settings_Model], Source={x:Static l:Loc.Instance}}" />
-            <TextBox Text="{Binding SttModel}" />
+            <TextBox IsEnabled="{Binding Editable[stt.model]}" Text="{Binding SttModel}" />
             <TextBlock Classes="f" Text="{Binding [Language_Label], Source={x:Static l:Loc.Instance}}" />
-            <ComboBox ItemsSource="{Binding Languages}" SelectedItem="{Binding Language}" />
+            <ComboBox IsEnabled="{Binding Editable[language]}" ItemsSource="{Binding Languages}" SelectedItem="{Binding Language}" />
             <TextBlock Classes="h" Text="{Binding [Settings_Fallback], Source={x:Static l:Loc.Instance}}" />
-            <CheckBox IsChecked="{Binding SttFallbackEnabled}" Content="{Binding [Settings_FallbackEnabled], Source={x:Static l:Loc.Instance}}" />
-            <ComboBox ItemsSource="{Binding SttProviders}" SelectedItem="{Binding SttFallbackProvider}" />
+            <CheckBox IsEnabled="{Binding Editable[sttFallback.enabled]}" IsChecked="{Binding SttFallbackEnabled}" Content="{Binding [Settings_FallbackEnabled], Source={x:Static l:Loc.Instance}}" />
+            <ComboBox IsEnabled="{Binding Editable[sttFallback.providerId]}" ItemsSource="{Binding SttProviders}" SelectedItem="{Binding SttFallbackProvider}" />
             <v:KeyFieldView x:Name="SttFallbackKeyView" DataContext="{Binding SttFallbackKey}" />
             <TextBlock Classes="f" Text="{Binding [Settings_Model], Source={x:Static l:Loc.Instance}}" />
-            <TextBox Text="{Binding SttFallbackModel}" />
+            <TextBox IsEnabled="{Binding Editable[sttFallback.model]}" Text="{Binding SttFallbackModel}" />
           </StackPanel>
         </ScrollViewer>
       </TabItem>
@@ -63,30 +66,30 @@
         <ScrollViewer>
           <StackPanel Margin="4">
             <TextBlock Classes="f" Text="{Binding [Stage_Label], Source={x:Static l:Loc.Instance}}" />
-            <ComboBox ItemsSource="{Binding Stages}" SelectedItem="{Binding Stage}" />
-            <CheckBox IsChecked="{Binding PromptEnabled}" Content="{Binding [Settings_PromptEnabled], Source={x:Static l:Loc.Instance}}" />
+            <ComboBox IsEnabled="{Binding Editable[refine.stage]}" ItemsSource="{Binding Stages}" SelectedItem="{Binding Stage}" />
+            <CheckBox IsEnabled="{Binding Editable[refine.promptEnabled]}" IsChecked="{Binding PromptEnabled}" Content="{Binding [Settings_PromptEnabled], Source={x:Static l:Loc.Instance}}" />
             <TextBlock Classes="h" Text="{Binding [Settings_LlmAccess], Source={x:Static l:Loc.Instance}}" />
-            <ComboBox ItemsSource="{Binding LlmProviders}" SelectedItem="{Binding LlmProvider}" />
+            <ComboBox IsEnabled="{Binding Editable[llm.providerId]}" ItemsSource="{Binding LlmProviders}" SelectedItem="{Binding LlmProvider}" />
             <v:KeyFieldView x:Name="LlmKeyView" DataContext="{Binding LlmKey}" />
             <TextBlock Classes="f" Text="{Binding [Settings_BaseUrl], Source={x:Static l:Loc.Instance}}" />
-            <TextBox Text="{Binding LlmBaseUrl}" />
+            <TextBox IsEnabled="{Binding Editable[llm.baseUrl]}" Text="{Binding LlmBaseUrl}" />
             <TextBlock Classes="f" Text="{Binding [Settings_Model], Source={x:Static l:Loc.Instance}}" />
-            <TextBox Text="{Binding LlmModel}" />
+            <TextBox IsEnabled="{Binding Editable[llm.model]}" Text="{Binding LlmModel}" />
             <TextBlock Classes="h" Text="{Binding [Settings_StageModels], Source={x:Static l:Loc.Instance}}" />
             <TextBlock Classes="f" Text="{Binding [Stage_polish], Source={x:Static l:Loc.Instance}}" />
-            <TextBox Text="{Binding ModelPolish}" />
+            <TextBox IsEnabled="{Binding Editable[llm.stageModels.polish]}" Text="{Binding ModelPolish}" />
             <TextBlock Classes="f" Text="{Binding [Stage_beautify], Source={x:Static l:Loc.Instance}}" />
-            <TextBox Text="{Binding ModelBeautify}" />
+            <TextBox IsEnabled="{Binding Editable[llm.stageModels.beautify]}" Text="{Binding ModelBeautify}" />
             <TextBlock Classes="f" Text="{Binding [Stage_summarize], Source={x:Static l:Loc.Instance}}" />
-            <TextBox Text="{Binding ModelSummarize}" />
+            <TextBox IsEnabled="{Binding Editable[llm.stageModels.summarize]}" Text="{Binding ModelSummarize}" />
             <TextBlock Classes="f" Text="{Binding [Stage_prompt], Source={x:Static l:Loc.Instance}}" />
-            <TextBox Text="{Binding ModelPrompt}" />
+            <TextBox IsEnabled="{Binding Editable[llm.stageModels.prompt]}" Text="{Binding ModelPrompt}" />
             <TextBlock Classes="h" Text="{Binding [Settings_Fallback], Source={x:Static l:Loc.Instance}}" />
-            <CheckBox IsChecked="{Binding LlmFallbackEnabled}" Content="{Binding [Settings_FallbackEnabled], Source={x:Static l:Loc.Instance}}" />
-            <ComboBox ItemsSource="{Binding LlmFallbackProviders}" SelectedItem="{Binding LlmFallbackProvider}" />
+            <CheckBox IsEnabled="{Binding Editable[llmFallback.enabled]}" IsChecked="{Binding LlmFallbackEnabled}" Content="{Binding [Settings_FallbackEnabled], Source={x:Static l:Loc.Instance}}" />
+            <ComboBox IsEnabled="{Binding Editable[llmFallback.providerId]}" ItemsSource="{Binding LlmFallbackProviders}" SelectedItem="{Binding LlmFallbackProvider}" />
             <v:KeyFieldView x:Name="LlmFallbackKeyView" DataContext="{Binding LlmFallbackKey}" />
             <TextBlock Classes="f" Text="{Binding [Settings_Model], Source={x:Static l:Loc.Instance}}" />
-            <TextBox Text="{Binding LlmFallbackModel}" />
+            <TextBox IsEnabled="{Binding Editable[llmFallback.model]}" Text="{Binding LlmFallbackModel}" />
           </StackPanel>
         </ScrollViewer>
       </TabItem>
@@ -95,9 +98,9 @@
       <TabItem x:Name="TabVocabulary" Header="{Binding [Settings_Vocabulary], Source={x:Static l:Loc.Instance}}">
         <StackPanel Margin="4">
           <TextBlock Classes="f" Text="{Binding [Settings_VocabularyHint], Source={x:Static l:Loc.Instance}}" />
-          <TextBox Text="{Binding Vocabulary}" AcceptsReturn="True" Height="260" MinWidth="560" TextWrapping="Wrap" />
+          <TextBox IsEnabled="{Binding Editable[stt.vocabulary]}" Text="{Binding Vocabulary}" AcceptsReturn="True" Height="260" MinWidth="560" TextWrapping="Wrap" />
           <TextBlock Classes="f" Text="{Binding [Settings_VocabularyFile], Source={x:Static l:Loc.Instance}}" />
-          <TextBox Text="{Binding VocabularyFile}" MinWidth="560" />
+          <TextBox IsEnabled="{Binding Editable[stt.vocabularyFile]}" Text="{Binding VocabularyFile}" MinWidth="560" />
         </StackPanel>
       </TabItem>
 
@@ -105,18 +108,18 @@
       <TabItem x:Name="TabNetwork" Header="{Binding [Settings_Network], Source={x:Static l:Loc.Instance}}">
         <StackPanel Margin="4">
           <TextBlock Classes="f" Text="{Binding [Settings_Proxy], Source={x:Static l:Loc.Instance}}" />
-          <ComboBox ItemsSource="{Binding ProxyModes}" SelectedItem="{Binding ProxyMode}" />
+          <ComboBox IsEnabled="{Binding Editable[desktop.proxyMode]}" ItemsSource="{Binding ProxyModes}" SelectedItem="{Binding ProxyMode}" />
           <TextBlock Classes="f" Text="{Binding [Settings_ProxyUrl], Source={x:Static l:Loc.Instance}}" />
-          <TextBox Text="{Binding ProxyUrl}" PlaceholderText="http://proxy:3128" />
+          <TextBox IsEnabled="{Binding Editable[desktop.proxyUrl]}" Text="{Binding ProxyUrl}" PlaceholderText="http://proxy:3128" />
         </StackPanel>
       </TabItem>
 
       <!-- Datenschutz -->
       <TabItem x:Name="TabPrivacy" Header="{Binding [Settings_Privacy], Source={x:Static l:Loc.Instance}}">
         <StackPanel Margin="4">
-          <CheckBox IsChecked="{Binding HistoryEnabled}" Content="{Binding [Settings_HistoryEnabled], Source={x:Static l:Loc.Instance}}" />
+          <CheckBox IsEnabled="{Binding Editable[history.enabled]}" IsChecked="{Binding HistoryEnabled}" Content="{Binding [Settings_HistoryEnabled], Source={x:Static l:Loc.Instance}}" />
           <TextBlock Classes="f" Text="{Binding [Settings_HistorySize], Source={x:Static l:Loc.Instance}}" />
-          <ComboBox ItemsSource="{Binding HistorySizes}" SelectedItem="{Binding HistorySize}" />
+          <ComboBox IsEnabled="{Binding Editable[history.size]}" ItemsSource="{Binding HistorySizes}" SelectedItem="{Binding HistorySize}" />
           <TextBlock Classes="f" TextWrapping="Wrap" Text="{Binding [Settings_PrivacyNote], Source={x:Static l:Loc.Instance}}" />
           <TextBlock Classes="h" Text="{Binding [Settings_KeyStore], Source={x:Static l:Loc.Instance}}" />
           <TextBlock x:Name="SecretStoreKindText" Text="{Binding SecretStoreKind}" />
@@ -129,12 +132,31 @@
       <TabItem x:Name="TabOutput" Header="{Binding [Settings_Output], Source={x:Static l:Loc.Instance}}">
         <StackPanel Margin="4">
           <TextBlock Classes="f" Text="{Binding [Settings_Output], Source={x:Static l:Loc.Instance}}" />
-          <ComboBox ItemsSource="{Binding Outputs}" SelectedItem="{Binding Output}" />
+          <ComboBox IsEnabled="{Binding Editable[desktop.output]}" ItemsSource="{Binding Outputs}" SelectedItem="{Binding Output}" />
           <TextBlock Classes="f" Text="{Binding [Settings_Microphone], Source={x:Static l:Loc.Instance}}" />
-          <ComboBox ItemsSource="{Binding Microphones}" SelectedItem="{Binding Microphone}" />
+          <ComboBox IsEnabled="{Binding Editable[desktop.microphone]}" ItemsSource="{Binding Microphones}" SelectedItem="{Binding Microphone}" />
           <TextBlock Classes="f" Text="{Binding [Settings_UiLanguage], Source={x:Static l:Loc.Instance}}" />
-          <ComboBox x:Name="UiLanguageBox" ItemsSource="{Binding UiLanguages}" SelectedItem="{Binding UiLanguage}" />
+          <ComboBox IsEnabled="{Binding Editable[desktop.uiLanguage]}" x:Name="UiLanguageBox" ItemsSource="{Binding UiLanguages}" SelectedItem="{Binding UiLanguage}" />
         </StackPanel>
+      </TabItem>
+      <!-- Import/Export (Format v1, docs/settings-format.md) -->
+      <TabItem x:Name="TabSync" Header="{Binding [Settings_Sync], Source={x:Static l:Loc.Instance}}">
+        <DockPanel Margin="4" DataContext="{Binding Sync}" x:DataType="vm:SyncViewModel">
+          <TextBlock DockPanel.Dock="Top" Classes="f" TextWrapping="Wrap" Text="{Binding [Sync_Hint], Source={x:Static l:Loc.Instance}}" />
+          <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="12" Margin="0,8,0,0">
+            <Button x:Name="ExportButton" Content="{Binding [Sync_Export], Source={x:Static l:Loc.Instance}}" Click="OnExport" />
+            <Button x:Name="ImportButton" Content="{Binding [Sync_Import], Source={x:Static l:Loc.Instance}}" Click="OnImport" />
+            <Button x:Name="ApplyImportButton" Content="{Binding [Sync_Apply], Source={x:Static l:Loc.Instance}}" Command="{Binding ApplyCommand}" />
+          </StackPanel>
+          <TextBlock x:Name="SyncStatus" DockPanel.Dock="Top" Text="{Binding Status}" TextWrapping="Wrap" Margin="0,8" />
+          <ListBox x:Name="SyncChanges" ItemsSource="{Binding Changes}">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:ChangeRow">
+                <TextBlock Text="{Binding Text}" FontFamily="monospace" TextWrapping="Wrap" />
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
       </TabItem>
     </TabControl>
   </DockPanel>

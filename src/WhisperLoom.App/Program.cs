@@ -34,12 +34,12 @@ internal static class Program
         {
             AttachParentConsole();
         }
+        var endpoint = new InstanceEndpoint(request.Options.DataDir);
         if (request.IsLocal)
         {
-            return RunKeyCommand(request);
+            return request.Verb == "key" ? RunKeyCommand(request) : RunSyncCommand(request, endpoint);
         }
 
-        var endpoint = new InstanceEndpoint(request.Options.DataDir);
         if (request.NeedsRunningInstance)
         {
             // Nie den Lock nehmen: sonst hielte ein status-Aufruf eine gerade startende Instanz für die zweite.
@@ -145,6 +145,32 @@ internal static class Program
             Console.Error.WriteLine(e.Message);
             return 1;
         }
+    }
+
+    /// <summary>
+    /// <c>provision</c>, <c>import</c>, <c>export</c> im eigenen Prozess; danach lädt eine laufende Instanz Einstellungen
+    /// und Richtlinie neu (sonst überschriebe sie die Datei beim nächsten Speichern mit ihrem alten Stand).
+    /// </summary>
+    private static int RunSyncCommand(CliRequest request, InstanceEndpoint endpoint)
+    {
+        int code;
+        try
+        {
+            var store = SecretStoreFactory.CreateAsync(request.Options.DataDir, request.Options.SecretPrefix, CancellationToken.None)
+                .GetAwaiter().GetResult();
+            code = new SyncCommands(request.Options.DataDir, store, Console.Out, Console.Error)
+                .RunAsync(request.Verb!, request.Args[0], request.DryRun, CancellationToken.None).GetAwaiter().GetResult();
+        }
+        catch (Exception e) when (e is ArgumentException or IOException)
+        {
+            Console.Error.WriteLine($"error {e.Message}");
+            return 1;
+        }
+        if (code == 0 && request.Verb is "provision" or "import" && !request.DryRun)
+        {
+            Forward(endpoint, request with { Verb = "reload", Args = [], Json = false }, attempts: 1);
+        }
+        return code;
     }
 
     /// <summary>

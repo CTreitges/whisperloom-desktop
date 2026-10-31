@@ -3,13 +3,14 @@ namespace WhisperLoom.App.Cli;
 /// <summary>Was ein Prozessstart verlangt: ein CLI-Verb (oder keins) plus Start- und Test-Schalter.</summary>
 /// <param name="Verb">null = nur starten bzw. die laufende Instanz zeigen.</param>
 /// <param name="Args">Argumente des Verbs, z. B. <c>["next"]</c> bei <c>stage next</c>.</param>
-internal sealed record CliRequest(string? Verb, IReadOnlyList<string> Args, AppOptions Options, bool Json)
+/// <param name="DryRun"><c>import --dry-run</c>: nur die Vorschau ausgeben.</param>
+internal sealed record CliRequest(string? Verb, IReadOnlyList<string> Args, AppOptions Options, bool Json, bool DryRun = false)
 {
     /// <summary>Verben, die eine laufende Instanz voraussetzen und keine starten.</summary>
     public bool NeedsRunningInstance => Verb is "stop" or "cancel" or "stage" or "status" or "pause" or "resume" or "quit";
 
     /// <summary>Verben, die der aufrufende Prozess selbst erledigt (Key nie über die IPC).</summary>
-    public bool IsLocal => Verb == "key";
+    public bool IsLocal => Verb is "key" or "provision" or "import" or "export";
 }
 
 /// <summary>Start- und Test-Schalter. Gelten nur für die erste Instanz; ein zweiter Start nutzt sie zum Finden.</summary>
@@ -45,15 +46,17 @@ internal static class CommandLine
 {
     public const string Usage =
         "Aufruf: WhisperLoom [toggle|start|stop|cancel|pause|resume|stage next|stage <name>|status [--json]|show|quit|key set <name>|key delete <name>]\n" +
+        "        [provision <datei>|import <datei> [--dry-run]|export <datei>]\n" +
         "        [--data-dir <pfad>] [--test-audio <wav>] [--output-file <pfad>] [--secret-prefix <präfix>]";
 
     private static readonly HashSet<string> Verbs =
-        ["toggle", "start", "stop", "cancel", "pause", "resume", "stage", "status", "show", "key", "quit"];
+        ["toggle", "start", "stop", "cancel", "pause", "resume", "stage", "status", "show", "key", "quit", "provision", "import", "export"];
 
     public static CliRequest Parse(IReadOnlyList<string> args)
     {
         string? dataDir = null, testAudio = null, outputFile = null, prefix = null;
         var json = false;
+        var dryRun = false;
         var positional = new List<string>();
         for (var i = 0; i < args.Count; i++)
         {
@@ -65,6 +68,7 @@ internal static class CommandLine
                 case "--output-file": outputFile = Value(args, ref i, a); break;
                 case "--secret-prefix": prefix = Value(args, ref i, a); break;
                 case "--json": json = true; break;
+                case "--dry-run": dryRun = true; break;
                 default:
                     if (a.StartsWith("--", StringComparison.Ordinal))
                     {
@@ -99,6 +103,7 @@ internal static class CommandLine
         {
             "stage" => 1,
             "key" => 2,
+            "provision" or "import" or "export" => 1,
             _ => 0,
         };
         if (rest.Count != expected)
@@ -109,7 +114,15 @@ internal static class CommandLine
         {
             throw new UsageException("key kennt nur set und delete.");
         }
-        return new CliRequest(verb, rest, options, json);
+        if (dryRun && verb != "import")
+        {
+            throw new UsageException("--dry-run gibt es nur für import.");
+        }
+        if (verb is "provision" or "import" or "export")
+        {
+            rest = [Path.GetFullPath(rest[0])];
+        }
+        return new CliRequest(verb, rest, options, json, dryRun);
     }
 
     private static string Value(IReadOnlyList<string> args, ref int i, string name)
