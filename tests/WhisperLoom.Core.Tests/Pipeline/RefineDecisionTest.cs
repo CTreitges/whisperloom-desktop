@@ -20,10 +20,10 @@ public class RefineDecisionTest
 
     private static readonly Case[] OfflineCases =
     [
-        new(Local, true, true, true, LocalRoute), new(Local, true, true, false, Missing),
-        new(Local, true, false, true, LocalRoute), new(Local, true, false, false, Missing),
-        new(Local, false, true, true, LocalRoute), new(Local, false, true, false, Missing),
-        new(Local, false, false, true, LocalRoute), new(Local, false, false, false, Missing),
+        new(OfflineRefineRule.Local, true, true, true, LocalRoute), new(OfflineRefineRule.Local, true, true, false, Missing),
+        new(OfflineRefineRule.Local, true, false, true, LocalRoute), new(OfflineRefineRule.Local, true, false, false, Missing),
+        new(OfflineRefineRule.Local, false, true, true, LocalRoute), new(OfflineRefineRule.Local, false, true, false, Missing),
+        new(OfflineRefineRule.Local, false, false, true, LocalRoute), new(OfflineRefineRule.Local, false, false, false, Missing),
         new(OnlineLocal, true, true, true, OnlineThenLocal), new(OnlineLocal, true, true, false, Online),
         new(OnlineLocal, true, false, true, LocalRoute), new(OnlineLocal, true, false, false, Missing),
         new(OnlineLocal, false, true, true, LocalRoute), new(OnlineLocal, false, true, false, Missing),
@@ -87,7 +87,7 @@ public class RefineDecisionTest
         RefineMode[] modes = [RefineMode.Off, RefineMode.Polish];
         var expectedTrue = new HashSet<(RefineMode, RefineMode, OfflineRefineRule)>
         {
-            (RefineMode.Polish, RefineMode.Off, Local), (RefineMode.Off, RefineMode.Polish, Local), (RefineMode.Polish, RefineMode.Polish, Local),
+            (RefineMode.Polish, RefineMode.Off, OfflineRefineRule.Local), (RefineMode.Off, RefineMode.Polish, OfflineRefineRule.Local), (RefineMode.Polish, RefineMode.Polish, OfflineRefineRule.Local),
             (RefineMode.Polish, RefineMode.Off, OnlineLocal), (RefineMode.Off, RefineMode.Polish, OnlineLocal), (RefineMode.Polish, RefineMode.Polish, OnlineLocal),
         };
         var count = 0;
@@ -117,18 +117,18 @@ public class RefineDecisionTest
     {
         foreach (var mode in Enum.GetValues<RefineMode>().Where(m => m != RefineMode.Off))
         {
-            Assert.True(RefineDecision.LocalModelMissing(Engine.Offline, mode, RefineMode.Off, Local, false));
+            Assert.True(RefineDecision.LocalModelMissing(Engine.Offline, mode, RefineMode.Off, OfflineRefineRule.Local, false));
         }
     }
 
     [Fact]
     public void KiStufenBereitWennDieRouteNichtOhneKiMitGrundWaere()
     {
-        Assert.True(RefineDecision.StagesReady(Engine.Online, Local, onlineReady: true, localReady: false));
-        Assert.False(RefineDecision.StagesReady(Engine.Online, Local, onlineReady: false, localReady: true));
+        Assert.True(RefineDecision.StagesReady(Engine.Online, OfflineRefineRule.Local, onlineReady: true, localReady: false));
+        Assert.False(RefineDecision.StagesReady(Engine.Online, OfflineRefineRule.Local, onlineReady: false, localReady: true));
         Assert.False(RefineDecision.StagesReady(null, Skip, onlineReady: false, localReady: false));
-        Assert.True(RefineDecision.StagesReady(Engine.Offline, Local, onlineReady: false, localReady: true));
-        Assert.False(RefineDecision.StagesReady(Engine.Offline, Local, onlineReady: true, localReady: false));
+        Assert.True(RefineDecision.StagesReady(Engine.Offline, OfflineRefineRule.Local, onlineReady: false, localReady: true));
+        Assert.False(RefineDecision.StagesReady(Engine.Offline, OfflineRefineRule.Local, onlineReady: true, localReady: false));
         Assert.True(RefineDecision.StagesReady(Engine.Offline, OnlineLocal, onlineReady: true, localReady: false));
         Assert.True(RefineDecision.StagesReady(Engine.Offline, OnlineLocal, onlineReady: false, localReady: true));
         Assert.False(RefineDecision.StagesReady(Engine.Offline, OnlineLocal, onlineReady: false, localReady: false));
@@ -141,9 +141,9 @@ public class RefineDecisionTest
     {
         Assert.Equal(["local", "online_local", "skip"], Enum.GetValues<OfflineRefineRule>().Select(r => r.Key()));
         foreach (var r in Enum.GetValues<OfflineRefineRule>()) Assert.Equal(r, Engines.RuleFromKey(r.Key()));
-        Assert.Equal(Local, Engines.RuleFromKey(null));
-        Assert.Equal(Local, Engines.RuleFromKey("no_net"));
-        Assert.Equal(Local, Engines.RuleFromKey(new WhisperLoom.Core.Contracts.Settings.OfflineSettings().Refine));
+        Assert.Equal(OfflineRefineRule.Local, Engines.RuleFromKey(null));
+        Assert.Equal(OfflineRefineRule.Local, Engines.RuleFromKey("no_net"));
+        Assert.Equal(OfflineRefineRule.Local, Engines.RuleFromKey(new WhisperLoom.Core.Contracts.Settings.OfflineSettings().Refine));
     }
 
     /// <summary>

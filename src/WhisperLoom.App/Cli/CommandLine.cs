@@ -9,7 +9,7 @@ internal sealed record CliRequest(string? Verb, IReadOnlyList<string> Args, AppO
     public bool NeedsRunningInstance => Verb is "stop" or "cancel" or "stage" or "status" or "pause" or "resume" or "quit";
 
     /// <summary>Verben, die der aufrufende Prozess selbst erledigt (Key nie über die IPC).</summary>
-    public bool IsLocal => Verb == "key";
+    public bool IsLocal => Verb is "key" or "bench";
 }
 
 /// <summary>Start- und Test-Schalter. Gelten nur für die erste Instanz; ein zweiter Start nutzt sie zum Finden.</summary>
@@ -50,10 +50,14 @@ internal static class CommandLine
 {
     public const string Usage =
         "Aufruf: WhisperLoom [toggle|start|stop|cancel|pause|resume|stage next|stage <name>|status [--json]|show|quit|key set <name>|key delete <name>]\n" +
-        "        [--data-dir <pfad>] [--test-audio <wav>] [--output-file <pfad>] [--secret-prefix <präfix>] [--hotkeys]";
+        "        [--data-dir <pfad>] [--test-audio <wav>] [--output-file <pfad>] [--secret-prefix <präfix>] [--hotkeys]\n" +
+        "        WhisperLoom bench --model <tiny|base|small|large-v3-turbo> --seconds <n> [--backend auto|cpu]";
 
     private static readonly HashSet<string> Verbs =
-        ["toggle", "start", "stop", "cancel", "pause", "resume", "stage", "status", "show", "key", "quit"];
+        ["toggle", "start", "stop", "cancel", "pause", "resume", "stage", "status", "show", "key", "quit", "bench"];
+
+    /// <summary>Schalter des Verbs <c>bench</c>; sie landen samt Wert in <see cref="CliRequest.Args"/>.</summary>
+    private static readonly HashSet<string> BenchSwitches = ["--model", "--seconds", "--backend"];
 
     public static CliRequest Parse(IReadOnlyList<string> args)
     {
@@ -61,9 +65,16 @@ internal static class CommandLine
         var json = false;
         var hotkeys = false;
         var positional = new List<string>();
+        var benchArgs = new List<string>();
         for (var i = 0; i < args.Count; i++)
         {
             var a = args[i];
+            if (BenchSwitches.Contains(a))
+            {
+                benchArgs.Add(a);
+                benchArgs.Add(Value(args, ref i, a));
+                continue;
+            }
             switch (a)
             {
                 case "--data-dir": dataDir = Value(args, ref i, a); break;
@@ -117,7 +128,30 @@ internal static class CommandLine
         {
             throw new UsageException("key kennt nur set und delete.");
         }
+        if (benchArgs.Count > 0 && verb != "bench")
+        {
+            throw new UsageException($"{benchArgs[0]} gilt nur für bench.");
+        }
+        if (verb == "bench")
+        {
+            if (!double.TryParse(Arg(benchArgs, "--seconds") ?? "10", System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out var seconds) || seconds is <= 0 or > 3600)
+            {
+                throw new UsageException("--seconds braucht eine Zahl zwischen 0 und 3600.");
+            }
+            if (Arg(benchArgs, "--backend") is { } backend && backend is not ("auto" or "cpu"))
+            {
+                throw new UsageException("--backend kennt nur auto und cpu.");
+            }
+            return new CliRequest(verb, benchArgs, options, json);
+        }
         return new CliRequest(verb, rest, options, json);
+    }
+
+    private static string? Arg(List<string> args, string name)
+    {
+        var i = args.IndexOf(name);
+        return i >= 0 ? args[i + 1] : null;
     }
 
     private static string Value(IReadOnlyList<string> args, ref int i, string name)

@@ -1,4 +1,3 @@
-using System.Net.NetworkInformation;
 using WhisperLoom.Core.Api;
 using WhisperLoom.Core.Contracts;
 using WhisperLoom.Core.Contracts.Settings;
@@ -20,7 +19,7 @@ public sealed class DictationPipelineOptions
     /// <summary>Modell-Listen und Merkliste „ohne temperature“ (mit Datei im Datenordner).</summary>
     public ModelCache? ModelCache { get; init; }
 
-    /// <summary>Standard: bewiesen, Loopback oder eine aktive Netzwerkschnittstelle.</summary>
+    /// <summary>Standard: <see cref="NetworkAvailability.For"/> (Loopback, eigenes Netz mit aktiver Schnittstelle, sonst Gateway).</summary>
     public NetworkCheck? NetworkCheck { get; init; }
 
     /// <summary>Stille am Rand schneiden (WLD-P1a: <c>AudioUtils.trimSilence</c>; verdrahtet WLD-INT).</summary>
@@ -283,9 +282,6 @@ public sealed class DictationPipeline(
 
     private bool Network(string baseUrl, bool proven) => _options.NetworkCheck?.Invoke(baseUrl, proven) ?? DefaultNetwork(baseUrl, proven);
 
-    // Doku: https://learn.microsoft.com/dotnet/api/system.net.networkinformation.networkinterface.getisnetworkavailable (abgerufen 2026-10-30)
-    private static bool DefaultNetwork(string baseUrl, bool proven) =>
-        proven ||
-        (Uri.TryCreate(baseUrl.Trim(), UriKind.Absolute, out var uri) && uri.IsLoopback) ||
-        NetworkInterface.GetIsNetworkAvailable();
+    /// <summary>Standard: Netz-Vorprüfung wie Android (<see cref="NetworkAvailability.For"/>).</summary>
+    private static bool DefaultNetwork(string baseUrl, bool proven) => NetworkAvailability.For(baseUrl, proven);
 }

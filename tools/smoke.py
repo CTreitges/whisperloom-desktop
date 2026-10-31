@@ -1,6 +1,6 @@
 """Smoke-Tests gegen eine gebaute WhisperLoom-App (Windows oder Linux).
 
-Aufruf: py -3 -X utf8 tools/smoke.py --platform win|linux --suite shell|full|ui|input --id <ID> --app <exe>
+Aufruf: py -3 -X utf8 tools/smoke.py --platform win|linux --suite shell|full|offline|ui|input --id <ID> --app <exe>
 Je Prüfung eine Zeile "SMOKE <name> OK" bzw. "SMOKE <name> FAIL <grund>", am Ende "SMOKE SUITE <suite> OK|FAIL n/m".
 
 Suites:
@@ -9,6 +9,8 @@ Suites:
   Key-Präfix WhisperLoom-Test-<ID>: (Testeinträge werden gelöscht). Keine echte Eingabe, keine Zwischenablage.
 - full: echte Pipeline gegen tools/fake_api.py über den Fake-Proxy (Goal-File A2.2, tools/smoke_full.py):
   toggle-output, language-en, proxy, history, fallback-stt, secret-store, anthropic-prompt, logs-clean, no-audio-stored.
+- offline: lokale Erkennung (whisper-server, Modell tiny, CPU) und Ollama-Fake ohne Netz-Fakes (tools/smoke_offline.py):
+  offline-stt, offline-refine-ollama, raw-plus-rules. Die Vorbereitung lädt Modell, Begleitprozess und jfk.wav einmal.
 - ui: echte Pipeline gegen tools/fake_api.py, Ausgabe in die echte Zwischenablage — clipboard-real, unter Windows
   zusätzlich tray-visible (Symbol der App-PID beim Shell registriert).
 - input (nur Windows): echte Tastenkürzel per SendInput gegen tests/WhisperLoom.TestTarget (tools/smoke_input.py,
@@ -37,6 +39,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import smoke_full  # noqa: E402
+import smoke_offline  # noqa: E402
 import smoke_platform as plat  # noqa: E402
 
 AUDIO_EXT = (".wav", ".pcm", ".opus")
@@ -309,7 +312,7 @@ def ui_checks(args, work: Path, report: Report, fake: smoke_full.FakeApi) -> Non
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="WhisperLoom-Smokes")
     parser.add_argument("--platform", choices=["win", "linux"], required=True)
-    parser.add_argument("--suite", choices=["shell", "full", "ui", "input"], default="shell")
+    parser.add_argument("--suite", choices=["shell", "full", "offline", "ui", "input"], default="shell")
     parser.add_argument("--id", required=True)
     parser.add_argument("--app", required=True)
     parser.add_argument("--work-dir", type=Path)
@@ -332,6 +335,8 @@ def main(argv: list[str] | None = None) -> int:
         suite_ui(args, work, report)
     elif args.suite == "full":
         smoke_full.run(args, work, report, sys.modules[__name__])
+    elif args.suite == "offline":
+        smoke_offline.run(args, work, report, sys.modules[__name__])
     elif args.platform != "win":
         print("SMOKE input SKIP nur Windows (Linux-Hotkeys sind Out-of-Scope)")
         return 0
