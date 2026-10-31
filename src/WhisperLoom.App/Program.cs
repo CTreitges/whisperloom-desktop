@@ -120,7 +120,7 @@ internal static class Program
         }
     }
 
-    /// <summary><c>key set &lt;name&gt;</c> (Wert von stdin) und <c>key delete &lt;name&gt;</c>. Der Wert wird nie ausgegeben.</summary>
+    /// <summary><c>key set|delete &lt;name&gt;</c> über <see cref="KeyCommand"/>; gesperrte Keys der Richtlinie werden abgelehnt.</summary>
     private static int RunKeyCommand(CliRequest request)
     {
         var (action, name) = (request.Args[0], request.Args[1]);
@@ -128,17 +128,17 @@ internal static class Program
         {
             var store = SecretStoreFactory.CreateAsync(request.Options.DataDir, request.Options.SecretPrefix, CancellationToken.None)
                 .GetAwaiter().GetResult();
-            if (action == "set")
+            Core.Settings.PolicySettings policy;
+            try
             {
-                var value = Console.In.ReadToEnd().Trim();
-                store.SetAsync(name, value, CancellationToken.None).GetAwaiter().GetResult();
+                policy = new Services.PolicyStore(request.Options.DataDir).Load();
             }
-            else
+            catch (JsonException)
             {
-                store.DeleteAsync(name, CancellationToken.None).GetAwaiter().GetResult();
+                policy = Core.Settings.PolicySettings.None; // wie beim App-Start: kaputte policy.json = keine Richtlinie
             }
-            Console.WriteLine($"ok {action} {name} ({store.Kind})");
-            return 0;
+            return KeyCommand.RunAsync(action, name, () => Console.In.ReadToEnd(), store, policy, Console.Out, Console.Error, CancellationToken.None)
+                .GetAwaiter().GetResult();
         }
         catch (Exception e) when (e is ArgumentException or IOException)
         {

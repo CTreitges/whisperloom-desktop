@@ -48,6 +48,11 @@ Credential Manager ab, übernimmt die Einstellungen und setzt eine Richtlinie. F
 
 Wiederholen ist gefahrlos: Ein neues Provisioning setzt die Werte erneut und ersetzt die Richtlinie.
 
+**Grenzen der Sperren:** Sie verhindern Bedienfehler (Fenster, Import, `WhisperLoom stage`, `WhisperLoom key set|delete`),
+sind aber keine Sicherheitsgrenze. `settings.json` und `policy.json` liegen im Datenordner des Benutzers; wer dort
+schreiben darf (der Benutzer selbst, lokale Admins), kann sie ändern. Für echte Durchsetzung braucht es Mittel des
+Betriebssystems (z. B. Rechte auf den Ordner, Softwareverteilung, die das Provisioning regelmäßig wiederholt).
+
 ### Beispielskript (PowerShell, z. B. als Anmeldeskript oder per Softwareverteilung)
 
 ```powershell
@@ -105,6 +110,11 @@ the settings and sets a policy. Format: [settings-format.md](settings-format.md)
    it deletes the file in a `finally` block, even on failure).
 
 Running it again is safe: values are set again and the policy is replaced.
+
+**Limits of the locks:** they prevent mistakes (settings window, import, `WhisperLoom stage`, `WhisperLoom key set|delete`)
+but are not a security boundary. `settings.json` and `policy.json` live in the user's data folder; anyone who can
+write there (the user, local admins) can change them. Real enforcement needs OS means (folder permissions, software
+distribution that re-runs the provisioning regularly).
 
 On Linux the same command stores keys in the Secret Service (via `secret-tool`) or, if none is available, in
 `~/.config/whisperloom/secrets.json` with mode 600.

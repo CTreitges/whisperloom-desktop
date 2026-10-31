@@ -37,6 +37,37 @@ public class PolicyTest
         Assert.Contains(new SettingsChange("stt.model", "\"\"", "\"m2\""), preview.Changes);
     }
 
+    [Theory]
+    [InlineData("""{"desktop": 1}""")]
+    [InlineData("""{"desktop": null}""")]
+    [InlineData("""{"desktop": "weg"}""")]
+    public void Replacing_a_section_by_a_non_object_keeps_its_locked_children(string json)
+    {
+        var current = SyncFixtures.Import("""{"desktop":{"proxyMode":"manual","proxyUrl":"http://proxy:3128"}}""").Settings!;
+        var policy = new PolicySettings { Locked = ["desktop.proxyMode"] };
+
+        var preview = SyncFixtures.Import(json, current, policy);
+
+        Assert.True(preview.CanApply, string.Join("; ", preview.Errors));
+        var desktop = SyncFixtures.Tree(SyncExport.ToJson(preview.Settings!))["desktop"] as JsonObject;
+        Assert.NotNull(desktop);
+        Assert.Equal("manual", desktop["proxyMode"]!.GetValue<string>());
+        Assert.Contains(preview.Changes, c => c is { Path: "desktop", Locked: true });
+        Assert.DoesNotContain(preview.Changes, c => c.Path.StartsWith("desktop.", StringComparison.Ordinal) && !c.Locked);
+    }
+
+    [Fact]
+    public void Replacing_a_section_without_locks_below_still_works()
+    {
+        var current = SyncFixtures.Import("""{"desktop":{"proxyMode":"manual"}}""").Settings!;
+        var policy = new PolicySettings { Locked = ["stt.providerId"] };
+
+        var preview = SyncFixtures.Import("""{"android": 1, "desktop": {"proxyMode": "off"}}""", current, policy);
+
+        Assert.True(preview.CanApply, string.Join("; ", preview.Errors));
+        Assert.Equal("off", SyncFixtures.Tree(SyncExport.ToJson(preview.Settings!))["desktop"]!["proxyMode"]!.GetValue<string>());
+    }
+
     [Fact]
     public void History_policy_is_enforced_and_locks_the_switch()
     {

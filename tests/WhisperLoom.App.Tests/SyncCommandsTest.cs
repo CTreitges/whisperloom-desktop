@@ -161,6 +161,40 @@ public sealed class SyncCommandsTest : IDisposable
 
         Assert.False(host.Controller.Policy.IsActive);
     }
+
+    [Fact]
+    public async Task Key_command_refuses_keys_locked_by_it()
+    {
+        Assert.Equal(0, await Run("provision", Write("p.json",
+            """{"stt":{"providerId":"groq"},"llm":{"providerId":"mistral"},"secrets":{"groq":"test-key-not-real-1","mistral":"test-key-not-real-2"},"policy":{"lockSettings":true}}""")));
+        var policy = new PolicyStore(_dir).Load();
+        Assert.True(policy.IsLocked("secrets.stt"));
+        Assert.False(policy.IsLocked("secrets.stt_fallback"));
+
+        var set = await KeyCommand.RunAsync("set", SecretNames.Stt, () => "test-key-not-real-7\n", _secrets, policy, _out, _err, CancellationToken.None);
+        var delete = await KeyCommand.RunAsync("delete", SecretNames.Llm, () => "", _secrets, policy, _out, _err, CancellationToken.None);
+        var free = await KeyCommand.RunAsync("set", SecretNames.SttFallback, () => "test-key-not-real-8\n", _secrets, policy, _out, _err, CancellationToken.None);
+
+        Assert.Equal(1, set);
+        Assert.Equal(1, delete);
+        Assert.Equal("test-key-not-real-1", _secrets.Values[SecretNames.Stt]);
+        Assert.Equal("test-key-not-real-2", _secrets.Values[SecretNames.Llm]);
+        Assert.Contains("error Key stt ist von IT festgelegt", _err.ToString(), StringComparison.Ordinal);
+        Assert.Contains("error Key llm ist von IT festgelegt", _err.ToString(), StringComparison.Ordinal);
+        Assert.Equal(0, free);
+        Assert.Equal("test-key-not-real-8", _secrets.Values[SecretNames.SttFallback]);
+        Assert.DoesNotContain("test-key-not-real", _out.ToString() + _err, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Key_command_without_policy_sets_and_deletes()
+    {
+        Assert.Equal(0, await KeyCommand.RunAsync("set", SecretNames.Stt, () => " test-key-not-real-3 \n", _secrets, PolicySettings.None, _out, _err, CancellationToken.None));
+        Assert.Equal("test-key-not-real-3", _secrets.Values[SecretNames.Stt]);
+        Assert.Equal(0, await KeyCommand.RunAsync("delete", SecretNames.Stt, () => "", _secrets, PolicySettings.None, _out, _err, CancellationToken.None));
+        Assert.Empty(_secrets.Values);
+        Assert.Contains("ok delete stt (Speicher)", _out.ToString(), StringComparison.Ordinal);
+    }
 }
 
 public class DesktopSectionTest

@@ -31,6 +31,7 @@ internal static class SyncTree
     /// <summary>
     /// Mischt <paramref name="source"/> in <paramref name="target"/>: Objekte rekursiv, alles andere ersetzt.
     /// Felder, die <paramref name="skip"/> ablehnt, bleiben wie in <paramref name="target"/>; sie landen in <paramref name="skipped"/>.
+    /// Ein Abschnitt mit abgelehnten Feldern darunter wird nicht durch einen Nicht-Objekt-Wert ersetzt.
     /// </summary>
     public static void Merge(JsonObject target, JsonObject source, string prefix, Func<string, bool> skip, List<string> skipped)
     {
@@ -47,7 +48,8 @@ internal static class SyncTree
                 target[name] = created;
                 Merge(created, newObject, path + ".", skip, skipped);
             }
-            else if (skip(path))
+            // Ersetzen eines Abschnitts durch Nicht-Objekt/null überschriebe auch gesperrte Felder darunter.
+            else if (skip(path) || (target[name] is JsonObject existing && Leaves(existing).Keys.Any(k => skip(path + "." + k))))
             {
                 if (!JsonNode.DeepEquals(target[name], value))
                 {

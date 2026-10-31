@@ -90,7 +90,10 @@ Rechten 600 (Linux) — nie in `settings.json`, nie in Logs oder Ausgaben.
 
 Gesperrte Felder sind im Einstellungsfenster ausgegraut („Ausgegraute Felder sind von IT festgelegt“), ein Import des
 Nutzers lässt sie stehen (die Vorschau zeigt sie als „von IT festgelegt“), eine gesperrte Stufe ändern weder Hotkey
-noch Tray noch `WhisperLoom stage`. Ein neues Provisioning ersetzt die Richtlinie vollständig.
+noch Tray noch `WhisperLoom stage`, gesperrte Keys nicht `WhisperLoom key set|delete` (Exit 1). Ersetzt ein Import einen
+Abschnitt mit gesperrten Feldern durch einen Nicht-Objekt-Wert (z. B. `"desktop": 1`), bleibt der Abschnitt stehen.
+Ein neues Provisioning ersetzt die Richtlinie vollständig. Die Sperren sind keine Sicherheitsgrenze (siehe
+[provisioning.md](provisioning.md)).
 
 Gespeichert wird die Richtlinie getrennt in `<Datenordner>/policy.json` (Felder `locked` als aufgelöste Pfadliste,
 `historyEnabled`, `updatesEnabled`, `allowedProviders`); `status --json` zeigt sie unter `policy`.
