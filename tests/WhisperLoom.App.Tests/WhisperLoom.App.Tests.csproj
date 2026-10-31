@@ -24,6 +24,7 @@
   <ItemGroup>
     <!-- Derselbe lokale Fake-HTTP-Server wie in den Core-Tests (Fake-Proxy für AppPipelineTest). -->
     <Compile Include="../WhisperLoom.Core.Tests/Support/FakeServer.cs" Link="Support/FakeServer.cs" />
+    <Compile Include="../WhisperLoom.Core.Tests/Offline/RangeServer.cs" Link="Support/RangeServer.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="../fixtures/settings-v1*.json" Link="fixtures/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />

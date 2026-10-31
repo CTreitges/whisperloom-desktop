@@ -37,7 +37,12 @@ internal static class Program
         var endpoint = new InstanceEndpoint(request.Options.DataDir);
         if (request.IsLocal)
         {
-            return request.Verb == "key" ? RunKeyCommand(request) : RunSyncCommand(request, endpoint);
+            return request.Verb switch
+            {
+                "bench" => RunBench(request),
+                "key" => RunKeyCommand(request),
+                _ => RunSyncCommand(request, endpoint),
+            };
         }
 
         if (request.NeedsRunningInstance)
@@ -143,6 +148,21 @@ internal static class Program
         catch (Exception e) when (e is ArgumentException or IOException)
         {
             Console.Error.WriteLine(e.Message);
+            return 1;
+        }
+    }
+
+    /// <summary><c>bench</c>: Messung der lokalen Erkennung, ohne App-Instanz (Begleitprozess endet mit dem Befehl).</summary>
+    private static int RunBench(CliRequest request)
+    {
+        try
+        {
+            return Platform.Sidecar.Bench.RunAsync(request, Console.Out, CancellationToken.None).GetAwaiter().GetResult();
+        }
+        catch (Exception e) when (e is Core.Local.DownloadException or Core.Contracts.LocalNotAvailableException
+                                      or Core.Contracts.ApiNetworkException or Core.Contracts.ApiHttpException or IOException)
+        {
+            Console.Error.WriteLine($"bench: {e.GetType().Name}: {e.Message}");
             return 1;
         }
     }

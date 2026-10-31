@@ -27,7 +27,9 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly WhisperLoomSettings _s;
     private readonly DesktopSettings _desktop;
 
-    public SettingsViewModel(DictationController controller, ISecretStore secrets, IAccessChecker checker, IReadOnlyList<string>? microphones = null)
+    /// <param name="local">Lokale Teile der App (Modelle, Begleitprozess, Ollama); null = Tab „Lokal“ ohne Downloads.</param>
+    public SettingsViewModel(DictationController controller, ISecretStore secrets, IAccessChecker checker, IReadOnlyList<string>? microphones = null,
+        Platform.Sidecar.LocalParts? local = null)
     {
         _controller = controller;
         _s = SettingsJson.Deserialize(SettingsJson.Serialize(controller.Settings));
@@ -68,6 +70,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         SttFallbackKey = new KeyFieldViewModel(SecretNames.SttFallback, secrets, checker, () => (SttFallbackProvider.Value, SttFallbackBaseUrl)) { Editable = KeyEditable(SecretNames.SttFallback) };
         LlmKey = new KeyFieldViewModel(SecretNames.Llm, secrets, checker, () => (LlmProvider.Value == LlmSettings.Same ? SttProvider.Value : LlmProvider.Value, LlmBaseUrl)) { Editable = KeyEditable(SecretNames.Llm) };
         LlmFallbackKey = new KeyFieldViewModel(SecretNames.LlmFallback, secrets, checker, () => (LlmFallbackProvider.Value, LlmFallbackBaseUrl)) { Editable = KeyEditable(SecretNames.LlmFallback) };
+        Local = new LocalViewModel(_s, local);
     }
 
     private readonly PolicySettings _policy;
@@ -81,6 +84,9 @@ public sealed partial class SettingsViewModel : ObservableObject
     public SyncViewModel Sync { get; }
 
     private bool KeyEditable(string name) => !_policy.IsLocked("secrets." + name);
+
+    /// <summary>Tab „Lokal“ (WLD-P4b).</summary>
+    public LocalViewModel Local { get; }
 
     public IReadOnlyList<Choice> SttProviders { get; }
     public IReadOnlyList<Choice> LlmProviders { get; }
@@ -166,6 +172,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         _desktop.Microphone = Microphone.Value;
         _desktop.UiLanguage = UiLanguage.Value;
         SettingsStore.SetDesktop(_s, _desktop);
+        Local.Apply();
         var result = SettingsJson.Deserialize(SettingsJson.Serialize(_s));
         if (_policy.IsActive)
         {

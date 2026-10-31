@@ -4,6 +4,7 @@ using WhisperLoom.App.Cli;
 using WhisperLoom.App.Instance;
 using WhisperLoom.App.Localization;
 using WhisperLoom.App.Output;
+using WhisperLoom.App.Platform.Sidecar;
 using WhisperLoom.App.Secrets;
 using WhisperLoom.App.Services;
 using WhisperLoom.Core.Contracts;
@@ -100,6 +101,9 @@ public sealed class AppHost
 
     public DictationController Controller { get; }
 
+    /// <summary>Lokale Erkennung und Textverbesserung (WLD-P4b); null in Tests ohne lokale Teile.</summary>
+    public LocalParts? Local { get; private set; }
+
     /// <summary>Fenster-Aktionen (Bühnenansicht, Verlauf, Einstellungen, Beenden); setzt die App.</summary>
     public Action<string>? ShowWindow { get; set; }
 
@@ -110,7 +114,27 @@ public sealed class AppHost
         IAudioRecorder recorder = options.TestAudio is null ? new PortAudioRecorder() : new WavFileRecorder(options.TestAudio);
         IOutputSink output = options.OutputFile is null ? new ClipboardOutputSink(ProcessRunner.Instance) : new FileOutputSink(options.OutputFile);
         var cache = new ModelCache(Path.Combine(options.DataDir, "model-cache.json"));
-        return new AppHost(options, secrets, settings => new AppPipeline(settings, secrets, cache), recorder, output);
+        LocalParts? local = null;
+        var desktop = SettingsStore.Desktop(TryLoad(options.DataDir));
+        var host = new AppHost(options, secrets, settings =>
+        {
+            local = new LocalParts(options, settings, desktop);
+            return new AppPipeline(settings, secrets, cache, local.Stt, local.Refiner);
+        }, recorder, output);
+        host.Local = local;
+        return host;
+    }
+
+    private static WhisperLoomSettings TryLoad(string dataDir)
+    {
+        try
+        {
+            return new SettingsStore(dataDir).Load();
+        }
+        catch (Exception e) when (e is System.Text.Json.JsonException or NotSupportedException or IOException)
+        {
+            return new WhisperLoomSettings();
+        }
     }
 
     /// <summary>Führt ein Verb aus (aus der IPC oder vom eigenen Start). Läuft auf dem UI-Thread.</summary>
@@ -162,6 +186,21 @@ public sealed class AppHost
         ["updatesEnabled"] = p.UpdatesEnabled,
         ["allowedProviders"] = p.AllowedProviders is null ? null : new JsonArray([.. p.AllowedProviders.Select(a => (JsonNode)a)]),
     };
+    /// <summary>Lokale Erkennung für <c>status --json</c>: Engine, Begleitprozess (PID, Backend, Gerät), Ollama-Modell.</summary>
+    private JsonObject LocalStatus()
+    {
+        var server = Local?.Stt.Server;
+        var last = Local?.Stt.LastBackend;
+        return new JsonObject
+        {
+            ["engine"] = Controller.Settings.Engine,
+            ["model"] = Controller.Settings.Offline.Model,
+            ["sidecarPid"] = server is { HasExited: false } ? server.Pid : null,
+            ["backend"] = last?.Backend,
+            ["device"] = last?.Device,
+            ["ollamaModel"] = LocalSettings.Of(Controller.Settings).OllamaModel,
+        };
+    }
 
     /// <summary>Stand für <c>status --json</c>. Keys nur als vorhanden/fehlt, nie der Wert.</summary>
     public async Task<JsonObject> StatusAsync()
@@ -214,6 +253,7 @@ public sealed class AppHost
             ["policy"] = PolicyStatus(c.Policy),
             ["dataDir"] = Options.DataDir,
             ["output"] = Options.OutputFile is null ? "clipboard" : "file",
+            ["local"] = LocalStatus(),
         };
     }
 }
