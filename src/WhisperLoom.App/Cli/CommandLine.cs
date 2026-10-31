@@ -17,8 +17,13 @@ internal sealed record CliRequest(string? Verb, IReadOnlyList<string> Args, AppO
 /// <param name="TestAudio">WAV statt Mikrofon (Tests, Smokes).</param>
 /// <param name="OutputFile">Ausgabe-Senke statt Zwischenablage (Tests, Smokes).</param>
 /// <param name="SecretPrefix">Präfix der Key-Ablage, Standard <c>WhisperLoom:</c>; Tests nutzen <c>WhisperLoom-Test-&lt;id&gt;:</c>.</param>
-internal sealed record AppOptions(string DataDir, string? TestAudio = null, string? OutputFile = null, string SecretPrefix = AppOptions.DefaultSecretPrefix)
+/// <param name="Hotkeys">Schalter <c>--hotkeys</c>: globale Tastenkürzel (Windows) auch im Testbetrieb. Ohne ihn sind sie mit
+/// <c>--test-audio</c> bzw. <c>--output-file</c> aus, damit Smokes nie Tasten des Nutzers abfangen.</param>
+internal sealed record AppOptions(string DataDir, string? TestAudio = null, string? OutputFile = null, string SecretPrefix = AppOptions.DefaultSecretPrefix, bool Hotkeys = false)
 {
+    /// <summary>Globale Tastenkürzel installieren: im Normalbetrieb immer, im Testbetrieb nur mit <c>--hotkeys</c>.</summary>
+    public bool HotkeysActive => Hotkeys || (TestAudio is null && OutputFile is null);
+
     public const string DefaultSecretPrefix = "WhisperLoom:";
 
     /// <summary>Windows: %APPDATA%\WhisperLoom; Linux: $XDG_CONFIG_HOME/whisperloom bzw. ~/.config/whisperloom.</summary>
@@ -45,7 +50,7 @@ internal static class CommandLine
 {
     public const string Usage =
         "Aufruf: WhisperLoom [toggle|start|stop|cancel|pause|resume|stage next|stage <name>|status [--json]|show|quit|key set <name>|key delete <name>]\n" +
-        "        [--data-dir <pfad>] [--test-audio <wav>] [--output-file <pfad>] [--secret-prefix <präfix>]";
+        "        [--data-dir <pfad>] [--test-audio <wav>] [--output-file <pfad>] [--secret-prefix <präfix>] [--hotkeys]";
 
     private static readonly HashSet<string> Verbs =
         ["toggle", "start", "stop", "cancel", "pause", "resume", "stage", "status", "show", "key", "quit"];
@@ -54,6 +59,7 @@ internal static class CommandLine
     {
         string? dataDir = null, testAudio = null, outputFile = null, prefix = null;
         var json = false;
+        var hotkeys = false;
         var positional = new List<string>();
         for (var i = 0; i < args.Count; i++)
         {
@@ -65,6 +71,7 @@ internal static class CommandLine
                 case "--output-file": outputFile = Value(args, ref i, a); break;
                 case "--secret-prefix": prefix = Value(args, ref i, a); break;
                 case "--json": json = true; break;
+                case "--hotkeys": hotkeys = true; break;
                 default:
                     if (a.StartsWith("--", StringComparison.Ordinal))
                     {
@@ -83,7 +90,8 @@ internal static class CommandLine
             Path.GetFullPath(dataDir ?? AppOptions.DefaultDataDir()),
             testAudio is null ? null : Path.GetFullPath(testAudio),
             outputFile is null ? null : Path.GetFullPath(outputFile),
-            prefix ?? AppOptions.DefaultSecretPrefix);
+            prefix ?? AppOptions.DefaultSecretPrefix,
+            hotkeys);
 
         if (positional.Count == 0)
         {

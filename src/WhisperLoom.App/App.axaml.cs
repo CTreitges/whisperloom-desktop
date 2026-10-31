@@ -25,6 +25,7 @@ public partial class App : Application
     private StageWindow? _stage;
     private HistoryWindow? _historyWindow;
     private SettingsWindow? _settingsWindow;
+    private IDisposable? _input;
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
@@ -50,6 +51,7 @@ public partial class App : Application
         _server.Start();
 
         CreateTray(_host);
+        StartHotkeys(_host);
         if (verb is not null)
         {
             await _host.ExecuteAsync(verb, args);
@@ -83,6 +85,35 @@ public partial class App : Application
             _tray = null;
         }
     }
+
+    /// <summary>Windows: globale Tastenkürzel, Overlay und Einfügen (Phase 3); im Testbetrieb nur mit <c>--hotkeys</c>.</summary>
+    private void StartHotkeys(AppHost host)
+    {
+        if (OperatingSystem.IsWindows() && host.Options.HotkeysActive && host.Output is Platform.Windows.TextOutput.InsertOutputSink sink)
+        {
+            StartWindowsInput(host, sink);
+        }
+    }
+
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private void StartWindowsInput(AppHost host, Platform.Windows.TextOutput.InsertOutputSink sink)
+    {
+        var input = Platform.Windows.Input.WindowsInput.Start(host.Controller, sink, host.Log);
+        if (input is not null)
+        {
+            _input = input;
+            host.InputStatus = () =>
+            {
+                var status = input.Flow.Status();
+                status["hook"] = input.HookRunning;
+                return status;
+            };
+            RecordHotkey = async () => (await input.RecordAsync())?.ToString();
+        }
+    }
+
+    /// <summary>Rekorder für die Einstellungen (nur mit laufendem Hook).</summary>
+    internal Func<Task<string?>>? RecordHotkey { get; private set; }
 
     /// <summary>"stage", "history", "settings" oder "quit".</summary>
     private void Open(string what)
@@ -159,6 +190,7 @@ public partial class App : Application
     {
         _host?.Controller.Cancel();
         _host?.Log.Event("app.quit");
+        _input?.Dispose();
         _tray?.Dispose();
         if (_server is not null)
         {

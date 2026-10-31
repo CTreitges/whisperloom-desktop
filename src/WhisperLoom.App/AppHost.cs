@@ -27,6 +27,7 @@ public sealed class AppHost
     {
         Options = options;
         Secrets = secrets;
+        Output = output;
         Store = new SettingsStore(options.DataDir);
         Log = new AppLog(options.DataDir);
         WhisperLoomSettings settings;
@@ -56,6 +57,12 @@ public sealed class AppHost
 
     public DictationController Controller { get; }
 
+    /// <summary>Die Ausgabe-Senke (unter Windows mit Einfügen per Tastenkürzel, Phase 3).</summary>
+    public IOutputSink Output { get; }
+
+    /// <summary>Stand der Windows-Bedienung für <c>status --json</c> (Overlay, Pille, Hinweis); null = keine Hotkeys.</summary>
+    public Func<JsonObject>? InputStatus { get; set; }
+
     /// <summary>Fenster-Aktionen (Bühnenansicht, Verlauf, Einstellungen, Beenden); setzt die App.</summary>
     public Action<string>? ShowWindow { get; set; }
 
@@ -65,8 +72,16 @@ public sealed class AppHost
         var secrets = await SecretStoreFactory.CreateAsync(options.DataDir, options.SecretPrefix, ct).ConfigureAwait(false);
         IAudioRecorder recorder = options.TestAudio is null ? new PortAudioRecorder() : new WavFileRecorder(options.TestAudio);
         IOutputSink output = options.OutputFile is null ? new ClipboardOutputSink(ProcessRunner.Instance) : new FileOutputSink(options.OutputFile);
+        AppHost? host = null;
+        if (OperatingSystem.IsWindows() && options.OutputFile is null)
+        {
+            // Einfügen per Tastenkürzel; der Modus folgt den Einstellungen des fertigen Hosts.
+            output = Platform.Windows.Input.WindowsInput.CreateSink(output, () =>
+                Platform.Windows.TextOutput.InsertModes.FromKey(host is null ? null : SettingsStore.Desktop(host.Controller.Settings).InsertMode));
+        }
         var cache = new ModelCache(Path.Combine(options.DataDir, "model-cache.json"));
-        return new AppHost(options, secrets, settings => new AppPipeline(settings, secrets, cache), recorder, output);
+        host = new AppHost(options, secrets, settings => new AppPipeline(settings, secrets, cache), recorder, output);
+        return host;
     }
 
     /// <summary>Führt ein Verb aus (aus der IPC oder vom eigenen Start). Läuft auf dem UI-Thread.</summary>
@@ -155,6 +170,7 @@ public sealed class AppHost
             ["keys"] = keys,
             ["dataDir"] = Options.DataDir,
             ["output"] = Options.OutputFile is null ? "clipboard" : "file",
+            ["input"] = InputStatus?.Invoke(),
         };
     }
 }
