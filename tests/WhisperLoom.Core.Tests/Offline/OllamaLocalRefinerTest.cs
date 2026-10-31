@@ -45,7 +45,7 @@ public sealed class OllamaLocalRefinerTest : IAsyncLifetime
     }
 
     private OllamaLocalRefiner Refiner(string? baseUrl = null) =>
-        new(_http, () => _model, new FakePromptBuilder(), new TextCleanup([]), baseUrl ?? _server.Base);
+        new(_http, () => _model, new FakePromptBuilder(), new TextCleanup([]), () => baseUrl ?? _server.Base);
 
     private static string DeadUrl()
     {
@@ -107,9 +107,19 @@ public sealed class OllamaLocalRefinerTest : IAsyncLifetime
     [Fact]
     public async Task OllamaFehltGiltAlsNichtBereit()
     {
+        var dead = DeadUrl();
         var e = await Assert.ThrowsAsync<LocalNotAvailableException>(() =>
-            Refiner(DeadUrl()).RefineAsync("hallo", "de", new Refinement(RefineMode.Polish), Ct));
-        Assert.Contains("https://ollama.com/download", e.Message, StringComparison.Ordinal);
+            Refiner(dead).RefineAsync("hallo", "de", new Refinement(RefineMode.Polish), Ct));
+        Assert.Contains(dead, e.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>Leere Adresse = Standard 127.0.0.1:11434 (ohne Anfrage geprüft; der Hinweis nennt dann den Download-Link).</summary>
+    [Fact]
+    public void OhneAdresseGiltDerStandard()
+    {
+        Assert.Equal(OllamaLocalRefiner.DefaultBaseUrl, new OllamaLocalRefiner(_http, () => _model, new FakePromptBuilder(), new TextCleanup([]), () => " ").BaseUrl);
+        Assert.Equal(OllamaLocalRefiner.DefaultBaseUrl, new OllamaLocalRefiner(_http, () => _model, new FakePromptBuilder(), new TextCleanup([])).BaseUrl);
+        Assert.Contains("https://ollama.com/download", OllamaLocalRefiner.MsgUnreachable, StringComparison.Ordinal);
     }
 
     [Fact]

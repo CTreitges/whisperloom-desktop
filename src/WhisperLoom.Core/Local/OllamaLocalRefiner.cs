@@ -15,7 +15,7 @@ public sealed class OllamaLocalRefiner(
     Func<string> model,
     IRefinePromptBuilder prompts,
     TextCleanup cleanup,
-    string baseUrl = OllamaLocalRefiner.DefaultBaseUrl) : ILocalRefiner
+    Func<string>? baseUrl = null) : ILocalRefiner
 {
     public const string DefaultBaseUrl = "http://127.0.0.1:11434";
 
@@ -30,12 +30,15 @@ public sealed class OllamaLocalRefiner(
 
     public string ModelLabel => model().Trim();
 
+    /// <summary>Adresse von Ollama je Aufruf frisch; leer = <see cref="DefaultBaseUrl"/>.</summary>
+    internal string BaseUrl => baseUrl?.Invoke()?.Trim() is { Length: > 0 } url ? url : DefaultBaseUrl;
+
     /// <summary>Ollama antwortet und das gewählte Modell ist installiert. Wirft nur bei Abbruch.</summary>
     public async Task<bool> IsReadyAsync(CancellationToken ct)
     {
         var name = model().Trim();
         if (name.Length == 0) return false;
-        var models = await ListModelsAsync(http, baseUrl, ct).ConfigureAwait(false);
+        var models = await ListModelsAsync(http, BaseUrl, ct).ConfigureAwait(false);
         return models is not null && Contains(models, name);
     }
 
@@ -44,14 +47,14 @@ public sealed class OllamaLocalRefiner(
         if (string.IsNullOrWhiteSpace(raw) || refinement.Mode == RefineMode.Off) return raw;
         var name = model().Trim();
         if (name.Length == 0) throw new LocalNotAvailableException(MsgNoModel);
-        var access = AccessResolver.ResolveLlm(AccessResolver.ResolveStt("openai", "", "", ""), "ollama", baseUrl, "", name);
+        var access = AccessResolver.ResolveLlm(AccessResolver.ResolveStt("openai", "", "", ""), "ollama", BaseUrl, "", name);
         try
         {
             return await new TextRefiner(access, http, prompts, cleanup).RefineAsync(raw, language, refinement, ct).ConfigureAwait(false);
         }
         catch (ApiNetworkException) when (!ct.IsCancellationRequested)
         {
-            throw new LocalNotAvailableException(MsgUnreachable);
+            throw new LocalNotAvailableException(BaseUrl == DefaultBaseUrl ? MsgUnreachable : $"Ollama nicht erreichbar ({BaseUrl})");
         }
         catch (ApiHttpException e) when (e.StatusCode == 404)
         {

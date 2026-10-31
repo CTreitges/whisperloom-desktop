@@ -142,7 +142,7 @@ public sealed partial class LocalViewModel : ObservableObject
     public async Task RefreshOllama()
     {
         if (_parts is null) return;
-        var models = await OllamaLocalRefiner.ListModelsAsync(_parts.OllamaHttp);
+        var models = await OllamaLocalRefiner.ListModelsAsync(_parts.OllamaHttp, LocalParts.OllamaUrl(_s));
         OllamaMissing = models is null;
         OllamaModels.Clear();
         foreach (var m in models ?? []) OllamaModels.Add(m);

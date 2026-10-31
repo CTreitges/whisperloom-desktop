@@ -22,7 +22,8 @@ public sealed class LocalParts : IAsyncDisposable
         _download = DownloadClient(desktop);
         _ollamaHttp = Http.CreateClient(new HttpProxyOptions(ProxyMode.None));
         Stt = new LocalStt(Bench.LocalDir(options), settings, _download, CoreText.VocabularyPrompt);
-        Refiner = new OllamaLocalRefiner(_ollamaHttp, () => LocalSettings.Of(settings()).OllamaModel, CoreText.Prompts, TextCleanup.For(CoreText.Polisher));
+        Refiner = new OllamaLocalRefiner(_ollamaHttp, () => LocalSettings.Of(settings()).OllamaModel, CoreText.Prompts, TextCleanup.For(CoreText.Polisher),
+            () => LocalSettings.Of(settings()).OllamaUrl);
     }
 
     public LocalStt Stt { get; }
@@ -34,6 +35,10 @@ public sealed class LocalParts : IAsyncDisposable
 
     /// <summary>Client ohne Proxy für Ollama.</summary>
     public HttpClient OllamaHttp => _ollamaHttp;
+
+    /// <summary>Adresse von Ollama aus den Einstellungen (leer = Standard).</summary>
+    public static string OllamaUrl(WhisperLoomSettings settings) =>
+        LocalSettings.Of(settings).OllamaUrl is { Length: > 0 } url ? url : OllamaLocalRefiner.DefaultBaseUrl;
 
     /// <summary>Wie <see cref="HttpClients.Create"/>, aber mit Weiterleitungen (302 → CDN) und ohne Gesamt-Zeitlimit.</summary>
     public static HttpClient DownloadClient(DesktopSettings desktop)

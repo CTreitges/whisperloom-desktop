@@ -19,6 +19,9 @@ public sealed class LocalSettings
     /// <summary>Ollama-Modell der lokalen Textverbesserung ("" = keins gewählt).</summary>
     public string OllamaModel { get; set; } = "";
 
+    /// <summary>Adresse von Ollama; "" = http://127.0.0.1:11434 (Standard, auch für <c>OLLAMA_HOST</c> mit anderem Port).</summary>
+    public string OllamaUrl { get; set; } = "";
+
     /// <summary>"auto" = Vulkan, bei Fehler CPU; "cpu" = nur CPU.</summary>
     public string Backend { get; set; } = "auto";
 
