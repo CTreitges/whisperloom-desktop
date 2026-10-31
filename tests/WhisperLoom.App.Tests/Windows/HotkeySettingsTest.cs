@@ -22,7 +22,8 @@ public class HotkeySettingsTest
         Assert.Equal("paste", d.InsertMode);
     }
 
-    [Fact]
+    // Avalonia-Thread: Save() schaltet die globale Oberflächensprache, wie die übrigen UI-Tests nur seriell.
+    [AvaloniaFact]
     public async Task Recorder_sets_value_warns_about_duplicates_and_saves()
     {
         Loc.Instance.SetLanguage("de");
@@ -47,7 +48,7 @@ public class HotkeySettingsTest
         Assert.Equal("Ctrl+Win", saved.HotkeyHold);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task Cancelled_recording_keeps_the_value()
     {
         using var f = new ControllerFixture();
@@ -58,7 +59,7 @@ public class HotkeySettingsTest
         Assert.False(vm.Hotkeys.Hold.IsRecording);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void Without_hook_there_is_no_record_button()
     {
         using var f = new ControllerFixture();

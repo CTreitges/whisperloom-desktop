@@ -1,3 +1,4 @@
+using Avalonia.Headless.XUnit;
 using WhisperLoom.App.Localization;
 using WhisperLoom.App.Platform.Windows.Input;
 using WhisperLoom.App.Platform.Windows.Overlay;
@@ -9,7 +10,7 @@ using WhisperLoom.Core.Testing;
 
 namespace WhisperLoom.App.Tests.Windows;
 
-/// <summary>Ablauf der Tastenkürzel gegen den echten <see cref="DictationController"/> mit Fake-Pipeline und Fake-Adaptern.</summary>
+/// <summary>Auf dem Avalonia-Thread (seriell mit den UI-Tests, die die globale Sprache umschalten). Ablauf der Tastenkürzel gegen den echten <see cref="DictationController"/> mit Fake-Pipeline und Fake-Adaptern.</summary>
 public sealed class InputFlowTest : IDisposable
 {
     private readonly InsertRig _rig = new();
@@ -20,7 +21,7 @@ public sealed class InputFlowTest : IDisposable
 
     public InputFlowTest()
     {
-        Loc.Instance.SetLanguage("de");
+        // Keine Sprachumschaltung hier: Loc ist global, die UI-Tests schalten sie auf dem UI-Thread.
         var settings = new WhisperLoomSettings { Refine = new RefineSettings { Stage = "off" } };
         Sink = new InsertOutputSink(new CaptureSink(), _rig.Inserter, () => InsertMode.Paste);
         _f = new ControllerFixture(settings, Sink);
@@ -32,7 +33,7 @@ public sealed class InputFlowTest : IDisposable
 
     public void Dispose() => _f.Dispose();
 
-    [Fact]
+    [AvaloniaFact]
     public async Task Toggle_opens_overlay_and_second_press_sends_into_the_target()
     {
         await _flow.HandleAsync(HotkeyAction.Toggle);
@@ -54,7 +55,7 @@ public sealed class InputFlowTest : IDisposable
         Assert.Equal(0, _rig.Keys.Enters);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task Enter_sends_and_ctrl_enter_sends_with_enter()
     {
         await _flow.HandleAsync(HotkeyAction.Toggle);
@@ -67,7 +68,7 @@ public sealed class InputFlowTest : IDisposable
         Assert.Equal(1, _rig.Keys.Enters);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task Backspace_discards_without_output()
     {
         await _flow.HandleAsync(HotkeyAction.Toggle);
@@ -83,7 +84,7 @@ public sealed class InputFlowTest : IDisposable
         Assert.Empty(_rig.Steps);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task Overlay_buttons_pause_without_counting_the_pause_then_send()
     {
         await _flow.HandleAsync(HotkeyAction.Toggle);
@@ -101,12 +102,12 @@ public sealed class InputFlowTest : IDisposable
         Assert.Equal(TimeSpan.FromSeconds(3), _flow.Overlay.Elapsed);
 
         _flow.Overlay.SendEnterCommand.Execute(null);
-        await WaitIdle();
+        await WaitFor(() => _f.Controller.State == DictationState.Idle && !_ui.Overlay);
         Assert.Equal(1, _rig.Keys.Enters);
         Assert.False(_ui.Overlay);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task Hold_shows_pill_and_inserts_on_release()
     {
         await _flow.HandleAsync(HotkeyAction.HoldStart);
@@ -119,7 +120,7 @@ public sealed class InputFlowTest : IDisposable
         Assert.Equal("alt", _rig.Clipboard.Text);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task Hold_cancel_discards()
     {
         await _flow.HandleAsync(HotkeyAction.HoldStart);
@@ -129,7 +130,7 @@ public sealed class InputFlowTest : IDisposable
         Assert.Equal(0, _f.Pipeline.Runs);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task Hold_end_without_hold_and_send_without_overlay_do_nothing()
     {
         await _flow.HandleAsync(HotkeyAction.HoldEnd);
@@ -139,7 +140,7 @@ public sealed class InputFlowTest : IDisposable
         Assert.Empty(_rig.Steps);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task Hotkeys_are_ignored_while_a_cli_dictation_runs()
     {
         _f.Controller.Start();
@@ -149,7 +150,7 @@ public sealed class InputFlowTest : IDisposable
         Assert.False(_ui.Overlay);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task Stage_combo_switches_stage_and_shows_hint()
     {
         await _flow.HandleAsync(HotkeyAction.Stage);
@@ -159,7 +160,7 @@ public sealed class InputFlowTest : IDisposable
         Assert.Equal(Loc.Instance["Stage_polish"], hint.Message);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task Pipeline_error_shows_error_state_in_overlay()
     {
         _f.Pipeline.Failure = FakeFailure.SttHttp;
@@ -173,7 +174,7 @@ public sealed class InputFlowTest : IDisposable
         _ = send;
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task Hold_error_shows_toast()
     {
         _f.Pipeline.Failure = FakeFailure.SttNetwork;
@@ -182,7 +183,7 @@ public sealed class InputFlowTest : IDisposable
         Assert.Contains(_ui.Hints, h => h.Kind == "toast" && h.Message == Loc.Instance["Error_Network"]);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task Gone_target_raises_fallback_toast()
     {
         var toasts = new List<InsertOutcome>();
@@ -196,7 +197,7 @@ public sealed class InputFlowTest : IDisposable
         Assert.Equal(Loc.Instance["Insert_TargetGone"], _ui.Hints[^1].Message);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task Audio_failure_on_start_shows_toast_and_disarms()
     {
         _f.Recorder.Unavailable = true;
@@ -209,9 +210,9 @@ public sealed class InputFlowTest : IDisposable
         Assert.Empty(_rig.Steps);
     }
 
-    private async Task WaitIdle()
+    private static async Task WaitFor(Func<bool> condition)
     {
-        for (var i = 0; i < 100 && _f.Controller.State != DictationState.Idle; i++)
+        for (var i = 0; i < 200 && !condition(); i++)
         {
             await Task.Delay(10);
         }
