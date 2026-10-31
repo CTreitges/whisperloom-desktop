@@ -52,4 +52,18 @@ gh release create whisper-server-<tag> -R CTreitges/whisperloom-desktop --prerel
   <ordner>/sidecar-manifest/SHA256SUMS.txt <ordner>/sidecar-manifest/sidecar-manifest.json
 ```
 
-Die App lädt die Binaries später von diesem Release und prüft sie gegen die SHA256 aus `sidecar-manifest.json`.
+Die App lädt die Binaries von diesem Release und prüft sie gegen die SHA256 aus `sidecar-manifest.json`.
+
+## Laufzeit in der App (WLD-P4b)
+- Code: `src/WhisperLoom.App/Platform/Sidecar/`, HTTP-Teil und Modelle in `src/WhisperLoom.Core/Local/`.
+- Installation bei Bedarf nach `<Datenordner>/local/whisper-server/<tag>-<os>-<variante>/`, Modelle nach `<Datenordner>/local/models/`.
+  - Tag (`SidecarRelease.Tag`) und die SHA256 von `sidecar-manifest.json` (`SidecarRelease.ManifestSha256`) stehen im Code. Neues Release → beide anpassen.
+  - Aus dem Manifest kommen Dateiname und SHA256 des Archivs, die Größe per HEAD. Download mit Range-Fortsetzung, Prüfsumme vor dem Entpacken.
+- Start auf 127.0.0.1 mit freiem Port, `GET /health` bis bereit (höchstens 120 s), Erkennung über `POST /inference`.
+- Rechenweg „auto“: erst Vulkan; startet die Variante nicht oder wird nicht gesund, für die Sitzung CPU (`--no-gpu`).
+- Ende nach Leerlauf (`local.idleMinutes`, Standard 10), beim Modellwechsel und mit der App:
+  - Windows: Job-Objekt mit `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`.
+  - Linux: Wächter `/bin/sh`, der jede Sekunde die App-PID prüft und sonst die gemerkte PID beendet (nur wenn sie `whisper-server` heißt).
+- Messung: `WhisperLoom bench --model <tiny|base|small|large-v3-turbo> --seconds <n> [--backend auto|cpu] [--test-audio <wav>]`
+  → Zeilen `backend=… device=…` und `rtf=…` (Rechenzeit / Audiodauer, nach einem Aufwärmlauf).
+- Lokale Textverbesserung: Ollama auf `local.ollamaUrl` (Standard `http://127.0.0.1:11434`), Modell `local.ollamaModel`. Keine Installation, kein `ollama pull`; fehlt Ollama, zeigt der Tab „Lokal“ den Link https://ollama.com/download.
