@@ -2,7 +2,8 @@
 
 Mit --server-local startet die Suite den Server aus <repo>/server auf einem freien Port (Python der Server-venv,
 siehe server/README.md; anders per --server-python bzw. WLD_SERVER_PYTHON) und dazu tools/fake_api.py als Anbieter
-hinter dem Proxy. Prüfungen:
+hinter dem Proxy. Mit --server <URL> --admin-cli "<Befehl>" läuft dieselbe Suite gegen eine laufende Instanz, etwa die
+Demo auf dem VPS (W2-DEMO, tools/smoke_enroll_remote.py: eigene Testfirma, die am Ende gelöscht wird). Prüfungen:
 - join-pending: `WhisperLoom join --server … --code …` → Exit 0, Zustand „wartet“, Token im Secret-Store, nicht in settings.json.
 - approve-sync: Freigabe per Server-CLI (`device-approve`), `WhisperLoom sync` → freigegeben, Proxy-Zugang Fest.
 - fixed-values: Fest/Vorgabe im Portal (Anmeldeart local_only) → nach `sync` in settings.json und policy.json.
@@ -55,6 +56,8 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 class LocalServer:
     """Firmen-Server als Kindprozess mit eigenem Datenordner; Portal-Anmeldung über local_only (nur Loopback)."""
+
+    slug = "smoke"
 
     def __init__(self, python: str, data: Path, server_dir: Path = SERVER_DIR):
         self.python = python
@@ -122,11 +125,11 @@ class LocalServer:
         return self.request("POST", path, {**fields, "csrf": match.group(1).decode()})[0]
 
     def tenant(self) -> str:
-        out = self.cli("tenant-create", "smoke", TENANT, "--show")
+        out = self.cli("tenant-create", self.slug, TENANT, "--show")
         return re.search(r"Firmencode: (\S+)", out).group(1)
 
     def device_id(self) -> str:
-        line = self.cli("device-list", "smoke").strip().splitlines()[-1]
+        line = self.cli("device-list", self.slug).strip().splitlines()[-1]
         return line.split("\t")[0]
 
 
@@ -151,9 +154,13 @@ def run(args, work: Path, report, smoke) -> None:
     import smoke_full
     import smoke_platform as plat
 
-    if not args.server_local:
-        print("SMOKE enroll SKIP ohne --server-local (Live-Demo: W2-DEMO)")
+    remote_url = getattr(args, "server", None)
+    if not args.server_local and not remote_url:
+        print("SMOKE enroll SKIP ohne --server-local bzw. --server")
         report.check("server-local", False, "--server-local fehlt")
+        return
+    if remote_url and not getattr(args, "admin_cli", None):
+        report.check("admin-cli", False, "--server braucht --admin-cli (Befehl für python -m whisperloom_server)")
         return
     data = args.data_dir or work / args.id / "smoke-data-enroll"
     smoke.fresh_dir(data)
@@ -166,8 +173,16 @@ def run(args, work: Path, report, smoke) -> None:
     prefix = f"WhisperLoom-Test-{args.id}:"
     (data / "settings.json").write_text(json.dumps({"schemaVersion": 1, "language": "en", "engine": "online"}), encoding="utf-8")
     secrets_seen: list[str] = []
-    server_dir = Path(args.server_dir) if getattr(args, "server_dir", None) else SERVER_DIR
-    with smoke_full.FakeApi() as fake, LocalServer(server_python(args.server_python), server_data, server_dir) as server:
+    if remote_url:
+        import smoke_enroll_remote as remote
+
+        server_cm = remote.RemoteServer(remote_url, args.admin_cli, args.id)
+        fake_cm = remote.RemoteFake(server_cm)
+    else:
+        server_dir = Path(args.server_dir) if getattr(args, "server_dir", None) else SERVER_DIR
+        server_cm = LocalServer(server_python(args.server_python), server_data, server_dir)
+        fake_cm = smoke_full.FakeApi()
+    with server_cm as server, fake_cm as fake:
         app = smoke.AppRun(args.app, data, prefix, ["--test-audio", str(wav), "--output-file", str(out)])
         try:
             code = server.tenant()

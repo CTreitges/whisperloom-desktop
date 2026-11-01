@@ -1,6 +1,8 @@
 """Tests für tools/check_i18n.py, tools/fake_api.py und den Lock-/Datenordner-Schutz von tools/smoke.py."""
 from __future__ import annotations
 
+import argparse
+import contextlib
 import datetime as dt
 import io
 import json
@@ -140,6 +142,30 @@ class FakeApiTest(unittest.TestCase):
         self.assertEqual((last["path"], last["via_proxy"], last["has_key"], last["model"]),
                          ("/anthropic/v1/chat/completions", True, True, "claude-x"))
         self.assertEqual(last["user_start"], "<dictation>\nhi\n</dictation>")
+
+
+class FakeApiHostTest(unittest.TestCase):
+    """W2-DEMO: eigene Loopback-Adresse für die Demo-Instanz; nie eine Netz-Adresse."""
+
+    def test_own_loopback_address_serves(self):
+        api, proxy, _ = fake_api.serve(host="127.0.0.2")
+        try:
+            self.assertEqual("127.0.0.2", api.server_address[0])
+            self.assertEqual("127.0.0.2", proxy.server_address[0])
+            opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+            with opener.open(f"http://127.0.0.2:{api.server_address[1]}/_requests", timeout=5) as r:
+                self.assertEqual([], json.loads(r.read())["requests"])
+        finally:
+            for s in (api, proxy):
+                s.shutdown()
+                s.server_close()
+
+    def test_network_addresses_are_rejected(self):
+        for host in ("0.0.0.0", "::", "10.0.0.5", "fake-api.example"):
+            with self.assertRaises(argparse.ArgumentTypeError, msg=host):
+                fake_api.serve(host=host)
+        with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+            fake_api.main(["--host", "0.0.0.0"])
 
 
 class SmokeGuardTest(unittest.TestCase):
