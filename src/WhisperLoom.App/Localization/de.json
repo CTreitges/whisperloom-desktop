@@ -161,6 +161,8 @@
   "Profile_Add": "Profil hinzufügen",
   "Profile_Default": "Standard",
   "Profile_Enabled": "Aktiv",
+  "Profile_EnterOff": "Aus",
+  "Profile_EnterOn": "An",
   "Profile_Hint": "Passt das Zielfenster zu einem Profil, gelten dessen Stufe, Ausgabe und Enter. Ein Profil mit Fenstertitel geht vor; sonst das erste passende. Der Stufen-Hotkey ändert die Stufe des aktiven Profils.",
   "Profile_InsertMode": "Ausgabe",
   "Profile_InvalidTitle": "Ungültiger Regex – das Profil greift nicht",

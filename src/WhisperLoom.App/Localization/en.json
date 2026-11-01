@@ -161,6 +161,8 @@
   "Profile_Add": "Add profile",
   "Profile_Default": "Default",
   "Profile_Enabled": "Active",
+  "Profile_EnterOff": "Off",
+  "Profile_EnterOn": "On",
   "Profile_Hint": "If the target window matches a profile, its stage, output and Enter apply. A profile with a window title wins; otherwise the first match. The stage hotkey changes the stage of the active profile.",
   "Profile_InsertMode": "Output",
   "Profile_InvalidTitle": "Invalid regex – the profile never matches",

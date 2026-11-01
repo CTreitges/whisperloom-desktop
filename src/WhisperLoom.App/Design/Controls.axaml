@@ -80,7 +80,7 @@
     <Style Selector="^:default /template/ Border#PART_Badge">
       <Setter Property="IsVisible" Value="True" />
     </Style>
-    <Style Selector="^:default /template/ Button#PART_Reset">
+    <Style Selector="^:overridden /template/ Button#PART_Reset">
       <Setter Property="IsVisible" Value="True" />
     </Style>
     <Style Selector="^:error /template/ TextBlock#PART_Error">

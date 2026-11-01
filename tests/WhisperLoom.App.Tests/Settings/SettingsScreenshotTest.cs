@@ -1,4 +1,3 @@
-using System.Text.Json.Nodes;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Styling;
@@ -21,19 +20,21 @@ public sealed class SettingsScreenshotTest
 {
     private static string? Dir => Environment.GetEnvironmentVariable("WLD_SCREENSHOT_DIR");
 
-    private sealed class DemoSource : IManagedSource
+    /// <summary>Firma mit festen Erkennungs-Zeilen und zwei Vorgaben (eine davon vom Nutzer geändert).</summary>
+    private static void Demo(ControllerFixture f)
     {
-        public string? ManagerName => "Beispiel GmbH";
-
-        public ManagedLevel LevelOf(string path) => path switch
+        f.Controller.Settings.Management.TenantName = "Beispiel GmbH";
+        f.Controller.Settings.Stt.Model = "whisper-1";
+        f.Controller.Settings.Management.Overrides = ["stt.model"];
+        f.Controller.Policy = new Core.Settings.PolicySettings
         {
-            "stt.providerId" or "secrets.stt" or "stt.baseUrl" or "stt.readTimeoutSec" => ManagedLevel.Fixed,
-            "engine" or "language" => ManagedLevel.Fixed,
-            "stt.model" or "sttFallback.enabled" => ManagedLevel.Default,
-            _ => ManagedLevel.Free,
+            Locked = ["engine", "language", "stt.providerId", "secrets.stt", "stt.baseUrl", "stt.readTimeoutSec"],
+            Defaults = new Dictionary<string, System.Text.Json.JsonElement>
+            {
+                ["stt.model"] = System.Text.Json.JsonSerializer.SerializeToElement("gpt-transcribe"),
+                ["sttFallback.enabled"] = System.Text.Json.JsonSerializer.SerializeToElement(false),
+            },
         };
-
-        public JsonNode? DefaultOf(string path) => path == "stt.model" ? JsonValue.Create("gpt-transcribe") : null;
     }
 
     private static void Save(SettingsWindow window, string name)
@@ -48,15 +49,19 @@ public sealed class SettingsScreenshotTest
         frame.Save(Path.Combine(Dir!, name), Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
     }
 
-    private static async Task<(SettingsWindow Window, ControllerFixture F)> Open(string lang, ThemeVariant theme, IManagedSource? source = null)
+    private static async Task<(SettingsWindow Window, ControllerFixture F)> Open(string lang, ThemeVariant theme, bool managed = false)
     {
         Loc.Instance.SetLanguage(lang);
         var f = new ControllerFixture(new WhisperLoomSettings { Language = lang, Engine = "online" });
+        if (managed)
+        {
+            Demo(f);
+        }
         var store = new MemorySecretStore();
         store.Values[SecretNames.Stt] = "test-key-not-real-9";
         var vm = new SettingsViewModel(f.Controller, store, new FakeAccessChecker(), microphones: ["USB Mic"]);
         await vm.LoadKeysAsync();
-        var shell = new SettingsShellViewModel(vm, source is null ? null : _ => source);
+        var shell = new SettingsShellViewModel(vm);
         var window = new SettingsWindow(shell) { Width = 980, Height = 760, RequestedThemeVariant = theme };
         window.Show();
         return (window, f);
@@ -117,7 +122,7 @@ public sealed class SettingsScreenshotTest
                 window.Close();
             }
 
-            var (managed, g) = await Open("de", theme, new DemoSource());
+            var (managed, g) = await Open("de", theme, managed: true);
             using (g)
             {
                 SettingsUi.Show(managed, "recognition");

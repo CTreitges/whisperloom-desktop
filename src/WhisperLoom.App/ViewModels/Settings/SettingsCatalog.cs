@@ -101,6 +101,18 @@ public static class SettingsCatalog
         ["offline.localLlmModel"] = "LiteRT-Modell der Android-App; der Desktop nutzt local.ollamaModel",
         ["serverModelsEnabled"] = "Vom Desktop nicht ausgewertet; Modelllisten vom Server kommen mit W2-LOCAL",
         ["desktop.output"] = "Nur ein Wert (clipboard); die Ausgabe-Art steht in desktop.insertMode",
+        // Neue Schlüssel aus W2-C0: Verhalten und Bedienung bauen die Folge-Issues auf diesem Designsystem.
+        // Ein Schalter ohne Wirkung wäre irreführend (W2-UI1: kein neues Verhalten außer UI).
+        ["output.alwaysCopy"] = "W2-OUT (Ausgabe: immer kopieren) – Seite „Ausgabe“",
+        ["output.pressEnter"] = "W2-OUT (Enter nur als Einstellung) – Seite „Ausgabe“",
+        ["selection.hotkeyCombo"] = "W2-SEL (Markierung verarbeiten) – Seite „Tastenkürzel“",
+        ["selection.floatingButton"] = "W2-SEL (schwebender Knopf) – Seite „Ausgabe“",
+        ["selection.ctrlRightClick"] = "W2-SEL (Strg+Rechtsklick) – Seite „Ausgabe“",
+        ["providers.custom"] = "W2-LOCAL (eigene Anbieter) – eigene Seite „Anbieter“ bzw. Erkennung/Text",
+        ["offline.customModels"] = "W2-LOCAL (eigene Whisper-Datei) – Seite „Erkennung“, Gruppe „Lokal“",
+        ["local.servers"] = "W2-LOCAL (lokale Server) – Seiten „Erkennung“/„Textverbesserung“",
+        ["local.textEngine"] = "W2-LOCAL (mitgeliefertes Textmodell) – Seite „Textverbesserung“, Gruppe „Lokal“",
+        ["local.bundledModel"] = "W2-LOCAL (mitgeliefertes Textmodell) – Seite „Textverbesserung“, Gruppe „Lokal“",
     };
 
     public static SettingEntry? Find(string path) =>

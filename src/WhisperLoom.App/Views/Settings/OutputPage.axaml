@@ -39,7 +39,11 @@
                                     AutomationProperties.Name="{Binding [Profile_Stage], Source={x:Static l:Loc.Instance}}" />
                           <ComboBox ItemsSource="{Binding Owner.InsertModes}" SelectedItem="{Binding InsertMode}" MinWidth="180"
                                     AutomationProperties.Name="{Binding [Profile_InsertMode], Source={x:Static l:Loc.Instance}}" />
-                          <CheckBox IsChecked="{Binding PressEnter}" Content="{Binding [Profile_PressEnter], Source={x:Static l:Loc.Instance}}" />
+                          <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="{Binding [Profile_PressEnter], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
+                            <ComboBox ItemsSource="{Binding Owner.EnterChoices}" SelectedItem="{Binding Enter}" MinWidth="120"
+                                      AutomationProperties.Name="{Binding [Profile_PressEnter], Source={x:Static l:Loc.Instance}}" />
+                          </StackPanel>
                           <CheckBox IsChecked="{Binding Enabled}" Content="{Binding [Profile_Enabled], Source={x:Static l:Loc.Instance}}" />
                           <Button Content="{Binding [Profile_Remove], Source={x:Static l:Loc.Instance}}" Command="{Binding RemoveCommand}" />
                         </WrapPanel>

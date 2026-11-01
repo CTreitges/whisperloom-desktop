@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.LogicalTree;
 using WhisperLoom.App.Localization;
+using WhisperLoom.Core.Contracts.Settings;
 
 namespace WhisperLoom.App.Design;
 
@@ -14,8 +15,8 @@ internal static class ManagedRows
     public static IEnumerable<SettingRow> Of(ILogical root) =>
         root.GetLogicalDescendants().OfType<SettingRow>().Where(r => r.Path is not null);
 
-    public static ManagedLevel LevelOf(Control at, SettingRow row) =>
-        Managed.GetContext(at)?.Source.LevelOf(row.Path!) ?? ManagedLevel.Free;
+    public static ManagedState StateOf(Control at, SettingRow row) =>
+        Managed.GetContext(at)?.Source.StateOf(row.Path!) ?? ManagedState.Free;
 }
 
 /// <summary>
@@ -76,7 +77,7 @@ public class SettingsGroup : HeaderedContentControl
         Footer = FooterKey is { } footer ? Loc.Instance[footer] : "";
         PseudoClasses.Set(":footer", Footer.Length > 0);
         var rows = ManagedRows.Of(this).ToList();
-        IsShown = rows.Count == 0 || rows.Any(r => ManagedRows.LevelOf(this, r) != ManagedLevel.Fixed);
+        IsShown = rows.Count == 0 || rows.Any(r => ManagedRows.StateOf(this, r) != ManagedState.Fixed);
     }
 }
 
@@ -136,7 +137,7 @@ public class SettingsPage : ContentControl
     {
         Title = TitleKey is { } key ? Loc.Instance[key] : "";
         var source = Managed.GetContext(this)?.Source;
-        HasManagedRows = source?.ManagerName is not null && ManagedRows.Of(this).Any(r => ManagedRows.LevelOf(this, r) == ManagedLevel.Fixed);
+        HasManagedRows = source?.ManagerName is not null && ManagedRows.Of(this).Any(r => ManagedRows.StateOf(this, r) == ManagedState.Fixed);
         ManagedText = source?.ManagerName is { } name ? Loc.Instance.Format("Managed_Note", name) : "";
     }
 }

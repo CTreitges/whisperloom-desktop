@@ -1,54 +1,51 @@
-using System.Text.Json.Nodes;
 using Avalonia;
 using Avalonia.Controls;
 using WhisperLoom.App.Localization;
+using WhisperLoom.Core.Contracts.Settings;
 using WhisperLoom.Core.Settings;
 
 namespace WhisperLoom.App.Design;
 
-/// <summary>Stufe einer Einstellung (gemeinsam.md): Fest = ausgeblendet, Vorgabe = sichtbar mit Kennzeichnung, Frei = normal.</summary>
-public enum ManagedLevel
-{
-    Free,
-    Default,
-    Fixed,
-}
-
 /// <summary>
-/// Woher die Stufen kommen. Heute aus <see cref="PolicySettings"/> (gesperrt = Fest); nach dem Merge von W2-C0 aus
-/// dessen <c>ManagedState</c>. Ein Mechanismus für alle Seiten: <see cref="SettingRow"/>, <see cref="SettingsGroup"/>
-/// und <see cref="SettingsPage"/> fragen nur diese Schnittstelle.
+/// Woher die Stufen (<see cref="ManagedState"/>, W2-C0) kommen. Ein Mechanismus für alle Seiten: <see cref="SettingRow"/>,
+/// <see cref="SettingsGroup"/> und <see cref="SettingsPage"/> fragen nur diese Schnittstelle.
 /// </summary>
 public interface IManagedSource
 {
     /// <summary>Wer verwaltet (Firmenname oder „deine IT“); null = nichts verwaltet.</summary>
     string? ManagerName { get; }
 
-    ManagedLevel LevelOf(string path);
+    ManagedState StateOf(string path);
 
-    /// <summary>Firmenwert einer Vorgabe (für „Auf Firmenvorgabe zurücksetzen“); null = keiner.</summary>
-    JsonNode? DefaultOf(string path);
+    /// <summary>Hat der Nutzer eine Vorgabe geändert (User-Override)? Dann bietet die Zeile „Zurücksetzen“ an.</summary>
+    bool IsOverridden(string path);
+
+    /// <summary>„Auf Firmenvorgabe zurücksetzen“: neue Einstellungen mit dem Firmenwert unter <paramref name="path"/>.</summary>
+    WhisperLoomSettings Reset(WhisperLoomSettings current, string path);
 }
 
-/// <summary>Stufen aus der heutigen Richtlinie: gesperrt = Fest, sonst Frei. Tastenkürzel sind nie Fest.</summary>
-public sealed class PolicyManagedSource(PolicySettings policy) : IManagedSource
+/// <summary>
+/// Stufen aus der Richtlinie (<see cref="PolicySettings.StateOf"/>: Provisioning-Datei oder Firmen-Server). Tastenkürzel
+/// sind dort nie Fest. Overrides und Zurücksetzen über <see cref="ManagedDefaults"/>.
+/// </summary>
+public sealed class PolicyManagedSource(PolicySettings policy, Func<WhisperLoomSettings> settings) : IManagedSource
 {
-    public string? ManagerName => policy.IsActive ? Loc.Instance["Managed_It"] : null;
+    public string? ManagerName =>
+        !policy.IsActive ? null
+        : settings().Management.TenantName is { Length: > 0 } tenant ? tenant
+        : Loc.Instance["Managed_It"];
 
-    public ManagedLevel LevelOf(string path) =>
-        IsHotkey(path) || !policy.IsLocked(path) ? ManagedLevel.Free : ManagedLevel.Fixed;
+    public ManagedState StateOf(string path) => policy.StateOf(path);
 
-    public JsonNode? DefaultOf(string path) => null;
+    public bool IsOverridden(string path) => ManagedDefaults.IsOverridden(settings(), path);
 
-    /// <summary>Tastenkürzel bleiben immer frei (Entscheidung Christof, gemeinsam.md).</summary>
-    public static bool IsHotkey(string path) =>
-        path.StartsWith("desktop.hotkey", StringComparison.OrdinalIgnoreCase);
+    public WhisperLoomSettings Reset(WhisperLoomSettings current, string path) => ManagedDefaults.Reset(current, policy, path);
 }
 
 /// <summary>Stufen-Quelle plus Aktion „Auf Firmenvorgabe zurücksetzen“; vererbt sich über <see cref="Managed.ContextProperty"/>.</summary>
 public sealed class ManagedContext(IManagedSource source, Func<string, Task> resetToDefault)
 {
-    public static ManagedContext None { get; } = new(new PolicyManagedSource(PolicySettings.None), _ => Task.CompletedTask);
+    public static ManagedContext None { get; } = new(new PolicyManagedSource(PolicySettings.None, () => new WhisperLoomSettings()), _ => Task.CompletedTask);
 
     public IManagedSource Source { get; } = source;
 

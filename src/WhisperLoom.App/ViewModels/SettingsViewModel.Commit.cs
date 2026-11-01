@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using System.Text.Json.Nodes;
 using CommunityToolkit.Mvvm.Input;
 using WhisperLoom.App.Localization;
 using WhisperLoom.App.Services;
@@ -68,13 +67,14 @@ public sealed partial class SettingsViewModel
     [RelayCommand]
     private void CancelHistoryOff() => HistoryOffPending = false;
 
-    /// <summary>Setzt den Firmenwert eines Pfades (Vorgabe) und speichert sofort.</summary>
-    public async Task ResetToDefaultAsync(string path, JsonNode? value)
+    /// <summary>Aktueller Stand der App (nicht die Arbeitskopie).</summary>
+    internal WhisperLoomSettings Current => _controller.Settings;
+
+    /// <summary>„Auf Firmenvorgabe zurücksetzen“ (Quelle: <see cref="Design.IManagedSource.Reset"/>) und sofort speichern.</summary>
+    public async Task ResetToDefaultAsync(string path, Design.IManagedSource source)
     {
         await Pending;
-        var json = SettingsMerge.ToJson(_controller.Settings);
-        SettingsMerge.Set(json, path, value?.DeepClone());
-        await ApplyAsync(SettingsMerge.FromJson(json));
+        await ApplyAsync(source.Reset(_controller.Settings, path));
     }
 
     /// <summary>Gültige Änderung an der Kopie: im Fenster sofort speichern.</summary>

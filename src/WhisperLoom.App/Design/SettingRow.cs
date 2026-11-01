@@ -5,6 +5,7 @@ using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using CommunityToolkit.Mvvm.Input;
+using WhisperLoom.Core.Contracts.Settings;
 using WhisperLoom.App.Localization;
 using WhisperLoom.App.ViewModels.Settings;
 
@@ -28,8 +29,8 @@ public class SettingRow : ContentControl
         AvaloniaProperty.RegisterDirect<SettingRow, string>(nameof(Title), r => r.Title);
     public static readonly DirectProperty<SettingRow, string> DescriptionProperty =
         AvaloniaProperty.RegisterDirect<SettingRow, string>(nameof(Description), r => r.Description);
-    public static readonly DirectProperty<SettingRow, ManagedLevel> LevelProperty =
-        AvaloniaProperty.RegisterDirect<SettingRow, ManagedLevel>(nameof(Level), r => r.Level);
+    public static readonly DirectProperty<SettingRow, ManagedState> LevelProperty =
+        AvaloniaProperty.RegisterDirect<SettingRow, ManagedState>(nameof(Level), r => r.Level);
     public static readonly DirectProperty<SettingRow, bool> IsShownProperty =
         AvaloniaProperty.RegisterDirect<SettingRow, bool>(nameof(IsShown), r => r.IsShown);
     public static readonly DirectProperty<SettingRow, string> BadgeTextProperty =
@@ -42,7 +43,7 @@ public class SettingRow : ContentControl
 
     private string _title = "";
     private string _description = "";
-    private ManagedLevel _level;
+    private ManagedState _level;
     private bool _isShown = true;
     private string _badgeText = "";
     private string _resetText = "";
@@ -70,7 +71,7 @@ public class SettingRow : ContentControl
 
     public string Description { get => _description; private set => SetAndRaise(DescriptionProperty, ref _description, value); }
 
-    public ManagedLevel Level { get => _level; private set => SetAndRaise(LevelProperty, ref _level, value); }
+    public ManagedState Level { get => _level; private set => SetAndRaise(LevelProperty, ref _level, value); }
 
     /// <summary>false bei Stufe Fest: die Vorlage zeigt dann nichts, auch nicht für Screenreader.</summary>
     public bool IsShown { get => _isShown; private set => SetAndRaise(IsShownProperty, ref _isShown, value); }
@@ -118,11 +119,14 @@ public class SettingRow : ContentControl
         var descriptionKey = DescriptionKey ?? entry?.DescriptionKey;
         Title = titleKey is null ? "" : loc[titleKey];
         Description = descriptionKey is null ? "" : loc[descriptionKey];
-        Level = Path is null ? ManagedLevel.Free : Managed.GetContext(this)?.Source.LevelOf(Path) ?? ManagedLevel.Free;
-        IsShown = Level != ManagedLevel.Fixed;
+        var source = Managed.GetContext(this)?.Source;
+        Level = Path is null ? ManagedState.Free : source?.StateOf(Path) ?? ManagedState.Free;
+        IsShown = Level != ManagedState.Fixed;
         BadgeText = loc["Managed_Badge"];
         ResetText = loc["Managed_Reset"];
-        PseudoClasses.Set(":default", Level == ManagedLevel.Default);
+        PseudoClasses.Set(":default", Level == ManagedState.Default);
+        // Zurücksetzen nur, wenn der Nutzer die Vorgabe geändert hat (ManagedDefaults, W2-C0).
+        PseudoClasses.Set(":overridden", Level == ManagedState.Default && source?.IsOverridden(Path!) == true);
         PseudoClasses.Set(":error", !string.IsNullOrEmpty(Error));
         PseudoClasses.Set(":described", Description.Length > 0);
         // Name auf das Steuerelement; bei einem Panel auf das erste Eingabeelement ohne eigenen Text (z. B. Liste neben „Neu laden“).

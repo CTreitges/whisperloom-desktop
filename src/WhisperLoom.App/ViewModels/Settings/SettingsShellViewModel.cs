@@ -3,6 +3,7 @@ using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using WhisperLoom.App.Design;
 using WhisperLoom.App.Localization;
+using WhisperLoom.Core.Contracts.Settings;
 
 namespace WhisperLoom.App.ViewModels.Settings;
 
@@ -27,7 +28,7 @@ public sealed partial class SettingsShellViewModel : ObservableObject, IDisposab
     /// <param name="toggleCommand">Befehl fürs Desktop-Kürzel unter Linux.</param>
     public SettingsShellViewModel(SettingsViewModel session, Func<SettingsViewModel, IManagedSource>? source = null, string toggleCommand = "whisperloom toggle")
     {
-        _sourceOf = source ?? (s => new PolicyManagedSource(s.Policy));
+        _sourceOf = source ?? (s => new PolicyManagedSource(s.Policy, () => s.Current));
         _toggleCommand = toggleCommand;
         Loc.Instance.PropertyChanged += OnLanguageChanged;
         Load(session, LastPage);
@@ -67,7 +68,7 @@ public sealed partial class SettingsShellViewModel : ObservableObject, IDisposab
     /// <summary>Firmenwert setzen, dann alles vom neuen Stand neu aufbauen (die Arbeitskopie ist danach veraltet).</summary>
     public async Task ResetToDefaultAsync(string path)
     {
-        await Session.ResetToDefaultAsync(path, Managed.Source.DefaultOf(path));
+        await Session.ResetToDefaultAsync(path, Managed.Source);
         Load(Session.Reopen(), SelectedPage?.Id ?? "general");
         _ = Session.LoadKeysAsync();
     }
@@ -139,7 +140,7 @@ public sealed partial class SettingsShellViewModel : ObservableObject, IDisposab
         var loc = Loc.Instance;
         foreach (var entry in SettingsCatalog.Entries)
         {
-            if (Managed.Source.LevelOf(entry.Path) == ManagedLevel.Fixed || !Available(entry))
+            if (Managed.Source.StateOf(entry.Path) == ManagedState.Fixed || !Available(entry))
             {
                 continue;
             }
