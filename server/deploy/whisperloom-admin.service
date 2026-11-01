@@ -9,10 +9,23 @@ WorkingDirectory=%h/whisperloom-admin/app/server
 # Ohne env scheitert der Start (gewollt: erst setup-demo.sh)
 EnvironmentFile=%h/.config/whisperloom-admin/env
 ExecStart=%h/whisperloom-admin/venv/bin/python -m whisperloom_server serve --host 127.0.0.1 --port 8099
-UMask=0077
-NoNewPrivileges=true
 Restart=on-failure
 RestartSec=3
+# Härtung, soweit sie in User-Units wirkt (seccomp, ohne eigenen Mount-Namespace). ProtectSystem, PrivateTmp, ProtectHome
+# und PrivateDevices fehlen bewusst: Der User-Manager richtet keinen Mount-Namespace ein, die Optionen bleiben dort
+# wirkungslos (live geprüft 2026-11-01, Ubuntu 24.04) bzw. verhindern den Start.
+UMask=0077
+NoNewPrivileges=true
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+# AF_NETLINK: Namensauflösung (getaddrinfo) beim Proxy-Ziel
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
 
 [Install]
 WantedBy=default.target

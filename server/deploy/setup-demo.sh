@@ -26,7 +26,9 @@ chmod 700 "$WL"
 
 "$WL" init >/dev/null
 
-if ! "$WL" tenant-list | awk -F'\t' '$1 == "demo" { f = 1 } END { exit !f }'; then
+# Erst in eine Variable: POSIX-sh hat kein pipefail, ein Fehler von tenant-list bricht so per set -e sofort ab.
+FIRMEN=$("$WL" tenant-list)
+if ! printf '%s\n' "$FIRMEN" | awk -F'\t' '$1 == "demo" { f = 1 } END { exit !f }'; then
   "$WL" tenant-create demo "Demo GmbH" >/dev/null
   # Fake-Anbieter (whisperloom-admin-fake.service) für Erkennung und Text; Christof ersetzt das im Portal durch seinen Key.
   echo "test-key-not-real-2" | "$WL" key-set demo stt --provider custom --base-url "http://$(sed -n 's/^WL_DEMO_FAKE=//p' "$CONF/env")/v1" --model fake-stt
