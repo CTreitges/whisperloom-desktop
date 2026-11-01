@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block titel %}{{ t('nav.gruppen') }}{% endblock %}
+{% block inhalt %}
+<h1>{{ t('nav.gruppen') }}</h1>
+<p class="untertitel">{{ t('p.gruppen_text') }}</p>
+<section class="gruppe-box" aria-labelledby="t-neu">
+  <h2 id="t-neu">{{ t('p.gruppe_neu') }}</h2>
+  <form method="post" action="/gruppen" class="formular reihe">
+    <input type="hidden" name="csrf" value="{{ wer.csrf }}">
+    <label for="neu-name">{{ t('p.name') }}</label>
+    <input id="neu-name" name="name" maxlength="60" required placeholder="{{ t('p.gruppe_beispiel') }}">
+    <button type="submit" class="knopf haupt">{{ t('p.anlegen') }}</button>
+  </form>
+</section>
+{% if not gruppen %}<p class="leer">{{ t('p.gruppen_leer') }}</p>{% endif %}
+<ul class="liste karten">
+{% for z in gruppen %}{% set g = z.g %}
+<li class="gruppe-box" aria-labelledby="gr-{{ g.id }}">
+  <div class="geraet-kopf">
+    <h2 id="gr-{{ g.id }}">{{ g.name }}</h2>
+    <span class="klein">{{ g.anzahl }} {{ t('p.geraete_anzahl') }}</span>
+  </div>
+  <p><a href="/richtlinie?gruppe={{ g.id }}">{{ t('p.gruppe_richtlinie') }}</a></p>
+  <p class="klein">{{ t('p.gruppencode') }}:
+    {% if z.code %}<code id="code-{{ g.id }}">{{ z.code }}</code>
+    <button type="button" class="knopf leise klein-knopf" data-kopieren="code-{{ g.id }}" data-kopiert="{{ t('p.kopiert') }}">{{ t('p.kopieren') }}</button>
+    {% else %}{{ t('p.gruppencode_keiner') }}{% endif %}</p>
+  <details class="mehr">
+    <summary>{{ t('p.bearbeiten') }}</summary>
+    <form method="post" action="/gruppen/{{ g.id }}/umbenennen" class="formular reihe">
+      <input type="hidden" name="csrf" value="{{ wer.csrf }}">
+      <label for="n-{{ g.id }}">{{ t('p.name') }}</label>
+      <input id="n-{{ g.id }}" name="name" value="{{ g.name }}" maxlength="60" required>
+      <button type="submit" class="knopf leise">{{ t('p.umbenennen') }}</button>
+    </form>
+    <div class="aktionen">
+      <form method="post" action="/gruppen/{{ g.id }}/code"><input type="hidden" name="csrf" value="{{ wer.csrf }}"><button class="knopf leise">{{ t('p.gruppencode_neu') if z.code else t('p.gruppencode_anlegen') }}</button></form>
+      {% if z.code %}<form method="post" action="/gruppen/{{ g.id }}/code_entfernen"><input type="hidden" name="csrf" value="{{ wer.csrf }}"><button class="knopf leise">{{ t('p.gruppencode_entfernen') }}</button></form>{% endif %}
+      <form method="post" action="/gruppen/{{ g.id }}/loeschen"><input type="hidden" name="csrf" value="{{ wer.csrf }}"><button class="knopf gefahr">{{ t('p.gruppe_loeschen') }}</button></form>
+    </div>
+  </details>
+</li>
+{% endfor %}
+</ul>
+{% endblock %}

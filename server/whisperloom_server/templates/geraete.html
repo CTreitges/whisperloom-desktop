@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block titel %}{{ t('nav.geraete') }}{% endblock %}
+{% block inhalt %}
+<h1>{{ t('nav.geraete') }}</h1>
+<p class="untertitel">{{ t('p.geraete_text') }}</p>
+{% if not geraete %}
+<p class="leer">{{ t('p.geraete_leer') }}</p>
+{% endif %}
+<ul class="liste karten">
+{% for g in geraete %}
+<li class="gruppe-box geraet" aria-labelledby="g-{{ g.id }}">
+  <div class="geraet-kopf">
+    <h2 id="g-{{ g.id }}">{{ g.name }}</h2>
+    <span class="abzeichen status-{{ g.status }}">{{ t('status.' ~ g.status) }}</span>
+  </div>
+  <p class="klein">{{ g.plattform }}{% if g.app_version %} · {{ g.app_version }}{% endif %} · {{ t('p.gruppe') }}: {{ g.gruppe_name or t('p.keine_gruppe') }} · {{ t('p.zuletzt') }} {{ g.zuletzt_ms | zeit }}</p>
+  <div class="aktionen">
+    {% if g.status == 'pending' %}
+    <form method="post" action="/geraete/{{ g.id }}/freigeben"><input type="hidden" name="csrf" value="{{ wer.csrf }}"><button class="knopf haupt">{{ t('p.freigeben') }}</button></form>
+    {% elif g.status == 'blocked' %}
+    <form method="post" action="/geraete/{{ g.id }}/entsperren"><input type="hidden" name="csrf" value="{{ wer.csrf }}"><button class="knopf">{{ t('p.entsperren') }}</button></form>
+    {% else %}
+    <form method="post" action="/geraete/{{ g.id }}/sperren"><input type="hidden" name="csrf" value="{{ wer.csrf }}"><button class="knopf leise">{{ t('p.sperren') }}</button></form>
+    {% endif %}
+  </div>
+  <details class="mehr">
+    <summary>{{ t('p.bearbeiten') }}</summary>
+    <form method="post" action="/geraete/{{ g.id }}/umbenennen" class="formular reihe">
+      <input type="hidden" name="csrf" value="{{ wer.csrf }}">
+      <label for="n-{{ g.id }}">{{ t('p.name') }}</label>
+      <input id="n-{{ g.id }}" name="name" value="{{ g.name }}" maxlength="64" required>
+      <button type="submit" class="knopf leise">{{ t('p.umbenennen') }}</button>
+    </form>
+    <form method="post" action="/geraete/{{ g.id }}/gruppe" class="formular reihe">
+      <input type="hidden" name="csrf" value="{{ wer.csrf }}">
+      <label for="gr-{{ g.id }}">{{ t('p.gruppe') }}</label>
+      <select id="gr-{{ g.id }}" name="gruppe">
+        <option value="">{{ t('p.keine_gruppe') }}</option>
+        {% for gr in gruppen %}<option value="{{ gr.id }}"{% if gr.id == g.gruppe_id %} selected{% endif %}>{{ gr.name }}</option>{% endfor %}
+      </select>
+      <button type="submit" class="knopf leise">{{ t('p.zuordnen') }}</button>
+    </form>
+    <form method="post" action="/geraete/{{ g.id }}/loeschen" class="formular">
+      <input type="hidden" name="csrf" value="{{ wer.csrf }}">
+      <p class="klein">{{ t('p.geraet_loeschen_text') }}</p>
+      <button type="submit" class="knopf gefahr">{{ t('p.geraet_loeschen') }}</button>
+    </form>
+  </details>
+</li>
+{% endfor %}
+</ul>
+{% endblock %}
