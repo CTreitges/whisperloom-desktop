@@ -63,19 +63,30 @@ public static class SyncImport
         // Textverbesserung, ohne Key, aber mit Diktattext). „local“ liest die App ohne Rücksicht auf Groß-/Kleinschreibung.
         var settings = (JsonObject)file.Settings.DeepClone();
         (settings["stt"] as JsonObject)?.Remove("vocabularyFile");
+        // W2: eigene Whisper-Dateien und lokale Server sind gerätebezogen (Pfad bzw. Ziel für Diktattext).
+        (settings["offline"] as JsonObject)?.Remove("customModels");
         if (settings[LocalSection] is JsonObject local)
         {
-            foreach (var name in local.Select(p => p.Key).Where(k => k.Equals("ollamaUrl", StringComparison.OrdinalIgnoreCase)).ToList())
-            {
-                local.Remove(name);
-            }
+            RemoveIgnoringCase(local, "ollamaUrl");
+            RemoveIgnoringCase(local, "servers");
         }
-        var enterDisabled = ImportProfiles.DisableNewEnter(settings, Tree(current));
+        // management.* ist Gerätezustand: nie importiert.
+        if (RemoveIgnoringCase(settings, ManagedPaths.ManagementSection))
+        {
+            warnings.Add("management (Firmen-Anbindung) übernimmt kein Import; hier ignoriert.");
+        }
+        var currentTree = Tree(current);
+        var enterDisabled = ImportProfiles.DisableNewEnter(settings, currentTree);
+        if (ImportProfiles.DisableNewGlobalEnter(settings, currentTree))
+        {
+            enterDisabled.Add("output.pressEnter");
+        }
         var preview = Merge(current, file with { Settings = settings }, policy, policy.IsLocked, warnings) with { EnterDisabled = enterDisabled };
         if (preview.Settings is null)
         {
             return preview;
         }
+        ManagedDefaults.TrackOverrides(preview.Settings, policy);
         var drops = KeyRoutes.Dropped(current, preview.Settings, storedKeys);
         // Einen von IT festgelegten Key löscht kein Import (wie „key delete“): dann lieber gar nicht übernehmen.
         var locked = drops.Where(d => policy.IsLocked("secrets." + d.Name))
@@ -89,8 +100,27 @@ public static class SyncImport
     /// Eigene Änderungen aus dem Einstellungsfenster unter der Richtlinie: gesperrte Felder bleiben, fester Verlauf gilt,
     /// Verstöße sind Fehler. Ohne die Schutzregeln von <see cref="Preview"/> für fremde Dateien.
     /// </summary>
-    public static ImportPreview ApplyPolicy(WhisperLoomSettings current, WhisperLoomSettings edited, PolicySettings policy) =>
-        Merge(current, SyncDocument.Parse(SettingsJson.Serialize(edited)), policy, policy.IsLocked, []);
+    /// <remarks>Weicht ein Vorgabe-Pfad danach von der Firmenvorgabe ab, steht er in <c>management.overrides</c>.</remarks>
+    public static ImportPreview ApplyPolicy(WhisperLoomSettings current, WhisperLoomSettings edited, PolicySettings policy)
+    {
+        var preview = Merge(current, SyncDocument.Parse(SettingsJson.Serialize(edited)), policy, policy.IsLocked, []);
+        if (preview.Settings is not null)
+        {
+            ManagedDefaults.TrackOverrides(preview.Settings, policy);
+        }
+        return preview;
+    }
+
+    /// <summary>Entfernt alle Schreibweisen von <paramref name="name"/>; true, wenn es eine gab.</summary>
+    internal static bool RemoveIgnoringCase(JsonObject o, string name)
+    {
+        var names = o.Select(p => p.Key).Where(k => k.Equals(name, StringComparison.OrdinalIgnoreCase)).ToList();
+        foreach (var n in names)
+        {
+            o.Remove(n);
+        }
+        return names.Count > 0;
+    }
 
     /// <summary>Gemeinsamer Teil von Import und Provisioning.</summary>
     internal static ImportPreview Merge(WhisperLoomSettings current, SyncDocument file, PolicySettings policy, Func<string, bool> locked, List<string> warnings)
@@ -154,7 +184,10 @@ public static class SyncImport
         path == SyncDocument.AndroidSection || path.StartsWith(SyncDocument.AndroidSection + ".", StringComparison.Ordinal);
 }
 
-/// <summary>Export im Format v1: die ganzen Einstellungen samt <c>desktop</c>/<c>android</c>, nie Keys, Richtlinie oder Vokabular-Pfad.</summary>
+/// <summary>
+/// Export im Format v1: die ganzen Einstellungen samt <c>desktop</c>/<c>android</c>, nie Keys, Richtlinie, Vokabular-Pfad,
+/// <c>management</c> (Firmen-Anbindung) und gerätebezogene Listen (<c>offline.customModels</c>, <c>local.servers</c>).
+/// </summary>
 public static class SyncExport
 {
     public static string ToJson(WhisperLoomSettings settings)
@@ -164,6 +197,12 @@ public static class SyncExport
         tree.Remove(SyncDocument.SecretsSection);
         tree.Remove(SyncDocument.PolicySection);
         (tree["stt"] as JsonObject)?.Remove("vocabularyFile");
+        SyncImport.RemoveIgnoringCase(tree, ManagedPaths.ManagementSection);
+        (tree["offline"] as JsonObject)?.Remove("customModels");
+        foreach (var local in tree.Where(p => p.Key.Equals("local", StringComparison.OrdinalIgnoreCase)).Select(p => p.Value).OfType<JsonObject>())
+        {
+            SyncImport.RemoveIgnoringCase(local, "servers");
+        }
         return tree.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
     }
 }

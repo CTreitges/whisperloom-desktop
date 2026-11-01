@@ -28,6 +28,15 @@ public sealed class LocalSettings
     /// <summary>Der Begleitprozess endet nach so vielen Minuten ohne Erkennung.</summary>
     public int IdleMinutes { get; set; } = DefaultIdleMinutes;
 
+    /// <summary>Lokale Textverbesserung (W2): "ollama" (Standard, bisheriges Verhalten), "bundled" (mitgeliefertes Modell) oder "server".</summary>
+    public string TextEngine { get; set; } = "ollama";
+
+    /// <summary>ID des mitgelieferten Textmodells bei <see cref="TextEngine"/> "bundled"; "" = Empfehlung.</summary>
+    public string BundledModel { get; set; } = "";
+
+    /// <summary>Lokale OpenAI-kompatible Server für Erkennung bzw. Text (W2); gerätebezogen: Import und Export lassen sie weg.</summary>
+    public List<LocalServer> Servers { get; set; } = [];
+
     public static LocalSettings Of(WhisperLoomSettings settings)
     {
         if (settings.Extra is not null && settings.Extra.TryGetValue(SectionName, out var element))

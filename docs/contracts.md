@@ -167,3 +167,29 @@ Ablagefehler: `IOException`.
 - Speichern: unbekannte Felder der **obersten Ebene** (z. B. `android`) bleiben über `Extra` (`[JsonExtensionData]`)
   erhalten; unbekannte Felder **innerhalb** bekannter Abschnitte gehen verloren.
 - Spätere Phasen ergänzen additiv (z. B. Desktop-Abschnitt mit Hotkeys, Ausgabe, Proxy; Policy für Provisioning).
+
+## Lauf 2 (W2-C0): Richtlinie mit drei Stufen, neue Abschnitte, Server-API
+
+Stand 2026-11-01. Felder und Regeln im Detail: [settings-format.md](settings-format.md) („Richtlinie: drei Stufen“,
+neue Felder), Client↔Server: [server-api.md](server-api.md).
+
+| Typ / Member | Inhalt |
+|---|---|
+| `ManagedState` (`Free`, `Default`, `Fixed`), `ManagedStates.Key()`/`FromKey()` | Stufe je Pfad; JSON `"free"`/`"default"`/`"fixed"` (`FromKey`: unbekannt → null) |
+| `PolicySettings.Defaults` | Vorgaben: Blatt-Pfad → Firmenwert (`JsonElement`); in `policy.json` als `defaults` |
+| `PolicySettings.StateOf(path)` | Fest vor Vorgabe vor Frei, für Blätter und Abschnitte |
+| `PolicySettings.IsLocked(path)` | jetzt ohne Groß-/Kleinschreibung; nie für Tastenkürzel und `management.*` außer `management.allowLeave` |
+| `PolicySettings.FromProvisioning(policy, settings, warnings)` | neue Überladung: `lockSettings` + `levels`; die alte Überladung (nur `lockSettings`) bleibt |
+| `ManagedDefaults.TrackOverrides / IsOverridden / Reset` | User-Override je Pfad (`management.overrides`) und „Auf Firmenvorgabe zurücksetzen“ |
+| `ManagedPaths.IsAtOrBelow / IsHotkey / IsManagement / CanBeFixed / Find / Set` | Pfad-Regeln, alle ohne Groß-/Kleinschreibung |
+| `WhisperLoomSettings.Output` (`OutputSettings`: `AlwaysCopy`, `PressEnter`) | Ausgabe |
+| `WhisperLoomSettings.Selection` (`SelectionSettings`: `HotkeyCombo`, `FloatingButton`, `CtrlRightClick`) | Markierung verarbeiten |
+| `WhisperLoomSettings.Providers` (`ProvidersSettings.Custom` → `CustomProvider`) | eigene Anbieter, Verweis `custom:<id>` |
+| `OfflineSettings.CustomModels` (`CustomWhisperModel`), `OfflineSettings.CustomModelPrefix` | eigene Whisper-Dateien, `offline.model = "custom:<name>"` |
+| `WhisperLoomSettings.Management` (`ManagementSettings`) | Firmen-Anbindung + `Overrides`; nie exportiert, nie importiert |
+| `LocalServer` | Eintrag von `local.servers` (App-Abschnitt `local`, `LocalSettings.Servers`, dazu `TextEngine`, `BundledModel`) |
+| `SecretNames.Device` (`"device"`) | Geräte-Token des Firmen-Servers; nicht in `SecretNames.All`, nie per Provisioning |
+| App: `AppProfile.PressEnter` | `bool?`: null = Erben (`output.pressEnter`), true/false = An/Aus. Einzige Typänderung: `bool` → `bool?` liest alte Dateien unverändert; Aufrufer nutzen bis W2-OUT `?? false` |
+
+Abweichungen von den Namensvorschlägen des Issues: `selection.hotkey` heißt `selection.hotkeyCombo` (kein Schema-Feld
+darf auf `key` enden, Test `KeinKeyFeldImSchema`); `local.servers[].kind` (`stt`/`text`) nennt den Zweck.
