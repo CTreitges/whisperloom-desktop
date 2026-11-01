@@ -165,7 +165,12 @@ public sealed partial class SettingsViewModel
             }
             result = preview.Settings!;
         }
-        Loc.Instance.SetLanguage(SettingsStore.Desktop(result).UiLanguage);
+        // Nur bei geänderter Oberflächensprache umschalten: sonst setzte jeder Sofort-Commit „Wie System“ neu auf die OS-Sprache.
+        var uiLanguage = SettingsStore.Desktop(result).UiLanguage;
+        if (uiLanguage != SettingsStore.Desktop(_controller.Settings).UiLanguage)
+        {
+            Loc.Instance.SetLanguage(uiLanguage);
+        }
         try
         {
             await _controller.ApplySettingsAsync(result);

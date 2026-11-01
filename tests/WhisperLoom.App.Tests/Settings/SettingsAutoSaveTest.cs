@@ -41,6 +41,26 @@ public sealed class SettingsAutoSaveTest
     }
 
     [AvaloniaFact]
+    public async Task A_commit_switches_the_ui_language_only_when_it_changed()
+    {
+        // CI-Fund: Jeder Sofort-Commit setzte die Oberflächensprache neu; „Wie System“ sprang dabei auf die OS-Sprache.
+        var other = Loc.OsLanguage() == "de" ? "en" : "de";
+        Loc.Instance.SetLanguage(other);
+        using var f = new ControllerFixture(); // desktop.uiLanguage = "" (Wie System)
+        var (window, _, vm) = Open(f);
+
+        vm.Language = vm.Languages.Single(c => c.Value == "fr");
+        await vm.Pending;
+        Assert.Equal(other, Loc.Instance.Language);
+
+        vm.UiLanguage = vm.UiLanguages.Single(c => c.Value == Loc.OsLanguage());
+        await vm.Pending;
+        Assert.Equal(Loc.OsLanguage(), Loc.Instance.Language);
+        window.Close();
+        Loc.Instance.SetLanguage("de");
+    }
+
+    [AvaloniaFact]
     public async Task Former_file_only_settings_are_saved_from_their_page()
     {
         using var f = new ControllerFixture();
