@@ -1,6 +1,6 @@
 """Smoke-Tests gegen eine gebaute WhisperLoom-App (Windows oder Linux).
 
-Aufruf: py -3 -X utf8 tools/smoke.py --platform win|linux --suite shell|full|offline|provision|enroll|ui|input --id <ID> --app <exe>
+Aufruf: py -3 -X utf8 tools/smoke.py --platform win|linux --suite shell|full|offline|provision|enroll|ui|input|selection --id <ID> --app <exe>
 Je Prüfung eine Zeile "SMOKE <name> OK" bzw. "SMOKE <name> FAIL <grund>", am Ende "SMOKE SUITE <suite> OK|FAIL n/m".
 
 Suites:
@@ -22,7 +22,10 @@ Suites:
   Goal-File A3.1); App mit --test-audio --hotkeys gegen tools/fake_api.py. --target <exe> statt Build des TestTargets.
   --only extras: stattdessen die Windows-Extras (tools/smoke_extras.py, Goal-File A5b.1) — reinsert, history-tray,
   reprocess, profile-stage, rewrite-selection.
-- ui / input: echte Zwischenablage bzw. Eingaben — nur mit gültigem Lock <work>/ui-smoke.lock für --id
+- selection (nur Windows, W2-SEL): Markierung verarbeiten mit echten Eingaben gegen tests/WhisperLoom.TestTarget
+  (tools/smoke_selection.py) — Kombi → Wähler → Stufe 2 per Pfeil → Enter, Strg+Rechtsklick, schwebender Knopf,
+  Zwischenablage danach wiederhergestellt, TestTarget vor jeder Taste und jedem Klick vorn.
+- ui / input / selection: echte Zwischenablage bzw. Eingaben — nur mit gültigem Lock <work>/ui-smoke.lock für --id
   ({"id": "<ID>", "until": "<ISO-Zeit>"}), sonst Abbruch mit Exit 3.
 
 Prozesse startet und beendet das Skript nur über die eigene PID.
@@ -111,10 +114,11 @@ def write_test_wav(path: Path, seconds: float = TEST_SECONDS) -> None:
 class AppRun:
     """Eine App-Instanz mit eigenem Datenordner; Beenden nur über die eigene PID."""
 
-    def __init__(self, app: str, data_dir: Path, prefix: str, extra: list[str]):
+    def __init__(self, app: str, data_dir: Path, prefix: str, extra: list[str], env: dict | None = None):
         self.app = app
         self.base = ["--data-dir", str(data_dir), "--secret-prefix", prefix]
         self.extra = extra
+        self.env = env  # z. B. PATH mit Fake-Werkzeugen (W2-SEL: wl-paste/xclip); None = geerbt
         self.proc: subprocess.Popen | None = None
 
     def cli(self, *args: str, stdin: str | None = None, timeout: float = 60) -> subprocess.CompletedProcess:
@@ -130,7 +134,7 @@ class AppRun:
         return data if data and data.get("running") else None
 
     def start(self, timeout: float = 30) -> dict:
-        self.proc = subprocess.Popen([self.app, *self.base, *self.extra], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        self.proc = subprocess.Popen([self.app, *self.base, *self.extra], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=self.env)
         deadline = time.time() + timeout
         while time.time() < deadline:
             if self.proc.poll() is not None:
@@ -321,7 +325,7 @@ def ui_checks(args, work: Path, report: Report, fake: smoke_full.FakeApi) -> Non
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="WhisperLoom-Smokes")
     parser.add_argument("--platform", choices=["win", "linux"], required=True)
-    parser.add_argument("--suite", choices=["shell", "full", "offline", "provision", "enroll", "ui", "input"], default="shell")
+    parser.add_argument("--suite", choices=["shell", "full", "offline", "provision", "enroll", "ui", "input", "selection"], default="shell")
     parser.add_argument("--id", required=True)
     parser.add_argument("--app", required=True)
     parser.add_argument("--work-dir", type=Path)
@@ -336,7 +340,7 @@ def main(argv: list[str] | None = None) -> int:
     args.app = str(Path(args.app).resolve())
     work = args.work_dir or default_work_dir(args.platform)
 
-    if args.suite in ("ui", "input"):
+    if args.suite in ("ui", "input", "selection"):
         ok, why = lock_valid(args.lock or default_lock_path(args.platform, work), args.id)
         if not ok:
             print(f"SMOKE VERWEIGERT {args.suite}: {why}")
@@ -357,6 +361,9 @@ def main(argv: list[str] | None = None) -> int:
     elif args.platform != "win":
         print("SMOKE input SKIP nur Windows (Linux-Hotkeys sind Out-of-Scope)")
         return 0
+    elif args.suite == "selection":
+        import smoke_selection
+        smoke_selection.run_suite(args, work, report, sys.modules[__name__])
     elif args.only == "extras":
         import smoke_extras
         smoke_extras.run_suite(args, work, report, sys.modules[__name__])

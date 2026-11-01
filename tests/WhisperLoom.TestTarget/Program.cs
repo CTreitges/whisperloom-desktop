@@ -4,7 +4,7 @@ namespace WhisperLoom.TestTarget;
 
 /// <summary>
 /// Testziel für Einfügen und Tippen: ein Fenster "WhisperLoom TestTarget" mit Textfeld. Jede Änderung schreibt
-/// <c>{"text", "enter", "backspace", "hwnd", "ready", "focused"}</c> nach <c>--out &lt;datei&gt;</c>. Enter (ohne Umschalt) fügt keinen
+/// <c>{"text", "enter", "backspace", "hwnd", "ready", "focused", "box"}</c> (box = Textfeld in Bildschirm-Pixeln [l, t, r, b], W2-SEL) nach <c>--out &lt;datei&gt;</c>. Enter (ohne Umschalt) fügt keinen
 /// Umbruch ein, sondern zählt nur — wie ein Chat, der abschickt. Beendet sich nach <c>--seconds</c> (Standard 120) selbst.
 /// <c>--text &lt;starttext&gt;</c> steht beim Start im Feld und ist ganz markiert (Umschreiben der Markierung, WLD-P5b).
 /// <c>--mode password</c>: das Feld ist ein Passwortfeld; <c>--mode button</c>: ein Knopf hat den Fokus, kein Textfeld (W2-OUT).
@@ -125,7 +125,9 @@ internal sealed class TargetForm : Form
             return;
         }
         var focused = (_mode == "button" ? _button.Focused : _box.Focused) && ContainsFocus;
-        var json = JsonSerializer.Serialize(new { text = _box.Text, enter = _enter, backspace = _backspace, hwnd = Handle.ToInt64(), ready = true, focused });
+        var r = _box.RectangleToScreen(_box.ClientRectangle);
+        var box = new[] { r.Left, r.Top, r.Right, r.Bottom };
+        var json = JsonSerializer.Serialize(new { text = _box.Text, enter = _enter, backspace = _backspace, hwnd = Handle.ToInt64(), ready = true, focused, box });
         var tmp = _outPath + ".tmp";
         File.WriteAllText(tmp, json);
         File.Move(tmp, _outPath, overwrite: true);

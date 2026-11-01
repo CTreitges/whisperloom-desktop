@@ -10,6 +10,7 @@ no-audio-stored. Hilfen für die Suite "shell": FakeApi, fake_settings.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -68,6 +69,38 @@ def fake_settings(fake: FakeApi, via_proxy: bool, llm: dict | None = None) -> di
     return settings
 
 
+PRIMARY_TEXT = "markierter text aus der primaerauswahl"
+
+
+def fake_primary_env(work_dir: Path) -> dict:
+    """Linux (W2-SEL): PATH mit Fake-wl-paste/xclip, die PRIMARY_TEXT ausgeben – die echte Auswahl (WSLg ist mit der
+    Windows-Zwischenablage gekoppelt) bleibt unberührt, der Code-Pfad der App ist der echte."""
+    fakebin = work_dir / "fakebin"
+    fakebin.mkdir(parents=True, exist_ok=True)
+    for tool in ("wl-paste", "xclip"):
+        script = fakebin / tool
+        script.write_text(f"#!/bin/sh\nprintf '%s' '{PRIMARY_TEXT}'\n", encoding="utf-8")
+        script.chmod(0o755)
+    env = dict(os.environ)
+    env["PATH"] = f"{fakebin}{os.pathsep}{env.get('PATH', '')}"
+    return env
+
+
+def selection_check(app, out: Path, report) -> None:
+    """process-selection --stage beautify: Primärauswahl → Stufe → Ausgabe, Verlauf mit Quelle selection, keine Erkennung."""
+    r = app.cli("process-selection", "--stage", "beautify")
+    deadline = time.time() + 15
+    s = app.status() or {}
+    while time.time() < deadline and s.get("state") != "idle":
+        time.sleep(0.3)
+        s = app.status() or {}
+    text = out.read_text(encoding="utf-8") if out.exists() else ""
+    latest = (s.get("history") or {}).get("latest") or {}
+    report.check("selection-primary", r.returncode == 0 and text.lower().startswith("[fake-llm]") and latest.get("source") == "selection"
+                 and latest.get("raw") == PRIMARY_TEXT and latest.get("stage") == "beautify",
+                 f"rc={r.returncode} {r.stdout.strip()[:40]!r} out={text[:40]!r} latest={latest.get('source')}/{latest.get('stage')}")
+
+
 def dictate(run) -> dict:
     run.cli("toggle")
     time.sleep(0.3)
@@ -89,7 +122,8 @@ def run(args, work: Path, report, smoke) -> None:
     with FakeApi() as fake:
         try:
             (data / "settings.json").write_text(json.dumps(fake_settings(fake, via_proxy=True)), encoding="utf-8")
-            app = smoke.AppRun(args.app, data, prefix, extra)
+            env = fake_primary_env(work / args.id) if args.platform == "linux" else None
+            app = smoke.AppRun(args.app, data, prefix, extra, env=env)
             try:
                 app.start()
                 for name in ("stt", "stt_fallback", "llm"):
@@ -123,6 +157,9 @@ def run(args, work: Path, report, smoke) -> None:
                 report.check("fallback-stt", used and "/v1/audio/transcriptions" in paths
                              and str(s.get("lastResult", "")).startswith("[fake-llm]"), f"pfade={paths}")
                 report.check(*smoke.check_secret_store(args.platform, app, data, prefix))
+                if args.platform == "linux":
+                    fake.post("/_reset", {})
+                    selection_check(app, out, report)
             finally:
                 app.stop()
 
