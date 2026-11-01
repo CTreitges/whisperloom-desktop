@@ -55,13 +55,17 @@ public sealed class LocalPagesUiTest
         var recognition = (RecognitionPageViewModel)shell.Page("recognition");
         Assert.Equal(["", "m-1", "m-2"], recognition.SttModel.Items.Take(3).Select(c => c.Value));
 
-        await row.DeleteCommand.ExecuteAsync(null);
-        Assert.NotEqual("", row.Error); // in Gebrauch: bleibt
+        row.DeleteCommand.Execute(null);
+        Assert.NotEqual("", row.Error); // in Gebrauch: bleibt, keine Rückfrage
+        Assert.False(row.DeletePending);
         Assert.Single(page.Rows);
 
         vm.SttProvider = vm.SttProviders.Single(c => c.Value == "openai");
         await keys.SetAsync("custom:anbieter-1", "test-key-not-real-5", CancellationToken.None);
-        await row.DeleteCommand.ExecuteAsync(null);
+        row.DeleteCommand.Execute(null);
+        Assert.True(row.DeletePending); // destruktiv: erst bestätigen
+        Assert.Single(page.Rows);
+        await row.ConfirmDeleteCommand.ExecuteAsync(null);
         await vm.Pending;
         Assert.Empty(page.Rows);
         Assert.Empty(f.Controller.Settings.Providers.Custom);

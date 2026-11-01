@@ -219,6 +219,7 @@
   "Provider_Protocol_Desc": "OpenAI-compatible: recognition and text. Ollama, Anthropic: text. ElevenLabs: recognition.",
   "Providers_Add": "Add provider",
   "Providers_Delete": "Delete provider",
+  "Providers_DeleteConfirm": "Delete this provider and its key?",
   "Providers_Empty": "No custom provider yet. Add your own servers (LM Studio, vLLM, LiteLLM …) or extra accounts here; they then appear for recognition and text.",
   "Proxy_manual": "Manual",
   "Proxy_off": "No proxy",

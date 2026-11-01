@@ -94,18 +94,19 @@
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="avm:LocalServerRow">
+                    <Border BorderBrush="{DynamicResource Loom.Separator}" BorderThickness="0,0,0,1" Padding="0,0,0,12">
                     <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="6">
                       <TextBlock Grid.Row="0" Text="{Binding [Server_Name], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
-                      <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding Name, UpdateSourceTrigger=LostFocus}" MaxWidth="320" HorizontalAlignment="Left" MinWidth="200"
+                      <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding Name, UpdateSourceTrigger=LostFocus}" Width="280" HorizontalAlignment="Left"
                                AutomationProperties.Name="{Binding [Server_Name], Source={x:Static l:Loc.Instance}}" />
                       <TextBlock Grid.Row="1" Text="{Binding [Server_Kind], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
-                      <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding Kinds}" SelectedItem="{Binding Kind}" MinWidth="200"
+                      <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding Kinds}" SelectedItem="{Binding Kind}" Width="280"
                                 AutomationProperties.Name="{Binding [Server_Kind], Source={x:Static l:Loc.Instance}}" />
                       <TextBlock Grid.Row="2" Text="{Binding [Set_BaseUrl], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
-                      <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding BaseUrl, UpdateSourceTrigger=LostFocus}" MaxWidth="320" HorizontalAlignment="Left" MinWidth="200"
+                      <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding BaseUrl, UpdateSourceTrigger=LostFocus}" Width="280" HorizontalAlignment="Left"
                                PlaceholderText="http://127.0.0.1:1234/v1" AutomationProperties.Name="{Binding [Set_BaseUrl], Source={x:Static l:Loc.Instance}}" />
                       <TextBlock Grid.Row="3" Text="{Binding [Set_Model], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
-                      <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding Model, UpdateSourceTrigger=LostFocus}" MaxWidth="320" HorizontalAlignment="Left" MinWidth="200"
+                      <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding Model, UpdateSourceTrigger=LostFocus}" Width="280" HorizontalAlignment="Left"
                                PlaceholderText="{Binding [Server_ModelFirst], Source={x:Static l:Loc.Instance}}" AutomationProperties.Name="{Binding [Set_Model], Source={x:Static l:Loc.Instance}}" />
                       <TextBlock Grid.Row="4" Grid.ColumnSpan="2" Text="{Binding Error}" IsVisible="{Binding Error.Length}" Foreground="{DynamicResource Loom.Error}" TextWrapping="Wrap" />
                       <StackPanel Grid.Row="5" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8">
@@ -114,6 +115,7 @@
                         <TextBlock Text="{Binding Status}" VerticalAlignment="Center" Foreground="{DynamicResource Loom.TextSecondary}" />
                       </StackPanel>
                     </Grid>
+                    </Border>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>

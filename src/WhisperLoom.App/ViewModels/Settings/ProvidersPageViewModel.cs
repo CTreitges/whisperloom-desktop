@@ -15,12 +15,15 @@ namespace WhisperLoom.App.ViewModels.Settings;
 public sealed partial class CustomProviderRow : ObservableObject
 {
     private readonly Action _changed;
+    private readonly Func<CustomProviderRow, string?> _inUse;
     private readonly Func<CustomProviderRow, Task> _delete;
 
-    public CustomProviderRow(CustomProvider entry, SettingsViewModel session, Action changed, Func<CustomProviderRow, Task> delete)
+    /// <param name="inUse">Fehlertext, wenn ein Zugang den Eintrag nutzt; null = löschbar.</param>
+    public CustomProviderRow(CustomProvider entry, SettingsViewModel session, Action changed, Func<CustomProviderRow, string?> inUse, Func<CustomProviderRow, Task> delete)
     {
         Entry = entry;
         _changed = changed;
+        _inUse = inUse;
         _delete = delete;
         Protocols = [.. CustomProvider.Protocols.Select(p => new Choice(p, Loc.Instance["Protocol_" + p]))];
         _protocol = SettingsViewModel.Pick(Protocols, entry.Protocol);
@@ -43,6 +46,9 @@ public sealed partial class CustomProviderRow : ObservableObject
     [ObservableProperty] private Choice _protocol;
     [ObservableProperty] private string _error = "";
     [ObservableProperty] private string _hint = "";
+
+    /// <summary>Rückfrage „Löschen?“ sichtbar (löscht auch den Key, HIG: destruktiv nur nach Bestätigung).</summary>
+    [ObservableProperty] private bool _deletePending;
 
     public string Name
     {
@@ -104,7 +110,22 @@ public sealed partial class CustomProviderRow : ObservableObject
     }
 
     [RelayCommand]
-    private Task Delete() => _delete(this);
+    private void Delete()
+    {
+        var error = _inUse(this);
+        Error = error ?? "";
+        DeletePending = error is null;
+    }
+
+    [RelayCommand]
+    private Task ConfirmDelete()
+    {
+        DeletePending = false;
+        return _delete(this);
+    }
+
+    [RelayCommand]
+    private void CancelDelete() => DeletePending = false;
 
     /// <summary>http(s) mit Host; http nur zu privaten Adressen (wie der Import, <see cref="ServerUrlCheck"/>).</summary>
     private string? UrlError(string url)
@@ -149,7 +170,7 @@ public sealed partial class ProvidersPageViewModel : SettingsPageViewModel
     /// <summary>Lädt die Keys der Einträge (nur „gesetzt“ bzw. „nicht gesetzt“).</summary>
     public Task LoadKeysAsync() => Task.WhenAll(Rows.Select(r => r.Key.LoadAsync()));
 
-    private CustomProviderRow Row(CustomProvider entry) => new(entry, Session, Changed, DeleteAsync);
+    private CustomProviderRow Row(CustomProvider entry) => new(entry, Session, Changed, InUse, DeleteAsync);
 
     /// <summary>Nur gültige Einträge kommen in die Einstellungen; dann Anbieterlisten neu und speichern.</summary>
     private void Changed()
@@ -159,14 +180,20 @@ public sealed partial class ProvidersPageViewModel : SettingsPageViewModel
         Session.Touch();
     }
 
-    private async Task DeleteAsync(CustomProviderRow row)
+    /// <summary>Genutzt von einem Zugang (auch abgeschaltetem Fallback)? Dann erst dort umstellen.</summary>
+    private string? InUse(CustomProviderRow row)
     {
         var s = Session.Working;
         var used = new[] { ("Slot_stt", s.Stt.ProviderId), ("Slot_sttFallback", s.SttFallback.ProviderId), ("Slot_llm", s.Llm.ProviderId), ("Slot_llmFallback", s.LlmFallback.ProviderId) }
             .Where(u => u.Item2 == row.Id && row.IsValid).Select(u => Loc.Instance[u.Item1]).ToList();
-        if (used.Count > 0)
+        return used.Count > 0 ? Loc.Instance.Format("Provider_InUse", string.Join(", ", used)) : null;
+    }
+
+    private async Task DeleteAsync(CustomProviderRow row)
+    {
+        if (InUse(row) is { } error)
         {
-            row.Error = Loc.Instance.Format("Provider_InUse", string.Join(", ", used));
+            row.Error = error;
             return;
         }
         Rows.Remove(row);
