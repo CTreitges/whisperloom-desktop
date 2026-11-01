@@ -84,10 +84,15 @@ def per_code(con: sqlite3.Connection, kry: Krypto, eingabe: str) -> sqlite3.Row 
 
 def anmeldearten(firma: sqlite3.Row, instanz: tuple[str, ...]) -> tuple[str, ...]:
     """Erlaubte Anmeldearten der Firma: Einschränkung der Firma ∩ Instanz (leer = alle der Instanz)."""
+    alle = tuple(a for a in instanz if a in ANMELDEARTEN)
     eigen = [a for a in firma["anmeldearten"].split(",") if a]
     if not eigen:
-        return tuple(a for a in instanz if a in ANMELDEARTEN)
-    return tuple(a for a in instanz if a in eigen)
+        return alle
+    schnitt = tuple(a for a in alle if a in eigen)
+    if schnitt:
+        return schnitt
+    # Die Instanz bietet keine der gewählten Arten mehr an: auf die strengste Art ausweichen, nie auf eine ausgeschlossene.
+    return ("password_totp",) if "password_totp" in alle else ()
 
 
 def protokoll(con: sqlite3.Connection, firma_id: str | None, akteur: str, aktion: str, ziel: str, jetzt: int) -> None:

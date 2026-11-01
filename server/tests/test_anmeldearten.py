@@ -119,7 +119,11 @@ def test_falsches_passwort_und_sperre(client, einst):
     for _ in range(5):
         assert "stimmt nicht" in passwort_login(client, "anna", "falsch-falsch-falsch").text
     r = passwort_login(client, "anna")
-    assert r.status_code == 403  # Konto für 15 Minuten gesperrt, auch mit richtigem Passwort
+    # Konto für 15 Minuten gesperrt, auch mit richtigem Passwort; Antwort wie bei unbekannten Namen (Review N3)
+    assert r.status_code == 429 and "Zu viele Versuche" in r.text
+    con = __import__("whisperloom_server.db", fromlist=["db"]).verbinden(einst.db_pfad)
+    assert con.execute("SELECT gesperrt_bis_ms > 0 FROM admin WHERE benutzer = 'anna'").fetchone()[0] == 1
+    con.close()
 
 
 def test_firma_ohne_passwort_art_lehnt_ab(tmp_path, uhr):

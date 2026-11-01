@@ -214,6 +214,12 @@ def _sitzung(request: Request, con: sqlite3.Connection) -> Wer | None:
         arten = firmen.anmeldearten(firma, request.app.state.einst.anmeldearten)
         if firma["gesperrt"] or not any(a in arten for a in PASSWORT_ARTEN):
             return None
+    else:
+        arten = request.app.state.einst.anmeldearten
+    if "password" not in arten and not s["hat_totp"]:
+        # Die Anmeldeart wurde verschärft (TOTP jetzt Pflicht): Sitzung ohne zweiten Faktor endet.
+        auth.sitzung_loeschen(con, request.cookies.get(cookie_name(request, "wl_sitzung")))
+        return None
     return Wer("sitzung", s["benutzer"], s["rolle"], s["firma_id"], s["csrf"], s["admin_id"], instanz=s["rolle"] == "instance")
 
 
@@ -225,9 +231,12 @@ def wer_laden(request: Request, con: sqlite3.Connection) -> Wer | None:
     if arten == ("local_only",):
         raise Weiter(fehlerseite(request, "f.nur_lokal_titel", "f.nur_lokal", 403))
     if "trusted_header" in arten and netz.von_vertrautem_proxy(request):
-        benutzer = request.headers.get(einst.header_benutzer)
-        if benutzer:
-            return _header(request, con, benutzer)
+        werte = request.headers.getlist(einst.header_benutzer)
+        if len(werte) > 1:
+            # Mehrfacher Header: ein Wert kann vom Client stammen, den der Proxy nur ergänzt statt ersetzt hat.
+            raise Weiter(fehlerseite(request, "f.kein_zugang_titel", "f.kein_zugang", 403))
+        if werte and werte[0]:
+            return _header(request, con, werte[0])
     if any(a in arten for a in PASSWORT_ARTEN):
         return _sitzung(request, con)
     return None

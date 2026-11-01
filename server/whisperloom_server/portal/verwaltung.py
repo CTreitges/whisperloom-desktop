@@ -67,7 +67,7 @@ def admin_aktion(aid: str, aktion: str, request: Request, csrf: str = Form(""), 
     a = con.execute("SELECT * FROM admin WHERE id = ? AND firma_id = ?", (aid, fid)).fetchone()
     if a is None:
         return fehlerseite(request, "f.nicht_gefunden_titel", "f.nicht_gefunden", 404)
-    letzter_owner = a["rolle"] == "owner" and konten.owner_anzahl(con, fid) <= 1
+    letzter_owner = a["rolle"] == "owner" and konten.ist_aktiv(con, aid) and konten.owner_anzahl(con, fid) <= 1
     zeit = jetzt(request)
     if aktion == "einladung":
         firmen.protokoll(con, fid, wer.benutzer, "admin_einladung", a["benutzer"], zeit)
@@ -113,11 +113,16 @@ def konto_passwort(request: Request, csrf: str = Form(""), alt: str = Form(""), 
 
 
 @router.post("/konto/totp-aus")
-def konto_totp_aus(request: Request, csrf: str = Form(""), wer: Wer = Depends(in_firma),
+def konto_totp_aus(request: Request, csrf: str = Form(""), passwort: str = Form(""), wer: Wer = Depends(in_firma),
                    con: sqlite3.Connection = Depends(verbindung)):
     csrf_pruefen(request, wer, csrf)
     if wer.admin_id is None or totp_pflicht(_arten_der_firma(request, con, wer.firma_id)):
         return zurueck("/admins", hinweis="totp_pflicht")
+    if request.app.state.begrenzer.erlaubt("passwort:" + wer.admin_id, 10, VIERTELSTUNDE) is not None:
+        return zurueck("/admins", hinweis="zu_oft")
+    a = con.execute("SELECT pw_hash FROM admin WHERE id = ?", (wer.admin_id,)).fetchone()
+    if not auth.passwort_pruefen(a["pw_hash"], passwort[:256]):
+        return zurueck("/admins", hinweis="pw_alt")
     auth.totp_speichern(con, request.app.state.krypto, wer.admin_id, None)
     firmen.protokoll(con, wer.firma_id, wer.benutzer, "totp_aus", wer.benutzer, jetzt(request))
     return zurueck("/admins", ok="totp_aus")
@@ -161,7 +166,7 @@ async def firma_speichern(request: Request, wer: Wer = Depends(owner), con: sqli
     con.execute(
         "UPDATE firma SET name = ?, key_modus = ?, auto_freigabe = ?, anmeldearten = ?, max_wartend = ? WHERE id = ?",
         (name, modus, int(formular.get("auto_freigabe") == "on"),
-         "" if arten == instanz else ",".join(arten), max_wartend, wer.firma_id),
+         ",".join(arten), max_wartend, wer.firma_id),
     )
     firmen.protokoll(con, wer.firma_id, wer.benutzer, "firma_einstellungen", wer.firma_id, jetzt(request))
     return zurueck("/firma", ok="gespeichert")

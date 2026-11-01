@@ -14,7 +14,7 @@ services:
       # WL_MASTER_KEY_FILE: /run/secrets/wl_master_key
       # Vorgeschaltete Anmeldung (Authelia, oauth2-proxy):
       # WL_AUTH_MODES: "trusted_header"
-      # WL_TRUSTED_PROXIES: "172.16.0.0/12"
+      # WL_TRUSTED_PROXIES: "172.30.0.10/32"     # genau die feste IP des Proxy-Containers, nie ein ganzes Netz
       # WL_TRUSTED_HEADER: "Remote-User"
     volumes:
       - whisperloom-data:/data

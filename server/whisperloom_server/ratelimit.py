@@ -13,6 +13,7 @@ class Begrenzer:
         self._uhr = uhr
         self._treffer: dict[str, deque[int]] = defaultdict(deque)
         self._lock = threading.Lock()
+        self._aufgeraeumt: int | None = None
 
     def erlaubt(self, schluessel: str, grenze: int, fenster_ms: int) -> int | None:
         """Zählt einen Treffer. None = erlaubt, sonst Sekunden bis zum nächsten freien Platz (Retry-After)."""
@@ -24,7 +25,9 @@ class Begrenzer:
             if len(q) >= grenze:
                 return max(1, (q[0] + fenster_ms - jetzt + 999) // 1000)
             q.append(jetzt)
-            if len(self._treffer) > 100_000:  # Schutz gegen unbegrenztes Wachstum
+            # Schutz gegen unbegrenztes Wachstum, höchstens einmal je Minute (nicht bei jedem Treffer)
+            if len(self._treffer) > 100_000 and (self._aufgeraeumt is None or jetzt - self._aufgeraeumt >= 60_000):
+                self._aufgeraeumt = jetzt
                 self._aufraeumen(jetzt)
             return None
 

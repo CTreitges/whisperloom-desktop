@@ -43,6 +43,14 @@ def client_ip(request: Request) -> str:
     return peer
 
 
+def limit_ip(request: Request) -> str:
+    """Schlüssel für Rate-Limits: IPv4 je Adresse, IPv6 je /64 (ein Anschluss hat meist ein ganzes /64)."""
+    ip = _ip(client_ip(request))
+    if ip is not None and ip.version == 6 and not ip.ipv4_mapped:
+        return str(ipaddress.ip_network(f"{ip}/64", strict=False))
+    return client_ip(request)
+
+
 def ist_lokal(request: Request) -> bool:
     """local_only: Gegenstelle Loopback, kein Weiterleitungs-Header, Host-Header lokal.
 

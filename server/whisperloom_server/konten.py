@@ -52,7 +52,17 @@ def einladung_laden(con: sqlite3.Connection, token: str, jetzt: int):
     ).fetchone()
 
 
+# Aktiv = Passwort gesetzt oder keine offene Einladung (Konten nur für trusted_header haben kein Passwort).
+AKTIV = "(a.pw_hash IS NOT NULL OR NOT EXISTS (SELECT 1 FROM einladung e WHERE e.admin_id = a.id AND e.verwendet = 0))"
+
+
+def ist_aktiv(con: sqlite3.Connection, admin_id: str) -> bool:
+    return con.execute(f"SELECT 1 FROM admin a WHERE a.id = ? AND {AKTIV}", (admin_id,)).fetchone() is not None  # noqa: S608
+
+
 def owner_anzahl(con: sqlite3.Connection, firma_id: str) -> int:
+    """Aktive, nicht gesperrte owner (eingeladene zählen nicht: sie könnten die Einladung nie annehmen)."""
     return con.execute(
-        "SELECT COUNT(*) FROM admin WHERE firma_id = ? AND rolle = 'owner' AND gesperrt = 0", (firma_id,)
+        f"SELECT COUNT(*) FROM admin a WHERE a.firma_id = ? AND a.rolle = 'owner' AND a.gesperrt = 0 AND {AKTIV}",  # noqa: S608
+        (firma_id,),
     ).fetchone()[0]

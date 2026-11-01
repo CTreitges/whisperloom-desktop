@@ -73,7 +73,18 @@
   <p>{{ t('p.zwei_faktor') }}: {{ t('p.an') if ich_totp else t('p.aus') }}</p>
   <div class="aktionen">
     {% if not ich_totp %}<a class="knopf" href="/login/totp-einrichten">{{ t('p.totp_einschalten') }}</a>{% endif %}
-    {% if ich_totp and totp_abschaltbar %}<form method="post" action="/konto/totp-aus"><input type="hidden" name="csrf" value="{{ wer.csrf }}"><button class="knopf leise">{{ t('p.totp_ausschalten') }}</button></form>{% endif %}
+    {% if ich_totp and totp_abschaltbar %}
+    <details class="mehr">
+      <summary>{{ t('p.totp_ausschalten') }}</summary>
+      <form method="post" action="/konto/totp-aus" class="formular">
+        <input type="hidden" name="csrf" value="{{ wer.csrf }}">
+        <input type="text" name="benutzer" value="{{ wer.benutzer }}" autocomplete="username" hidden>
+        <label for="totp-aus-pw">{{ t('p.passwort_alt') }}</label>
+        <input id="totp-aus-pw" name="passwort" type="password" autocomplete="current-password" required>
+        <button class="knopf gefahr">{{ t('p.totp_ausschalten') }}</button>
+      </form>
+    </details>
+    {% endif %}
   </div>
   {% else %}
   <p class="klein">{{ t('p.konto_extern') }}</p>

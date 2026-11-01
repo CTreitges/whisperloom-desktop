@@ -14,8 +14,8 @@ from . import firmen, konfig, krypto, richtlinie
 from .abhaengig import begrenzen, jetzt, verbindung
 from .fehler import FEHLER, ApiFehler
 from .log import ereignis
-from .netz import client_ip
-from .ratelimit import MINUTE, VIERTELSTUNDE
+from .netz import limit_ip
+from .ratelimit import MINUTE, STUNDE, VIERTELSTUNDE
 
 router = APIRouter(prefix="/api/v1")
 POLL_S = 10
@@ -56,7 +56,7 @@ def _zu_alt(request: Request, app_version: str | None) -> JSONResponse | None:
 
 @router.post("/enroll", status_code=201)
 def enroll(body: Enrollment, request: Request, con: sqlite3.Connection = Depends(verbindung)):
-    begrenzen(request, "enroll-ip:" + client_ip(request), 20, VIERTELSTUNDE)
+    begrenzen(request, "enroll-ip:" + limit_ip(request), 20, VIERTELSTUNDE)
     if (alt := _zu_alt(request, body.appVersion)) is not None:
         return alt
     kry = request.app.state.krypto
@@ -66,6 +66,7 @@ def enroll(body: Enrollment, request: Request, con: sqlite3.Connection = Depends
         raise ApiFehler("code_invalid")
     if treffer["gesperrt"]:
         raise ApiFehler("tenant_blocked")
+    begrenzen(request, "enroll-firma:" + treffer["id"], 1000, STUNDE)  # Massen-Enrollment mit erbeutetem Code bremsen
     zeit = jetzt(request)
     status = "approved" if treffer["auto_freigabe"] else "pending"
     if status == "pending":
@@ -88,11 +89,17 @@ def enroll(body: Enrollment, request: Request, con: sqlite3.Connection = Depends
     return {"deviceId": gid, "deviceToken": tok, "state": status, "tenantName": treffer["name"], "pollAfterSec": POLL_S}
 
 
+def _unbekannt(request: Request) -> None:
+    """Fehlversuche mit unbekanntem Token je IP begrenzen (Raten von Tokens), dann 401."""
+    begrenzen(request, "token-ip:" + limit_ip(request), 60, MINUTE)
+    raise ApiFehler("device_unknown")
+
+
 def geraet_aus_token(request: Request, con: sqlite3.Connection = Depends(verbindung)) -> sqlite3.Row:
     """Bearer → Geräte-Zeile (mit Firma). Ein neues Token löst beim ersten Gebrauch das alte ab (§3.4)."""
     kopf = request.headers.get("authorization", "")
     if not kopf.startswith("Bearer ") or len(kopf) > 200:
-        raise ApiFehler("device_unknown")
+        _unbekannt(request)
     h = krypto.sha256(kopf.removeprefix("Bearer ").strip())
     zeit = jetzt(request)
     sql = (
@@ -109,7 +116,7 @@ def geraet_aus_token(request: Request, con: sqlite3.Connection = Depends(verbind
     else:
         row = con.execute(sql + "g.token_hash = ?", (h,)).fetchone()
         if row is None or (row["token_neu_hash"] and row["token_neu_ms"] < zeit - ALT_TOKEN_MS):
-            raise ApiFehler("device_unknown")
+            _unbekannt(request)
     begrenzen(request, "geraet:" + row["id"], 120, MINUTE)
     con.execute("UPDATE geraet SET zuletzt_ms = ? WHERE id = ?", (zeit, row["id"]))
     return con.execute(sql + "g.id = ?", (row["id"],)).fetchone()
@@ -119,9 +126,13 @@ def _firma(con: sqlite3.Connection, firma_id: str) -> sqlite3.Row:
     return con.execute("SELECT * FROM firma WHERE id = ?", (firma_id,)).fetchone()
 
 
-def _konfig(request: Request, con: sqlite3.Connection, g: sqlite3.Row) -> dict:
-    return konfig.bauen(con, request.app.state.krypto, request.app.state.einst.basis_url, _firma(con, g["firma_id"]), g,
-                        jetzt(request))
+def _konfig(request: Request, con: sqlite3.Connection, g: sqlite3.Row, mit_keys: bool = True) -> dict:
+    """mit_keys=False: Version für nicht freigegebene Geräte, ohne dass sie von den Keys abhängt (kein Key-Orakel)."""
+    daten = konfig.bauen(con, request.app.state.krypto, request.app.state.einst.basis_url, _firma(con, g["firma_id"]), g,
+                         jetzt(request))
+    if not mit_keys:
+        daten.pop("secrets", None)
+    return daten
 
 
 @router.get("/device")
@@ -131,7 +142,7 @@ def device(request: Request, g=Depends(geraet_aus_token), con: sqlite3.Connectio
         "deviceName": g["name"],
         "state": g["status"],
         "tenantName": g["firma_name"],
-        "configVersion": konfig.version(_konfig(request, con, g)),
+        "configVersion": konfig.version(_konfig(request, con, g, mit_keys=g["status"] == "approved")),
         "rotateToken": konfig.rotation_faellig(g, jetzt(request)),
         "pollAfterSec": POLL_S,
     }
@@ -160,8 +171,11 @@ def token_rotieren(request: Request, body: Leer | None = None, g=Depends(geraet_
     if g["status"] == "blocked" or g["firma_gesperrt"]:
         raise ApiFehler("device_blocked")
     tok = krypto.geraete_token()
+    # Die 24-h-Frist des alten Tokens läuft ab der ersten offenen Rotation; erneutes Rotieren verlängert sie nicht.
     con.execute(
-        "UPDATE geraet SET token_neu_hash = ?, token_neu_ms = ? WHERE id = ?", (krypto.sha256(tok), jetzt(request), g["id"])
+        "UPDATE geraet SET token_neu_hash = ?, token_neu_ms = CASE WHEN token_neu_hash IS NULL THEN ? ELSE token_neu_ms END "
+        "WHERE id = ?",
+        (krypto.sha256(tok), jetzt(request), g["id"]),
     )
     ereignis("token rotiert", geraet=g["id"])
     return {"deviceToken": tok}

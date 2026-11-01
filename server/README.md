@@ -86,7 +86,7 @@ Für Tests: `.venv/Scripts/python.exe -m pip install -r requirements-dev.txt`, d
 | `WL_DATA_DIR` | `~/.local/share/whisperloom-server` (Docker: `/data`) | Datenordner (DB, `master.key`, `ausgabe/`) |
 | `WL_BASE_URL` | `http://127.0.0.1:8080` | Öffentliche Adresse; `https://` → Cookies `Secure` mit `__Host-`-Präfix |
 | `WL_AUTH_MODES` | `password_totp` | Anmeldearten, kommagetrennt (siehe unten) oder genau `file` |
-| `WL_TRUSTED_PROXIES` | – | IPs/Netze des Reverse-Proxys, z. B. `127.0.0.1/32,172.16.0.0/12` |
+| `WL_TRUSTED_PROXIES` | – | Genaue Adresse(n) des Reverse-Proxys, z. B. `127.0.0.1/32` oder `172.30.0.10/32`; nie ganze Docker- oder Firmennetze (siehe trusted_header) |
 | `WL_TRUSTED_HEADER` | `Remote-User` | Header mit dem Benutzernamen (trusted_header) |
 | `WL_CONFIG_FILE` | – | YAML- oder JSON-Datei im Datei-Modus |
 | `WL_MASTER_KEY` / `WL_MASTER_KEY_FILE` | – | Hauptschlüssel (64 Hex-Zeichen) direkt bzw. als Datei |
@@ -135,6 +135,16 @@ Dazu `WL_TRUSTED_PROXIES=127.0.0.1/32`, damit Rate-Limits die echte Client-IP se
 | `trusted_header` | Vorgeschaltete Anmeldung (Authelia, oauth2-proxy, Authentik). Der Header mit dem Benutzernamen gilt nur von `WL_TRUSTED_PROXIES`; von jeder anderen Adresse wird er ignoriert. Der Benutzername muss als Admin angelegt sein. | `WL_AUTH_MODES=trusted_header WL_TRUSTED_PROXIES=127.0.0.1/32 WL_TRUSTED_HEADER=Remote-User` |
 | `local_only` | Portal ohne Login, nur direkt auf dem Server-Rechner (`127.0.0.1`/`::1`, lokaler Host-Header, kein `X-Forwarded-*`). Von anderen Adressen: 403. Nicht hinter einem Reverse-Proxy auf demselben Rechner verwenden. Im Docker-Container wirkungslos (Gegenstelle ist das Docker-Netz). | `WL_AUTH_MODES=local_only WL_BASE_URL=http://127.0.0.1:8080` |
 | `file` | Kein Portal, kein Admin-Login. Firmen, Gruppen, Richtlinie und Keys aus `WL_CONFIG_FILE`. Geräte freigeben per `autoApprove` oder CLI `device-approve`. | `WL_AUTH_MODES=file WL_CONFIG_FILE=/etc/whisperloom/firmen.yaml` |
+
+**Wichtig bei `trusted_header`:** Jeder Rechner bzw. Prozess, der von einer Adresse in `WL_TRUSTED_PROXIES` aus den
+Server erreicht, kann sich als beliebiger Admin ausgeben, auch als Instanz-Admin. Deshalb:
+
+- `WL_TRUSTED_PROXIES` nur auf die genaue Adresse des Proxys setzen (`/32`), nie auf `172.16.0.0/12` oder ein ganzes LAN.
+  Im Compose-Netz dem Proxy eine feste IP geben.
+- Läuft der Proxy auf demselben Rechner (`127.0.0.1/32`), vertraut der Server jedem lokalen Prozess. Den Server dann an
+  eine eigene Adresse/einen Unix-Socket des Proxys binden oder in ein eigenes Netz legen.
+- Der Proxy muss den Header bei jeder Anfrage selbst setzen bzw. überschreiben (Caddy `copy_headers`, nginx
+  `proxy_set_header Remote-User $upstream_http_remote_user;`). Kommt der Header mehrfach an, lehnt der Server ab.
 
 Beispiel Authelia/Caddy:
 
@@ -246,7 +256,7 @@ See the Caddy and nginx examples above; set `WL_TRUSTED_PROXIES=127.0.0.1/32` so
 |---|---|
 | `password_totp` (default) | Password plus 6-digit authenticator code; accounts without TOTP set it up at first sign-in. |
 | `password` | Password, TOTP optional per account (two-factor can be turned off). A company allowing only `password_totp` still requires it. |
-| `trusted_header` | Upstream sign-in (Authelia, oauth2-proxy, Authentik). The user-name header counts only from `WL_TRUSTED_PROXIES` and is ignored from any other address. The user name must exist as an admin. |
+| `trusted_header` | Upstream sign-in (Authelia, oauth2-proxy, Authentik). The user-name header counts only from `WL_TRUSTED_PROXIES` and is ignored from any other address. The user name must exist as an admin. Trust only the proxy's exact address (`/32`), never a whole Docker or office network: anything sending from a trusted address can claim any admin. The proxy must set or overwrite the header on every request; a repeated header is rejected. |
 | `local_only` | Portal without sign-in, only directly on the server machine (`127.0.0.1`/`::1`, local Host header, no `X-Forwarded-*`). Other addresses get 403. Do not use behind a reverse proxy on the same machine; no effect inside Docker. |
 | `file` | No portal, no admin sign-in. Companies, groups, policy and keys come from `WL_CONFIG_FILE` (YAML or JSON, `env:NAME` references for secrets), re-read on SIGHUP and on file change. Approve devices via `autoApprove` or `device-approve`. |
 

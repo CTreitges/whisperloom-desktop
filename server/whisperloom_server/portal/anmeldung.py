@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from .. import auth, firmen, konten, krypto, totp
 from ..abhaengig import jetzt, verbindung
 from ..log import ereignis
-from ..netz import client_ip
+from ..netz import client_ip, limit_ip
 from ..ratelimit import VIERTELSTUNDE
 from .basis import (
     PASSWORT_ARTEN,
@@ -97,10 +97,14 @@ def login(request: Request, benutzername: str = Form(""), passwort: str = Form("
         return verboten(request)
     ip = client_ip(request)
     begrenzer = request.app.state.begrenzer
-    if (begrenzer.erlaubt("login-ip:" + ip, 20, VIERTELSTUNDE) is not None
-            or begrenzer.erlaubt("login-benutzer:" + benutzername.strip().lower()[:64], 10, VIERTELSTUNDE) is not None):
+    # Je Benutzername so viele Versuche wie bis zur Konto-Sperre: unbekannte und gesperrte Namen sehen gleich aus.
+    if (begrenzer.erlaubt("login-ip:" + limit_ip(request), 20, VIERTELSTUNDE) is not None
+            or begrenzer.erlaubt("login-benutzer:" + benutzername.strip().lower()[:64], auth.FEHLVERSUCHE_MAX,
+                                 VIERTELSTUNDE) is not None):
         return _vor_seite(request, "login.html", {"fehler": "h.zu_oft"}, 429)
     ergebnis, admin = auth.anmelden(con, request.app.state.krypto, benutzername[:64], passwort[:256], ip, jetzt(request))
+    if ergebnis == "gesperrt":
+        return _vor_seite(request, "login.html", {"fehler": "h.zu_oft"}, 429)
     weiter = _nach_passwort(request, con, admin) if ergebnis == "ok" else None
     if weiter is None:
         if ergebnis == "ok":
@@ -147,6 +151,9 @@ def totp_login(request: Request, code: str = Form(""), csrf: str = Form(""), con
         auth.sitzung_loeschen(con, _sitzung(request))
         return _vor_seite(request, "login.html", {"fehler": "h.zu_oft"}, 429)
     admin = con.execute("SELECT * FROM admin WHERE id = ?", (s["admin_id"],)).fetchone()
+    if admin["gesperrt"] or admin["gesperrt_bis_ms"] > jetzt(request):
+        auth.sitzung_loeschen(con, _sitzung(request))
+        return _vor_seite(request, "login.html", {"fehler": "h.zu_oft"}, 429)
     if not auth.totp_pruefen(con, request.app.state.krypto, admin, code[:12], jetzt(request)):
         ereignis("login fehler", fehler="totp", admin=admin["id"])
         return seite(request, "login_totp.html", {"csrf": s["csrf"], "fehler": "h.totp_falsch"}, 200)

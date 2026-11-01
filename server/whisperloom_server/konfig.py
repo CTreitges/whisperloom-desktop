@@ -40,6 +40,8 @@ def bauen(con: sqlite3.Connection, kry: Krypto, basis_url: str, firma: sqlite3.R
         _fest(settings, levels, "llm.providerId", "same")
         _fest(settings, levels, "sttFallback.enabled", False)
         _fest(settings, levels, "llmFallback.enabled", False)
+        if "allowedProviders" in policy and "custom" not in policy["allowedProviders"]:
+            policy["allowedProviders"] = [*policy["allowedProviders"], "custom"]
     else:
         secrets, zugaenge = schluessel.fuer_geraet(con, kry, firma["id"])
         daten["secrets"] = secrets

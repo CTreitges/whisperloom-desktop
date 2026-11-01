@@ -130,7 +130,8 @@ def sitzung_laden(con: sqlite3.Connection, wert: str | None, jetzt: int):
     if not wert or len(wert) > 100:
         return None
     row = con.execute(
-        "SELECT s.*, a.benutzer, a.rolle, a.firma_id, a.gesperrt FROM sitzung s JOIN admin a ON a.id = s.admin_id "
+        "SELECT s.*, a.benutzer, a.rolle, a.firma_id, a.gesperrt, a.totp_enc IS NOT NULL AS hat_totp "
+        "FROM sitzung s JOIN admin a ON a.id = s.admin_id "
         "WHERE s.id_hash = ?",
         (krypto.sha256(wert),),
     ).fetchone()

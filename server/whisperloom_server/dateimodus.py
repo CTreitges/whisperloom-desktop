@@ -78,6 +78,10 @@ def _firma(con: sqlite3.Connection, kry: Krypto, t: dict, jetzt: int) -> str:
         name = firmen.name_pruefen(str(t.get("name", slug)))
     except firmen.FirmenFehler as ex:
         raise DateiFehler(f"{wo}: {ex}") from ex
+    if not isinstance(t.get("keys", {}) or {}, dict) or not isinstance(t.get("groups", []) or [], list):
+        raise DateiFehler(f"{wo}: keys muss ein Objekt, groups eine Liste sein")
+    if not isinstance(t.get("maxPending", 50), int) or isinstance(t.get("maxPending", 50), bool):
+        raise DateiFehler(f"{wo}.maxPending: Zahl erwartet")
     modus = t.get("keyMode", "proxy")
     if modus not in ("proxy", "distribute"):
         raise DateiFehler(f"{wo}.keyMode: proxy oder distribute")
@@ -159,7 +163,7 @@ class Beobachter:
         try:
             self._mtime = pfad.stat().st_mtime
             anzahl = anwenden(self.einst, self.kry, lesen(pfad))
-        except (OSError, ValueError, yaml.YAMLError, DateiFehler) as ex:
+        except Exception as ex:  # noqa: BLE001 — auch sqlite3/Typfehler aus der Datei: Stand bleibt, Dienst läuft weiter
             ereignis("datei fehler", fehler=type(ex).__name__)
             if streng:
                 raise DateiFehler(f"{pfad}: {ex}") from ex
@@ -176,7 +180,10 @@ class Beobachter:
 
     def _schleife(self) -> None:
         while not self._halt.wait(self.intervall_s):
-            self.pruefen()
+            try:
+                self.pruefen()
+            except Exception as ex:  # noqa: BLE001 — der Beobachter darf nie sterben
+                ereignis("datei fehler", fehler=type(ex).__name__)
 
     def starten(self) -> None:
         if hasattr(signal, "SIGHUP"):
