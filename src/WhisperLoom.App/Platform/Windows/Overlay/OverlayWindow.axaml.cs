@@ -26,7 +26,7 @@ public partial class OverlayWindow : Window
     public JsonObject ButtonCenters()
     {
         var result = new JsonObject();
-        foreach (var (name, button) in new[] { ("pause", PauseButton), ("discard", DiscardButton), ("send", SendButton), ("sendEnter", SendEnterButton) })
+        foreach (var (name, button) in new[] { ("pause", PauseButton), ("discard", DiscardButton), ("send", SendButton), ("stage", StageButton) })
         {
             var center = new Point(button.Bounds.Width / 2, button.Bounds.Height / 2);
             if (button.TranslatePoint(center, this) is { } inWindow)

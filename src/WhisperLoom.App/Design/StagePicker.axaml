@@ -1,0 +1,46 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ds="using:WhisperLoom.App.Design"
+             x:Class="WhisperLoom.App.Design.StagePicker"
+             x:DataType="ds:StagePickerViewModel"
+             Focusable="True">
+  <!-- Stufen-Wähler (W2-OUT): Zeilen sind nicht fokussierbar, damit der Fokus beim Wähler bleibt und ↑/↓, Tab, 1–9, Enter
+       und Esc hier ankommen; Klick wählt sofort. Markierung = Loom.Selection, aktuelle Stufe = Häkchen. -->
+  <ItemsControl x:Name="List" ItemsSource="{Binding Options}">
+    <ItemsControl.ItemTemplate>
+      <DataTemplate x:DataType="ds:StageOption">
+        <Button Classes="stageOption" Classes.highlighted="{Binding IsHighlighted}" Focusable="False"
+                HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                Command="{Binding $parent[ItemsControl].((ds:StagePickerViewModel)DataContext).PickCommand}"
+                CommandParameter="{Binding}"
+                AutomationProperties.Name="{Binding Label}">
+          <Grid ColumnDefinitions="24,*,Auto">
+            <TextBlock Text="{Binding NumberText}" Classes="caption" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1" Text="{Binding Label}" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="2" Text="✓" IsVisible="{Binding IsCurrent}" VerticalAlignment="Center" Margin="8,0,0,0" />
+          </Grid>
+        </Button>
+      </DataTemplate>
+    </ItemsControl.ItemTemplate>
+  </ItemsControl>
+  <UserControl.Styles>
+    <Style Selector="Button.stageOption">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource Loom.Text}" />
+      <Setter Property="Padding" Value="10,6" />
+      <Setter Property="MinHeight" Value="32" />
+      <Setter Property="CornerRadius" Value="6" />
+    </Style>
+    <Style Selector="Button.stageOption.highlighted">
+      <Setter Property="Background" Value="{DynamicResource Loom.Selection}" />
+      <Setter Property="Foreground" Value="{DynamicResource Loom.OnSelection}" />
+    </Style>
+    <Style Selector="Button.stageOption TextBlock.caption">
+      <Setter Property="Foreground" Value="{DynamicResource Loom.TextSecondary}" />
+      <Setter Property="FontSize" Value="12" />
+    </Style>
+    <Style Selector="Button.stageOption.highlighted TextBlock.caption">
+      <Setter Property="Foreground" Value="{DynamicResource Loom.OnSelection}" />
+    </Style>
+  </UserControl.Styles>
+</UserControl>

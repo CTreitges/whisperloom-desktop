@@ -90,6 +90,19 @@ public sealed partial class FileHistoryStore(string directory, Func<HistorySetti
         return Task.FromResult(true);
     }, ct);
 
+    /// <summary>Sofort auf die aktuelle Höchstzahl kürzen (nach dem Verkleinern, W2-OUT); bei ausgeschaltetem Verlauf nichts.</summary>
+    /// <returns>Wie viele Einträge gelöscht wurden.</returns>
+    public Task<int> TrimAsync(CancellationToken ct) => Locked(() =>
+    {
+        var limit = Limit(settings());
+        var excess = limit <= 0 ? 0 : Math.Max(0, Ids().Count - limit);
+        if (excess > 0)
+        {
+            Trim(limit);
+        }
+        return Task.FromResult(excess);
+    }, ct);
+
     /// <summary>Alles löschen, samt Resten abgebrochener Schreibvorgänge.</summary>
     public Task ClearAsync(CancellationToken ct) => Locked(() =>
     {

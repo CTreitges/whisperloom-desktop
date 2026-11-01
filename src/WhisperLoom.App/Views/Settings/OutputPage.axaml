@@ -14,6 +14,12 @@
           <ds:SettingRow Path="desktop.insertMode">
             <ComboBox x:Name="InsertModeBox" Classes="row" ItemsSource="{Binding Session.InsertModes}" SelectedItem="{Binding Session.InsertMode}" />
           </ds:SettingRow>
+          <ds:SettingRow Path="output.alwaysCopy">
+            <ToggleSwitch x:Name="AlwaysCopyToggle" IsChecked="{Binding Session.AlwaysCopy}" OnContent="" OffContent="" />
+          </ds:SettingRow>
+          <ds:SettingRow Path="output.pressEnter">
+            <ToggleSwitch x:Name="PressEnterToggle" IsChecked="{Binding Session.PressEnter}" OnContent="" OffContent="" />
+          </ds:SettingRow>
         </StackPanel>
       </ds:SettingsGroup>
 

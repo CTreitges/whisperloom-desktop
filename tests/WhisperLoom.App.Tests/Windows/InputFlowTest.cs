@@ -23,8 +23,8 @@ public sealed class InputFlowTest : IDisposable
     public InputFlowTest()
     {
         // Keine Sprachumschaltung hier: Loc ist global, die UI-Tests schalten sie auf dem UI-Thread.
-        var settings = new WhisperLoomSettings { Refine = new RefineSettings { Stage = "off" } };
-        Sink = new InsertOutputSink(_inner, _rig.Inserter, () => InsertMode.Paste);
+        var settings = new WhisperLoomSettings { Refine = new RefineSettings { Stage = "off" }, Polish = new PolishSettings { TrailingSpace = false } };
+        Sink = new InsertOutputSink(_inner, _rig.Inserter, () => InsertMode.Paste, () => _f!.Controller.Settings.Output);
         _f = new ControllerFixture(settings, Sink);
         _f.Pipeline.RawText = "Hallo Welt";
         _flow = new InputFlow(_f.Controller, Sink, _ui, () => _rig.Windows.Current, _overlayKeys.Add);
@@ -59,15 +59,17 @@ public sealed class InputFlowTest : IDisposable
     }
 
     [AvaloniaFact]
-    public async Task Enter_sends_and_ctrl_enter_sends_with_enter()
+    public async Task Enter_sends_without_enter_unless_the_setting_says_so()
     {
         await _flow.HandleAsync(HotkeyAction.Toggle);
         await _flow.HandleAsync(HotkeyAction.OverlaySend);
         Assert.Equal(0, _rig.Keys.Enters);
         Assert.NotEqual("", _rig.Keys.Target);
 
+        // Enter danach nur noch als Einstellung (output.pressEnter), nicht mehr per Strg+Enter (W2-OUT).
+        _f.Controller.Settings.Output.PressEnter = true;
         await _flow.HandleAsync(HotkeyAction.Toggle);
-        await _flow.HandleAsync(HotkeyAction.OverlaySendEnter);
+        await _flow.HandleAsync(HotkeyAction.OverlaySend);
         Assert.Equal(1, _rig.Keys.Enters);
     }
 
@@ -104,9 +106,9 @@ public sealed class InputFlowTest : IDisposable
         _flow.Tick();
         Assert.Equal(TimeSpan.FromSeconds(3), _flow.Overlay.Elapsed);
 
-        _flow.Overlay.SendEnterCommand.Execute(null);
+        _flow.Overlay.SendCommand.Execute(null);
         await WaitFor(() => _f.Controller.State == DictationState.Idle && !_ui.Overlay);
-        Assert.Equal(1, _rig.Keys.Enters);
+        Assert.Equal(0, _rig.Keys.Enters);
         Assert.False(_ui.Overlay);
     }
 
@@ -230,7 +232,8 @@ public sealed class InputFlowTest : IDisposable
         _f.Pipeline.Failure = FakeFailure.SttNetwork;
         await _flow.HandleAsync(HotkeyAction.HoldStart);
         await _flow.HandleAsync(HotkeyAction.HoldEnd);
-        Assert.Contains(_ui.Hints, h => h.Kind == "toast" && h.Message == Loc.Instance["Error_Network"]);
+        // Netzfehler ist wiederholbar (W2-OUT): Text des Fehlers plus Hinweis auf „Erneut senden“.
+        Assert.Contains(_ui.Hints, h => h.Kind == "toast" && h.Message == Loc.Instance.Format("Error_WithRetry", Loc.Instance["Error_Network"]));
     }
 
     [AvaloniaFact]
@@ -244,7 +247,8 @@ public sealed class InputFlowTest : IDisposable
         Assert.Equal([InsertOutcome.TargetGone], toasts);
         Assert.Equal(_f.Controller.LastResult, _rig.Clipboard.Text);
         _flow.ShowFallback(InsertOutcome.TargetGone);
-        Assert.Equal(Loc.Instance["Insert_TargetGone"], _ui.Hints[^1].Message);
+        // W2-OUT: ein Hinweis für alle Fälle „liegt in der Zwischenablage“ (Entscheidung Christof).
+        Assert.Equal(Loc.Instance["Output_Hint_Copied"], _ui.Hints[^1].Message);
     }
 
     [AvaloniaFact]

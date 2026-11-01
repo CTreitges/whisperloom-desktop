@@ -171,7 +171,21 @@ internal sealed class FakeWindows(Steps steps) : IWindowAdapter
     }
 }
 
-/// <summary>Alles für einen Einfüge-Ablauf ohne echte Eingabe.</summary>
+/// <summary>Fokus-Klasse nach dem Aktivieren (statt UI Automation); zählt die Abfragen.</summary>
+internal sealed class FakeFocus : IFocusProbe
+{
+    public WhisperLoom.Core.Output.FocusKind Kind { get; set; } = WhisperLoom.Core.Output.FocusKind.Editable;
+
+    public int Probes { get; private set; }
+
+    public Task<WhisperLoom.Core.Output.FocusKind> ProbeAsync(CancellationToken ct)
+    {
+        Probes++;
+        return Task.FromResult(Kind);
+    }
+}
+
+/// <summary>Alles für einen Einfüge-Ablauf ohne echte Eingabe. Fokus ab Werk: Eingabefeld.</summary>
 internal sealed class InsertRig
 {
     public InsertRig()
@@ -179,8 +193,10 @@ internal sealed class InsertRig
         Clipboard = new FakeClipboard(Steps);
         Keys = new FakeKeys(Steps, Clipboard);
         Windows = new FakeWindows(Steps);
-        Inserter = new TextInserter(Clipboard, Keys, Windows, TimeSpan.Zero);
+        Inserter = new TextInserter(Clipboard, Keys, Windows, TimeSpan.Zero, Focus, _ => Task.CompletedTask);
     }
+
+    public FakeFocus Focus { get; } = new();
 
     public Steps Steps { get; } = [];
 

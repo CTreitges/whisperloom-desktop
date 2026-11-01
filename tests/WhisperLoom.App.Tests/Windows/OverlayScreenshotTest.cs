@@ -45,7 +45,7 @@ public class OverlayScreenshotTest
             return;
         }
         Loc.Instance.SetLanguage("de");
-        var vm = new OverlayViewModel(() => { }, () => { }, _ => { })
+        var vm = new OverlayViewModel(() => { }, () => { }, () => { })
         {
             Stage = Loc.Instance["Stage_prompt"],
             Elapsed = TimeSpan.FromSeconds(14),

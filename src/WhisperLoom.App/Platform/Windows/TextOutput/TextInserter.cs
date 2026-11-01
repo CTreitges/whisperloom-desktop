@@ -1,3 +1,6 @@
+using WhisperLoom.App.Platform.Windows.Input;
+using WhisperLoom.Core.Output;
+
 namespace WhisperLoom.App.Platform.Windows.TextOutput;
 
 /// <summary>Ausgabemodus beim Diktat per Tastenkürzel (Einstellung <c>desktop.insertMode</c>).</summary>
@@ -31,6 +34,12 @@ public enum InsertOutcome
 
     /// <summary>SendInput wurde abgewiesen: Text liegt in der Zwischenablage.</summary>
     InputRejected,
+
+    /// <summary>Im Ziel hat kein Eingabefeld den Fokus (UI Automation): Text liegt in der Zwischenablage (W2-OUT).</summary>
+    NoTextField,
+
+    /// <summary>Fokus liegt in einem Passwortfeld: weder eingefügt noch kopiert, kein Verlaufseintrag (W2-OUT).</summary>
+    PasswordField,
 }
 
 /// <summary>
@@ -58,18 +67,38 @@ public static class InsertModes
         _ => "paste",
     };
 
-    /// <summary>Landet der Text nur in der Zwischenablage, obwohl Einfügen gewollt war (Toast nötig)?</summary>
+    /// <summary>Landet der Text nur in der Zwischenablage, obwohl Einfügen gewollt war (Hinweis „Kopiert – Strg+V“)?</summary>
     public static bool IsFallback(this InsertOutcome outcome) =>
-        outcome is InsertOutcome.TargetGone or InsertOutcome.TargetProtected or InsertOutcome.NotForeground or InsertOutcome.InputRejected;
+        outcome is InsertOutcome.TargetGone or InsertOutcome.TargetProtected or InsertOutcome.NotForeground or InsertOutcome.InputRejected
+            or InsertOutcome.NoTextField;
+
+    /// <summary>Hinweis nach dem Einfügen (<see cref="OutputDecision"/>): Kopiert, Passwortfeld oder keiner.</summary>
+    public static OutputHint Hint(this InsertOutcome outcome) => outcome switch
+    {
+        InsertOutcome.PasswordField => OutputHint.PasswordField,
+        InsertOutcome.ClipboardOnly => OutputHint.Copied,
+        _ when outcome.IsFallback() => OutputHint.Copied,
+        _ => OutputHint.None,
+    };
 }
 
 /// <summary>
 /// Fügt ein Diktat in das gemerkte Zielfenster ein: Zwischenablage sichern → Text privat setzen → Strg+V →
 /// (Enter) → Zwischenablage wiederherstellen, sofern sie seitdem niemand geändert hat. Oder direkt tippen.
-/// Ist das Ziel weg, geschützt (UIPI) oder nicht erreichbar, landet der Text in der Zwischenablage.
+/// Kein Diktat geht verloren (W2-OUT, <see cref="OutputDecision"/>): nach dem Aktivieren prüft UI Automation den Fokus.
+/// Passwortfeld → nichts; kein Eingabefeld, Ziel weg, geschützt (UIPI) oder nicht erreichbar → Zwischenablage;
+/// unbekannter Fokus oder <c>output.alwaysCopy</c> → einfügen und den Text danach in der Zwischenablage lassen.
 /// </summary>
+/// <param name="focus">Fokus-Klasse nach dem Aktivieren; null = unbekannt.</param>
 // Doku: learn.microsoft.com/windows/win32/api/winuser/nf-winuser-sendinput (UIPI-Hinweis, abgerufen 2026-10-31).
-public sealed class TextInserter(IClipboardAdapter clipboard, IKeySender keys, IWindowAdapter windows, TimeSpan? pasteDelay = null)
+public sealed class TextInserter(
+    IClipboardAdapter clipboard,
+    IKeySender keys,
+    IWindowAdapter windows,
+    TimeSpan? pasteDelay = null,
+    IFocusProbe? focus = null,
+    Func<TimeSpan, Task>? copyDelay = null,
+    CaretContext? caret = null)
 {
     /// <summary>Zeit, die das Ziel zum Lesen der Zwischenablage bekommt, bevor Enter bzw. die Wiederherstellung folgt.</summary>
     public static readonly TimeSpan DefaultPasteDelay = TimeSpan.FromMilliseconds(400);
@@ -80,32 +109,67 @@ public sealed class TextInserter(IClipboardAdapter clipboard, IKeySender keys, I
     /// <summary>Ziel der letzten echten Eingabe (Strg+V bzw. Tippen); null, wenn keine gesendet wurde.</summary>
     public InsertReport? LastReport { get; private set; }
 
+    /// <summary>Fokus-Klasse der letzten Einfügung (Status/Smoke); null = nicht geprüft.</summary>
+    public FocusKind? LastFocus { get; private set; }
+
+    /// <param name="alwaysCopy"><c>output.alwaysCopy</c>: nach erfolgreichem Einfügen auch in der Zwischenablage lassen.</param>
+    /// <param name="leadingSpace">Diktat: Leerzeichen davor, wenn direkt an ein Wort angefügt wird (Zeichen vor der Schreibmarke
+    /// per UIA TextPattern; ohne Auskunft keins).</param>
     /// <exception cref="IOException">Zwischenablage belegt.</exception>
-    public async Task<InsertOutcome> InsertAsync(IntPtr target, string text, InsertMode mode, bool pressEnter, CancellationToken ct)
+    public async Task<InsertOutcome> InsertAsync(
+        IntPtr target, string text, InsertMode mode, bool pressEnter, CancellationToken ct, bool alwaysCopy = false, bool leadingSpace = false)
     {
         LastReport = null;
+        LastFocus = null;
         if (text.Length == 0)
         {
             return InsertOutcome.Empty;
         }
         if (mode == InsertMode.ClipboardOnly)
         {
-            clipboard.SetText(text, @private: false);
+            // „Nie Passwort“ gilt auch hier (Prüfung W2-OUT B2): ist das Ziel noch vorn, Fokus prüfen – ohne es zu aktivieren.
+            if (target != IntPtr.Zero && windows.Foreground() == target)
+            {
+                var focused = await (focus ?? UnknownFocusProbe.Instance).ProbeAsync(ct).ConfigureAwait(false);
+                LastFocus = focused;
+                if (focused == FocusKind.Password)
+                {
+                    return InsertOutcome.PasswordField;
+                }
+            }
+            await CopyAsync(text);
             return InsertOutcome.ClipboardOnly;
         }
         if (target == IntPtr.Zero || !windows.Exists(target))
         {
-            return Fallback(text, InsertOutcome.TargetGone);
+            return await FallbackAsync(text, InsertOutcome.TargetGone);
         }
         if (windows.IsProtected(target))
         {
-            return Fallback(text, InsertOutcome.TargetProtected);
+            return await FallbackAsync(text, InsertOutcome.TargetProtected);
         }
         await keys.WaitForModifiersReleasedAsync(ModifierWait, ct).ConfigureAwait(false);
         if (!windows.Activate(target))
         {
-            return Fallback(text, InsertOutcome.NotForeground);
+            return await FallbackAsync(text, InsertOutcome.NotForeground);
         }
+        var kind = await (focus ?? UnknownFocusProbe.Instance).ProbeAsync(ct).ConfigureAwait(false);
+        LastFocus = kind;
+        if (kind == FocusKind.Password)
+        {
+            return InsertOutcome.PasswordField;
+        }
+        if (!OutputDecision.ShouldInsert(kind, canInsert: true))
+        {
+            return await FallbackAsync(text, InsertOutcome.NoTextField);
+        }
+        if (leadingSpace && caret is not null)
+        {
+            text = OutputDecision.WithLeadingSpace(text, await caret.CharBeforeAsync(ct).ConfigureAwait(false));
+        }
+        // Unbekannter Fokus (UIA meldet nichts Brauchbares) oder „immer kopieren“: der Text bleibt danach in der Zwischenablage.
+        // Im Browser („Vorsichtig im Browser“, Entscheidung Christof): unbekannter Fokus → alte Zwischenablage zurück.
+        var keep = OutputDecision.Decide(kind, InsertAttempt.Inserted, alwaysCopy, OutputDecision.IsBrowser(windows.ProcessName(target))).Copy;
         if (mode == InsertMode.Type)
         {
             LastReport = Describe(target);
@@ -116,18 +180,23 @@ public sealed class TextInserter(IClipboardAdapter clipboard, IKeySender keys, I
             }
             if (!keys.Type(text))
             {
-                return Fallback(text, InsertOutcome.InputRejected);
+                return await FallbackAsync(text, InsertOutcome.InputRejected);
             }
             if (pressEnter && windows.Foreground() == target)
             {
                 keys.SendEnter();
+            }
+            if (keep)
+            {
+                await TryCopyAsync(text);
             }
             return InsertOutcome.Typed;
         }
 
         var snapshot = clipboard.Save();
         // Wiederherstellen in jedem Fall (auch wenn Setzen scheitert oder abgebrochen wird) — außer der Text soll bewusst
-        // in der Zwischenablage bleiben (abgewiesene Eingabe) oder jemand anderes hat inzwischen kopiert.
+        // in der Zwischenablage bleiben (abgewiesene Eingabe, unbekannter Fokus, „immer kopieren“) oder jemand anderes hat
+        // inzwischen kopiert.
         var restore = true;
         try
         {
@@ -137,7 +206,7 @@ public sealed class TextInserter(IClipboardAdapter clipboard, IKeySender keys, I
             if (!keys.SendCtrlV())
             {
                 restore = false;
-                return Fallback(text, InsertOutcome.InputRejected);
+                return await FallbackAsync(text, InsertOutcome.InputRejected);
             }
             await Task.Delay(pasteDelay ?? DefaultPasteDelay, ct).ConfigureAwait(false);
             // Enter nur ins Ziel: hat der Nutzer inzwischen das Fenster gewechselt, träfe es (z. B. als Absenden) ein anderes.
@@ -146,6 +215,13 @@ public sealed class TextInserter(IClipboardAdapter clipboard, IKeySender keys, I
                 keys.SendEnter();
             }
             restore = clipboard.SequenceNumber == ours;
+            if (restore && keep)
+            {
+                // Statt der alten Zwischenablage bleibt der Text – öffentlich, damit Win+V ihn zeigt.
+                restore = false;
+                // Scheitert das, liegt der Text noch privat in der Zwischenablage (eben eingefügt) – nichts geht verloren.
+                await TryCopyAsync(text);
+            }
             return InsertOutcome.Pasted;
         }
         finally
@@ -178,9 +254,37 @@ public sealed class TextInserter(IClipboardAdapter clipboard, IKeySender keys, I
         }
     }
 
-    private InsertOutcome Fallback(string text, InsertOutcome outcome)
+    /// <summary>Text in die Zwischenablage, mit Wiederholungen solange sie belegt ist (<see cref="Output.ClipboardCopier"/>).</summary>
+    /// <exception cref="IOException">Auch nach allen Versuchen belegt.</exception>
+    private async Task CopyAsync(string text)
     {
-        clipboard.SetText(text, @private: false);
+        var copier = new Output.ClipboardCopier(t =>
+        {
+            clipboard.SetText(t, @private: false);
+            return Task.CompletedTask;
+        }, delay: copyDelay);
+        if (!await copier.CopyAsync(text).ConfigureAwait(false))
+        {
+            throw new IOException("Zwischenablage ist belegt.");
+        }
+    }
+
+    /// <summary>Zusätzliche Kopie nach erfolgreichem Einfügen; belegt = ohne Kopie weiter (eingefügt ist eingefügt).</summary>
+    private async Task TryCopyAsync(string text)
+    {
+        try
+        {
+            await CopyAsync(text).ConfigureAwait(false);
+        }
+        catch (IOException)
+        {
+            // Zwischenablage auch nach allen Versuchen belegt.
+        }
+    }
+
+    private async Task<InsertOutcome> FallbackAsync(string text, InsertOutcome outcome)
+    {
+        await CopyAsync(text).ConfigureAwait(false);
         return outcome;
     }
 }

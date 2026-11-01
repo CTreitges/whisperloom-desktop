@@ -18,13 +18,17 @@ public sealed class AppPipeline(
     ISecretStore secrets,
     ModelCache cache,
     ILocalStt? localStt = null,
-    ILocalRefiner? localRefiner = null) : IDictationPipeline, ISelectionRewriter, IDisposable
+    ILocalRefiner? localRefiner = null) : IDictationPipeline, ISkippablePipeline, ISelectionRewriter, IDisposable
 {
     private HttpProxyOptions? _proxy;
     private HttpClient? _http;
     private DictationPipeline? _pipeline;
 
     public Task<DictationResult> RunAsync(DictationRequest request, CancellationToken ct) => Current().RunAsync(request, ct);
+
+    /// <summary>Mit Ausweg „sofort ohne KI“ während der Verbesserung (W2-OUT, Android RefineSkip).</summary>
+    public Task<DictationResult> RunAsync(DictationRequest request, RefineSkip skip, Action? onRefineStart, CancellationToken ct) =>
+        Current().RunAsync(request, skip, onRefineStart, ct);
 
     public Task<RefinedText> RefineAsync(string raw, string language, Refinement refinement, CancellationToken ct) =>
         Current().RefineAsync(raw, language, refinement, ct);

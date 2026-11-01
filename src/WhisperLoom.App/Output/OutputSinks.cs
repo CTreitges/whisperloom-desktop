@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using WhisperLoom.App.Secrets;
 
@@ -46,7 +45,7 @@ internal sealed class ClipboardOutputSink(
     {
         if (tools is null && OperatingSystem.IsWindows())
         {
-            Win32Clipboard.SetText(text);
+            await WindowsCopyAsync(text).ConfigureAwait(false);
             return;
         }
         foreach (var (file, args) in tools ?? LinuxTools())
@@ -71,70 +70,27 @@ internal sealed class ClipboardOutputSink(
         throw new IOException("Zwischenablage nicht erreichbar: wl-copy bzw. xclip fehlt oder scheitert.");
     }
 
+    /// <summary>
+    /// Windows: über die Win32-Zwischenablage (sofort gerendert, nicht OLE mit verzögertem Rendern wie Avalonia), mit
+    /// Wiederholungen solange ein anderes Programm sie hält und Gegenprobe (W2-OUT, Ursache „Kopieren unzuverlässig“).
+    /// </summary>
+    [SupportedOSPlatform("windows")]
+    private static async Task WindowsCopyAsync(string text)
+    {
+        var clipboard = new Platform.Windows.TextOutput.Win32TextClipboard();
+        var copier = new ClipboardCopier(t =>
+        {
+            clipboard.SetText(t, @private: false);
+            return Task.CompletedTask;
+        }, () => Task.FromResult(clipboard.GetText()));
+        if (!await copier.CopyAsync(text).ConfigureAwait(false))
+        {
+            throw new IOException("Zwischenablage ist belegt.");
+        }
+    }
+
     private static (string File, string[] Args)[] LinuxTools() =>
         string.IsNullOrEmpty(Environment.GetEnvironmentVariable("WAYLAND_DISPLAY"))
             ? [("xclip", ["-selection", "clipboard"]), ("wl-copy", [])]
             : [("wl-copy", []), ("xclip", ["-selection", "clipboard"])];
-}
-
-// Doku: learn.microsoft.com/windows/win32/dataxchg/using-the-clipboard#copying-information-to-the-clipboard (abgerufen 2026-10-30).
-[SupportedOSPlatform("windows")]
-internal static class Win32Clipboard
-{
-    private const uint CfUnicodeText = 13;
-    private const uint GmemMoveable = 0x0002;
-
-    public static void SetText(string text)
-    {
-        // Ein anderes Programm kann die Zwischenablage kurz halten: einige Versuche.
-        for (var attempt = 0; !OpenClipboard(IntPtr.Zero); attempt++)
-        {
-            if (attempt == 10)
-            {
-                throw new IOException("Zwischenablage ist belegt.");
-            }
-            Thread.Sleep(50);
-        }
-        try
-        {
-            EmptyClipboard();
-            var bytes = (text.Length + 1) * 2;
-            var handle = GlobalAlloc(GmemMoveable, (UIntPtr)bytes);
-            var target = GlobalLock(handle);
-            Marshal.Copy(text.ToCharArray(), 0, target, text.Length);
-            Marshal.WriteInt16(target, text.Length * 2, 0);
-            GlobalUnlock(handle);
-            if (SetClipboardData(CfUnicodeText, handle) == IntPtr.Zero)
-            {
-                throw new IOException($"Zwischenablage: Schreiben fehlgeschlagen (Fehler {Marshal.GetLastWin32Error()}).");
-            }
-        }
-        finally
-        {
-            CloseClipboard();
-        }
-    }
-
-#pragma warning disable SYSLIB1054 // DllImport reicht hier; LibraryImport bräuchte AllowUnsafeBlocks.
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern bool OpenClipboard(IntPtr owner);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern bool CloseClipboard();
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern bool EmptyClipboard();
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern IntPtr SetClipboardData(uint format, IntPtr data);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern IntPtr GlobalAlloc(uint flags, UIntPtr bytes);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern IntPtr GlobalLock(IntPtr handle);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern bool GlobalUnlock(IntPtr handle);
-#pragma warning restore SYSLIB1054
 }

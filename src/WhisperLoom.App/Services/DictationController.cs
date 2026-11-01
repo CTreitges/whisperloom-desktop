@@ -156,6 +156,7 @@ public sealed partial class DictationController : ObservableObject
             return "audio-unavailable";
         }
         _recorded = TimeSpan.Zero;
+        ResetComfort();
         _segmentStart = _now();
         State = DictationState.Recording;
         _log.Event("recording.start");
@@ -176,9 +177,9 @@ public sealed partial class DictationController : ObservableObject
 
     public string Resume()
     {
-        if (State != DictationState.Paused)
+        if (State != DictationState.Paused || Capped)
         {
-            return "not-paused";
+            return Capped ? "capped" : "not-paused";
         }
         _segmentStart = _now();
         _recorder.Resume();
@@ -198,6 +199,10 @@ public sealed partial class DictationController : ObservableObject
             _recorded += _now() - _segmentStart;
         }
         var audio = _recorder.Stop();
+        if (DiscardIfTooShort(audio))
+        {
+            return "too-short";
+        }
         State = DictationState.Processing;
         _processing = new CancellationTokenSource();
         _processingTask = ProcessAsync(audio, _processing.Token);
@@ -290,7 +295,7 @@ public sealed partial class DictationController : ObservableObject
         var refinement = RefinementOf(EffectiveRefine());
         try
         {
-            var result = await _pipeline.RunAsync(new DictationRequest(audio, Settings.Language, refinement), ct);
+            var result = await RunPipelineAsync(new DictationRequest(audio, Settings.Language, refinement), ct);
             LastRaw = result.Raw;
             LastResult = result.Text;
             LastRefined = result.Result;
@@ -301,6 +306,11 @@ public sealed partial class DictationController : ObservableObject
             catch (IOException)
             {
                 Fail("Error_Output", "OutputFailed");
+            }
+            if (ForgetIfPrivate())
+            {
+                _log.Event("dictation", ("status", "private-field"), ("processingMs", watch.ElapsedMilliseconds));
+                return;
             }
             await AddHistoryAsync(result);
             _log.Event(
@@ -324,6 +334,7 @@ public sealed partial class DictationController : ObservableObject
                                       or IOException)
         {
             Fail(ErrorKey(e), ErrorClass(e));
+            KeepForRetry(e, audio);
             _log.Event(
                 "dictation",
                 ("status", "error"),

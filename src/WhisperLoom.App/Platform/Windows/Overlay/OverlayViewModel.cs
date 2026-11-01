@@ -13,16 +13,17 @@ public enum OverlayState
 }
 
 /// <summary>
-/// Overlay der Umschalt-Kombi: Zustand, Dauer, Pegel, Stufe und die Knöpfe Pause/Weiter, Verwerfen, Senden,
-/// Senden + Enter. Die Knöpfe rufen nur die Rückrufe; den Ablauf steuert der <c>WindowsInputService</c>.
+/// Overlay der Umschalt-Kombi: Zustand, Dauer, Pegel, Stufe (Klick öffnet den Stufen-Wähler) und die Knöpfe Pause/Weiter,
+/// Verwerfen, Senden. „Senden + Enter“ gibt es nicht mehr (W2-OUT): Enter danach ist eine Einstellung. Die Knöpfe rufen nur die
+/// Rückrufe; den Ablauf steuert <c>InputFlow</c>.
 /// </summary>
 public sealed partial class OverlayViewModel : ObservableObject
 {
     private readonly Action _pauseResume;
     private readonly Action _discard;
-    private readonly Action<bool> _send;
+    private readonly Action _send;
 
-    public OverlayViewModel(Action pauseResume, Action discard, Action<bool> send)
+    public OverlayViewModel(Action pauseResume, Action discard, Action send)
     {
         _pauseResume = pauseResume;
         _discard = discard;
@@ -30,7 +31,8 @@ public sealed partial class OverlayViewModel : ObservableObject
     }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(StateText), nameof(IsRecording), nameof(IsPaused), nameof(CanAct), nameof(IsError), nameof(PauseText))]
+    [NotifyPropertyChangedFor(nameof(StateText), nameof(IsRecording), nameof(IsPaused), nameof(CanAct), nameof(IsError), nameof(PauseText),
+        nameof(IsProcessing))]
     private OverlayState _state;
 
     [ObservableProperty]
@@ -41,6 +43,25 @@ public sealed partial class OverlayViewModel : ObservableObject
 
     [ObservableProperty]
     private string _stage = "";
+
+    /// <summary>Stufen-Wähler des laufenden Diktats (W2-OUT); null = keine Wahl möglich (z. B. Umschreiben, IT-Sperre).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanPickStage))]
+    private Design.StagePickerViewModel? _stagePicker;
+
+    [ObservableProperty]
+    private bool _isStagePickerOpen;
+
+    public bool CanPickStage => StagePicker is not null;
+
+    /// <summary>Wiederholbarer Fehler: Knopf „Erneut senden“ (Audio liegt nur im Speicher, W2-OUT).</summary>
+    [ObservableProperty]
+    private bool _canRetry;
+
+    /// <summary>Rückruf für „Erneut senden“; null = kein Knopf.</summary>
+    public Action? Retry { get; set; }
+
+    public bool IsProcessing => State == OverlayState.Processing;
 
     /// <summary>Lokalisierungs-Schlüssel des Fehlers (<c>Error_*</c>).</summary>
     [ObservableProperty]
@@ -77,8 +98,11 @@ public sealed partial class OverlayViewModel : ObservableObject
     private void Discard() => _discard();
 
     [RelayCommand]
-    private void Send() => _send(false);
+    private void Send() => _send();
 
     [RelayCommand]
-    private void SendEnter() => _send(true);
+    private void RetrySend() => Retry?.Invoke();
+
+    [RelayCommand]
+    private void ToggleStages() => IsStagePickerOpen = StagePicker is not null && !IsStagePickerOpen;
 }

@@ -112,6 +112,8 @@ public sealed partial class AppHost
             ["management"] = ManagementStatus(c.Settings.Management),
             ["dataDir"] = Options.DataDir,
             ["output"] = Options.OutputFile is null ? "clipboard" : "file",
+            ["lastHint"] = LastHint,
+            ["copies"] = new JsonObject { ["ok"] = CopyCount.Ok, ["failed"] = CopyCount.Failed },
             ["local"] = LocalStatus(),
             ["input"] = InputStatus?.Invoke(),
             ["recent"] = new JsonArray([.. Features.Reinsert.RecentHistory.Take(history).Select(e => (JsonNode)new JsonObject
