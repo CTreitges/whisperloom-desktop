@@ -11,7 +11,7 @@ namespace WhisperLoom.App.Platform.Sidecar;
 /// </summary>
 public sealed class LocalStt : ILocalStt, IAsyncDisposable
 {
-    public const string MsgModelMissing = "Lokales Erkennungsmodell fehlt — unter „Lokal“ laden";
+    public const string MsgModelMissing = WhisperModels.MsgModelMissing;
     public const string MsgSidecarFailed = "Lokaler Erkennungsdienst startet nicht";
 
     private static readonly TimeSpan StartTimeout = TimeSpan.FromSeconds(120);
@@ -57,7 +57,7 @@ public sealed class LocalStt : ILocalStt, IAsyncDisposable
     public Task<bool> IsReadyAsync(CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
-        return Task.FromResult(Models.IsInstalled(Model()));
+        return Task.FromResult(Model().Error is null);
     }
 
     public async Task<TranscriptResult> TranscribeAsync(AudioBuffer audio, string language, CancellationToken ct)
@@ -78,13 +78,14 @@ public sealed class LocalStt : ILocalStt, IAsyncDisposable
     /// <exception cref="LocalNotAvailableException">Modell fehlt oder der Prozess startet weder mit Vulkan noch mit CPU.</exception>
     public async Task<WhisperServerProcess> EnsureServerAsync(CancellationToken ct, DownloadProgress? progress = null)
     {
+        // W2: eigene Datei (custom:<name>) — fehlt oder kaputt, gibt es eine klare Meldung statt Small.
         var model = Model();
-        if (!Models.IsInstalled(model)) throw new LocalNotAvailableException(MsgModelMissing);
+        if (model.Error is { } error) throw new LocalNotAvailableException(error);
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             _idle?.Cancel();
-            var path = Models.File(model);
+            var path = model.Path;
             if (_server is { HasExited: false } running && running.Model == path) return running;
             await StopCoreAsync().ConfigureAwait(false);
             var cpuOnly = LocalSettings.Of(_settings()).Backend == "cpu";
@@ -138,7 +139,8 @@ public sealed class LocalStt : ILocalStt, IAsyncDisposable
     private static bool IsStartFailure(Exception e) =>
         e is SidecarStartException or DownloadException or IOException or UnauthorizedAccessException or HttpRequestException;
 
-    private OfflineModel Model() => ModelCatalog.ById(_settings().Offline.Model);
+    /// <summary>Gewähltes Modell (Katalog oder eigene Datei) samt Fehler, je Aufruf frisch.</summary>
+    public WhisperModelChoice Model() => WhisperModels.Resolve(_settings().Offline, Models);
 
     private async Task<WhisperServerProcess> StartAsync(SidecarVariant variant, string model, DownloadProgress? progress, CancellationToken ct)
     {
