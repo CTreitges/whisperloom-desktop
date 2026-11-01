@@ -29,5 +29,9 @@ public static class SecretNames
     public const string Llm = "llm";
     public const string LlmFallback = "llm_fallback";
 
+    /// <summary>Die Keys der Zugänge (ohne <see cref="Device"/>).</summary>
     public static readonly IReadOnlyList<string> All = [Stt, SttFallback, Llm, LlmFallback];
+
+    /// <summary>Geräte-Token des Firmen-Servers (<c>docs/server-api.md</c>, W2). Kein Zugang, nie per Provisioning setzbar.</summary>
+    public const string Device = "device";
 }

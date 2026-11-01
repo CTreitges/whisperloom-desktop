@@ -202,7 +202,7 @@ public sealed partial class InputFlow
         // Umschreiben ersetzt nur die Markierung: ohne Profil (Stufe, Ausgabe, Enter); Enter nur per Strg+Enter im Overlay.
         var match = mode == Mode.Rewrite ? null : ProfileFor(target);
         _controller.ActiveProfile = match;
-        _sink.Arm(target, match?.Profile.PressEnter ?? false, InsertModeOf(match));
+        _sink.Arm(target, match?.Profile.PressEnter ?? false, InsertModeOf(match)); // Erben: output.pressEnter verdrahtet W2-OUT
         var started = _controller.Start();
         if (started != "recording")
         {
