@@ -17,6 +17,10 @@ public enum ApiStyle
 /// <param name="ReasoningEffort">Wert für <c>reasoning_effort</c>; null = Feld weglassen.</param>
 /// <param name="LanguageField">Multipart-Feld der Sprache: <c>language</c> oder <c>languages[]</c>.</param>
 /// <param name="ThinkingType">Wert für <c>"thinking": {"type": …}</c>; null = Feld weglassen.</param>
+/// <param name="KeywordsField">
+/// W2 (additiv, CTR-273): Multipart-Feld für das Vokabular als Einzelbegriffe zusätzlich zu <c>prompt</c>
+/// (gpt-transcribe: <c>keywords[]</c>); null = nur <c>prompt</c>.
+/// </param>
 public sealed record ModelOption(
     string Id,
     string Label,
@@ -24,7 +28,8 @@ public sealed record ModelOption(
     bool TemperatureSupported = true,
     string? ReasoningEffort = null,
     string LanguageField = "language",
-    string? ThinkingType = null);
+    string? ThinkingType = null,
+    string? KeywordsField = null);
 
 /// <summary>
 /// Ein Anbieter aus dem Katalog (Port der Daten von <c>Provider</c>; Inhalt kommt in Phase 1 aus
@@ -39,6 +44,10 @@ public sealed record ModelOption(
 /// <c>local:&lt;name&gt;</c>): Katalog-ID, deren Regeln gelten (<c>custom</c>, <c>anthropic</c>, <c>ollama</c>,
 /// <c>elevenlabs</c>). Gesetzt heißt außerdem: feste Adresse und Fähigkeit über die Modell-Listen (null = kann es nicht).
 /// "" = Katalog-Eintrag, Regeln nach <see cref="Id"/>.
+/// </param>
+/// <param name="SttBiasField">
+/// W2 (additiv, CTR-273): Wortlisten-Feld für das Vokabular, wenn der Anbieter kein <c>prompt</c> kennt
+/// (Mistral: <c>context_bias[]</c>, je Begriff ein Wort ohne Leerraum und Komma); null = keins.
 /// </param>
 public sealed record ProviderInfo(
     string Id,
@@ -57,4 +66,5 @@ public sealed record ProviderInfo(
     ApiStyle Api = ApiStyle.OpenAi,
     string Notes = "",
     string RewriteLlmModel = "",
-    string Family = "");
+    string Family = "",
+    string? SttBiasField = null);

@@ -27,8 +27,9 @@ public class ChatPayloadTest
     }
 
     [Fact]
-    public void AltesGpt5MiniNimmtMinimal() =>
-        Assert.Equal(new Sampling(null, "minimal", 16384), SamplingFor(Llm("openai", "same", "gpt-5-mini")));
+    public void Gpt56TerraNimmtNone() =>
+        // Nachfolger von gpt-5-mini (TD-A4); "minimal" kennt Terra nicht.
+        Assert.Equal(new Sampling(null, "none", 16384), SamplingFor(Llm("openai", "same", "gpt-5.6-terra")));
 
     [Fact]
     public void GroqGptOssBekommtTemperatureUndLow() =>

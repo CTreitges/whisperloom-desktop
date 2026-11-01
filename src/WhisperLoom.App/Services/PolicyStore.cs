@@ -50,12 +50,15 @@ public sealed class PolicyStore(string dataDir)
     /// Setzt die festgehaltenen Werte der Pfade, die <paramref name="policy"/> noch sperrt, in eine Kopie von
     /// <paramref name="settings"/>. Ohne Datei bleibt alles, wie es ist.
     /// </summary>
-    /// <returns>Einstellungen (dieselbe Instanz, wenn nichts zu korrigieren war) und Anzahl korrigierter Pfade; -1 = Datei unlesbar.</returns>
-    public (WhisperLoomSettings Settings, int Changed) EnforceFixed(WhisperLoomSettings settings, PolicySettings policy)
+    /// <returns>
+    /// Einstellungen (dieselbe Instanz, wenn nichts zu korrigieren war), Anzahl korrigierter Pfade (-1 = Datei unlesbar) und die
+    /// festen Pfade, deren abgeschaltetes Modell auf den Nachfolger ging (TD-A4; policy-fixed.json wird dann neu geschrieben).
+    /// </returns>
+    public (WhisperLoomSettings Settings, int Changed, IReadOnlyList<string> Retired) EnforceFixed(WhisperLoomSettings settings, PolicySettings policy)
     {
         if (!policy.IsActive || !File.Exists(FixedPath))
         {
-            return (settings, 0);
+            return (settings, 0, []);
         }
         JsonObject? stored;
         try
@@ -68,9 +71,10 @@ public sealed class PolicyStore(string dataDir)
         }
         if (stored is null)
         {
-            return (settings, -1);
+            return (settings, -1, []);
         }
         var tree = SettingsMerge.ToJson(settings);
+        var retired = RetireFixed(stored, tree, policy);
         var changed = 0;
         foreach (var (path, value) in stored)
         {
@@ -80,7 +84,30 @@ public sealed class PolicyStore(string dataDir)
                 changed++;
             }
         }
-        return changed == 0 ? (settings, 0) : (SettingsMerge.FromJson(tree), changed);
+        return changed == 0 ? (settings, 0, retired) : (SettingsMerge.FromJson(tree), changed, retired);
+    }
+
+    /// <summary>
+    /// TD-A4: Ein vor dem Update festgehaltenes abgeschaltetes Modell (policy-fixed.json) geht auf den Nachfolger, mit dem
+    /// Anbieter aus dem Stand nach dem Einsetzen der festen Werte; sonst holte <see cref="EnforceFixed"/> es bei jedem Start zurück.
+    /// </summary>
+    private List<string> RetireFixed(JsonObject stored, JsonObject tree, PolicySettings policy)
+    {
+        var probe = (JsonObject)tree.DeepClone();
+        foreach (var (path, value) in stored)
+        {
+            if (policy.IsLocked(path)) ManagedPaths.Set(probe, path, value?.DeepClone());
+        }
+        var retired = RetiredModels.ApplyFull(probe).Where(p => stored.ContainsKey(p) && policy.IsLocked(p)).ToList();
+        foreach (var path in retired)
+        {
+            stored[path] = ManagedPaths.Find(probe, path)?.DeepClone();
+        }
+        if (retired.Count > 0)
+        {
+            Write(FixedPath, stored.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+        }
+        return retired;
     }
 
     private static void Write(string path, string content)

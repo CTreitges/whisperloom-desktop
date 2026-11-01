@@ -25,8 +25,7 @@ public sealed class ApiTranscriber(HttpClient http, ApiAccess access, string pro
         var body = await MultipartAsync(TranscriptionRequest.Url(access), TranscriptionRequest.Fields(access, language, prompt),
             "audio.wav", "audio/wav", upload.WavBytes(), new HttpCallOptions(access.ReadTimeoutMs), ct).ConfigureAwait(false);
         var json = Parse(body);
-        // Nur verbose_json bzw. eigene Server liefern die erkannte Sprache.
-        return new TranscriptResult(Text(json, "text").Trim(), NonBlank(Text(json, "language")));
+        return new TranscriptResult(Text(json, "text").Trim(), TranscriptionRequest.DetectedLanguage(json));
     }
 
     private async Task<TranscriptResult> ElevenLabsAsync(WavUpload upload, string language, CancellationToken ct)

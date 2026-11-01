@@ -49,7 +49,7 @@ public sealed partial class StageViewModel : ObservableObject
 
     public string StageText => Loc.Instance["Stage_" + Controller.Stage.Key()];
 
-    public string LanguageText => Controller.Language == "auto" ? Loc.Instance["Language_auto"] : Controller.Language.ToUpperInvariant();
+    public string LanguageText => SettingsViewModel.LanguageLabel(Controller.Language);
 
     public string StateText => Loc.Instance["State_" + Controller.State.ToString().ToLowerInvariant()];
 

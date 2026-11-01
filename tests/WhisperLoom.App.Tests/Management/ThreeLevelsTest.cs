@@ -150,7 +150,7 @@ public sealed class ThreeLevelsTest
             var raw = JsonNode.Parse(File.ReadAllText(r.F.Store.FilePath))!.AsObject();
             raw["refine"]!["stage"] = "off";
             File.WriteAllText(r.F.Store.FilePath, raw.ToJsonString());
-            var (enforced, changed) = r.Policies.EnforceFixed(r.F.Store.Load(), r.Policies.Load());
+            var (enforced, changed, _) = r.Policies.EnforceFixed(r.F.Store.Load(), r.Policies.Load());
             Assert.Equal(1, changed);
             Assert.Equal("beautify", enforced.Refine.Stage);
         }

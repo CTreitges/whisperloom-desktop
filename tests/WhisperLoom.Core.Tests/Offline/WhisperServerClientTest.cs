@@ -55,6 +55,15 @@ public sealed class WhisperServerClientTest : IAsyncLifetime
         Assert.Equal("WhisperLoom", Field(_form, "prompt"));
     }
 
+    /// <summary>CTR-273: whisper.cpp kennt nur einen Code — „Deutsch + Englisch“ geht als "auto" und meldet die erkannte Sprache.</summary>
+    [Fact]
+    public async Task DeutschUndEnglischGehtAlsAutoUndMeldetDieSprache()
+    {
+        var r = await WhisperServerClient.TranscribeAsync(_http, _server.Base, new AudioBuffer(new short[32_000]), "de+en", "", accurate: false, Ct);
+        Assert.Equal("auto", Field(_form, "language"));
+        Assert.Equal("en", r.DetectedLanguage);
+    }
+
     [Fact]
     public async Task FesteSpracheGreedyOhnePrompt()
     {

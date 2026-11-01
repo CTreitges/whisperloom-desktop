@@ -56,8 +56,8 @@ public sealed class ManagedLevelsTest
     {
         Loc.Instance.SetLanguage("de");
         using var f = new ControllerFixture();
-        f.Controller.Settings.Stt.Model = "whisper-1";
-        f.Controller.Policy = new PolicySettings { Defaults = Defaults(("stt.model", "whisper-1")) };
+        f.Controller.Settings.Stt.Model = "gpt-transcribe";
+        f.Controller.Policy = new PolicySettings { Defaults = Defaults(("stt.model", "gpt-transcribe")) };
         var window = Open(f);
 
         SettingsUi.Show(window, "recognition");
@@ -79,9 +79,9 @@ public sealed class ManagedLevelsTest
         await window.Shell!.ResetToDefaultAsync("stt.model");
         Dispatcher.UIThread.RunJobs();
 
-        Assert.Equal("whisper-1", f.Controller.Settings.Stt.Model);
+        Assert.Equal("gpt-transcribe", f.Controller.Settings.Stt.Model);
         Assert.Empty(f.Controller.Settings.Management.Overrides);
-        Assert.Equal("whisper-1", window.Settings!.SttModel);
+        Assert.Equal("gpt-transcribe", window.Settings!.SttModel);
         Assert.Equal("recognition", window.Shell.SelectedPage!.Id);
         window.Close();
     }
@@ -93,7 +93,7 @@ public sealed class ManagedLevelsTest
         Loc.Instance.SetLanguage("de");
         using var f = new ControllerFixture();
         f.Controller.Settings.Stt.Model = "eigene-wahl";
-        f.Controller.Policy = new PolicySettings { Defaults = Defaults(("stt.model", "whisper-1")) };
+        f.Controller.Policy = new PolicySettings { Defaults = Defaults(("stt.model", "gpt-transcribe")) };
         var window = Open(f);
         await window.Shell!.ResetToDefaultAsync("stt.model");
 

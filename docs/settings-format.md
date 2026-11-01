@@ -13,6 +13,15 @@ Richtlinie), Modell `src/WhisperLoom.Core/Contracts/Settings/WhisperLoomSettings
 - JSON-Objekt, UTF-8, Feldnamen in camelCase. Kommentare und ein Komma am Ende sind beim Lesen erlaubt.
 - `schemaVersion` (Zahl) gibt das Schema an. Fehlt das Feld, gilt die Datei als Schema 0 und wird migriert.
   Eine Datei mit höherer Version als bekannt wird abgelehnt („Bitte WhisperLoom aktualisieren“).
+- **Abgeschaltete OpenAI-Modelle** (TD-A4, wie Android `PrefsMigration` v8): Beim Laden und beim Lesen jeder Import-,
+  Provisioning- oder Server-Datei gehen `stt.model`, `sttFallback.model`, `llm.model`, `llm.stageModels.*` und
+  `llmFallback.model` mit Anbieter `openai` von `gpt-5-mini` → `gpt-5.6-terra`, `gpt-5-nano` → `gpt-5.6-luna`,
+  `gpt-4o-transcribe`/`gpt-4o-mini-transcribe`/`whisper-1` → `gpt-transcribe` (auch datierte Snapshots). Idempotent, ohne
+  neue `schemaVersion`; andere Anbieter und eigene Server bleiben. Maßgeblich ist der wirksame Anbieter: Eine Teil-Datei
+  ohne `providerId` wird erst auf dem zusammengeführten Stand umgestellt (Gerät mit eigenem Server behält `whisper-1`).
+  Ein fest gesetzter (Fest) Wert geht ebenfalls auf den Nachfolger, auch der vor dem Update in `policy-fixed.json`
+  festgehaltene (die Datei wird beim Start neu geschrieben), dazu die Vorgabe-Werte in `policy.json`; Warnung bzw.
+  Log-Eintrag `management.retired_model` mit `path` und `level` (`fixed`/`default`), nie mit Wert.
 - **Teil-Dateien sind erlaubt.** Beim Import ersetzen die Felder der Datei die aktuellen Werte, fehlende Felder bleiben,
   wie sie sind. Objekte werden feldweise gemischt, Listen und einzelne Werte ganz ersetzt.
 - **Keys stehen nie in Einstellungen oder Exporten.** Nur Provisioning-Dateien dürfen `secrets` enthalten.
@@ -46,7 +55,7 @@ Richtlinie), Modell `src/WhisperLoom.Core/Contracts/Settings/WhisperLoomSettings
 | Pfad | Typ | Standard | Bedeutung |
 |---|---|---|---|
 | `schemaVersion` | Zahl | `1` | Schema |
-| `language` | Text | `"de"` | Erkennungssprache: `"auto"` oder ISO-Code (2–3 Kleinbuchstaben) |
+| `language` | Text | `"de"` | Erkennungssprache: `"auto"`, ISO-Code (2–3 Kleinbuchstaben) oder `"de+en"` (Deutsch + Englisch, CTR-273/W2-PFIX: gpt-transcribe bekommt `languages[]=de` und `=en`, alle anderen Erkenner erkennen selbst; wirksam ist die erkannte Sprache, sonst Deutsch) |
 | `engine` | Text/null | `null` | `"online"` oder `"offline"`; null = noch nicht gewählt |
 | `stt.providerId` | Text | `"openai"` | Anbieter der Erkennung (ID aus `providers.json`, mit Erkennung) |
 | `stt.baseUrl` | Text | `""` | `""` = Basis-URL des Anbieters, sonst `https://…`; `http://` nur bei Anbietern, die es erlauben (eigener Server, Ollama), und nur zu privaten Adressen (LAN, VPN, Tailscale) |

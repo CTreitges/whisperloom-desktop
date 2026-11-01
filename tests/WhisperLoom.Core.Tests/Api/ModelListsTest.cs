@@ -405,12 +405,23 @@ public class ModelListsTest
     [Fact]
     public void FlagsFuerSnapshotsUndUnbekannteModelle()
     {
-        var gpt5 = ModelLists.OptionFor(P("openai"), ModelKind.Llm, "gpt-5-mini-2025-08-07", null)!;
-        Assert.False(gpt5.TemperatureSupported);
-        Assert.Equal("minimal", gpt5.ReasoningEffort);
+        // TD-A4: Snapshot eines Katalog-Modells behält dessen Stufe (gpt-5.4-nano: none) statt "low".
+        var nano = ModelLists.OptionFor(P("openai"), ModelKind.Llm, "gpt-5.4-nano-2026-03-17", null)!;
+        Assert.False(nano.TemperatureSupported);
+        Assert.Equal("none", nano.ReasoningEffort);
         Assert.Equal("claude-haiku-4-5", ModelLists.CatalogBase(P("anthropic").LlmModels!, "claude-haiku-4-5-20251001")!.Id);
         Assert.Equal("low", ModelLists.OptionFor(P("openai"), ModelKind.Llm, "o9-neu", null)!.ReasoningEffort);
         Assert.Equal("none", ModelLists.OptionFor(P("groq"), ModelKind.Llm, "qwen3-32b", null)!.ReasoningEffort);
         Assert.Null(ModelLists.OptionFor(P("openai"), ModelKind.Llm, "irgendwas", null));
+    }
+
+    /// <summary>Port aus <c>ModelFlagsTest.kt</c> (CTR-273, TD-A4): keywords[] erbt der Snapshot von gpt-transcribe.</summary>
+    [Fact]
+    public void KeywordsFeldFuerGptTranscribeSnapshotsUndNeueVarianten()
+    {
+        Assert.Equal("keywords[]", ModelLists.OptionFor(P("openai"), ModelKind.Stt, "gpt-transcribe-2026-08-01", null)!.KeywordsField);
+        var neu = ModelLists.OptionFor(P("openai"), ModelKind.Stt, "gpt-5-transcribe", null)!;
+        Assert.Equal(("languages[]", "keywords[]"), (neu.LanguageField, neu.KeywordsField));
+        Assert.Null(ModelLists.OptionFor(P("openrouter"), ModelKind.Stt, "openai/gpt-5-transcribe", null));
     }
 }

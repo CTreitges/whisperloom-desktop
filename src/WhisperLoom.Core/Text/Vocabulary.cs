@@ -143,6 +143,33 @@ public static class Vocabulary
         return new VocabularyPrompt(string.Join(", ", kept), kept.Count, ordered.Count);
     }
 
+    /// <summary>Endet ein Stück auf ein Satzzeichen, ist es ein Satz(teil) aus altem Freitext, kein Begriff (auch das <see cref="CutMark"/>).</summary>
+    private static readonly Regex SentenceEnd = new("[.!?:;…]$");
+
+    /// <summary>
+    /// Einzelbegriffe für Anbieter mit Wortlisten-Feld (ElevenLabs <c>keyterms</c>, gpt-transcribe <c>keywords[]</c>,
+    /// Mistral <c>context_bias</c>) aus der kommagetrennten Liste von <see cref="Prompt"/> (CTR-273). Satzstücke
+    /// (Satzzeichen am Ende) und das bei der Kappung angeschnittene Stück fallen weg, ebenso alles, was
+    /// <paramref name="accept"/> ablehnt — ein unzulässiger Begriff würde sonst die ganze Anfrage kippen. Danach passt
+    /// <paramref name="transform"/> einen Begriff an das Format des Anbieters an. Von mehr als <paramref name="limit"/>
+    /// bleiben die letzten: dort stehen die eigenen Begriffe. Bekannte Grenze: „Dr.“ zählt als Satzstück.
+    /// </summary>
+    public static IReadOnlyList<string> Terms(
+        string prompt,
+        int limit,
+        Func<string, string>? transform = null,
+        Func<string, bool>? accept = null)
+    {
+        var terms = prompt.Split(',')
+            .Select(t => t.Trim())
+            .Where(t => t.Length > 0 && !SentenceEnd.IsMatch(t))
+            .Where(accept ?? (_ => true))
+            .Select(transform ?? (t => t))
+            .Distinct()
+            .ToList();
+        return terms.Count > limit ? terms[^limit..] : terms;
+    }
+
     private static List<string> Dedupe(IEnumerable<string> terms)
     {
         var seen = new HashSet<string>();

@@ -1,4 +1,5 @@
 using WhisperLoom.Core.Contracts;
+using WhisperLoom.Core.Pipeline;
 
 namespace WhisperLoom.Core.Testing;
 
@@ -64,7 +65,8 @@ public sealed class FakeDictationPipeline : IDictationPipeline
                 throw new LocalNotAvailableException("Fake-Erkennung: lokales Modell fehlt");
         }
 
-        var language = request.Language == "auto" ? "de" : request.Language;
+        // Wie die echte Pipeline ohne gemeldete Sprache: "auto" gilt hier als Deutsch, "de+en" ebenso.
+        var language = request.Language == "auto" ? "de" : DictationPipeline.EffectiveLanguage(request.Language, null);
         var result = Refine(RawText, request.Refinement);
         return new DictationResult(RawText, language, request.Audio.DurationMs, result, SttLabel);
     }

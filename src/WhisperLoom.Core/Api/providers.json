@@ -8,10 +8,7 @@
       "keyUrl": "https://platform.openai.com/api-keys",
       "sttMaxBytes": 26214400,
       "sttModels": [
-        { "id": "gpt-transcribe", "label": "GPT Transcribe (empfohlen)", "note": "$0.0045/min. Nutzt languages[] statt language, kennt keywords[] + prompt.", "languageField": "languages[]" },
-        { "id": "gpt-4o-transcribe", "label": "GPT-4o Transcribe (Auslauf 02/2027)", "note": "$0.006/min, nur response_format=json, Shutdown 2027-02-26." },
-        { "id": "gpt-4o-mini-transcribe", "label": "GPT-4o mini Transcribe (Auslauf 02/2027)", "note": "$0.003/min, nur json, Shutdown 2027-02-26." },
-        { "id": "whisper-1", "label": "Whisper v2 (Legacy, Auslauf 02/2027)", "note": "$0.006/min, prompt max 224 Token." }
+        { "id": "gpt-transcribe", "label": "GPT Transcribe (empfohlen)", "note": "$0.0045/min. Nutzt languages[] statt language (bei Deutsch + Englisch beide). Vokabular als prompt und keywords[].", "languageField": "languages[]", "keywordsField": "keywords[]" }
       ],
       "llmModels": [
         { "id": "gpt-6-luna", "label": "GPT-6 Luna", "note": "$0.10/$0.50 je 1M. Reasoning-Modell: kein temperature, reasoning_effort=none senden. Empfohlen zum Glätten.", "temperatureSupported": false, "reasoningEffort": "none" },
@@ -19,11 +16,10 @@
         { "id": "gpt-4o-mini", "label": "GPT-4o mini", "note": "$0.15/$0.60 je 1M. Schnell, günstig, klassisch." },
         { "id": "gpt-4.1-mini", "label": "GPT-4.1 mini", "note": "$0.40/$1.60 je 1M." },
         { "id": "gpt-5.6-luna", "label": "GPT-5.6 Luna", "note": "$0.20/$1.20 je 1M. Reasoning-Modell: kein temperature, reasoning_effort=none senden.", "temperatureSupported": false, "reasoningEffort": "none" },
-        { "id": "gpt-5.4-nano", "label": "GPT-5.4 nano (Auslauf 04/2027)", "note": "$0.20/$1.25 je 1M. Kein temperature; reasoning_effort=none. Shutdown 2027-04-01, Nachfolger GPT-6 Luna.", "temperatureSupported": false, "reasoningEffort": "none" },
-        { "id": "gpt-5-mini", "label": "GPT-5 mini (Auslauf 12/2026)", "note": "$0.25/$2.00. Kein temperature; reasoning_effort=minimal. Shutdown 2026-12-11.", "temperatureSupported": false, "reasoningEffort": "minimal" },
-        { "id": "gpt-5-nano", "label": "GPT-5 nano (Auslauf 12/2026)", "note": "$0.05/$0.40. Kein temperature; reasoning_effort=minimal. Shutdown 2026-12-11.", "temperatureSupported": false, "reasoningEffort": "minimal" }
+        { "id": "gpt-5.6-terra", "label": "GPT-5.6 Terra", "note": "$2/$12 je 1M. Kein temperature; reasoning_effort=none. Nachfolger von GPT-5 mini.", "temperatureSupported": false, "reasoningEffort": "none" },
+        { "id": "gpt-5.4-nano", "label": "GPT-5.4 nano (Auslauf 04/2027)", "note": "$0.20/$1.25 je 1M. Kein temperature; reasoning_effort=none. Shutdown 2027-04-01, Nachfolger GPT-6 Luna.", "temperatureSupported": false, "reasoningEffort": "none" }
       ],
-      "notes": "Bezahlpflichtig (Tier 1 ab $5). 25-MB-Limit. Alle 4o-/whisper-STT-Modelle enden 2027-02-26.",
+      "notes": "Bezahlpflichtig (Tier 1 ab $5). 25-MB-Limit.",
       "rewriteLlmModel": "gpt-6-sol"
     },
     {
@@ -51,8 +47,9 @@
       "keyUrl": "https://console.mistral.ai/api-keys",
       "sttSendsPrompt": false,
       "sttSendsResponseFormat": false,
+      "sttBiasField": "context_bias[]",
       "sttModels": [
-        { "id": "voxtral-mini-latest", "label": "Voxtral Mini Transcribe 2", "note": "$0.003/min. 13 Sprachen inkl. Deutsch, bis 3 h. prompt/response_format nicht dokumentiert -> nicht senden." }
+        { "id": "voxtral-mini-latest", "label": "Voxtral Mini Transcribe 2", "note": "$0.003/min. 13 Sprachen inkl. Deutsch, bis 3 h. prompt/response_format nicht dokumentiert -> nicht senden. Vokabular als context_bias (bis 100 Wörter, für Deutsch experimentell)." }
       ],
       "llmModels": [
         { "id": "mistral-small-latest", "label": "Mistral Small 4", "note": "$0.15/$0.60 je 1M. Denkt ab Werk nicht nach. Empfohlen zum Glätten." },
@@ -72,7 +69,7 @@
         { "id": "scribe_v2", "label": "Scribe v2", "note": "$0.22/h, 90+ Sprachen." },
         { "id": "scribe_v2_medical", "label": "Scribe v2 Medical", "note": "$0.22/h. Für medizinische Diktate." }
       ],
-      "notes": "Eigenes Protokoll (xi-api-key, model_id), nur Erkennung. Vokabular geht als keyterms (ca. +20 % Kosten)."
+      "notes": "Eigenes Protokoll (xi-api-key, model_id), nur Erkennung. Vokabular geht als keyterms (ca. +20 % Kosten). Ohne Geräusch-Marken, Wort-Zeiten und Füllwort-Filter: der Rohtext bleibt wortgetreu."
     },
     {
       "id": "together",

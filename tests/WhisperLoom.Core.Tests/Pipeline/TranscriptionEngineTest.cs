@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using WhisperLoom.Core.Api;
 using WhisperLoom.Core.Contracts;
+using WhisperLoom.Core.Local;
 using WhisperLoom.Core.Pipeline;
 using WhisperLoom.Core.Tests.Support;
 
@@ -751,6 +752,94 @@ public sealed class TranscriptionEngineTest : IAsyncLifetime
         Assert.Equal("en", DictationPipeline.EffectiveLanguage("auto", "en"));
         Assert.Equal("auto", DictationPipeline.EffectiveLanguage("auto", null));
         Assert.Equal("auto", DictationPipeline.EffectiveLanguage("auto", " "));
+    }
+
+    /// <summary>„Deutsch + Englisch“ am eigenen Server (ein Code je Anfrage): kein Sprachfeld, wirksam Deutsch (CTR-273).</summary>
+    [Fact]
+    public async Task DeutschUndEnglischOhneErkannteSpracheGiltAlsDeutsch()
+    {
+        _h.UseLocalServer();
+        _h.RealText = true;
+        _h.Settings.Language = "de+en";
+        _sttResponse = """{"text":"ähm hallo welt"}""";
+        var d = await _h.TranscribeAsync();
+        Assert.DoesNotContain("name=\"language", _stt!.Latin1, StringComparison.Ordinal);
+        Assert.Equal("de", d.Language);
+        // Deutsche Füllwortliste: das „ähm“ ist weg.
+        Assert.DoesNotContain("ähm", d.Text, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>gpt-transcribe meldet <c>languages: [{code}]</c> (CTR-273, 273-1) — sonst bliebe die Sprache "auto".</summary>
+    [Fact]
+    public async Task AutoSpracheAusDerListeVonGptTranscribe()
+    {
+        _h.UseLocalServer();
+        _h.RealText = true;
+        _h.Settings.Language = "auto";
+        _sttResponse = """{"text":"i um think so","languages":[{"code":"en"}]}""";
+        var d = await _h.TranscribeAsync();
+        Assert.Equal("en", d.Language);
+        Assert.Equal("I think so", d.Text);
+    }
+
+    /// <summary>„Deutsch + Englisch“ (CTR-273): wie auto, ohne erkannte Sprache aber Deutsch statt "de+en".</summary>
+    [Fact]
+    public void EffektiveSpracheBeiDeutschUndEnglisch()
+    {
+        Assert.Equal("de", DictationPipeline.EffectiveLanguage("de+en", null));
+        Assert.Equal("de", DictationPipeline.EffectiveLanguage("de+en", ""));
+        Assert.Equal("en", DictationPipeline.EffectiveLanguage("de+en", "en"));
+        Assert.Equal("de", DictationPipeline.EffectiveLanguage("de+en", "de"));
+    }
+
+    /// <summary>Lokal (whisper.cpp, ein Code je Lauf): „Deutsch + Englisch“ erkennt es selbst (Kotlin: OfflineBackend.whisperLanguage).</summary>
+    [Fact]
+    public void OfflineErkenntDeutschUndEnglischSelbst()
+    {
+        Assert.Equal("auto", WhisperServerClient.WhisperLanguage("de+en"));
+        Assert.Equal("de", WhisperServerClient.WhisperLanguage("de"));
+        Assert.Equal("auto", WhisperServerClient.WhisperLanguage("auto"));
+    }
+
+    /// <summary>Wie <see cref="UseElevenLabs"/>: Katalog-Anbieter, Adresse auf den Fake-Server umgebogen.</summary>
+    private void UseCatalogStt(string provider, string model)
+    {
+        _h.Online();
+        _h.Settings.Stt.ProviderId = provider;
+        _h.Settings.Stt.BaseUrl = _h.V1;
+        _h.Settings.Stt.Model = model;
+        _h.Secrets.Set(SecretNames.Stt, Keys.K1);
+    }
+
+    /// <summary>Desktop-Zusatz (CTR-273): gpt-transcribe bekommt über die Pipeline beide Sprachen und keywords[]; die erkannte Sprache gilt.</summary>
+    [Fact]
+    public async Task GptTranscribeBekommtDeutschUndEnglischUndKeywordsImMultipart()
+    {
+        UseCatalogStt("openai", "gpt-transcribe");
+        _h.Vocabulary = "Treitges, Claude Code";
+        _h.Settings.Language = "de+en";
+        _sttResponse = """{"text":"hallo welt","languages":[{"code":"eng"}]}""";
+        var d = await _h.TranscribeAsync();
+        Assert.Equal("en", d.Language);
+        var body = _stt!.Latin1;
+        Assert.Contains("name=\"languages[]\"\r\n\r\nde\r\n", body, StringComparison.Ordinal);
+        Assert.Contains("name=\"languages[]\"\r\n\r\nen\r\n", body, StringComparison.Ordinal);
+        Assert.Contains("name=\"keywords[]\"\r\n\r\nTreitges\r\n", body, StringComparison.Ordinal);
+        Assert.Contains("name=\"keywords[]\"\r\n\r\nClaude Code\r\n", body, StringComparison.Ordinal);
+        Assert.Contains("name=\"prompt\"\r\n\r\nTreitges, Claude Code\r\n", body, StringComparison.Ordinal);
+    }
+
+    /// <summary>Desktop-Zusatz (CTR-273): Mistral bekommt das Vokabular als context_bias[] (mit _), kein prompt.</summary>
+    [Fact]
+    public async Task MistralBekommtContextBiasImMultipart()
+    {
+        UseCatalogStt("mistral", "voxtral-mini-latest");
+        _h.Vocabulary = "Treitges, Claude Code";
+        await _h.TranscribeAsync();
+        var body = _stt!.Latin1;
+        Assert.Contains("name=\"context_bias[]\"\r\n\r\nTreitges\r\n", body, StringComparison.Ordinal);
+        Assert.Contains("name=\"context_bias[]\"\r\n\r\nClaude_Code\r\n", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("name=\"prompt\"", body, StringComparison.Ordinal);
     }
 
     [Fact]

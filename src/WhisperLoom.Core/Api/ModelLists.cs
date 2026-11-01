@@ -149,10 +149,13 @@ public static partial class ModelLists
         var temperature = server?.TemperatureSupported ?? b?.TemperatureSupported
             ?? (chat && NoTemperature(provider, name) ? false : null);
         var effort = server?.ReasoningEffort ?? b?.ReasoningEffort ?? (chat ? HeuristicEffort(provider, name) : null);
-        var languageField = b?.LanguageField
-            ?? (!chat && provider.Rules == ProviderCatalog.OpenAiId && GptTranscribe().IsMatch(name) ? "languages[]" : null);
+        var gptTranscribe = !chat && provider.Rules == ProviderCatalog.OpenAiId && GptTranscribe().IsMatch(name);
+        var languageField = b?.LanguageField ?? (gptTranscribe ? "languages[]" : null);
+        // CTR-273: keywords[] erbt ein Snapshot vom Katalog-Modell; neue gpt-transcribe-Varianten bekommen es auch.
+        var keywordsField = b is not null ? b.KeywordsField : gptTranscribe ? "keywords[]" : null;
         if (server is null && b is null && temperature is null && effort is null && languageField is null) return null;
-        return new ModelOption(id, server?.Label ?? id, server?.Note ?? "", temperature ?? true, effort, languageField ?? "language", b?.ThinkingType);
+        return new ModelOption(id, server?.Label ?? id, server?.Note ?? "", temperature ?? true, effort, languageField ?? "language", b?.ThinkingType,
+            keywordsField);
     }
 
     /// <summary>Das Katalog-Modell zu <paramref name="id"/>: dieselbe ID, sonst das längste, dessen datierter Snapshot sie ist.</summary>
