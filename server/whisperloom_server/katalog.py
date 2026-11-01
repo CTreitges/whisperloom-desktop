@@ -81,7 +81,7 @@ EINTRAEGE: tuple[Eintrag, ...] = (
     Eintrag("desktop.hotkeyStage", "kuerzel", "text", kuerzel=True, max_laenge=40),
     Eintrag("desktop.hotkeyReinsert", "kuerzel", "text", kuerzel=True, max_laenge=40),
     Eintrag("desktop.hotkeyRewrite", "kuerzel", "text", kuerzel=True, max_laenge=40),
-    Eintrag("selection.hotkey", "kuerzel", "text", kuerzel=True, max_laenge=40),
+    Eintrag("selection.hotkeyCombo", "kuerzel", "text", kuerzel=True, max_laenge=40),
     # Netzwerk
     Eintrag("desktop.proxyMode", "netz", "wahl", ("system", "off", "manual")),
     Eintrag("desktop.proxyUrl", "netz", "text"),
@@ -89,6 +89,9 @@ EINTRAEGE: tuple[Eintrag, ...] = (
 
 GRUPPEN = ("allgemein", "erkennung", "text", "regeln", "offline", "ausgabe", "verlauf", "kuerzel", "netz")
 NACH_PFAD = {e.pfad: e for e in EINTRAEGE}
+# Eigene Anbieter (providers.custom) heißen in Zugängen "custom:<id>" (settings-format.md, W2-C0).
+_ANBIETER_PFADE = {"stt.providerId", "sttFallback.providerId", "llm.providerId", "llmFallback.providerId"}
+_EIGENER_ANBIETER = re.compile(r"custom:[a-z0-9][a-z0-9_-]{0,31}")
 _URL_PFADE = {"stt.baseUrl", "sttFallback.baseUrl", "llm.baseUrl", "llmFallback.baseUrl", "desktop.proxyUrl"}
 
 
@@ -104,8 +107,9 @@ def eintrag(pfad: str) -> Eintrag:
 
 
 def stufen_fuer(e: Eintrag) -> tuple[str, ...]:
-    """Wählbare Stufen. policy.*-Felder kennen nur Fest/Frei, Tastenkürzel nur Vorgabe/Frei."""
-    if e.pfad.startswith("policy."):
+    """Wählbare Stufen. policy.*-Felder und management.allowLeave kennen nur Fest/Frei (settings-format.md:
+    management.* nie Vorgabe), Tastenkürzel nur Vorgabe/Frei."""
+    if e.pfad.startswith(("policy.", "management.")):
         return ("fixed", "free")
     if e.kuerzel:
         return ("default", "free")
@@ -144,7 +148,7 @@ def wert_pruefen(e: Eintrag, roh):
     if len(text) > e.max_laenge:
         raise Ungueltig("h.wert")
     if e.typ == "wahl":
-        if text not in e.optionen:
+        if text not in e.optionen and not (e.pfad in _ANBIETER_PFADE and _EIGENER_ANBIETER.fullmatch(text)):
             raise Ungueltig("h.wert")
         return text
     if e.pfad == "language" and not re.fullmatch(r"auto|[a-z]{2,3}", text):

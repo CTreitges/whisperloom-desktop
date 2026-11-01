@@ -153,7 +153,7 @@
   "s.selection.ctrlRightClick": "Strg + Rechtsklick verarbeitet Markierung", "s.history.enabled": "Verlauf speichern",
   "s.history.size": "Einträge im Verlauf", "s.desktop.hotkeysEnabled": "Tastenkürzel aktiv", "s.desktop.hotkeyHold": "Halten zum Diktieren",
   "s.desktop.hotkeyToggle": "Diktat an/aus", "s.desktop.hotkeyStage": "Stufe wechseln", "s.desktop.hotkeyReinsert": "Letzten Text erneut einfügen",
-  "s.desktop.hotkeyRewrite": "Markierung umschreiben", "s.selection.hotkey": "Markierung verarbeiten",
+  "s.desktop.hotkeyRewrite": "Markierung umschreiben", "s.selection.hotkeyCombo": "Markierung verarbeiten",
   "s.desktop.proxyMode": "Proxy für Internet-Zugriffe", "s.desktop.proxyUrl": "Adresse des manuellen Proxys",
 
   "o.": "Wie System", "o.de": "Deutsch", "o.en": "Englisch", "o.online": "Online", "o.offline": "Offline",

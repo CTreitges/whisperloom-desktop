@@ -153,7 +153,7 @@
   "s.selection.ctrlRightClick": "Ctrl + right-click processes selection", "s.history.enabled": "Keep history",
   "s.history.size": "History entries", "s.desktop.hotkeysEnabled": "Keyboard shortcuts active", "s.desktop.hotkeyHold": "Hold to dictate",
   "s.desktop.hotkeyToggle": "Dictation on/off", "s.desktop.hotkeyStage": "Change stage", "s.desktop.hotkeyReinsert": "Insert last text again",
-  "s.desktop.hotkeyRewrite": "Rewrite selection", "s.selection.hotkey": "Process selection",
+  "s.desktop.hotkeyRewrite": "Rewrite selection", "s.selection.hotkeyCombo": "Process selection",
   "s.desktop.proxyMode": "Proxy for internet access", "s.desktop.proxyUrl": "Manual proxy address",
 
   "o.": "As system", "o.de": "German", "o.en": "English", "o.online": "Online", "o.offline": "Offline",
