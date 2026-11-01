@@ -3,6 +3,7 @@
         xmlns:vm="using:WhisperLoom.App.ViewModels"
         xmlns:v="using:WhisperLoom.App.Views"
         xmlns:l="using:WhisperLoom.App.Localization"
+        xmlns:p="using:WhisperLoom.App.Features.Profiles"
         x:Class="WhisperLoom.App.Views.SettingsWindow"
         x:DataType="vm:SettingsViewModel"
         Title="{Binding [Settings_Title], Source={x:Static l:Loc.Instance}}"
@@ -190,7 +191,71 @@
             </StackPanel>
             <TextBlock Text="{Binding Warnings}" TextWrapping="Wrap" Foreground="{StaticResource WlError}" FontSize="12" Margin="0,4,0,0" />
           </StackPanel>
+          <StackPanel x:Name="HotkeyReinsert" DataContext="{Binding Hotkeys.Reinsert}" x:DataType="vm:HotkeyRowViewModel" Margin="0,8,0,0">
+            <TextBlock Classes="f" Text="{Binding Label}" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Border Background="{StaticResource WlSurfaceHigh}" CornerRadius="4" Padding="10,4" MinWidth="180">
+                <TextBlock Text="{Binding Value}" FontWeight="SemiBold" />
+              </Border>
+              <Button Content="{Binding [Hotkey_Record], Source={x:Static l:Loc.Instance}}" Command="{Binding RecordCommand}"
+                      IsVisible="{Binding CanRecord}" IsEnabled="{Binding !IsRecording}" />
+              <TextBlock Text="{Binding [Hotkey_Recording], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding IsRecording}"
+                         VerticalAlignment="Center" Foreground="{StaticResource WlAccent}" />
+            </StackPanel>
+            <TextBlock Text="{Binding Warnings}" TextWrapping="Wrap" Foreground="{StaticResource WlError}" FontSize="12" Margin="0,4,0,0" />
+          </StackPanel>
+          <StackPanel x:Name="HotkeyRewrite" DataContext="{Binding Hotkeys.Rewrite}" x:DataType="vm:HotkeyRowViewModel" Margin="0,8,0,0">
+            <TextBlock Classes="f" Text="{Binding Label}" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Border Background="{StaticResource WlSurfaceHigh}" CornerRadius="4" Padding="10,4" MinWidth="180">
+                <TextBlock Text="{Binding Value}" FontWeight="SemiBold" />
+              </Border>
+              <Button Content="{Binding [Hotkey_Record], Source={x:Static l:Loc.Instance}}" Command="{Binding RecordCommand}"
+                      IsVisible="{Binding CanRecord}" IsEnabled="{Binding !IsRecording}" />
+              <TextBlock Text="{Binding [Hotkey_Recording], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding IsRecording}"
+                         VerticalAlignment="Center" Foreground="{StaticResource WlAccent}" />
+            </StackPanel>
+            <TextBlock Text="{Binding Warnings}" TextWrapping="Wrap" Foreground="{StaticResource WlError}" FontSize="12" Margin="0,4,0,0" />
+          </StackPanel>
         </StackPanel>
+      </TabItem>
+
+      <!-- App-Profile (nur Windows, WLD-P5b) -->
+      <TabItem x:Name="TabProfiles" Header="{Binding [Settings_Profiles], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding Profiles.Available}">
+        <ScrollViewer>
+        <StackPanel Margin="4" Spacing="8">
+          <TextBlock Text="{Binding [Profile_Hint], Source={x:Static l:Loc.Instance}}" TextWrapping="Wrap" Foreground="{StaticResource WlOnSurfaceVariant}" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button x:Name="ProfileAddButton" Content="{Binding [Profile_Add], Source={x:Static l:Loc.Instance}}" Command="{Binding Profiles.AddCommand}" />
+            <Button x:Name="ProfileSuggestionsButton" Content="{Binding [Profile_Suggestions], Source={x:Static l:Loc.Instance}}" Command="{Binding Profiles.AddSuggestionsCommand}" />
+          </StackPanel>
+          <ItemsControl x:Name="ProfileList" ItemsSource="{Binding Profiles.Rows}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="p:ProfileRowViewModel">
+                <Border Background="{StaticResource WlSurfaceHigh}" CornerRadius="6" Padding="10" Margin="0,4">
+                  <StackPanel Spacing="4">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <TextBox Text="{Binding Process}" PlaceholderText="{Binding [Profile_Process], Source={x:Static l:Loc.Instance}}" MinWidth="220" />
+                      <TextBox Text="{Binding Name}" PlaceholderText="{Binding [Profile_Name], Source={x:Static l:Loc.Instance}}" MinWidth="140" />
+                      <TextBox Text="{Binding TitlePattern}" PlaceholderText="{Binding [Profile_Title], Source={x:Static l:Loc.Instance}}" MinWidth="220" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <TextBlock Text="{Binding [Profile_Stage], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
+                      <ComboBox ItemsSource="{Binding Owner.Stages}" SelectedItem="{Binding Stage}" MinWidth="160" />
+                      <TextBlock Text="{Binding [Profile_InsertMode], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
+                      <ComboBox ItemsSource="{Binding Owner.InsertModes}" SelectedItem="{Binding InsertMode}" MinWidth="200" />
+                      <CheckBox IsChecked="{Binding PressEnter}" Content="{Binding [Profile_PressEnter], Source={x:Static l:Loc.Instance}}" />
+                      <CheckBox IsChecked="{Binding Enabled}" Content="{Binding [Profile_Enabled], Source={x:Static l:Loc.Instance}}" />
+                      <Button Content="{Binding [Profile_Remove], Source={x:Static l:Loc.Instance}}" Command="{Binding RemoveCommand}" />
+                    </StackPanel>
+                    <TextBlock Text="{Binding TitleWarning}" Foreground="{StaticResource WlError}" FontSize="12" IsVisible="{Binding TitleWarning.Length}" />
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+        </ScrollViewer>
       </TabItem>
 
       <!-- Import/Export (Format v1, docs/settings-format.md) -->

@@ -39,6 +39,8 @@ public sealed record Hotkey(HotkeyModifiers Modifiers, int Key)
     public static readonly Hotkey DefaultHold = new(HotkeyModifiers.Ctrl | HotkeyModifiers.Win, 0);
     public static readonly Hotkey DefaultToggle = new(HotkeyModifiers.Ctrl, VkSpace);
     public static readonly Hotkey DefaultStage = new(HotkeyModifiers.Ctrl | HotkeyModifiers.Alt, VkSpace);
+    public static readonly Hotkey DefaultReinsert = new(HotkeyModifiers.Ctrl | HotkeyModifiers.Alt | HotkeyModifiers.Shift, 'V');
+    public static readonly Hotkey DefaultRewrite = new(HotkeyModifiers.Ctrl | HotkeyModifiers.Alt | HotkeyModifiers.Shift, 'R');
 
     private static readonly (HotkeyModifiers Flag, string Name)[] ModifierNames =
         [(HotkeyModifiers.Ctrl, "Ctrl"), (HotkeyModifiers.Alt, "Alt"), (HotkeyModifiers.Shift, "Shift"), (HotkeyModifiers.Win, "Win")];

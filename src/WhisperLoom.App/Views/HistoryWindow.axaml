@@ -13,6 +13,9 @@
       <Button Content="{Binding [History_Clear], Source={x:Static l:Loc.Instance}}" Command="{Binding ClearCommand}" />
       <TextBlock Text="{Binding [History_Empty], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center"
                  IsVisible="{Binding !Items.Count}" Foreground="{StaticResource WlOnSurfaceVariant}" />
+      <ComboBox x:Name="ReprocessStageBox" ItemsSource="{Binding Stages}" SelectedItem="{Binding ReprocessStage}" MinWidth="160"
+                IsVisible="{Binding CanReprocess}" ToolTip.Tip="{Binding [History_ReprocessHint], Source={x:Static l:Loc.Instance}}" />
+      <TextBlock Text="{Binding Status}" VerticalAlignment="Center" Foreground="{StaticResource WlOnSurfaceVariant}" />
     </StackPanel>
     <ListBox x:Name="Entries" ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}">
       <ListBox.ItemTemplate>
@@ -25,6 +28,10 @@
               <Button Content="{Binding [Action_Copy], Source={x:Static l:Loc.Instance}}" Click="OnCopy" Tag="{Binding Text}" />
               <Button Content="{Binding [Action_Delete], Source={x:Static l:Loc.Instance}}"
                       Command="{Binding $parent[ListBox].((vm:HistoryViewModel)DataContext).DeleteCommand}"
+                      CommandParameter="{Binding}" />
+              <Button Content="{Binding [History_Reprocess], Source={x:Static l:Loc.Instance}}"
+                      IsVisible="{Binding $parent[ListBox].((vm:HistoryViewModel)DataContext).CanReprocess}"
+                      Command="{Binding $parent[ListBox].((vm:HistoryViewModel)DataContext).ReprocessCommand}"
                       CommandParameter="{Binding}" />
             </StackPanel>
           </StackPanel>

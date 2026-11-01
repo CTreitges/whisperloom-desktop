@@ -2,6 +2,8 @@ using WhisperLoom.Core.Api;
 using WhisperLoom.Core.Contracts;
 using WhisperLoom.Core.Contracts.Settings;
 using WhisperLoom.Core.Pipeline;
+using WhisperLoom.Core.Prompts;
+using WhisperLoom.App.Features.Rewrite;
 
 namespace WhisperLoom.App.Services;
 
@@ -16,7 +18,7 @@ public sealed class AppPipeline(
     ISecretStore secrets,
     ModelCache cache,
     ILocalStt? localStt = null,
-    ILocalRefiner? localRefiner = null) : IDictationPipeline, IDisposable
+    ILocalRefiner? localRefiner = null) : IDictationPipeline, ISelectionRewriter, IDisposable
 {
     private HttpProxyOptions? _proxy;
     private HttpClient? _http;
@@ -26,6 +28,29 @@ public sealed class AppPipeline(
 
     public Task<RefinedText> RefineAsync(string raw, string language, Refinement refinement, CancellationToken ct) =>
         Current().RefineAsync(raw, language, refinement, ct);
+
+    /// <summary>
+    /// Markierung umschreiben (WLD-P5b): derselbe Weg wie „Neu verarbeiten“ (Zugang, Fallback-Zugang, Netz-Vorprüfung), nur
+    /// mit dem Prompt „Umschreiben nach Anweisung“ als Stufe „Prompt“ (die Regeln danach ändern den Text nicht) und eigener
+    /// Nacharbeit (<see cref="TextCleanup.ForRewrite"/>: Ausformulieren darf wachsen, Zitate und Codeblöcke bleiben). Ohne lokales
+    /// Textmodell: dessen Auftrag ist fest die Stufe, nicht das Umschreiben — bei lokaler Erkennung gibt es kein Ergebnis.
+    /// </summary>
+    public async Task<RefinedText> RewriteAsync(string selection, string instruction, string language, CancellationToken ct)
+    {
+        Current();
+        var options = CoreText.Options(cache);
+        var pipeline = new DictationPipeline(settings, secrets, _http!, new RewritePrompt(instruction), CoreText.Polisher,
+            new DictationPipelineOptions { ModelCache = options.ModelCache, Cleanup = TextCleanup.ForRewrite(CoreText.Polisher) });
+        var refined = await pipeline.RefineAsync(selection, language, new Refinement(RefineMode.Prompt), ct).ConfigureAwait(false);
+        if (refined.Model is null)
+        {
+            return refined;
+        }
+        // Rand-Leerraum der Markierung (z. B. der Zeilenumbruch einer ganz markierten Zeile) bleibt beim Ersetzen erhalten.
+        var lead = selection[..(selection.Length - selection.TrimStart().Length)];
+        var trail = selection[selection.TrimEnd().Length..];
+        return refined with { Text = lead + RewritePrompt.CleanOutput(refined.Text) + trail };
+    }
 
     public void Dispose() => _http?.Dispose();
 
