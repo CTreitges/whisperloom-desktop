@@ -415,5 +415,8 @@
   "p.ohne_key": "no key",
   "h.url_fehlt": "Your own server without a key needs an address.",
   "h.ziel_verboten": "This address points to an internal network of the server. The instance administrator can allow it via WL_UPSTREAM_ALLOW.",
-  "h.budget_leer": "Please enter at least one value."
+  "h.budget_leer": "Please enter at least one value.",
+  "p.tokens_ein_aus": "Tokens in / out",
+  "p.minuten": "Minutes",
+  "p.kosten_kurz": "Cost"
 }

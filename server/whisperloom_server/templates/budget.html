@@ -15,10 +15,10 @@
         <span class="abzeichen budget-{{ s.zustand }}">{{ t('budget.' ~ s.zustand) }} · {{ s.prozent }} %</span>
         <meter min="0" max="100" low="{{ b.warn_prozent }}" high="{{ [b.warn_prozent, 99] | min }}" optimum="0" value="{{ [s.prozent, 100] | min }}" aria-label="{{ t('p.verbraucht') }}">{{ s.prozent }} %</meter>
         <span class="klein">
-          {% if b.max_anfragen is not none %}{{ t('p.anfragen') }} {{ s.summe.anfragen }}/{{ b.max_anfragen }} · {% endif %}
-          {% if b.max_audio_min is not none %}{{ t('p.audio_minuten') }} {{ '%.1f' | format(s.summe.audio_ms / 60000) }}/{{ b.max_audio_min }} · {% endif %}
-          {% if b.max_tokens is not none %}{{ t('p.tokens') }} {{ s.summe.tokens_ein + s.summe.tokens_aus }}/{{ b.max_tokens }} · {% endif %}
-          {% if b.max_kosten_mikro is not none %}{{ t('p.kosten') }} {{ betrag(s.summe.kosten_mikro) or '0' }}/{{ betrag(b.max_kosten_mikro) }} · {% endif %}
+          {% if b.max_anfragen is not none %}{{ t('p.anfragen') }} {{ s.summe.anfragen | zahl }} / {{ b.max_anfragen | zahl }} · {% endif %}
+          {% if b.max_audio_min is not none %}{{ t('p.audio_minuten') }} {{ (s.summe.audio_ms / 60000) | zahl(1) }} / {{ b.max_audio_min | zahl }} · {% endif %}
+          {% if b.max_tokens is not none %}{{ t('p.tokens') }} {{ (s.summe.tokens_ein + s.summe.tokens_aus) | zahl }} / {{ b.max_tokens | zahl }} · {% endif %}
+          {% if b.max_kosten_mikro is not none %}{{ t('p.kosten') }} {{ (s.summe.kosten_mikro / 1000000) | zahl(2) }} / {{ (b.max_kosten_mikro / 1000000) | zahl(2) }} · {% endif %}
           {{ t('p.warnschwelle') }} {{ b.warn_prozent }} %
         </span>
       </span>

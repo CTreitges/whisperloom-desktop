@@ -415,5 +415,8 @@
   "p.ohne_key": "ohne Key",
   "h.url_fehlt": "Ein eigener Server ohne Key braucht eine Adresse.",
   "h.ziel_verboten": "Diese Adresse zeigt auf ein internes Netz des Servers. Die Instanz-Verwaltung kann sie über WL_UPSTREAM_ALLOW freigeben.",
-  "h.budget_leer": "Bitte mindestens einen Wert angeben."
+  "h.budget_leer": "Bitte mindestens einen Wert angeben.",
+  "p.tokens_ein_aus": "Tokens ein / aus",
+  "p.minuten": "Minuten",
+  "p.kosten_kurz": "Kosten"
 }

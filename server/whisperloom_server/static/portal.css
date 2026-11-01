@@ -176,4 +176,7 @@ th.zahl, td.zahl { text-align: right; font-variant-numeric: tabular-nums; white-
 .budget-ok { background: var(--ok-hg); color: var(--ok); }
 .budget-warnung { background: var(--warn-hg); color: var(--warn); }
 .budget-erreicht { background: var(--fehler-hg); color: var(--gefahr); }
+/* Bezugsrahmen für .nur-sr in Tabellen: sonst ragt das Label aus dem Scroll-Bereich und verbreitert die Seite. */
+.tabelle-rahmen { position: relative; }
 .nur-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+th.name { white-space: nowrap; }
