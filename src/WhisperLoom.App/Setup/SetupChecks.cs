@@ -80,7 +80,7 @@ public sealed partial class MicLevelTest(IAudioRecorder recorder, Func<string> m
 
 /// <summary>
 /// Hotkey-Test (Windows): wartet über den globalen Hook auf die nächste Kombi und meldet, ob sie Halten oder Umschalten
-/// entspricht. Ohne laufenden Hook (Testbetrieb, Hook nicht installierbar) steht nur ein Hinweis da.
+/// entspricht (bzw. Stufe, erneut einfügen, umschreiben). Ohne laufenden Hook (Testbetrieb, Hook nicht installierbar) steht nur ein Hinweis da.
 /// </summary>
 public sealed partial class HotkeyCheck(HotkeysViewModel hotkeys, Func<Task<string?>>? record) : ObservableObject
 {
@@ -118,7 +118,7 @@ public sealed partial class HotkeyCheck(HotkeysViewModel hotkeys, Func<Task<stri
                 Status = Loc.Instance["Setup_HotkeyNone"];
                 return;
             }
-            var match = new[] { _hotkeys.Hold, _hotkeys.Toggle, _hotkeys.Stage }.FirstOrDefault(r => Hotkey.Parse(r.Value) == pressed);
+            var match = new[] { _hotkeys.Hold, _hotkeys.Toggle, _hotkeys.Stage, _hotkeys.Reinsert, _hotkeys.Rewrite }.FirstOrDefault(r => Hotkey.Parse(r.Value) == pressed);
             Recognized = match is not null;
             Status = match is null
                 ? Loc.Instance.Format("Setup_HotkeyOther", pressed.ToString())

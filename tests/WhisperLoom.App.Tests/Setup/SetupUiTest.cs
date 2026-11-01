@@ -325,6 +325,22 @@ public sealed class SetupUiTest
     }
 
     [AvaloniaFact]
+    public async Task Hotkey_Test_kennt_auch_Erneut_einfuegen_und_Umschreiben()
+    {
+        Loc.Instance.SetLanguage("de");
+        var answers = new Queue<string?>(["Ctrl+Alt+Shift+V", "Ctrl+Alt+Shift+R"]);
+        using var s = new SetupFixture(recordHotkey: () => Task.FromResult(answers.Dequeue()));
+
+        await s.Vm.Hotkey.TestCommand.ExecuteAsync(null);
+        Assert.True(s.Vm.Hotkey.Recognized);
+        Assert.Equal(Loc.Instance.Format("Setup_HotkeyOk", Loc.Instance["Hotkey_Reinsert"], "Ctrl+Alt+Shift+V"), s.Vm.Hotkey.Status);
+
+        await s.Vm.Hotkey.TestCommand.ExecuteAsync(null);
+        Assert.True(s.Vm.Hotkey.Recognized);
+        Assert.Equal(Loc.Instance.Format("Setup_HotkeyOk", Loc.Instance["Hotkey_Rewrite"], "Ctrl+Alt+Shift+R"), s.Vm.Hotkey.Status);
+    }
+
+    [AvaloniaFact]
     public void Linux_zeigt_statt_Hotkey_Test_die_Kuerzel_Anleitung()
     {
         Loc.Instance.SetLanguage("de");
