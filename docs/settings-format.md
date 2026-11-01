@@ -22,6 +22,11 @@ Richtlinie), Modell `src/WhisperLoom.Core/Contracts/Settings/WhisperLoomSettings
   ohne Bedeutungswechsel einführen.
 - Ein Import prüft die Werte streng (Tabelle unten). Bei einem Fehler wird nichts übernommen; die Meldung nennt
   den Pfad, z. B. `history.size: eine von 10, 25, 50, 100, 250, 500`.
+- **Fremde Dateien lenken keinen Key um.** Ändert ein Import `*.baseUrl`, `*.providerId` oder einen manuellen Proxy
+  (`desktop.proxyMode`/`proxyUrl`) so, dass ein gespeicherter Key an ein neues Ziel ginge (anderer Host, auch über
+  einen Fallback oder die Textverbesserung, die den Key erben; abgeschaltete Fallbacks zählen mit), zeigt die Vorschau
+  die Zeile `secrets.<zugang>: gespeichert → gelöscht (neues Ziel …)` mit Warnung. Beim Übernehmen wird dieser Key
+  gelöscht, bevor die Einstellungen gespeichert werden; danach neu eingeben. Bleibt der Host gleich, bleibt der Key.
 
 ## Felder
 
@@ -31,11 +36,11 @@ Richtlinie), Modell `src/WhisperLoom.Core/Contracts/Settings/WhisperLoomSettings
 | `language` | Text | `"de"` | Erkennungssprache: `"auto"` oder ISO-Code (2–3 Kleinbuchstaben) |
 | `engine` | Text/null | `null` | `"online"` oder `"offline"`; null = noch nicht gewählt |
 | `stt.providerId` | Text | `"openai"` | Anbieter der Erkennung (ID aus `providers.json`, mit Erkennung) |
-| `stt.baseUrl` | Text | `""` | `""` = Basis-URL des Anbieters, sonst `http(s)://…` |
+| `stt.baseUrl` | Text | `""` | `""` = Basis-URL des Anbieters, sonst `https://…`; `http://` nur bei Anbietern, die es erlauben (eigener Server, Ollama), und nur zu privaten Adressen (LAN, VPN, Tailscale) |
 | `stt.model` | Text | `""` | `""` = Empfehlung |
 | `stt.readTimeoutSec` | Zahl | `0` | 0 = Standard, sonst 30–1800 |
 | `stt.vocabulary` | Text | `""` | Kontext-Wörter, eins pro Zeile |
-| `stt.vocabularyFile` | Text | `""` | Pfad einer Wortliste — gerätebezogen, Android ignoriert ihn |
+| `stt.vocabularyFile` | Text | `""` | Pfad einer Wortliste (`.md`, `.markdown`, `.txt`; andere Dateien liest die App nicht) — gerätebezogen: Import und Export lassen ihn weg, nur das Provisioning setzt ihn; Android ignoriert ihn |
 | `sttFallback.enabled` / `.providerId` / `.baseUrl` / `.model` | | aus / `"openai"` / `""` / `""` | Ersatz-Erkennung |
 | `llm.providerId` | Text | `"same"` | `"same"` = Zugang der Erkennung, sonst Anbieter mit Textmodell |
 | `llm.baseUrl` / `llm.model` | Text | `""` | wie bei `stt` |
@@ -58,7 +63,7 @@ Richtlinie), Modell `src/WhisperLoom.Core/Contracts/Settings/WhisperLoomSettings
 
 | Abschnitt | Gehört | Andere App |
 |---|---|---|
-| `desktop` | Desktop: `uiLanguage` (`""`/`de`/`en`), `output`, `microphone` (gerätebezogen), `stageFontSize`, `proxyMode` (`system`/`off`/`manual`), `proxyUrl`; später Hotkeys und App-Profile (P3, P5b) | Android liest ihn nicht, speichert ihn beim Import und gibt ihn beim Export unverändert zurück |
+| `desktop` | Desktop: `uiLanguage` (`""`/`de`/`en`), `output`, `microphone` (gerätebezogen), `stageFontSize`, `proxyMode` (`system`/`off`/`manual`), `proxyUrl` (ein manueller Proxy bekommt nie die Windows-Anmeldung NTLM/Kerberos, nur der System-Proxy); später Hotkeys und App-Profile (P3, P5b) | Android liest ihn nicht, speichert ihn beim Import und gibt ihn beim Export unverändert zurück |
 | `android` | Android-eigene Felder (Inhalt bestimmt die Android-App) | Desktop liest ihn nicht, zeigt ihn nicht in der Vorschau, prüft ihn nicht und gibt ihn unverändert weiter |
 
 ## Provisioning-Zusatz
@@ -86,11 +91,12 @@ Rechten 600 (Linux) — nie in `settings.json`, nie in Logs oder Ausgaben.
 | `lockSettings` | `true` / `false` / Liste | `true` sperrt alle Felder, die die Datei setzt, plus die gesetzten Keys (`secrets.<zugang>`); eine Liste sperrt genau diese Pfade (ein Abschnitt wie `"llm"` sperrt alles darunter); `false` nichts |
 | `historyEnabled` | bool | Verlauf fest an bzw. aus; der Schalter ist gesperrt |
 | `updatesEnabled` | bool | automatische Updates (`false` für IT-Verteilung); wertet die Update-Funktion aus |
-| `allowedProviders` | Liste | nur diese Anbieter-IDs sind wählbar; Importe mit anderen Anbietern werden abgelehnt (abgeschaltete Fallbacks zählen nicht) |
+| `allowedProviders` | Liste | nur diese Anbieter-IDs sind wählbar; Importe mit anderen Anbietern werden abgelehnt (abgeschaltete Fallbacks zählen nicht). Bei Anbietern mit fester Adresse ist auch eine `baseUrl` zu einem anderen Host ein Verstoß (Import und Einstellungsfenster); `custom` und `ollama` haben keine feste Adresse |
 
 Gesperrte Felder sind im Einstellungsfenster ausgegraut („Ausgegraute Felder sind von IT festgelegt“), ein Import des
 Nutzers lässt sie stehen (die Vorschau zeigt sie als „von IT festgelegt“), eine gesperrte Stufe ändern weder Hotkey
-noch Tray noch `WhisperLoom stage`, gesperrte Keys nicht `WhisperLoom key set|delete` (Exit 1). Ersetzt ein Import einen
+noch Tray noch `WhisperLoom stage`, gesperrte Keys nicht `WhisperLoom key set|delete` (Exit 1; ebenso bei unlesbarer
+`policy.json`). Ersetzt ein Import einen
 Abschnitt mit gesperrten Feldern durch einen Nicht-Objekt-Wert (z. B. `"desktop": 1`), bleibt der Abschnitt stehen.
 Ein neues Provisioning ersetzt die Richtlinie vollständig. Die Sperren sind keine Sicherheitsgrenze (siehe
 [provisioning.md](provisioning.md)).
@@ -110,7 +116,8 @@ Ein neues Schema bekommt einen weiteren Schritt in `SyncMigration`; die Tabelle 
 
 ```
 WhisperLoom export <datei>              Einstellungen ohne Keys exportieren
-WhisperLoom import <datei> [--dry-run]  Vorschau („change pfad: alt -> neu“, „locked …“) und übernehmen
+WhisperLoom import <datei> [--dry-run]  Vorschau („change pfad: alt -> neu“, „locked …“,
+                                        „change secrets.<zugang>: stored -> deleted (<ziel>)“) und übernehmen
 WhisperLoom provision <datei>           Keys, Einstellungen, Richtlinie (IT)
 ```
 

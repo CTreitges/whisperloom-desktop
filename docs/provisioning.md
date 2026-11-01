@@ -6,6 +6,7 @@
 
 Ziel: Mitarbeitende tippen nie einen API-Key. Die IT verteilt eine Datei; WhisperLoom legt die Keys im
 Credential Manager ab, übernimmt die Einstellungen und setzt eine Richtlinie. Format: [settings-format.md](settings-format.md).
+Keys sind für den Benutzer auslesbar; nur Keys mit Budget- bzw. Rechtelimit verteilen.
 
 ### Ablauf
 
@@ -52,6 +53,17 @@ Wiederholen ist gefahrlos: Ein neues Provisioning setzt die Werte erneut und ers
 sind aber keine Sicherheitsgrenze. `settings.json` und `policy.json` liegen im Datenordner des Benutzers; wer dort
 schreiben darf (der Benutzer selbst, lokale Admins), kann sie ändern. Für echte Durchsetzung braucht es Mittel des
 Betriebssystems (z. B. Rechte auf den Ordner, Softwareverteilung, die das Provisioning regelmäßig wiederholt).
+Ist `policy.json` unlesbar, lehnt `WhisperLoom key set|delete` ab (Exit 1), statt ohne Richtlinie zu laufen.
+
+**Freigabeliste `allowedProviders`:** Sie gilt auch für die Adresse. Bei Anbietern mit fester Adresse (z. B. `groq`,
+`openai`) ist eine eigene `baseUrl` zu einem anderen Host ein Verstoß — im Einstellungsfenster wie beim Import — damit
+Diktate und der verteilte Key nicht an einen fremden Server gehen. `custom` (eigener Server) und `ollama` haben keine
+feste Adresse: Wer sie freigibt, gibt jeden Server frei; dann `stt.baseUrl` bzw. `llm.baseUrl` mitsperren.
+
+**Fremde Einstellungsdateien:** Ein Import des Nutzers übernimmt nie Keys, Richtlinie oder den Pfad der
+Vokabular-Datei. Lenkt er einen gespeicherten Key an einen anderen Host (Adresse, Anbieter oder manueller Proxy),
+warnt die Vorschau und der Key wird beim Übernehmen gelöscht. Ein manueller Proxy bekommt nie die Windows-Anmeldung
+(NTLM/Kerberos); die gilt nur für den System-Proxy.
 
 ### Beispielskript (PowerShell, z. B. als Anmeldeskript oder per Softwareverteilung)
 
@@ -92,6 +104,7 @@ löschen (`shred -u <datei>` bzw. `rm`).
 
 Goal: staff never type an API key. IT distributes a file; WhisperLoom stores the keys in Credential Manager, applies
 the settings and sets a policy. Format: [settings-format.md](settings-format.md) (German).
+Keys can be read by the user; only distribute keys with a budget or permission limit.
 
 ### Steps
 
@@ -115,6 +128,16 @@ Running it again is safe: values are set again and the policy is replaced.
 but are not a security boundary. `settings.json` and `policy.json` live in the user's data folder; anyone who can
 write there (the user, local admins) can change them. Real enforcement needs OS means (folder permissions, software
 distribution that re-runs the provisioning regularly).
+If `policy.json` cannot be read, `WhisperLoom key set|delete` refuses (exit 1) instead of running without a policy.
+
+**Allow list `allowedProviders`:** it also covers the address. For providers with a fixed address (e.g. `groq`,
+`openai`) a custom `baseUrl` pointing to another host is a violation — in the settings window and on import — so
+dictations and the distributed key never go to a foreign server. `custom` (own server) and `ollama` have no fixed
+address: allowing them allows any server; lock `stt.baseUrl` or `llm.baseUrl` as well.
+
+**Foreign settings files:** a user import never takes keys, the policy or the vocabulary file path. If it would send a
+stored key to another host (address, provider or manual proxy), the preview warns and the key is deleted on apply.
+A manual proxy never gets the Windows sign-in (NTLM/Kerberos); that only applies to the system proxy.
 
 On Linux the same command stores keys in the Secret Service (via `secret-tool`) or, if none is available, in
 `~/.config/whisperloom/secrets.json` with mode 600.
