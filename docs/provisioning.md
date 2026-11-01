@@ -100,9 +100,82 @@ Gleicher Befehl: `WhisperLoom provision <datei>`. Keys landen im Secret Service 
 `secret-tool`); ist keiner erreichbar, in `~/.config/whisperloom/secrets.json` mit Rechten 600. Danach die Datei
 löschen (`shred -u <datei>` bzw. `rm`).
 
+### Drei Stufen in der Datei
+
+Statt `lockSettings` (alles Fest) geht je Pfad eine Stufe, wie beim Firmen-Server: `"policy": {"levels": {"stt":
+"fixed", "refine.stage": "default", "polish": "free"}}`. **Fest** ist in der App ausgeblendet, **Vorgabe** darf der
+Nutzer ändern (seine Änderung gewinnt bis „Auf Firmenvorgabe zurücksetzen“), **Frei** setzt nur einmal. Tastenkürzel
+sind nie Fest. Details: [settings-format.md](settings-format.md#richtlinie-drei-stufen). Die App merkt sich die Werte
+der festen Pfade (`policy-fixed.json`) und setzt sie beim Start wieder ein, falls `settings.json` von Hand geändert wurde.
+
+### Firmen-Server und Software-Verteilung (W2-ENR)
+
+Mit einem Firmen-Server (`server/`, [server-api.md](server-api.md)) meldet sich jedes Gerät einmal mit dem
+**Firmencode** an; danach steuert die Firma Modelle, Anbieter, Server und Einstellungen über das Portal, und die App
+gleicht beim Start, alle 15 Minuten und auf „Jetzt abgleichen“ ab. Drei Wege, alle ohne Admin-Rechte:
+
+1. **Assistent**: „Mit meiner Firma“ → Server-Adresse und Firmencode → „Wartet auf Freigabe durch die IT“ → nach der
+   Freigabe geht es von selbst weiter. Ein **Einladungslink** `whisperloom://join?server=<url>&code=<code>` füllt beide
+   Felder (Windows: Schema je Benutzer unter `HKCU\Software\Classes\whisperloom`, das die App beim Start einträgt;
+   Linux: `~/.local/share/applications/whisperloom-join.desktop` + `xdg-mime`).
+2. **Befehl** (Softwareverteilung, Anmeldeskript), im Kontext des Benutzers:
+
+   ```
+   WhisperLoom.exe join --server https://wl.example.com --code ABCD-EFGH-JKMN-PQRS [--device-name PC-Buchhaltung-3]
+   ```
+
+   Ausgabe `ok join state=pending|approved device=d_… tenant=<Firma> sync=…`. Exit-Code 0 = verbunden (wartet auf
+   Freigabe bzw. freigegeben, dann schon abgeglichen), 1 = Fehler (`error <code>: <Text>`, z. B. `code_invalid`,
+   `offline`), 2 = Aufruf falsch. Ohne `--device-name` meldet die App den Rechnernamen. Code und Token erscheinen nie in
+   der Ausgabe; das Geräte-Token liegt im Credential Manager unter `WhisperLoom:device`.
+3. **Provisioning-Datei** mit `"management": {"serverUrl": "https://wl.example.com", "code": "ABCD-EFGH-JKMN-PQRS"}`:
+   `provision` speichert beides, der **erste Start** verbindet und verwirft den Code. Weitere Felder der Datei gelten
+   wie bisher.
+
+Was danach gilt:
+
+- **Proxy-Modus** (Standard): Keys bleiben auf dem Server; Erkennung und Text laufen über `<server>/api/v1/proxy`, die
+  App authentifiziert sich mit dem Geräte-Token. Ein aufgebrauchtes Budget zeigt „Monatslimit der Firma erreicht“.
+- **Verteilt-Modus**: Die Keys der Firma landen im Credential Manager unter `WhisperLoom:company:<zugang>`, getrennt
+  von eigenen Keys des Nutzers; Sperre und „Firma verlassen“ löschen sie.
+- **Offline** gilt die letzte Konfiguration weiter, Fest bleibt Fest. **Gesperrt** (Portal) schaltet die
+  Firmen-Zugänge ab und zeigt einen Hinweis; eigene Einstellungen bleiben. Ein später gesendetes `provision` oder ein
+  Import ändern Fest des Servers nicht.
+- „Firma verlassen“ (Einstellungen → Firma) nur, wenn die Firma `management.allowLeave` nicht Fest auf `false` setzt.
+
+**Microsoft Intune** (Win32-App bzw. Plattformskript, „Run this script using the logged on credentials: Yes“):
+
+```powershell
+# whisperloom-join.ps1 — Intune-Plattformskript im Benutzerkontext.
+$exe = "$env:LOCALAPPDATA\WhisperLoom\current\WhisperLoom.exe"
+if (-not (Test-Path $exe)) { exit 1 }   # App zuerst als Win32-App (Velopack-Setup) verteilen
+$out = & $exe join --server "https://wl.example.com" --code "ABCD-EFGH-JKMN-PQRS" 2>&1
+$out | ForEach-Object { Write-Output "whisperloom: $_" }   # ohne Code und Token: darf ins Log
+exit $LASTEXITCODE
+```
+
+Erkennungsregel für die Win32-App: Registry `HKCU\Software\Classes\whisperloom` vorhanden (legt die App beim ersten
+Start an) oder Datei `%APPDATA%\WhisperLoom\management-cache.json` vorhanden (nach dem ersten Abgleich).
+
+**Gruppenrichtlinie** (Benutzerkonfiguration → Windows-Einstellungen → Skripts → Anmelden): dasselbe Skript; ein
+erneuter Lauf auf einem schon verbundenen Gerät meldet nur ein weiteres Gerät an — deshalb vorher prüfen:
+
+```powershell
+$status = & $exe status --json | ConvertFrom-Json
+if ($status.management.state -in 'pending','approved') { exit 0 }
+```
+
+(`status` braucht eine laufende App; ohne sie prüft das Skript `%APPDATA%\WhisperLoom\settings.json` →
+`management.state`.)
+
+**Linux** (Skript, z. B. per Ansible als der Benutzer): `WhisperLoom join --server https://wl.example.com --code …`;
+das Token landet im Secret Service bzw. in `~/.config/whisperloom/secrets.json` (600).
+
 ### Prüfen
 
-- `WhisperLoom status --json` → Abschnitt `policy` (`active`, `locked`, …) und `keys` (nur vorhanden ja/nein).
+- `WhisperLoom status --json` → Abschnitt `policy` (`active`, `locked`, …) und `keys` (nur vorhanden ja/nein);
+  mit Firmen-Server zusätzlich `management` (`state`, `tenantName`, `lastSync`, `keyMode`, `notice`, nie das Token).
+- `WhisperLoom sync` gleicht sofort ab (laufende App; Ausgabe `sync=synced|notmodified|pending|blocked|offline|…`).
 - Im Einstellungsfenster sind gesperrte Felder ausgegraut mit dem Hinweis „von IT festgelegt“.
 - `WhisperLoom export <datei>` enthält nie Keys und nie die Richtlinie.
 
@@ -155,5 +228,43 @@ policy) and keep WhisperLoom on "System".
 On Linux the same command stores keys in the Secret Service (via `secret-tool`) or, if none is available, in
 `~/.config/whisperloom/secrets.json` with mode 600.
 
-Check: `WhisperLoom status --json` shows `policy` and `keys` (presence only); locked fields are greyed out in the
-settings window with the note “set by IT”; `WhisperLoom export <file>` never contains keys or the policy.
+**Three levels in the file:** instead of `lockSettings` (everything fixed) set a level per path, as on the company
+server: `"policy": {"levels": {"stt": "fixed", "refine.stage": "default", "polish": "free"}}`. *Fixed* is hidden in the
+app, *default* may be changed by the user (their change wins until “Reset to company default”), *free* is set once.
+Shortcuts are never fixed. The app remembers the values of fixed paths (`policy-fixed.json`) and restores them at start
+if `settings.json` was edited by hand.
+
+### Company server and software distribution (W2-ENR)
+
+With a company server (`server/`, [server-api.md](server-api.md)) each device signs in once with the **company code**;
+afterwards the company controls models, providers, servers and settings through the portal, and the app syncs at
+start, every 15 minutes and on “Sync now”. Three ways, none needs admin rights:
+
+1. **Setup wizard:** “With my company” → server address and company code → “Waiting for approval by your IT team” →
+   continues on its own after approval. An **invitation link** `whisperloom://join?server=<url>&code=<code>` fills both
+   fields (Windows: per-user scheme under `HKCU\Software\Classes\whisperloom`, registered by the app at start; Linux:
+   `~/.local/share/applications/whisperloom-join.desktop` + `xdg-mime`).
+2. **Command** (software distribution, logon script), run as the user:
+   `WhisperLoom.exe join --server https://wl.example.com --code ABCD-EFGH-JKMN-PQRS [--device-name PC-3]`.
+   Output `ok join state=pending|approved device=d_… tenant=<company> sync=…`. Exit code 0 = connected (waiting for
+   approval or approved and already synced), 1 = error (`error <code>: <text>`), 2 = wrong usage. Code and token are
+   never printed; the device token lives in Credential Manager as `WhisperLoom:device`.
+3. **Provisioning file** with `"management": {"serverUrl": "…", "code": "…"}`: `provision` stores both, the **first
+   start** connects and discards the code.
+
+Afterwards: in **proxy mode** (default) keys stay on the server and the app authenticates against
+`<server>/api/v1/proxy` with the device token; an exhausted budget shows “Company monthly limit reached”. In
+**distribute mode** company keys go to Credential Manager as `WhisperLoom:company:<access>`, separate from the user's
+own keys, and are deleted when the device is blocked or leaves. **Offline**, the last configuration stays in effect
+and fixed stays fixed. **Blocked** turns company access off with a notice; the user's own settings stay. A later
+`provision` or import never changes the server's fixed values. “Leave company” only when the company does not fix
+`management.allowLeave` to `false`.
+
+**Microsoft Intune / group policy:** run the PowerShell example from the German section (`whisperloom-join.ps1`) in
+the user context (“Run this script using the logged on credentials: Yes” or a user logon script). Detection rule:
+registry key `HKCU\Software\Classes\whisperloom` or file `%APPDATA%\WhisperLoom\management-cache.json`. Skip devices
+that are already connected (`status --json` → `management.state` is `pending` or `approved`).
+
+Check: `WhisperLoom status --json` shows `policy`, `keys` (presence only) and, with a company server, `management`
+(state, company, last sync, never the token); `WhisperLoom sync` syncs right away. Locked fields are hidden in the
+settings window; `WhisperLoom export <file>` never contains keys or the policy.
