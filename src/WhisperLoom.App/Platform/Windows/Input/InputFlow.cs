@@ -31,8 +31,8 @@ public interface IInputPresenter
 }
 
 /// <summary>
-/// Ablauf der Tastenkürzel auf dem UI-Thread: Halten (Pille), Umschalten (Overlay mit Enter/Strg+Enter/Rücktaste und
-/// Knöpfen), Stufe (Hinweis), dazu die Extras (WLD-P5b): erneut einfügen, Markierung umschreiben (Overlay nimmt die
+/// Ablauf der Tastenkürzel auf dem UI-Thread: Halten (Pille), Umschalten (Overlay mit Enter/Rücktaste, Knöpfen und
+/// Stufen-Wähler), Stufe (Hinweis), dazu die Extras (WLD-P5b): erneut einfügen, Markierung umschreiben (Overlay nimmt die
 /// Anweisung auf) und App-Profile des Zielfensters. Das Zielfenster wird beim Start gemerkt und an die
 /// <see cref="InsertOutputSink"/> gegeben.
 /// </summary>
@@ -62,7 +62,7 @@ public sealed partial class InputFlow
         Rewrite,
     }
 
-    /// <param name="overlayKeys">Schaltet im Hook Enter/Strg+Enter/Rücktaste ans Overlay (true) bzw. wieder frei.</param>
+    /// <param name="overlayKeys">Schaltet im Hook Enter/Rücktaste ans Overlay (true) bzw. wieder frei.</param>
     /// <param name="describe">Prozess und Titel eines Fensters für die App-Profile; null = keine Profile.</param>
     /// <param name="capture">Markierung holen (Umschreiben); null = nicht verfügbar.</param>
     public InputFlow(
@@ -81,11 +81,11 @@ public sealed partial class InputFlow
         _overlayKeys = overlayKeys;
         _describe = describe;
         _capture = capture;
-        Overlay = new OverlayViewModel(PauseResume, Discard, enter => _ = SendAsync(enter));
+        Overlay = new OverlayViewModel(PauseResume, Discard, () => _ = SendAsync()) { Retry = () => _ = RetryFromOverlayAsync() };
         controller.PropertyChanged += OnControllerChanged;
         sink.Inserted += outcome =>
         {
-            if (outcome.IsFallback())
+            if (outcome.Hint() != Core.Output.OutputHint.None)
             {
                 FallbackToast?.Invoke(outcome);
             }
@@ -94,7 +94,10 @@ public sealed partial class InputFlow
 
     public OverlayViewModel Overlay { get; }
 
-    /// <summary>Text liegt nur in der Zwischenablage (Ziel weg, Admin-Fenster …); kommt vom Ausgabe-Thread.</summary>
+    /// <summary>
+    /// Hinweis nach der Ausgabe (W2-OUT): Text liegt in der Zwischenablage („Kopiert – Strg+V“: kein Eingabefeld, Ziel weg,
+    /// Admin-Fenster …) oder Passwortfeld („nicht eingefügt“); kommt vom Ausgabe-Thread.
+    /// </summary>
     public event Action<InsertOutcome>? FallbackToast;
 
     public string ModeName => _mode.ToString().ToLowerInvariant();
@@ -103,6 +106,10 @@ public sealed partial class InputFlow
     {
         // Während Erfassung bzw. Einfügen (await) startet kein zweiter Ablauf mit eigener Zwischenablage-Sicherung.
         if (_busy && action is HotkeyAction.HoldStart or HotkeyAction.Toggle or HotkeyAction.Rewrite or HotkeyAction.Reinsert)
+        {
+            return;
+        }
+        if (SkipIfProcessing(action))
         {
             return;
         }
@@ -124,7 +131,11 @@ public sealed partial class InputFlow
                 _ui.HidePill();
                 if (result == "error")
                 {
-                    Toast(_controller.LastErrorKey ?? "Overlay_Error");
+                    ErrorToast(_controller.LastErrorKey ?? "Overlay_Error");
+                }
+                else if (result == "done")
+                {
+                    HintIfRawOnly();
                 }
                 break;
             case HotkeyAction.HoldCancel when _mode == Mode.Hold:
@@ -135,7 +146,7 @@ public sealed partial class InputFlow
                 break;
             case HotkeyAction.Toggle when _mode == Mode.Toggle && _controller.IsRecording:
             case HotkeyAction.Rewrite when _mode == Mode.Rewrite && _controller.IsRecording:
-                await SendAsync(false);
+                await SendAsync();
                 break;
             case HotkeyAction.Toggle when _controller.State == DictationState.Idle:
                 if (Begin(Mode.Toggle, _foreground()))
@@ -150,10 +161,7 @@ public sealed partial class InputFlow
                 await ReinsertAsync();
                 break;
             case HotkeyAction.OverlaySend:
-                await SendAsync(false);
-                break;
-            case HotkeyAction.OverlaySendEnter:
-                await SendAsync(true);
+                await SendAsync();
                 break;
             case HotkeyAction.OverlayDiscard:
                 Discard();
@@ -173,6 +181,7 @@ public sealed partial class InputFlow
         {
             _ui.SetPill(_controller.Level, processing: false);
         }
+        LengthTick();
     }
 
     public JsonObject Status()
@@ -183,6 +192,7 @@ public sealed partial class InputFlow
         status["overlayStage"] = Overlay.Stage;
         status["profile"] = _controller.ActiveProfile is { } m ? AppProfiles.DisplayName(m.Profile) : null;
         status["lastInsert"] = _sink.LastOutcome?.ToString();
+        status["lastFocus"] = _sink.LastFocus?.ToString();
         status["lastInsertWindow"] = _sink.LastReport is { } r
             ? new JsonObject
             {
@@ -199,10 +209,12 @@ public sealed partial class InputFlow
     private bool Begin(Mode mode, IntPtr target)
     {
         _target = target;
-        // Umschreiben ersetzt nur die Markierung: ohne Profil (Stufe, Ausgabe, Enter); Enter nur per Strg+Enter im Overlay.
+        // Umschreiben ersetzt nur die Markierung: ohne Profil (Stufe, Ausgabe) und nie mit Enter danach.
+        // Sonst Enter aus dem Profil (An/Aus) bzw. bei Erben (null) aus output.pressEnter (W2-OUT).
         var match = mode == Mode.Rewrite ? null : ProfileFor(target);
         _controller.ActiveProfile = match;
-        _sink.Arm(target, match?.Profile.PressEnter ?? false, InsertModeOf(match)); // Erben: output.pressEnter verdrahtet W2-OUT
+        _sink.Arm(target, mode == Mode.Rewrite ? false : match?.Profile.PressEnter, InsertModeOf(match),
+            trailingSpace: mode != Mode.Rewrite && _controller.Settings.Polish.TrailingSpace, leadingSpace: mode != Mode.Rewrite);
         var started = _controller.Start();
         if (started != "recording")
         {
@@ -220,12 +232,14 @@ public sealed partial class InputFlow
         Overlay.ErrorKey = null;
         Overlay.State = OverlayState.Recording;
         Overlay.Stage = stage;
+        Overlay.IsStagePickerOpen = false;
+        Overlay.StagePicker = _mode == Mode.Rewrite || _controller.StageLocked ? null : CreateStagePicker();
         Tick();
         _ui.ShowOverlay(Overlay, _target);
         _overlayKeys(true);
     }
 
-    private async Task SendAsync(bool pressEnter)
+    private async Task SendAsync()
     {
         if (_mode is not (Mode.Toggle or Mode.Rewrite) || !_controller.IsRecording)
         {
@@ -234,7 +248,7 @@ public sealed partial class InputFlow
         var rewrite = _mode == Mode.Rewrite;
         _mode = Mode.None;
         _overlayKeys(false);
-        _sink.SetPressEnter(pressEnter || (_controller.ActiveProfile?.Profile.PressEnter ?? false));
+        Overlay.IsStagePickerOpen = false;
         Overlay.State = OverlayState.Processing;
         var result = rewrite ? await _controller.StopAndRewriteAsync(_selection) : await _controller.StopAsync();
         _selection = "";
@@ -243,8 +257,9 @@ public sealed partial class InputFlow
         if (result == "error")
         {
             Overlay.ErrorKey = _controller.LastErrorKey;
+            Overlay.CanRetry = _controller.CanRetry;
             Overlay.State = OverlayState.Error;
-            await Task.Delay(ErrorDuration);
+            await Task.Delay(Overlay.CanRetry ? RetryWindow : ErrorDuration);
             if (_mode == Mode.None && Overlay.State == OverlayState.Error)
             {
                 _ui.HideOverlay();
@@ -252,6 +267,22 @@ public sealed partial class InputFlow
             return;
         }
         _ui.HideOverlay();
+        if (!rewrite && result == "done")
+        {
+            HintIfRawOnly();
+        }
+    }
+
+    /// <summary>
+    /// KI gescheitert, Rohtext eingefügt (Android: Rohtext mit Hinweis, W2-OUT): Hinweis, sofern kein anderer wichtiger ist
+    /// (Kopiert, Passwortfeld).
+    /// </summary>
+    private void HintIfRawOnly()
+    {
+        if (_controller.LastRefined?.Skipped is not null && _sink.LastOutcome is { } outcome && outcome.Hint() == Core.Output.OutputHint.None)
+        {
+            Toast("Output_Hint_RawOnly");
+        }
     }
 
     private void Discard()
@@ -303,8 +334,10 @@ public sealed partial class InputFlow
         }
         if (_controller.State == DictationState.Paused)
         {
-            _controller.Resume();
-            Overlay.State = OverlayState.Recording;
+            if (_controller.Resume() == "recording")
+            {
+                Overlay.State = OverlayState.Recording;
+            }
         }
         else if (_controller.Pause() == "paused")
         {
@@ -341,9 +374,17 @@ public sealed partial class InputFlow
         _ui.ShowHint("stage", Loc.Instance["Stage_Label"], label, StageHintDuration, _foreground());
     }
 
-    /// <summary>Toast für einen Fallback (Text liegt in der Zwischenablage).</summary>
-    public void ShowFallback(InsertOutcome outcome) =>
-        _ui.ShowHint("toast", "WhisperLoom", Loc.Instance["Insert_" + outcome], ToastDuration, _target);
+    /// <summary>Hinweis nach der Ausgabe: „Kopiert – Strg+V“ bzw. „Passwortfeld – nicht eingefügt“.</summary>
+    public void ShowFallback(InsertOutcome outcome) => ShowHint(outcome.Hint());
+
+    /// <summary>Hinweis anzeigen (auch für Tray-Kopieren und Ausgaben ohne Einfügen).</summary>
+    public void ShowHint(Core.Output.OutputHint hint)
+    {
+        if (hint != Core.Output.OutputHint.None)
+        {
+            _ui.ShowHint("toast", "WhisperLoom", Loc.Instance[Output.OutputHints.Key(hint)], ToastDuration, _target);
+        }
+    }
 
     private void Toast(string key) => _ui.ShowHint("toast", "WhisperLoom", Loc.Instance[key], ToastDuration, _target);
 

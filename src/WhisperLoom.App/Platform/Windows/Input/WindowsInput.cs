@@ -51,9 +51,13 @@ public sealed class WindowsInput : IDisposable
 
     public bool HookRunning => _hook.IsRunning;
 
-    /// <summary>Echte Ausgabe-Senke für Windows: Einfügen per Tastenkürzel, sonst die innere Senke.</summary>
-    public static InsertOutputSink CreateSink(Output.IOutputSink inner, Func<InsertMode> mode) =>
-        new(inner, new TextInserter(new Win32TextClipboard(), new Win32KeySender(), new Win32Windows()), mode);
+    /// <summary>
+    /// Echte Ausgabe-Senke für Windows: Einfügen per Tastenkürzel mit Fokus-Prüfung über UI Automation (W2-OUT), sonst die
+    /// innere Senke.
+    /// </summary>
+    public static InsertOutputSink CreateSink(Output.IOutputSink inner, Func<InsertMode> mode, Func<Core.Contracts.Settings.OutputSettings>? output = null) =>
+        new(inner, new TextInserter(new Win32TextClipboard(), new Win32KeySender(), new Win32Windows(), focus: new FocusProbe(new UiaFocusSource(), fallback: new MsaaFocusSource()),
+            caret: new CaretContext(new UiaCaretSource())), mode, output);
 
     /// <summary>Startet Hook und Ablauf; null, wenn Windows den Hook verweigert (Log-Eintrag).</summary>
     public static WindowsInput? Start(DictationController controller, InsertOutputSink sink, AppLog log)

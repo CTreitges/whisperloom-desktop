@@ -5,8 +5,9 @@ Rücktasten-Zähler als JSON). Die App läuft mit --test-audio und --hotkeys geg
 eigener Datenordner, Key-Präfix WhisperLoom-Test-<ID>:. Die Zwischenablage des Nutzers (Text) wird am Ende
 wiederhergestellt. Prozesse nur über die eigene PID.
 
-Prüfungen: hold-insert, start-menu-suppressed, toggle-second-press, no-focus-steal, toggle-enter, ctrl-enter,
-backspace-discard, pause, clipboard-restore, clipboard-history-excluded, stage-toast, type-mode.
+Prüfungen: hold-insert, start-menu-suppressed, toggle-second-press, no-focus-steal, toggle-enter, ctrl-enter-no-enter,
+backspace-discard, pause, clipboard-restore, clipboard-history-excluded, stage-toast, type-mode; W2-OUT (smoke_focus.py):
+focus-textfield, focus-password, focus-button, leading-space, history-copy-20, focus-measure.
 """
 from __future__ import annotations
 
@@ -50,7 +51,7 @@ class Target:
 
     def __enter__(self) -> Target:
         self.out.unlink(missing_ok=True)
-        self.proc = subprocess.Popen([self.exe, "--out", str(self.out), "--seconds", "90", *self.extra])
+        self.proc = subprocess.Popen([self.exe, "--out", str(self.out), "--seconds", "90", *self.extra])  # --mode password|button (W2-OUT)
         state = wait_for(lambda: (lambda d: d if target_ready(d) else None)(self.read()), 15)
         if not state:
             if self.proc:
@@ -167,6 +168,7 @@ def start_app(args, work: Path, smoke, fake, name: str, insert_mode: str):
     settings = smoke_full.fake_settings(fake, via_proxy=False)
     settings["refine"] = {"stage": "off", "promptEnabled": True}
     settings["desktop"] = {"insertMode": insert_mode}
+    settings["polish"] = {**settings.get("polish", {}), "trailingSpace": False}  # Ziel == lastResult vergleichen (W2-OUT)
     (data / "settings.json").write_text(json.dumps(settings), encoding="utf-8")
     prefix = f"WhisperLoom-Test-{args.id}:"
     run = smoke.AppRun(args.app, data, prefix, ["--test-audio", str(wav), "--hotkeys"])
@@ -225,17 +227,9 @@ def paste_checks(args, work, report, smoke, fake, keys, exe) -> None:
             report.check("toggle-enter", d["_landed"] and d.get("enter") == 0,
                          f"{d['_where']} ziel={d.get('text')!r:.40} enter={d.get('enter')}")
 
-        # Strg+Enter = einfügen + Enter.
-        with Target(exe, out, keys) as t:
-            keys.combo("ctrl", "space")
-            overlay_open(run)
-            time.sleep(0.4)
-            keys.combo("ctrl", "enter")
-            s, d = inserted(t, run)
-            later = wait_for(lambda: (lambda x: x if x.get("enter") == 1 else None)(t.read()), 3) or t.read()
-            d.update(text=later.get("text"), enter=later.get("enter"))
-            report.check("ctrl-enter", d["_landed"] and d.get("enter") == 1,
-                         f"{d['_where']} ziel={d.get('text')!r:.40} enter={d.get('enter')}")
+        # Strg+Enter sendet nicht mehr (W2-OUT): Enter danach ist nur noch Einstellung.
+        import smoke_focus
+        smoke_focus.ctrl_enter_check(run, keys, exe, out, report)
 
         # Rücktaste = verwerfen: Ziel bleibt unverändert, die Rücktaste kommt dort nicht an.
         with Target(exe, out, keys) as t:
@@ -254,6 +248,10 @@ def paste_checks(args, work, report, smoke, fake, keys, exe) -> None:
         pause_check(run, keys, exe, out, report, focus_open)
         clipboard_checks(run, keys, exe, out, report)
         stage_check(run, keys, exe, out, report)
+        smoke_focus.focus_checks(run, keys, exe, out, report)
+        smoke_focus.leading_space_check(run, keys, exe, out, report, fake)
+        smoke_focus.history_copy_check(run, report)
+        smoke_focus.focus_measure(run, work / args.id, report)
     finally:
         run.stop()
         plat.cleanup_secrets("win", prefix, data)

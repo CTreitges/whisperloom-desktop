@@ -4,7 +4,7 @@ Alle Anfragen laufen über den Fake-Proxy: die Fake-API heißt für die App "fak
 Proxy auf), Loopback-Ziele würden jeden Proxy umgehen. Ausgabe-Senke --output-file, eigener Datenordner,
 Key-Präfix WhisperLoom-Test-<ID>: (Testeinträge werden gelöscht), nur der Fake-Key test-key-not-real-1.
 
-Prüfungen: toggle-output, language-en, proxy, history, fallback-stt, secret-store, anthropic-prompt, logs-clean,
+Prüfungen: toggle-output, output-hint (W2-OUT: ohne Einfügen Zwischenablage + Hinweis „copied“), language-en, proxy, history, fallback-stt, secret-store, anthropic-prompt, logs-clean,
 no-audio-stored. Hilfen für die Suite "shell": FakeApi, fake_settings.
 """
 from __future__ import annotations
@@ -99,6 +99,8 @@ def run(args, work: Path, report, smoke) -> None:
                 text = out.read_text(encoding="utf-8") if out.exists() else ""
                 report.check("toggle-output", text.startswith("[fake-llm]") and text == s.get("lastResult")
                              and s.get("lastModel") == "fake-llm", f"out={text[:60]!r} model={s.get('lastModel')}")
+                # Ohne Einfügen (Linux, Tray/CLI): gleiche Core-Entscheidung, Fokus unbekannt → Zwischenablage + Hinweis.
+                report.check("output-hint", s.get("lastHint") == "copied", f"lastHint={s.get('lastHint')!r}")
                 reqs = fake.requests()
                 stt = [r for r in reqs if r["path"].endswith("/audio/transcriptions")]
                 chat = [r for r in reqs if r["path"].endswith("/chat/completions")]

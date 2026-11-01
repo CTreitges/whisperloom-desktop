@@ -11,7 +11,6 @@ public enum HotkeyAction
     Reinsert,
     Rewrite,
     OverlaySend,
-    OverlaySendEnter,
     OverlayDiscard,
     Recorded,
     RecordCancelled,
@@ -182,10 +181,8 @@ public sealed class HotkeyStateMachine
             {
                 return HotkeyAction.OverlaySend;
             }
-            if (vk == Hotkey.VkReturn && mods == HotkeyModifiers.Ctrl)
-            {
-                return HotkeyAction.OverlaySendEnter;
-            }
+            // Strg+Enter gibt es nicht mehr (W2-OUT): Enter danach ist nur noch Einstellung (output.pressEnter, App-Profil).
+            // Die Taste geht unverändert an das Zielfenster.
             if (vk == Hotkey.VkBack && mods == HotkeyModifiers.None)
             {
                 return HotkeyAction.OverlayDiscard;

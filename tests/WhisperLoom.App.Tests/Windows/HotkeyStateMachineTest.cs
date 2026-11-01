@@ -119,8 +119,11 @@ public class HotkeyStateMachineTest
         Assert.True(enter.Swallow);
         Assert.True(Up(VkReturn).Swallow);
 
+        // Strg+Enter gibt es nicht mehr (W2-OUT): die Taste geht unverändert ans Ziel, keine Aktion, kein Schlucken.
         Down(VkLControl);
-        Assert.Equal(HotkeyAction.OverlaySendEnter, Down(VkReturn).Action);
+        var ctrlEnter = Down(VkReturn);
+        Assert.Equal(HotkeyAction.None, ctrlEnter.Action);
+        Assert.False(ctrlEnter.Swallow);
         Up(VkReturn);
         Up(VkLControl);
 

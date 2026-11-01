@@ -29,6 +29,7 @@ public partial class App : Application
     private SettingsWindow? _settingsWindow;
     private SetupWindow? _setupWindow;
     private IDisposable? _input;
+    private Platform.Windows.Input.InputFlow? _flow;
     private readonly CancellationTokenSource _updates = new();
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
@@ -56,6 +57,7 @@ public partial class App : Application
 
         CreateTray(_host);
         StartHotkeys(_host);
+        StartLengthWatch(_host);
         StartUpdates(_host);
         StartManagement(_host);
         if (verb is not null)
@@ -98,12 +100,60 @@ public partial class App : Application
     }
 
     /// <summary>Windows: globale Tastenkürzel, Overlay und Einfügen (Phase 3); im Testbetrieb nur mit <c>--hotkeys</c>.</summary>
+    /// <summary>
+    /// Längen-Takt für Diktate ohne Tastenkürzel (Tray, CLI, Linux; W2-OUT): Hinweis ab 10 min, bei 12 min hält die Aufnahme an.
+    /// Kürzel-Diktate prüft <c>InputFlow.Tick</c> selbst (dort wird beim Halten gesendet).
+    /// </summary>
+    private void StartLengthWatch(AppHost host)
+    {
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+        timer.Tick += (_, _) =>
+        {
+            var flow = _flow;
+            if (flow is not null && flow.ModeName != "none")
+            {
+                return;
+            }
+            if (host.Controller.CheckLength() is not { } notice)
+            {
+                return;
+            }
+            var key = notice == "long" ? "Recording_Long" : "Recording_Capped";
+            if (flow is not null)
+            {
+                flow.ShowNotice(key);
+            }
+            else if (OperatingSystem.IsLinux())
+            {
+                _ = Output.DesktopNotify.ShowAsync(Localization.Loc.Instance[key]);
+            }
+        };
+        timer.Start();
+    }
+
     private void StartHotkeys(AppHost host)
     {
+        if (OperatingSystem.IsWindows())
+        {
+            host.ProbeFocus = ProbeFocusAsync;
+        }
         if (OperatingSystem.IsWindows() && host.Options.HotkeysActive && host.Output is Platform.Windows.TextOutput.InsertOutputSink sink)
         {
             StartWindowsInput(host, sink);
         }
+        else if (OperatingSystem.IsLinux() && host.Options.OutputFile is null)
+        {
+            // Linux: Hinweis „Kopiert – Strg+V“ als Desktop-Benachrichtigung (W2-OUT); fehlt notify-send, bleibt es beim Status.
+            host.HintPresenter = hint => _ = Output.DesktopNotify.ShowAsync(Localization.Loc.Instance[Output.OutputHints.Key(hint)]);
+        }
+    }
+
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private static async Task<string> ProbeFocusAsync()
+    {
+        var probe = new Platform.Windows.Input.FocusProbe(new Platform.Windows.Input.UiaFocusSource(), fallback: new Platform.Windows.Input.MsaaFocusSource());
+        var kind = await probe.ProbeAsync(CancellationToken.None);
+        return $"{kind} {probe.Last?.ControlType ?? 0}";
     }
 
     [System.Runtime.Versioning.SupportedOSPlatform("windows")]
@@ -113,6 +163,7 @@ public partial class App : Application
         if (input is not null)
         {
             _input = input;
+            _flow = input.Flow;
             host.InputStatus = () =>
             {
                 var status = input.Flow.Status();
@@ -122,6 +173,9 @@ public partial class App : Application
             RecordHotkey = async () => (await input.RecordAsync())?.ToString();
             host.InsertRecent = input.Flow.InsertRecentAsync;
             host.Reinsert = input.Flow.ReinsertAsync;
+            // Hinweise (W2-OUT): Einfügen per Tastenkürzel zeigt seinen Toast selbst, hier nur merken; Tray/CLI zeigen ihn hier.
+            sink.Inserted += outcome => host.RecordHint(Platform.Windows.TextOutput.InsertModes.Hint(outcome));
+            host.HintPresenter = hint => Dispatcher.UIThread.Post(() => input.Flow.ShowHint(hint));
         }
     }
 
@@ -177,9 +231,7 @@ public partial class App : Application
             case "history":
                 if (_historyWindow is null)
                 {
-                    var c = host.Controller;
-                    var vm = new HistoryViewModel(host.History,
-                        c.StageLocked ? null : (entry, stage) => c.ReprocessAsync(stage, entry.Id), cleared => c.NotifyHistoryChanged(cleared));
+                    var vm = new Features.History.HistoryViewModel(host.History, HistoryActionsFor(host));
                     _historyWindow = new HistoryWindow(vm);
                     _historyWindow.Closed += (_, _) => _historyWindow = null;
                     _ = vm.LoadAsync();
@@ -233,6 +285,21 @@ public partial class App : Application
                 });
                 break;
         }
+    }
+
+    /// <summary>Verlauf (W2-OUT): Kopieren mit Gegenprobe, Einfügen wie im Tray, Neu verarbeiten als Fassung im Hintergrund.</summary>
+    internal static Features.History.HistoryActions HistoryActionsFor(AppHost host)
+    {
+        var c = host.Controller;
+        return new Features.History.HistoryActions(
+            host.CopyTextAsync,
+            host.InsertRecent,
+            c.StageLocked ? null : (id, stage) => c.ReprocessVersionAsync(id, stage),
+            c.EditHistoryAsync,
+            [.. Core.Contracts.RefineModes.SettingsFor(c.Settings.Refine.PromptEnabled)
+                .Select(m => (Core.Contracts.RefineModes.Key(m), Localization.Loc.Instance["Stage_" + Core.Contracts.RefineModes.Key(m)]))],
+            entry => c.NotifyHistoryChanged(cleared: false),
+            () => c.NotifyHistoryChanged(cleared: true));
     }
 
     private SettingsViewModel CreateSettings(AppHost host) =>

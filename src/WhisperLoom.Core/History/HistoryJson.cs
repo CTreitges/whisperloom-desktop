@@ -33,7 +33,46 @@ internal static class HistoryJson
             ["model"] = e.Model,
             ["skipped"] = e.Skipped,
         };
+        // Fehlt = nur die damalige Fassung (ältere Dateien und Leser bleiben gültig).
+        if (e.Versions is { } versions)
+        {
+            o["versions"] = new JsonArray([.. versions.Select(v => (JsonNode)new JsonObject
+            {
+                ["processing"] = v.Processing,
+                ["text"] = v.Text,
+                ["createdAt"] = v.CreatedAt.ToUnixTimeMilliseconds(),
+                ["model"] = v.Model,
+                ["failed"] = v.Failed,
+                ["edited"] = v.Edited,
+            })]);
+        }
         return o.ToJsonString();
+    }
+
+    /// <summary>Fassungen; fehlt das Feld, null. Eine Fassung ohne Schlüssel fällt weg, ein doppelter Schlüssel gilt einmal (die erste).</summary>
+    private static List<HistoryVersion>? ReadVersions(JsonArray? array)
+    {
+        if (array is null)
+        {
+            return null;
+        }
+        var versions = new List<HistoryVersion>();
+        foreach (var v in array.OfType<JsonObject>())
+        {
+            var processing = Text(v, "processing");
+            if (processing.Length == 0 || versions.Any(x => x.Processing == processing))
+            {
+                continue;
+            }
+            versions.Add(new HistoryVersion(
+                processing,
+                Text(v, "text"),
+                DateTimeOffset.FromUnixTimeMilliseconds(Long(v, "createdAt") ?? 0L),
+                Text(v, "model") is { Length: > 0 } model ? model : null,
+                Text(v, "failed") is { Length: > 0 } failed ? failed : null,
+                Bool(v, "edited", false)));
+        }
+        return versions;
     }
 
     /// <returns>null, wenn die Datei kein JSON-Objekt oder ohne Rohtext ist.</returns>
@@ -69,7 +108,8 @@ internal static class HistoryJson
             refinement,
             Text(o, "sttLabel"),
             Text(o, "model") is { Length: > 0 } model ? model : null,
-            Text(o, "skipped") is { Length: > 0 } skipped ? skipped : null);
+            Text(o, "skipped") is { Length: > 0 } skipped ? skipped : null,
+            ReadVersions(o["versions"] as JsonArray));
     }
 
     /// <summary>Unbekannte oder fehlende Stufe gilt als aus.</summary>

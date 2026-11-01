@@ -169,7 +169,10 @@ public sealed partial class AppHost
     /// <summary>Windows mit Hotkeys: wie der Hotkey „erneut einfügen“ (Vordergrundfenster); null = kopieren.</summary>
     public Func<Task<string>>? Reinsert { get; set; }
 
-    /// <summary>Klick im Tray-Verlauf bzw. <c>recent-insert</c>: einfügen (Windows mit Hotkeys) bzw. in die Zwischenablage.</summary>
+    /// <summary>
+    /// Klick im Tray-Verlauf bzw. <c>recent-insert</c>: einfügen (Windows mit Hotkeys; der Text bleibt dabei auch in der
+    /// Zwischenablage, W2-OUT) bzw. in die Zwischenablage mit Hinweis „Kopiert“.
+    /// </summary>
     public Task<string> InsertRecentTextAsync(string text) => InsertRecent is { } insert ? insert(text) : CopyAsync(text);
 
     private async Task<string> RecentInsertAsync(string index)
@@ -216,12 +219,15 @@ public sealed partial class AppHost
             () => host?.Controller.Settings ?? new WhisperLoomSettings(), () => host?.Controller.Policy ?? PolicySettings.None,
             () => management?.KeyTargets ?? new Dictionary<string, KeyTarget>());
         IAudioRecorder recorder = options.TestAudio is null ? new PortAudioRecorder() : new WavFileRecorder(options.TestAudio);
-        IOutputSink output = options.OutputFile is null ? new ClipboardOutputSink(ProcessRunner.Instance) : new FileOutputSink(options.OutputFile);
+        IOutputSink clipboard = options.OutputFile is null ? new ClipboardOutputSink(ProcessRunner.Instance) : new FileOutputSink(options.OutputFile);
+        // Ohne Einfügen (Linux, Tray/CLI): Zwischenablage + Hinweis „Kopiert – Strg+V“ (W2-OUT, OutputDecision).
+        IOutputSink output = new HintingOutputSink(clipboard, () => host?.Controller.Settings.Output ?? new OutputSettings(), hint => host?.OnHint(hint));
         if (OperatingSystem.IsWindows() && options.OutputFile is null)
         {
-            // Einfügen per Tastenkürzel; der Modus folgt den Einstellungen des fertigen Hosts.
+            // Einfügen per Tastenkürzel; Modus, Enter danach und „immer kopieren“ folgen den Einstellungen des fertigen Hosts.
             output = Platform.Windows.Input.WindowsInput.CreateSink(output, () =>
-                Platform.Windows.TextOutput.InsertModes.FromKey(host is null ? null : SettingsStore.Desktop(host.Controller.Settings).InsertMode));
+                Platform.Windows.TextOutput.InsertModes.FromKey(host is null ? null : SettingsStore.Desktop(host.Controller.Settings).InsertMode),
+                () => host?.Controller.Settings.Output ?? new OutputSettings());
         }
         var cache = new ModelCache(Path.Combine(options.DataDir, "model-cache.json"));
         LocalParts? local = null;
@@ -232,6 +238,7 @@ public sealed partial class AppHost
             local = new LocalParts(options, settings, desktop);
             return pipeline = new AppPipeline(settings, secrets, cache, local.Stt, local.Text);
         }, recorder, output);
+        host.Clipboard = clipboard;
         host.Local = local;
         if (local is not null && pipeline is not null)
         {
@@ -303,6 +310,17 @@ public sealed partial class AppHost
             case "recent-insert":
                 message = await RecentInsertAsync(args.Count > 0 ? args[0] : "0");
                 ok = message != "no-entry";
+                break;
+            case "retry":
+                message = await Controller.RetryAsync();
+                ok = message == "done";
+                break;
+            case "focus-probe":
+                message = ProbeFocus is { } probe ? await probe() : "Unknown 0";
+                break;
+            case "history-copy":
+                message = await HistoryCopyAsync(args.Count > 0 ? args[0] : "0");
+                ok = message == "copied";
                 break;
             case "show": ShowWindow?.Invoke("stage"); message = "shown"; break;
             case "setup":

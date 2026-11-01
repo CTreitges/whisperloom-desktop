@@ -38,7 +38,7 @@ public class OverlayStylesTest
     [AvaloniaFact]
     public void Overlay_pill_and_hint_never_activate()
     {
-        Window[] windows = [new OverlayWindow(new OverlayViewModel(() => { }, () => { }, _ => { })), new PillWindow(new PillViewModel()), new HintWindow()];
+        Window[] windows = [new OverlayWindow(new OverlayViewModel(() => { }, () => { }, () => { })), new PillWindow(new PillViewModel()), new HintWindow()];
         foreach (var w in windows)
         {
             Assert.False(w.ShowActivated);
