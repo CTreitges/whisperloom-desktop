@@ -87,6 +87,28 @@ public sealed class ManagedLevelsTest
     }
 
     [AvaloniaFact]
+    public async Task An_import_after_a_reset_reloads_the_window_from_the_new_values()
+    {
+        // Review W2-UI1 R2: Nach „Zurücksetzen“ ersetzte die Hülle die Session; das Import-Abo hing an der alten → alte Werte.
+        Loc.Instance.SetLanguage("de");
+        using var f = new ControllerFixture();
+        f.Controller.Settings.Stt.Model = "eigene-wahl";
+        f.Controller.Policy = new PolicySettings { Defaults = Defaults(("stt.model", "whisper-1")) };
+        var window = Open(f);
+        await window.Shell!.ResetToDefaultAsync("stt.model");
+
+        var sync = window.Settings!.Sync;
+        await sync.Preview("""{"stt":{"providerId":"groq"}}""");
+        await sync.ApplyCommand.ExecuteAsync(null);
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Equal("groq", f.Controller.Settings.Stt.ProviderId);
+        Assert.Equal("groq", window.Settings!.SttProvider.Value); // neue Arbeitskopie, nicht die veraltete
+        Assert.NotSame(sync, window.Settings.Sync);
+        window.Close();
+    }
+
+    [AvaloniaFact]
     public void Free_rows_have_no_mark_and_hotkeys_are_never_fixed()
     {
         using var f = new ControllerFixture();

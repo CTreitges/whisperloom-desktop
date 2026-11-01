@@ -50,7 +50,7 @@ FluentTheme-Akzent (Häkchen, Schalter, Fokus) = `#0F5B50`.
 
 Regeln:
 - **Zeile mit `Path`**: Titel und Beschreibung kommen aus `SettingsCatalog` (eine Quelle für Seite, Suche und Abdeckungstest). Der Accessible Name des Steuerelements wird automatisch auf den Titel gesetzt.
-- **Fest / Vorgabe / Frei** (`Managed.cs`): Das Fenster setzt `ds:Managed.Context` einmal; jede Zeile fragt die Stufe ihres Pfades. Fest → Zeile weg (auch für Screenreader); Vorgabe → Etikett + „Auf Firmenvorgabe zurücksetzen“. Quelle heute `PolicyManagedSource` (gesperrt = Fest), nach W2-C0 `ManagedState`. Tastenkürzel sind nie Fest.
+- **Fest / Vorgabe / Frei** (`Managed.cs`): Das Fenster setzt `ds:Managed.Context` einmal; jede Zeile fragt die Stufe ihres Pfades. Fest → Zeile weg (auch für Screenreader); Vorgabe → Etikett, nach einer Änderung des Nutzers (User-Override) zusätzlich „Auf Firmenvorgabe zurücksetzen“. Quelle: `PolicyManagedSource` über das `ManagedState`-Modell aus W2-C0 (`PolicySettings.StateOf`, Overrides und Zurücksetzen über `ManagedDefaults`); der Firmenname kommt aus `management.tenantName`, sonst „deine IT“. Tastenkürzel sind nie Fest.
 - **Sofort speichern**: Auswahl und Schalter speichern bei Änderung, Textfelder beim Verlassen bzw. Enter (`UpdateSourceTrigger=LostFocus`). Ungültige Werte zeigen den Fehler in der Zeile und werden nicht gespeichert. Zerstörende Änderungen (Verlauf aus) fragen inline nach.
 - **Texte** nur über `Localization/*.json` (DE+EN), Schlüssel-Präfixe: `Page_`, `Section_`, `G_` (Gruppe), `Set_` (Zeile), `Validation_`, `Managed_`.
 

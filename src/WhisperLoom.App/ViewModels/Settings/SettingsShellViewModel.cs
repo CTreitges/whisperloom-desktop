@@ -69,12 +69,25 @@ public sealed partial class SettingsShellViewModel : ObservableObject, IDisposab
     public async Task ResetToDefaultAsync(string path)
     {
         await Session.ResetToDefaultAsync(path, Managed.Source);
+        Reload();
+    }
+
+    /// <summary>
+    /// Neue Arbeitskopie vom aktuellen Stand der App (nach Zurücksetzen bzw. Import), gleiche Seite. Die Hülle hängt sich
+    /// dabei selbst an den Import der neuen Session – ein Abo von außen hinge sonst an der alten (Review W2-UI1 R2).
+    /// </summary>
+    private void Reload()
+    {
         Load(Session.Reopen(), SelectedPage?.Id ?? "general");
         _ = Session.LoadKeysAsync();
+        _ = Session.Local.RefreshOllamaCommand.ExecuteAsync(null);
     }
+
+    private void OnImported() => Avalonia.Threading.Dispatcher.UIThread.Post(Reload);
 
     public void Dispose()
     {
+        Session.Sync.Applied -= OnImported;
         Loc.Instance.PropertyChanged -= OnLanguageChanged;
         foreach (var page in Pages)
         {
@@ -98,7 +111,12 @@ public sealed partial class SettingsShellViewModel : ObservableObject, IDisposab
         {
             page.Dispose();
         }
+        if (Session is not null)
+        {
+            Session.Sync.Applied -= OnImported;
+        }
         session.AutoSave = true;
+        session.Sync.Applied += OnImported;
         Session = session;
         Managed = new ManagedContext(_sourceOf(session), ResetToDefaultAsync);
         Pages.Clear();

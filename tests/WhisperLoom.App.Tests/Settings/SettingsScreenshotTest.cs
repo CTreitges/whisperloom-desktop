@@ -41,6 +41,9 @@ public sealed class SettingsScreenshotTest
     {
         Dispatcher.UIThread.RunJobs();
         window.UpdateLayout();
+        // Render-Uhr ~0,5 s weiterlaufen lassen: sonst erwischt die Aufnahme Übergänge (z. B. den Pfeil von „Erweitert“) mittendrin.
+        Thread.Sleep(400);
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick(30);
         Dispatcher.UIThread.RunJobs();
         var frame = window.CaptureRenderedFrame();
         Assert.NotNull(frame);
