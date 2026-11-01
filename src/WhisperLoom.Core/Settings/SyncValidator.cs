@@ -29,26 +29,26 @@ public static class SyncValidator
         }
 
         Provider(errors, "stt.providerId", s.Stt.ProviderId, stt: true);
-        Url(errors, "stt.baseUrl", s.Stt.BaseUrl);
+        Url(errors, "stt.baseUrl", s.Stt.BaseUrl, s.Stt.ProviderId);
         if (s.Stt.ReadTimeoutSec != 0 && s.Stt.ReadTimeoutSec is < 30 or > 1800)
         {
             errors.Add("stt.readTimeoutSec: 0 oder 30–1800");
         }
         Provider(errors, "sttFallback.providerId", s.SttFallback.ProviderId, stt: true);
-        Url(errors, "sttFallback.baseUrl", s.SttFallback.BaseUrl);
+        Url(errors, "sttFallback.baseUrl", s.SttFallback.BaseUrl, s.SttFallback.ProviderId);
 
         if (s.Llm.ProviderId != LlmSettings.Same)
         {
             Provider(errors, "llm.providerId", s.Llm.ProviderId, stt: false);
         }
-        Url(errors, "llm.baseUrl", s.Llm.BaseUrl);
+        Url(errors, "llm.baseUrl", s.Llm.BaseUrl, s.Llm.ProviderId == LlmSettings.Same ? s.Stt.ProviderId : s.Llm.ProviderId);
         var modelStages = RefineModes.ModelStages.Select(m => m.Key()).ToList();
         foreach (var stage in s.Llm.StageModels.Keys.Where(k => !modelStages.Contains(k)))
         {
             errors.Add($"llm.stageModels.{stage}: Stufe unbekannt ({string.Join(", ", modelStages)})");
         }
         Provider(errors, "llmFallback.providerId", s.LlmFallback.ProviderId, stt: false);
-        Url(errors, "llmFallback.baseUrl", s.LlmFallback.BaseUrl);
+        Url(errors, "llmFallback.baseUrl", s.LlmFallback.BaseUrl, s.LlmFallback.ProviderId);
 
         var stages = Enum.GetValues<RefineMode>().Select(m => m.Key()).Append("paragraphs").ToList();
         OneOf(errors, "refine.stage", s.Refine.Stage, stages);
@@ -75,11 +75,25 @@ public static class SyncValidator
         }
     }
 
-    private static void Url(List<string> errors, string path, string url)
+    /// <summary>
+    /// Leer oder eine Adresse, die <see cref="ServerUrlCheck.Check"/> durchlässt; unverschlüsselt über das Internet
+    /// (dort nur ein Hinweis) ist hier ein Fehler — eine fremde Datei soll keinen Key im Klartext verschicken.
+    /// </summary>
+    private static void Url(List<string> errors, string path, string url, string providerId)
     {
-        if (url != "" && !(Uri.TryCreate(url, UriKind.Absolute, out var u) && u.Scheme is "http" or "https"))
+        if (url == "")
+        {
+            return;
+        }
+        if (!(Uri.TryCreate(url, UriKind.Absolute, out var u) && u.Scheme is "http" or "https"))
         {
             errors.Add($"{path}: leer oder http(s)-URL");
+        }
+        else if (ProviderCatalog.Find(providerId) is { } provider &&
+                 ServerUrlCheck.Check(url, provider) is { } problem &&
+                 (problem.Severity == ServerUrlCheck.Severity.Error || problem.Message == ServerUrlCheck.MsgPublicHttp))
+        {
+            errors.Add($"{path}: {problem.Message}");
         }
     }
 

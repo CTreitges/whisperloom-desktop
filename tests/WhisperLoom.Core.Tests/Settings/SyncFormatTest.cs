@@ -10,8 +10,9 @@ internal static class SyncFixtures
 
     public static JsonObject Tree(string json) => JsonNode.Parse(json)!.AsObject();
 
-    public static ImportPreview Import(string json, WhisperLoomSettings? current = null, PolicySettings? policy = null) =>
-        SyncImport.Preview(current ?? new WhisperLoomSettings(), SyncDocument.Parse(json), policy ?? PolicySettings.None);
+    public static ImportPreview Import(string json, WhisperLoomSettings? current = null, PolicySettings? policy = null,
+        IReadOnlyCollection<string>? storedKeys = null) =>
+        SyncImport.Preview(current ?? new WhisperLoomSettings(), SyncDocument.Parse(json), policy ?? PolicySettings.None, storedKeys ?? []);
 }
 
 /// <summary>Format v1: Roundtrip der Fixture, Erhalt unbekannter Felder, fremder Abschnitt, Export ohne Keys.</summary>
@@ -27,7 +28,9 @@ public class SyncFormatTest
         Assert.True(preview.CanApply, string.Join("; ", preview.Errors));
         Assert.Empty(preview.Warnings);
         var exported = SyncExport.ToJson(preview.Settings!);
-        Assert.True(JsonNode.DeepEquals(SyncFixtures.Tree(json), SyncFixtures.Tree(exported)), exported);
+        var expected = SyncFixtures.Tree(json);
+        expected["stt"]!.AsObject().Remove("vocabularyFile"); // gerätebezogen: weder Import noch Export
+        Assert.True(JsonNode.DeepEquals(expected, SyncFixtures.Tree(exported)), exported);
     }
 
     [Fact]

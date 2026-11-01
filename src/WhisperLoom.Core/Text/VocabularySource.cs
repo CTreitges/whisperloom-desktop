@@ -20,12 +20,19 @@ public static class VocabularySource
     public static VocabularyPrompt Prompt(SttSettings stt) =>
         Vocabulary.Prompt(Vocabulary.Entries(stt.Vocabulary), FileTerms(stt.VocabularyFile) ?? []);
 
-    /// <summary>Begriffe der Datei; leer ohne Datei (leerer Pfad), null wenn sie nicht lesbar ist.</summary>
+    /// <summary>
+    /// Begriffe der Datei; leer ohne Datei (leerer Pfad), null wenn sie nicht lesbar ist. Nur .md/.markdown/.txt:
+    /// Die Begriffe gehen an den Erkenner, ein anderer Pfad (SSH-Key, .env) darf nie dorthin.
+    /// </summary>
     public static IReadOnlyList<string>? FileTerms(string path)
     {
         if (string.IsNullOrWhiteSpace(path))
         {
             return [];
+        }
+        if (!IsTextFile(Path.GetFileName(path)))
+        {
+            return null;
         }
         try
         {

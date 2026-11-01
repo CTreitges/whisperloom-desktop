@@ -1,3 +1,5 @@
+using System.Text.Json;
+using WhisperLoom.App.Services;
 using WhisperLoom.Core.Contracts;
 using WhisperLoom.Core.Settings;
 
@@ -9,6 +11,23 @@ namespace WhisperLoom.App.Cli;
 /// </summary>
 internal static class KeyCommand
 {
+    /// <summary>Mit der Richtlinie aus <paramref name="dataDir"/>; eine kaputte policy.json lehnt den Befehl ab (wie <c>update</c>).</summary>
+    public static Task<int> RunAsync(string action, string name, Func<string> readValue, ISecretStore store, string dataDir,
+        TextWriter output, TextWriter errors, CancellationToken ct)
+    {
+        PolicySettings policy;
+        try
+        {
+            policy = new PolicyStore(dataDir).Load();
+        }
+        catch (JsonException)
+        {
+            errors.WriteLine("error policy.json ist unlesbar; key set|delete abgebrochen (Datei reparieren oder neu provisionieren).");
+            return Task.FromResult(1);
+        }
+        return RunAsync(action, name, readValue, store, policy, output, errors, ct);
+    }
+
     /// <returns>Exit-Code: 0 ok, 1 Fehler oder gesperrt.</returns>
     public static async Task<int> RunAsync(string action, string name, Func<string> readValue, ISecretStore store, PolicySettings policy,
         TextWriter output, TextWriter errors, CancellationToken ct)

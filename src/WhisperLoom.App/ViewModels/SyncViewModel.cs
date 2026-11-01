@@ -2,7 +2,9 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using WhisperLoom.App.Localization;
+using WhisperLoom.App.Cli;
 using WhisperLoom.App.Services;
+using WhisperLoom.Core.Contracts;
 using WhisperLoom.Core.Settings;
 
 namespace WhisperLoom.App.ViewModels;
@@ -16,9 +18,10 @@ public sealed record ChangeRow(string Path, string Old, string New, bool Locked)
 /// <summary>
 /// Abschnitt Import/Export der Einstellungen. Import: Datei lesen → Vorschau als Diff-Liste → Übernehmen.
 /// Die Dateiauswahl macht das Fenster; hier kommt nur der Text an. Keys und Richtlinie übernimmt nur
-/// <c>WhisperLoom provision</c>, ein Export enthält beides nie.
+/// <c>WhisperLoom provision</c>, ein Export enthält beides nie. Lenkt der Import einen gespeicherten Key an ein neues Ziel,
+/// steht das als Zeile in der Vorschau und der Key wird beim Übernehmen gelöscht.
 /// </summary>
-public sealed partial class SyncViewModel(DictationController controller) : ObservableObject
+public sealed partial class SyncViewModel(DictationController controller, ISecretStore secrets) : ObservableObject
 {
     public const string SuggestedFileName = "whisperloom-settings.json";
 
@@ -40,7 +43,7 @@ public sealed partial class SyncViewModel(DictationController controller) : Obse
     public void ExportDone(string fileName) => Status = Loc.Instance.Format("Sync_Exported", fileName);
 
     /// <summary>Liest den Dateiinhalt und zeigt die Vorschau; übernommen wird erst mit <see cref="Apply"/>.</summary>
-    public void Preview(string json)
+    public async Task Preview(string json)
     {
         Changes.Clear();
         _preview = null;
@@ -48,7 +51,8 @@ public sealed partial class SyncViewModel(DictationController controller) : Obse
         ImportPreview preview;
         try
         {
-            preview = SyncImport.Preview(controller.Settings, SyncDocument.Parse(json), controller.Policy);
+            var stored = await SyncCommands.StoredKeysAsync(secrets, CancellationToken.None);
+            preview = SyncImport.Preview(controller.Settings, SyncDocument.Parse(json), controller.Policy, stored);
         }
         catch (Exception e) when (e is SyncFormatException or NotSupportedException)
         {
@@ -58,6 +62,10 @@ public sealed partial class SyncViewModel(DictationController controller) : Obse
         foreach (var c in preview.Changes)
         {
             Changes.Add(new ChangeRow(c.Path, c.Old ?? "–", c.New ?? "–", c.Locked));
+        }
+        foreach (var d in preview.DroppedKeys)
+        {
+            Changes.Add(new ChangeRow("secrets." + d.Name, Loc.Instance["Sync_KeyStored"], Loc.Instance.Format("Sync_KeyDeleted", d.Target), false));
         }
         var lines = new List<string>();
         if (preview.Errors.Count > 0)
@@ -70,6 +78,7 @@ public sealed partial class SyncViewModel(DictationController controller) : Obse
             lines.Add(Loc.Instance.Format("Sync_Preview", preview.Changes.Count(c => !c.Locked)));
         }
         lines.AddRange(preview.Warnings.Select(_ => Loc.Instance["Sync_SecretsIgnored"]));
+        lines.AddRange(preview.DroppedKeys.Select(d => Loc.Instance.Format("Sync_KeyDropWarning", d.Name, d.Target)));
         Status = string.Join("\n", lines);
         _preview = preview;
         CanApply = preview.CanApply && preview.Changes.Any(c => !c.Locked);
@@ -84,6 +93,8 @@ public sealed partial class SyncViewModel(DictationController controller) : Obse
         }
         try
         {
+            // Erst die Keys: scheitert das Löschen, bleiben die Einstellungen wie vorher.
+            await SyncCommands.DropKeysAsync(secrets, _preview, CancellationToken.None);
             await controller.ApplySettingsAsync(settings);
             Status = Loc.Instance["Sync_Applied"];
         }

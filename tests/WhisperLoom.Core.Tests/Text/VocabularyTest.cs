@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.RegularExpressions;
+using WhisperLoom.Core.Contracts.Settings;
 using WhisperLoom.Core.Text;
 
 namespace WhisperLoom.Core.Tests.Text;
@@ -176,6 +177,28 @@ public class VocabularyTest
         finally
         {
             File.Delete(path);
+        }
+    }
+
+    [Theory]
+    [InlineData("id_ed25519")]
+    [InlineData("secrets.json")]
+    [InlineData(".env")]
+    [InlineData("notiz.md.pem")]
+    public void DateiOhneTextEndungWirdNichtGelesen(string name)
+    {
+        // Security-Review K1: ein importierter Pfad durfte jede Datei als Vokabular an den Erkenner schicken.
+        var dir = Directory.CreateTempSubdirectory("wl-vocab-");
+        try
+        {
+            var path = Path.Combine(dir.FullName, name);
+            File.WriteAllText(path, "DECOY-GEHEIM-4711\nzweite-zeile-decoy\n");
+            Assert.Null(VocabularySource.FileTerms(path));
+            Assert.Equal("", VocabularySource.Prompt(new SttSettings { VocabularyFile = path }).Text);
+        }
+        finally
+        {
+            dir.Delete(recursive: true);
         }
     }
 

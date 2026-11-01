@@ -5,6 +5,7 @@ using Avalonia.Threading;
 using WhisperLoom.App.Localization;
 using WhisperLoom.App.ViewModels;
 using WhisperLoom.App.Views;
+using WhisperLoom.Core.Contracts;
 using WhisperLoom.Core.Contracts.Settings;
 using WhisperLoom.Core.Settings;
 
@@ -100,7 +101,7 @@ public class SyncUiTest
         var applied = 0;
         vm.Sync.Applied += () => applied++;
 
-        vm.Sync.Preview(File.ReadAllText(SyncCommandsTest.Fixture("settings-v1.json")));
+        await vm.Sync.Preview(File.ReadAllText(SyncCommandsTest.Fixture("settings-v1.json")));
         Dispatcher.UIThread.RunJobs();
 
         Assert.True(vm.Sync.CanApply);
@@ -120,23 +121,74 @@ public class SyncUiTest
     }
 
     [AvaloniaFact]
-    public void Invalid_file_shows_a_message_and_cannot_be_applied()
+    public async Task Invalid_file_shows_a_message_and_cannot_be_applied()
     {
         Loc.Instance.SetLanguage("en");
         using var f = new ControllerFixture();
-        var sync = new SyncViewModel(f.Controller);
+        var sync = new SyncViewModel(f.Controller, new MemorySecretStore());
 
-        sync.Preview("""{"history":{"size":7}}""");
+        await sync.Preview("""{"history":{"size":7}}""");
         Assert.False(sync.CanApply);
         Assert.Contains("history.size", sync.Status, StringComparison.Ordinal);
 
-        sync.Preview("kein json");
+        await sync.Preview("kein json");
         Assert.False(sync.CanApply);
         Assert.StartsWith("Invalid file:", sync.Status, StringComparison.Ordinal);
 
-        sync.Preview(File.ReadAllText(SyncCommandsTest.Fixture("settings-v1-provisioning.json")));
+        await sync.Preview(File.ReadAllText(SyncCommandsTest.Fixture("settings-v1-provisioning.json")));
         Assert.True(sync.CanApply);
         Assert.Contains("only via \"WhisperLoom provision\"", sync.Status, StringComparison.Ordinal);
         Assert.DoesNotContain(sync.Changes, r => r.Path.StartsWith("secrets", StringComparison.Ordinal));
+    }
+
+    [AvaloniaFact]
+    public async Task Import_that_moves_a_stored_key_to_another_host_shows_it_and_deletes_the_key()
+    {
+        Loc.Instance.SetLanguage("de");
+        using var f = new ControllerFixture();
+        f.Controller.Settings.Stt.ProviderId = "groq";
+        var secrets = new MemorySecretStore();
+        await secrets.SetAsync(SecretNames.Stt, "test-key-not-real-7", CancellationToken.None);
+        var sync = new SyncViewModel(f.Controller, secrets);
+
+        await sync.Preview("""{"stt":{"providerId":"groq","baseUrl":"https://angreifer.example/openai/v1"}}""");
+
+        Assert.True(sync.CanApply);
+        Assert.Contains(sync.Changes, r => r.Path == "secrets.stt" && r.Text.Contains("https://angreifer.example", StringComparison.Ordinal));
+        Assert.Contains("„stt“", sync.Status, StringComparison.Ordinal);
+        await sync.ApplyCommand.ExecuteAsync(null);
+
+        Assert.Equal("https://angreifer.example/openai/v1", f.Controller.Settings.Stt.BaseUrl);
+        Assert.Null(await secrets.GetAsync(SecretNames.Stt, CancellationToken.None));
+    }
+
+    [AvaloniaFact]
+    public async Task Saving_a_foreign_base_url_under_allowed_providers_is_rejected()
+    {
+        Loc.Instance.SetLanguage("de");
+        using var f = new ControllerFixture();
+        f.Controller.Settings.Stt.ProviderId = "openai";
+        f.Controller.Policy = new PolicySettings { AllowedProviders = ["openai"] };
+        var vm = new SettingsViewModel(f.Controller, new MemorySecretStore(), new FakeAccessChecker());
+
+        vm.SttBaseUrl = "https://privat-server.example/v1";
+        await vm.Save();
+
+        Assert.Equal("", f.Controller.Settings.Stt.BaseUrl);
+        Assert.Contains("stt.baseUrl", vm.SaveStatus, StringComparison.Ordinal);
+    }
+
+    [AvaloniaFact]
+    public async Task Saving_keeps_the_own_vocabulary_file()
+    {
+        using var f = new ControllerFixture();
+        f.Controller.Policy = new PolicySettings { AllowedProviders = ["openai"] };
+        f.Controller.Settings.Stt.ProviderId = "openai";
+        var vm = new SettingsViewModel(f.Controller, new MemorySecretStore(), new FakeAccessChecker());
+
+        vm.VocabularyFile = "C:/daten/namen.md";
+        await vm.Save();
+
+        Assert.Equal("C:/daten/namen.md", f.Controller.Settings.Stt.VocabularyFile);
     }
 }

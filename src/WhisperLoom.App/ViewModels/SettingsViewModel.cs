@@ -37,7 +37,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         _desktop = SettingsStore.Desktop(_s);
         _policy = controller.Policy;
         Editable = new LockMap(_policy);
-        Sync = new SyncViewModel(controller);
+        Sync = new SyncViewModel(controller, secrets);
         SecretStoreKind = secrets.Kind;
         var loc = Loc.Instance;
 
@@ -188,7 +188,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         if (_policy.IsActive)
         {
             // Wie ein Import: gesperrte Felder bleiben, fester Verlauf gilt, nicht freigegebene Anbieter werden abgelehnt.
-            var preview = SyncImport.Preview(_controller.Settings, SyncDocument.Parse(SettingsJson.Serialize(result)), _policy);
+            var preview = SyncImport.ApplyPolicy(_controller.Settings, result, _policy);
             if (!preview.CanApply)
             {
                 SaveStatus = string.Join(Environment.NewLine, preview.Errors);
