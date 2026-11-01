@@ -20,6 +20,13 @@ public sealed record ProvisioningPlan(
 {
     public bool CanApply => Settings is not null && Errors.Count == 0;
 
+    /// <summary>
+    /// Keys eigener Anbieter (<c>custom:&lt;id&gt;</c>), die der Aufrufer vor dem Speichern löscht: Die Datei ändert den Host
+    /// des Eintrags oder entfernt ihn und liefert keinen neuen Key dafür (W2-LOCAL Prüfrunde 2 R-K1-1). Nicht gespeicherte
+    /// Namen zu löschen schadet nicht.
+    /// </summary>
+    public IReadOnlyList<KeyDrop> DroppedKeys { get; init; } = [];
+
     /// <summary>Kurzbericht ohne Werte: geänderte Pfade, gesetzte Zugänge, Sperren.</summary>
     public IEnumerable<string> Summary()
     {
@@ -30,6 +37,10 @@ public sealed record ProvisioningPlan(
         foreach (var name in Secrets.Keys.Order(StringComparer.Ordinal))
         {
             yield return $"key {name}";
+        }
+        foreach (var drop in DroppedKeys)
+        {
+            yield return $"key-drop {drop.Name}";
         }
         foreach (var path in Policy.Locked)
         {
@@ -62,7 +73,9 @@ public sealed record ProvisioningPlan(
 /// </summary>
 public static class Provisioning
 {
-    public static ProvisioningPlan Plan(WhisperLoomSettings current, SyncDocument file)
+    /// <param name="storedKeys">Gespeicherte Key-Namen (für genaue Warnungen); null = alle Einträge vorher und nachher als
+    /// möglicherweise gespeichert ansehen (z. B. Server-Konfiguration ohne Zugriff auf die Ablage).</param>
+    public static ProvisioningPlan Plan(WhisperLoomSettings current, SyncDocument file, IReadOnlyCollection<string>? storedKeys = null)
     {
         var errors = new List<string>();
         var warnings = new List<string>();
@@ -112,7 +125,24 @@ public static class Provisioning
         {
             policy = policy with { Locked = [.. policy.Locked, .. secrets.Keys.Order(StringComparer.Ordinal).Select(n => "secrets." + n)] };
         }
-        return new ProvisioningPlan(errors.Count == 0 ? preview.Settings : null, secrets, policy, preview.Changes, errors, warnings);
+        var drops = preview.Settings is null ? [] : ProviderKeyDrops(current, preview.Settings, file, secrets, storedKeys);
+        warnings.AddRange(drops.Select(d => d.EntryRemoved
+            ? $"secrets.{d.Name}: Eintrag entfernt, gespeicherter Key wird gelöscht"
+            : $"secrets.{d.Name}: Adresse geändert ({d.Target}), gespeicherter Key wird gelöscht"));
+        return new ProvisioningPlan(errors.Count == 0 ? preview.Settings : null, secrets, policy, preview.Changes, errors, warnings) { DroppedKeys = drops };
+    }
+
+    /// <summary>
+    /// Wie beim Import (<see cref="KeyRoutes.Dropped"/>), aber nur für Keys eigener Anbieter: Host-Wechsel oder entfernter
+    /// Eintrag → Key löschen, außer die Datei liefert ihn selbst (<c>secrets."custom:&lt;id&gt;"</c>).
+    /// </summary>
+    private static List<KeyDrop> ProviderKeyDrops(
+        WhisperLoomSettings current, WhisperLoomSettings after, SyncDocument file, IReadOnlyDictionary<string, string> secrets, IReadOnlyCollection<string>? storedKeys)
+    {
+        var candidates = storedKeys?.Where(SecretNames.IsProviderKey).ToList()
+            ?? [.. current.Providers.Custom.Select(c => ProvidersSettings.CustomPrefix + c.Id).Concat(SyncImport.ProviderKeyNames(file))
+                .Where(SecretNames.IsProviderKey).Distinct(StringComparer.Ordinal)];
+        return [.. KeyRoutes.Dropped(current, after, candidates).Where(d => SecretNames.IsProviderKey(d.Name) && !secrets.ContainsKey(d.Name))];
     }
 
     private static Dictionary<string, string> MapSecrets(WhisperLoomSettings s, IReadOnlyDictionary<string, string> secrets, List<string> errors, List<string> warnings)

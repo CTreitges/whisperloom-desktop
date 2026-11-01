@@ -70,8 +70,11 @@ public sealed partial class CustomProviderRow : ObservableObject
             var url = value.Trim();
             var error = UrlError(url);
             Error = error ?? "";
-            if (error is not null) return;
-            Hint = ServerUrlCheck.Check(url, CustomProviderSource.ToProvider(Entry)) is { Severity: ServerUrlCheck.Severity.Warning } w ? w.Message : "";
+            if (error is not null || !Uri.TryCreate(url, UriKind.Absolute, out var u)) return;
+            var oldHost = Uri.TryCreate(Entry.BaseUrl, UriKind.Absolute, out var old) ? old.Authority : "";
+            Hint = Key.IsSet && oldHost.Length > 0 && !string.Equals(oldHost, u.Authority, StringComparison.OrdinalIgnoreCase)
+                ? Loc.Instance.Format("Provider_KeyNewHost", u.Authority)
+                : ServerUrlCheck.Check(url, CustomProviderSource.ToProvider(Entry)) is { Severity: ServerUrlCheck.Severity.Warning } w ? w.Message : "";
             Entry.BaseUrl = url;
             IsValid = true;
             OnPropertyChanged();

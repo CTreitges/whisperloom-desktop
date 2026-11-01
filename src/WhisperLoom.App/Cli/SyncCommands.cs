@@ -38,7 +38,9 @@ internal sealed class SyncCommands(string dataDir, ISecretStore secrets, TextWri
 
     private async Task<int> ProvisionAsync(string path, CancellationToken ct)
     {
-        var plan = Provisioning.Plan(_settings.Load(), SyncDocument.Parse(File.ReadAllText(path)));
+        var current = _settings.Load();
+        var file = SyncDocument.Parse(File.ReadAllText(path));
+        var plan = Provisioning.Plan(current, file, await StoredKeysAsync(secrets, ct, current, SyncImport.ProviderKeyNames(file)));
         Report(plan.Warnings, plan.Errors);
         if (!plan.CanApply)
         {
@@ -48,6 +50,11 @@ internal sealed class SyncCommands(string dataDir, ISecretStore secrets, TextWri
         foreach (var (name, key) in plan.Secrets)
         {
             await secrets.SetAsync(name, key, ct);
+        }
+        // W2-LOCAL R-K1-1: Keys eigener Anbieter mit neuer Adresse bzw. ohne Eintrag gehen nirgends mehr hin.
+        foreach (var drop in plan.DroppedKeys)
+        {
+            await secrets.DeleteAsync(drop.Name, ct);
         }
         _settings.Save(plan.Settings!);
         _policy.Save(plan.Policy);
@@ -127,7 +134,9 @@ internal sealed class SyncCommands(string dataDir, ISecretStore secrets, TextWri
         }
     }
 
-    private static string DropWarning(KeyDrop d) => $"Key {d.Name} wird gelöscht: der Import würde ihn an {d.Target} schicken; nur neu eingeben, wenn du {d.Target} vertraust";
+    private static string DropWarning(KeyDrop d) => d.EntryRemoved
+        ? $"Key von {d.Name} wird gelöscht (Eintrag entfernt)"
+        : $"Key {d.Name} wird gelöscht: der Import würde ihn an {d.Target} schicken; nur neu eingeben, wenn du {d.Target} vertraust";
 
     private void Report(IReadOnlyList<string> warnings, IReadOnlyList<string> errorList)
     {

@@ -16,7 +16,7 @@ internal static class KeyRoutes
     private const string Marker = "\u0001key:";
 
     /// <summary>Ziel eines Drops, wenn es den eigenen Anbieter danach nicht mehr gibt (Prüfrunde 1 K-1).</summary>
-    public const string RemovedEntry = "(Eintrag entfernt)";
+    public const string RemovedEntry = KeyDrop.EntryRemovedTarget;
 
     /// <summary>
     /// Gespeicherte Keys, die <paramref name="after"/> an ein Ziel schickt, das sie in <paramref name="before"/> nicht

@@ -33,7 +33,14 @@ public sealed record ImportPreview(
 
 /// <summary>Ein gespeicherter Key (<see cref="Contracts.SecretNames"/>), den ein Import an <paramref name="Target"/> lenken würde.</summary>
 /// <param name="Target">Neues Ziel als Origin (<c>https://host</c>) bzw. <c>Proxy http://host:port</c>.</param>
-public sealed record KeyDrop(string Name, string Target);
+public sealed record KeyDrop(string Name, string Target)
+{
+    /// <summary>Ziel, wenn es den eigenen Anbieter danach nicht mehr gibt (W2-LOCAL Prüfrunde 1 K-1).</summary>
+    public const string EntryRemovedTarget = "(Eintrag entfernt)";
+
+    /// <summary>Der Key gehörte zu einem eigenen Anbieter, den es danach nicht mehr gibt.</summary>
+    public bool EntryRemoved => Target == EntryRemovedTarget;
+}
 
 /// <summary>
 /// Import einer Datei im Format v1 in die aktuellen Einstellungen: Felder der Datei ersetzen die aktuellen, fehlende

@@ -80,7 +80,9 @@ public sealed partial class SyncViewModel(DictationController controller, ISecre
             lines.Add(Loc.Instance.Format("Sync_Preview", preview.Changes.Count(c => !c.Locked)));
         }
         lines.AddRange(preview.Warnings.Select(_ => Loc.Instance["Sync_SecretsIgnored"]));
-        lines.AddRange(preview.DroppedKeys.Select(d => Loc.Instance.Format("Sync_KeyDropWarning", d.Name, d.Target)));
+        lines.AddRange(preview.DroppedKeys.Select(d => d.EntryRemoved
+            ? Loc.Instance.Format("Sync_KeyDropRemoved", d.Name)
+            : Loc.Instance.Format("Sync_KeyDropWarning", d.Name, d.Target)));
         lines.AddRange(preview.EnterDisabled.Select(p => Loc.Instance.Format("Sync_EnterDisabled", p)));
         lines.AddRange(preview.DictationTargets.Select(t => Loc.Instance.Format("Sync_DictationTarget", t)));
         Status = string.Join("\n", lines);

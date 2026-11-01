@@ -98,7 +98,7 @@ Keys der eigenen Anbieter liegen wie alle Keys im Secret-Store, aber **beim Eint
 Eintrags, nie `*.baseUrl` oder den Key des Zugangs, und erbt keinen Key (W2-LOCAL). Lokale Server (`local:<name>`)
 bekommen nie einen Key. Import: Ändert die Datei die Adresse eines Eintrags auf einen anderen Host, wird sein
 gespeicherter Key wie bei K1 gelöscht (Warnung in der Vorschau). Provisioning: `secrets."custom:<id>"` speichert den
-Key des Eintrags. `allowedProviders`: `"custom"` gibt alle eigenen Anbieter frei, `"local"` alle lokalen Server,
+Key des Eintrags; ändert eine Provisioning-Datei (bzw. die Server-Konfiguration) die Adresse eines Eintrags oder entfernt ihn, ohne `secrets."custom:<id>"` mitzuliefern, wird der gespeicherte Key gelöscht (Warnung). Entfernt ein Import einen Eintrag, wird sein Key ebenfalls gelöscht. `allowedProviders`: `"custom"` gibt alle eigenen Anbieter frei, `"local"` alle lokalen Server,
 einzelne Einträge auch direkt (`"custom:<id>"`, `"local:<name>"`).
 
 ### Firmen-Anbindung (`management`, W2)
