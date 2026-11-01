@@ -17,6 +17,9 @@ public sealed record ConfigPlan(WhisperLoomSettings? Settings, PolicySettings Po
 
     public IReadOnlyList<KeyDrop> DroppedKeys { get; init; } = [];
 
+    /// <summary>Verteilt-Modus: Key-Name → Ziel, für das der Firmen-Key bestimmt ist (Zugang bzw. eigener Anbieter).</summary>
+    public IReadOnlyDictionary<string, KeyTarget> KeyTargets { get; init; } = new Dictionary<string, KeyTarget>();
+
     public override string ToString() => $"ConfigPlan(keyMode={KeyMode}, keys={CompanyKeys.Count}, drops={DroppedKeys.Count}, errors={Errors.Count})";
 }
 
@@ -27,8 +30,10 @@ public sealed record ConfigPlan(WhisperLoomSettings? Settings, PolicySettings Po
 /// <item>Proxy-Modus: Zugänge, die der Server als <c>custom</c> mit der Proxy-Adresse setzt, werden zum Eintrag
 /// <see cref="CompanyProvider.EntryId"/> (Key = Geräte-Token, nur an diesen Eintrag); <c>secrets.stt</c> und
 /// <c>secrets.llm</c> sind Fest (kein Key-Feld).</item>
-/// <item>Verteilt-Modus: jeder verteilte Key ist Fest (<c>secrets.&lt;zugang&gt;</c>); Zugänge auf den Firmen-Proxy fallen
-/// zurück auf <c>custom</c> mit Proxy-Adresse (<see cref="Detach"/>).</item>
+/// <item>Verteilt-Modus: jeder verteilte Key ist Fest (<c>secrets.&lt;zugang&gt;</c>) und an sein Ziel gebunden: Anbieter und
+/// Adresse des Zugangs werden Fest, das Ziel steht in <see cref="ConfigPlan.KeyTargets"/> (Prüfung im
+/// <see cref="CompanySecretStore"/>). Zugänge auf den Firmen-Proxy fallen zurück auf <c>custom</c> mit Proxy-Adresse
+/// (<see cref="Detach"/>).</item>
 /// <item>Gerätezustand bleibt (<c>management.serverUrl</c>, <c>deviceId</c>); Zustand <c>approved</c>, Firmenname und
 /// Key-Modus kommen vom Server.</item>
 /// </list>
@@ -101,13 +106,45 @@ public static class ConfigApply
         }
 
         var keys = keyMode == "distribute" ? plan.Secrets : new Dictionary<string, string>();
-        IEnumerable<string> keyPaths = keyMode == "proxy" ? [SecretNames.Stt, SecretNames.Llm] : keys.Keys;
+        var targets = Targets(settings, keys);
+        IEnumerable<string> locked = keyMode == "proxy"
+            ? new[] { SecretNames.Stt, SecretNames.Llm }.Select(n => "secrets." + n)
+            : keys.Keys.Where(SecretNames.All.Contains).SelectMany(n => new[] { "secrets." + n, Section(n) + ".providerId", Section(n) + ".baseUrl" });
         var policy = plan.Policy with
         {
-            Locked = [.. plan.Policy.Locked.Concat(keyPaths.Select(n => "secrets." + n)).Distinct(StringComparer.OrdinalIgnoreCase)],
+            Locked = [.. plan.Policy.Locked.Concat(locked).Distinct(StringComparer.OrdinalIgnoreCase)],
             AllowedProviders = allowed,
         };
-        return new ConfigPlan(settings, policy, keyMode, keys, [], warnings) { DroppedKeys = plan.DroppedKeys };
+        return new ConfigPlan(settings, policy, keyMode, keys, [], warnings) { DroppedKeys = plan.DroppedKeys, KeyTargets = targets };
+    }
+
+    /// <summary>Abschnitt der Einstellungen zu einem Zugangsnamen (<c>stt_fallback</c> → <c>sttFallback</c>).</summary>
+    public static string Section(string access) => access switch
+    {
+        SecretNames.Stt => "stt",
+        SecretNames.SttFallback => "sttFallback",
+        SecretNames.Llm => "llm",
+        _ => "llmFallback",
+    };
+
+    /// <summary>Ziel je verteiltem Key: Zugang → (Anbieter, Adresse); eigener Anbieter → (ID, Adresse des Eintrags).</summary>
+    private static Dictionary<string, KeyTarget> Targets(WhisperLoomSettings s, IReadOnlyDictionary<string, string> keys)
+    {
+        var targets = new Dictionary<string, KeyTarget>(StringComparer.Ordinal);
+        foreach (var name in keys.Keys)
+        {
+            if (SecretNames.All.Contains(name))
+            {
+                var (providerId, baseUrl, _) = Access(s, Section(name));
+                targets[name] = new KeyTarget(providerId, baseUrl);
+            }
+            else if (SecretNames.IsProviderKey(name)
+                && s.Providers.Custom.FirstOrDefault(c => ProvidersSettings.CustomPrefix + c.Id == name) is { } entry)
+            {
+                targets[name] = new KeyTarget(name, entry.BaseUrl ?? "");
+            }
+        }
+        return targets;
     }
 
     /// <summary>Zugänge <c>custom</c> + Proxy-Adresse → Eintrag „Firma“ (Adresse kommt dann aus dem Eintrag).</summary>
@@ -141,7 +178,7 @@ public static class ConfigApply
         }
     }
 
-    private static (string ProviderId, string BaseUrl, Action<string, string> Set) Access(WhisperLoomSettings s, string section) => section switch
+    internal static (string ProviderId, string BaseUrl, Action<string, string> Set) Access(WhisperLoomSettings s, string section) => section switch
     {
         "stt" => (s.Stt.ProviderId, s.Stt.BaseUrl, (id, url) => { s.Stt.ProviderId = id; s.Stt.BaseUrl = url; }),
         "sttFallback" => (s.SttFallback.ProviderId, s.SttFallback.BaseUrl, (id, url) => { s.SttFallback.ProviderId = id; s.SttFallback.BaseUrl = url; }),

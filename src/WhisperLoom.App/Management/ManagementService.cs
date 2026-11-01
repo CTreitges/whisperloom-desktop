@@ -298,11 +298,16 @@ public sealed class ManagementService(IManagedTarget target, ISecretStore user, 
             return SyncOutcome.Failed;
         }
         // Erst die Keys: scheitert die Ablage, bleiben Werte und Richtlinie wie vorher.
-        foreach (var name in SecretNames.All)
+        foreach (var name in CompanyKeyNames().Concat(plan.CompanyKeys.Keys).Distinct(StringComparer.Ordinal))
         {
             if (plan.CompanyKeys.TryGetValue(name, out var key))
             {
                 await company.SetAsync(name, key, ct).ConfigureAwait(false);
+                if (SecretNames.IsProviderKey(name))
+                {
+                    // Eigener Key gleichen Namens ginge sonst (nach Sperre/Austritt) an die Adresse der Firma.
+                    await user.DeleteAsync(name, ct).ConfigureAwait(false);
+                }
             }
             else
             {
@@ -314,7 +319,7 @@ public sealed class ManagementService(IManagedTarget target, ISecretStore user, 
         {
             await user.DeleteAsync(drop.Name, ct).ConfigureAwait(false);
         }
-        cache.Save(response.ETag, response.Body);
+        cache.Save(response.ETag, response.Body, plan.KeyTargets);
         await target.SaveAsync(plan.Settings!, plan.Policy).ConfigureAwait(false);
         LastError = null;
         log?.Event("management.config", ("status", "applied"), ("keyMode", plan.KeyMode), ("keys", plan.CompanyKeys.Count));
@@ -363,9 +368,15 @@ public sealed class ManagementService(IManagedTarget target, ISecretStore user, 
         await target.SaveAsync(settings, target.Policy).ConfigureAwait(false);
     }
 
+    /// <summary>Ziele der verteilten Keys aus dem letzten Abgleich (Prüfung im <see cref="CompanySecretStore"/>).</summary>
+    public IReadOnlyDictionary<string, KeyTarget> KeyTargets => cache.KeyTargets;
+
+    /// <summary>Alle Namen, unter denen Firmen-Keys liegen können: die Zugänge und die eigenen Anbieter des letzten Abgleichs.</summary>
+    private IEnumerable<string> CompanyKeyNames() => SecretNames.All.Concat(cache.KeyTargets.Keys.Where(SecretNames.IsProviderKey));
+
     private async Task DeleteCompanyKeysAsync(CancellationToken ct)
     {
-        foreach (var name in SecretNames.All)
+        foreach (var name in CompanyKeyNames().ToList())
         {
             await company.DeleteAsync(name, ct).ConfigureAwait(false);
         }

@@ -160,6 +160,7 @@
   "Insert_clipboard": "Nur Zwischenablage",
   "Insert_paste": "Einfügen (Zwischenablage wird wiederhergestellt)",
   "Insert_type": "Direkt tippen",
+  "Key_AtCompany": "Läuft über deine Firma: Das Gerät meldet sich selbst beim Firmen-Server an, ein eigener Key ist nicht nötig.",
   "Key_AtEntry": "Der Key liegt beim Anbieter (Seite „Anbieter“) und geht nur an dessen Adresse.",
   "Key_Check": "Zugang prüfen",
   "Key_Delete": "Löschen",

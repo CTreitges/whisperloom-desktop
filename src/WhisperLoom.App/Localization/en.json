@@ -160,6 +160,7 @@
   "Insert_clipboard": "Clipboard only",
   "Insert_paste": "Paste (clipboard is restored)",
   "Insert_type": "Type directly",
+  "Key_AtCompany": "Runs through your company: this device signs in to the company server itself, no key of your own is needed.",
   "Key_AtEntry": "The key belongs to the provider (page “Providers”) and is only sent to its address.",
   "Key_Check": "Check access",
   "Key_Delete": "Delete",

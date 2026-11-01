@@ -147,6 +147,11 @@ internal static class CommandLine
         {
             return new CliRequest(null, [], options, json);
         }
+        if (positional.Any(p => p.StartsWith(Management.JoinLink.Scheme + ":", StringComparison.OrdinalIgnoreCase)) && args.Count != 1)
+        {
+            // Härtung: Ein Link kommt vom URL-Schema immer allein ("<exe>" "%1"); weitere Schalter (z. B. --data-dir) nie annehmen.
+            throw new UsageException("Einladungslink ohne weitere Argumente aufrufen.");
+        }
         if (positional is [var link] && link.StartsWith(Management.JoinLink.Scheme + ":", StringComparison.OrdinalIgnoreCase))
         {
             // Einladungslink (URL-Schema): öffnet den Assistenten mit Server und Code vorbelegt.
