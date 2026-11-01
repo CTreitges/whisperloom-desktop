@@ -116,6 +116,8 @@ def schluessel_speichern(request: Request, csrf: str = Form(""), name: str = For
     ziel = eigener_name.strip().lower() if name == "eigen" else name
     einst = request.app.state.einst
     # SSRF (W2-SRV2): interne Ziele nur mit Freigabe der Instanz (WL_UPSTREAM_ALLOW); der Proxy prüft je Anfrage erneut.
+    if basis_url.strip() and ssrf.basis_fehler(basis_url.strip()):  # W2-SFIX: vor der Netzprüfung, eigener Hinweis
+        return zurueck("/schluessel", hinweis="basis_url")
     if basis_url.strip() and not ssrf.beim_speichern_ok(basis_url.strip(), einst.upstream_erlaubt, einst.aufloeser):
         return zurueck("/schluessel", hinweis="ziel_verboten")
     try:

@@ -91,7 +91,7 @@ Für Tests (aus `server/`): `.venv/Scripts/python.exe -m pip install -r requirem
 | `WL_CONFIG_FILE` | – | YAML- oder JSON-Datei im Datei-Modus |
 | `WL_MASTER_KEY` / `WL_MASTER_KEY_FILE` | – | Hauptschlüssel (64 Hex-Zeichen) direkt bzw. als Datei |
 | `WL_MIN_APP_VERSION` | – | Ältere Apps erhalten beim Verbinden `426 client_outdated` |
-| `WL_UPSTREAM_ALLOW` | – | Interne Netze, die Anbieter-Adressen des Proxys erreichen dürfen, z. B. `10.20.0.0/16` oder `127.0.0.1/32` (siehe „SSRF-Schutz“) |
+| `WL_UPSTREAM_ALLOW` | – | Interne Ziele, die Anbieter-Adressen des Proxys erreichen dürfen, am besten mit Port, z. B. `10.20.3.4:8000`, `[fd00::5]:8000` oder `10.20.0.0/16:8000` (siehe „SSRF-Schutz“) |
 
 Nur von `WL_TRUSTED_PROXIES` wertet der Server `X-Forwarded-For` aus (Client-IP für Rate-Limits); uvicorn läuft ohne
 `--proxy-headers`.
@@ -224,9 +224,19 @@ als `http`/`https` (z. B. Unix-Sockets) und Zugangsdaten in der URL. Geprüft wi
 Anfrage: Der Server löst den Namen selbst auf, prüft alle Adressen und verbindet sich mit genau der geprüften
 (DNS-Rebinding); Weiterleitungen folgt er nicht.
 
-Self-Hosting im Firmennetz (eigener whisper-server, Ollama): das Netz bzw. die Adresse per `WL_UPSTREAM_ALLOW`
-freigeben, so eng wie möglich, z. B. `WL_UPSTREAM_ALLOW=10.20.3.4/32`. In einer Mehrmandanten-Instanz gilt die Freigabe
-für alle Firmen – dort nur Netze freigeben, die jede Firma erreichen darf.
+Die Basis-URL eines Zugangs darf nur Schema (`http`/`https`), Host, Port und Pfad enthalten. Fragment (`#`), Query
+(`?`), Benutzerinfo (`user@`), Backslash, Leer- und Steuerzeichen lehnt der Server ab – beim Speichern (Portal, Datei,
+CLI) und bei jeder Anfrage. Den Anbieter-Pfad (z. B. `/audio/transcriptions`) setzt er aus URL-Bausteinen an den Pfad
+der Basis-URL; ein Admin kann so keinen anderen Pfad auf dem Ziel wählen.
+
+Self-Hosting im Firmennetz (eigener whisper-server, Ollama): das Ziel per `WL_UPSTREAM_ALLOW` freigeben, so eng wie
+möglich und **immer mit Port**, z. B. `WL_UPSTREAM_ALLOW=10.20.3.4:8000`. Erlaubte Formen, kommagetrennt: `IP`, `CIDR`,
+`IP:Port`, `CIDR:Port`, `[IPv6]:Port` (IPv6 mit Port nur in eckigen Klammern). Eine Freigabe mit Port gilt nur für
+genau diesen Port; ohne Port in der Basis-URL zählt der Standard-Port des Schemas (`http` 80, `https` 443).
+**Warnung:** Eine Freigabe ohne Port (z. B. `10.20.3.4` oder `127.0.0.2/32`) gilt wie bisher für alle Ports dieser
+Adresse – damit erreicht ein Firmen-Admin per POST auch andere Dienste dort (sshd, Datenbanken, Dev-Server, Reverse
+Proxy). Cloud-Metadaten (`169.254.169.254` u. a.) bleiben immer gesperrt. In einer Mehrmandanten-Instanz gilt die
+Freigabe für alle Firmen – dort nur Ziele freigeben, die jede Firma erreichen darf.
 
 ### Nutzung und Budget
 
@@ -323,7 +333,8 @@ directory). Reload file mode with `systemctl kill -s HUP whisperloom-server`.
 
 Environment variables as in the German table: `WL_DATA_DIR`, `WL_BASE_URL`, `WL_AUTH_MODES`, `WL_TRUSTED_PROXIES`,
 `WL_TRUSTED_HEADER`, `WL_CONFIG_FILE`, `WL_MASTER_KEY` / `WL_MASTER_KEY_FILE`, `WL_MIN_APP_VERSION`,
-`WL_UPSTREAM_ALLOW` (internal networks the proxy may reach, see “SSRF protection”). The server reads `X-Forwarded-For`
+`WL_UPSTREAM_ALLOW` (internal targets the proxy may reach, preferably with port, e.g. `10.20.3.4:8000`, see “SSRF
+protection”). The server reads `X-Forwarded-For`
 only from `WL_TRUSTED_PROXIES`.
 
 ### Reverse proxy
@@ -393,9 +404,19 @@ ULA), link-local (including metadata `169.254.169.254`), CGNAT, multicast and re
 resolves the name itself, checks all addresses and connects to exactly the checked one (DNS rebinding); it does not
 follow redirects.
 
-Self-hosting inside the company network (own whisper server, Ollama): allow the network or address via
-`WL_UPSTREAM_ALLOW`, as narrow as possible, e.g. `WL_UPSTREAM_ALLOW=10.20.3.4/32`. In a multi-tenant instance the
-allowance applies to every company – only allow networks every company may reach.
+The base URL of an access may only contain scheme (`http`/`https`), host, port and path. The server rejects a fragment
+(`#`), query (`?`), user info (`user@`), backslash, spaces and control characters – on save (portal, file, CLI) and on
+every request. It appends the provider path (e.g. `/audio/transcriptions`) to the base path from URL components, so an
+admin cannot pick another path on the target.
+
+Self-hosting inside the company network (own whisper server, Ollama): allow the target via `WL_UPSTREAM_ALLOW`, as
+narrow as possible and **always with a port**, e.g. `WL_UPSTREAM_ALLOW=10.20.3.4:8000`. Accepted forms, comma-separated:
+`IP`, `CIDR`, `IP:port`, `CIDR:port`, `[IPv6]:port` (IPv6 with a port only in square brackets). An entry with a port
+allows exactly that port; a base URL without a port uses the scheme's default port (`http` 80, `https` 443).
+**Warning:** an entry without a port (e.g. `10.20.3.4` or `127.0.0.2/32`) still allows every port of that address –
+a company admin can then reach other services there via POST (sshd, databases, dev servers, reverse proxy). Cloud
+metadata (`169.254.169.254` and others) always stays blocked. In a multi-tenant instance the allowance applies to every
+company – only allow targets every company may reach.
 
 ### Usage and budget
 

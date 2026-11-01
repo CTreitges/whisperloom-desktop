@@ -259,6 +259,10 @@ Fehler: `401 device_unknown`, `403 device_blocked`, `403 budget_exhausted`, `413
 - **Ersatz:** Den Ersatz-Zugang wählt der Server bei Netzfehler, Zeitlimit, `401`/`403`/`429`/`5xx` oder unbrauchbarer
   Antwort des Anbieters; nicht bei `400`/`404`/`413`/`422` (Fehler der Anfrage). Zeitlimits wie die App: Verbindung
   15 s, mit Ersatz 8 s; Antwort 90 s, eigene Server (`custom`, `ollama`) 600 s.
+- **Ziel-Prüfung (W2-SFIX, additiv):** Ein Zugang, dessen Basis-URL gegen die SSRF-Regeln verstößt (Fragment `#`, Query
+  `?`, Benutzerinfo `@`, Backslash, Leer- oder Steuerzeichen, Schema außer `http`/`https`, internes Ziel bzw. Port
+  außerhalb von `WL_UPSTREAM_ALLOW`), gilt je Anfrage als Fehlschlag mit Ersatz: Der Server verbindet sich nicht mit
+  diesem Ziel, der Ersatz-Zugang springt ein, sonst `502 upstream_error`. Die Ursache steht nur im Server-Log (`ssrf_…`).
 - **Budget:** Monatsdeckel (UTC-Monat) je Firma, Gruppe und Gerät für Anfragen, Audio-Minuten, Tokens und geschätzte
   Kosten. Ist eine Grenze erreicht, antwortet der Server `403 budget_exhausted`, ohne den Anbieter zu fragen; einen
   Ersatz-Anbieter gibt es dann nicht. Laufende Anfragen zählen bei der Prüfung mit (Anzahl, Audio-Minuten).
