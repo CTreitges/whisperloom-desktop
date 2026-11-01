@@ -97,7 +97,9 @@ public sealed class SettingsStore
         {
             try
             {
-                return element.Deserialize<DesktopSettings>(DesktopJson) ?? new DesktopSettings();
+                var desktop = element.Deserialize<DesktopSettings>(DesktopJson) ?? new DesktopSettings();
+                desktop.Profiles = Features.Profiles.AppProfiles.Clean(desktop.Profiles);
+                return desktop;
             }
             catch (JsonException)
             {

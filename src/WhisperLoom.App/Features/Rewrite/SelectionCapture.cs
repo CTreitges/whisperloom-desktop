@@ -13,14 +13,23 @@ public sealed class SelectionCapture(IClipboardAdapter clipboard, IKeySender key
     /// <summary>So lange bekommt das Ziel, um auf Strg+C die Zwischenablage zu setzen.</summary>
     public static readonly TimeSpan DefaultCopyWait = TimeSpan.FromMilliseconds(600);
 
+    private static readonly HashSet<string> Consoles = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "WindowsTerminal", "OpenConsole", "conhost", "cmd", "powershell", "pwsh", "wsl", "wslhost",
+    };
+
+    /// <summary>Konsolenfenster (Prozessname ohne .exe): dort bricht Strg+C ohne Markierung den laufenden Befehl ab.</summary>
+    public static bool IsConsole(string process) => Consoles.Contains(Features.Profiles.AppProfiles.NormalizeProcess(process));
+
+    /// <param name="console">Strg+Einfg statt Strg+C (<see cref="IsConsole"/>).</param>
     /// <exception cref="IOException">Zwischenablage belegt.</exception>
-    public async Task<string?> CaptureAsync(CancellationToken ct)
+    public async Task<string?> CaptureAsync(bool console, CancellationToken ct)
     {
         // Noch gehaltenes Strg+Alt+Umschalt des Kürzels machte aus Strg+C eine andere Kombi.
         await keys.WaitForModifiersReleasedAsync(TextInserter.ModifierWait, ct).ConfigureAwait(false);
         var snapshot = clipboard.Save();
         var before = clipboard.SequenceNumber;
-        if (!keys.SendCtrlC())
+        if (!keys.SendCopy(ctrlInsert: console))
         {
             return null;
         }

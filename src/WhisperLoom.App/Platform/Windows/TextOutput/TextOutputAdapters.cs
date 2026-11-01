@@ -35,8 +35,8 @@ public interface IKeySender
     /// <returns>false, wenn das System die Eingabe nicht angenommen hat.</returns>
     bool SendCtrlV();
 
-    /// <summary>Strg+C ins Vordergrundfenster (Markierung kopieren, WLD-P5b).</summary>
-    bool SendCtrlC();
+    /// <summary>Markierung des Vordergrundfensters kopieren (WLD-P5b): Strg+C, in Konsolen Strg+Einfg (dort ist Strg+C ein Abbruch).</summary>
+    bool SendCopy(bool ctrlInsert);
 
     bool SendEnter();
 

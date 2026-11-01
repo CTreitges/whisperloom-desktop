@@ -80,12 +80,12 @@ public sealed class SettingsExtrasTest
         vm.ReprocessStage = vm.Stages.Single(s => s.Value == "summarize");
         await vm.ReprocessCommand.ExecuteAsync(vm.Items[0]);
 
-        Assert.Equal("done", vm.Status);
+        Assert.Equal(Loc.Instance["History_Status_done"], vm.Status);
         Assert.Equal(2, vm.Items.Count);
         Assert.Equal(RefineMode.Summarize, vm.Items[0].Entry.Refinement.Mode);
 
         vm.ReprocessStage = vm.Stages.Single(s => s.Value == "prompt");
         await vm.ReprocessCommand.ExecuteAsync(vm.Items[0]);
-        Assert.Equal("stage-unavailable", vm.Status);
+        Assert.Equal(Loc.Instance["History_Status_stage-unavailable"], vm.Status);
     }
 }

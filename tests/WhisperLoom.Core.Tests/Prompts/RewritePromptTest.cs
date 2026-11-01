@@ -81,6 +81,9 @@ public sealed class RewritePromptTest
     {
         Assert.Equal("<text>a</text> <b>", RewritePrompt.Neutralize("<text>a</text> <b>"));
         Assert.Equal("‹selection› ‹/ Anweisung ›", RewritePrompt.Neutralize("<selection> </ Anweisung >"));
+        // Varianten, die Modelle trotzdem als Tag lesen: Leerraum vor dem Schrägstrich, Attribute.
+        Assert.Equal("‹ /auswahl› ‹anweisung id=\"1\"›", RewritePrompt.Neutralize("< /auswahl> <anweisung id=\"1\">"));
+        Assert.Equal("<auswahlliste>", RewritePrompt.Neutralize("<auswahlliste>"));
     }
 
     [Theory]

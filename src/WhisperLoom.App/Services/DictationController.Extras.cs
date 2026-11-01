@@ -22,6 +22,12 @@ public sealed partial class DictationController
     /// <summary>Ein Eintrag kam in den Verlauf (Tray-Menü neu aufbauen).</summary>
     public event Action? HistoryChanged;
 
+    /// <summary>IT hat die Stufe auf „Aus“ festgelegt: kein Text darf ans Sprachmodell, also auch kein Umschreiben.</summary>
+    public bool RewriteBlocked => StageLocked && Stage == RefineMode.Off;
+
+    /// <summary>Verlauf geändert (gelöscht, geleert, ausgeschaltet): Tray-Liste neu aufbauen.</summary>
+    public void NotifyHistoryChanged() => HistoryChanged?.Invoke();
+
     /// <summary>Stufe des laufenden Diktats: die des aktiven Profils, sonst die Standard-Stufe.</summary>
     public RefineMode EffectiveStage => ActiveProfile is { } m ? ProfileStage(m.Profile) : Stage;
 
@@ -83,7 +89,7 @@ public sealed partial class DictationController
     /// Neu verarbeiten aus dem Rohtext eines Verlaufseintrags (neuester oder <paramref name="id"/>) mit <paramref name="stage"/>,
     /// ohne Audio. Ergebnis wie ein Diktat: Ausgabe, neuer Verlaufseintrag.
     /// </summary>
-    /// <returns>"done", "skipped" (ohne KI), "no-entry", "busy" oder "error".</returns>
+    /// <returns>"done", "skipped" (ohne KI), "no-entry", "busy", "stage-locked" (IT-Sperre, andere Stufe), "cancelled" oder "error".</returns>
     /// <exception cref="ArgumentException">Unbekannte oder nicht wählbare Stufe.</exception>
     public async Task<string> ReprocessAsync(string stage, string? id = null)
     {
@@ -91,6 +97,11 @@ public sealed partial class DictationController
         if (target.Key() != stage || !RefineModes.SettingsFor(Settings.Refine.PromptEnabled).Contains(target))
         {
             throw new ArgumentException($"Stufe nicht wählbar: {stage}", nameof(stage));
+        }
+        if (StageLocked && target != Stage)
+        {
+            _log.Event("stage.locked", ("reprocess", true));
+            return "stage-locked";
         }
         if (State != DictationState.Idle)
         {
@@ -112,10 +123,12 @@ public sealed partial class DictationController
         LastErrorKey = null;
         LastErrorClass = null;
         State = DictationState.Processing;
+        _processing = new CancellationTokenSource();
+        var ct = _processing.Token;
         var watch = Stopwatch.StartNew();
         try
         {
-            var refined = await _pipeline.RefineAsync(entry.Raw, entry.Language, RefinementOf(WithStage(Settings.Refine, stage)), CancellationToken.None);
+            var refined = await _pipeline.RefineAsync(entry.Raw, entry.Language, RefinementOf(WithStage(Settings.Refine, stage)), ct);
             LastRaw = entry.Raw;
             LastResult = refined.Text;
             LastRefined = refined;
@@ -132,15 +145,31 @@ public sealed partial class DictationController
                 ("processingMs", watch.ElapsedMilliseconds), ("output", _output.Kind));
             return LastErrorClass is not null ? "error" : refined.Skipped is null ? "done" : "skipped";
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            _log.Event("reprocess", ("status", "cancelled"));
+            return "cancelled";
+        }
+        // IOException: Key-Ablage nicht erreichbar (Ausgabe und Verlauf fangen ihre eigenen ab).
+        catch (Exception e) when (e is ApiHttpException or ApiNetworkException or ApiNotConfiguredException or LocalNotAvailableException
+                                      or IOException)
+        {
+            Fail(ErrorKey(e), e.GetType().Name);
+            _log.Event("reprocess", ("status", "error"), ("errorClass", e.GetType().Name));
+            return "error";
+        }
         finally
         {
+            _processing?.Dispose();
+            _processing = null;
             State = DictationState.Idle;
         }
     }
 
     /// <summary>
     /// Beendet die Aufnahme der Anweisung, schreibt <paramref name="selection"/> danach um und gibt das Ergebnis aus (ins
-    /// gemerkte Ziel, wo es die Markierung ersetzt). Kein Verlaufseintrag: die Markierung stammt aus fremden Dokumenten.
+    /// gemerkte Ziel, wo es die Markierung ersetzt). Kein Verlaufseintrag und kein <see cref="LastResult"/>: die Markierung
+    /// stammt aus fremden Dokumenten. Bei einer IT-Sperre auf „Aus“ geht nichts ans Sprachmodell.
     /// </summary>
     /// <returns>"done" oder "error" (<see cref="LastErrorKey"/>; dann wurde nichts ausgegeben).</returns>
     public async Task<string> StopAndRewriteAsync(string selection)
@@ -160,6 +189,12 @@ public sealed partial class DictationController
         var watch = Stopwatch.StartNew();
         try
         {
+            if (RewriteBlocked)
+            {
+                Fail("Rewrite_Locked", "StageLocked");
+                _log.Event("rewrite", ("status", "error"), ("errorClass", "StageLocked"));
+                return "error";
+            }
             // Die Anweisung: nur Erkennung und Regeln, keine Stufe.
             var spoken = await _pipeline.RunAsync(new DictationRequest(audio, Settings.Language, Refinement.Off), ct);
             var instruction = spoken.Text.Trim();
@@ -178,9 +213,7 @@ public sealed partial class DictationController
                 _log.Event("rewrite", ("status", "error"), ("errorClass", "RewriteSkipped"), ("processingMs", watch.ElapsedMilliseconds));
                 return "error";
             }
-            LastRaw = instruction;
-            LastResult = refined.Text;
-            LastRefined = refined;
+            // LastRaw/LastResult bleiben beim Diktat: der umgeschriebene Fremdtext gehört weder in Status noch Bühne noch „erneut einfügen“.
             try
             {
                 await _output.WriteAsync(refined.Text, CancellationToken.None);

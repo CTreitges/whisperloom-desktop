@@ -36,7 +36,7 @@ public interface IInputPresenter
 /// Anweisung auf) und App-Profile des Zielfensters. Das Zielfenster wird beim Start gemerkt und an die
 /// <see cref="InsertOutputSink"/> gegeben.
 /// </summary>
-public sealed class InputFlow
+public sealed partial class InputFlow
 {
     public static readonly TimeSpan StageHintDuration = TimeSpan.FromMilliseconds(1200);
     public static readonly TimeSpan ToastDuration = TimeSpan.FromSeconds(3);
@@ -52,6 +52,7 @@ public sealed class InputFlow
     private Mode _mode;
     private IntPtr _target;
     private string _selection = "";
+    private bool _busy;
 
     private enum Mode
     {
@@ -100,6 +101,11 @@ public sealed class InputFlow
 
     public async Task HandleAsync(HotkeyAction action)
     {
+        // Während Erfassung bzw. Einfügen (await) startet kein zweiter Ablauf mit eigener Zwischenablage-Sicherung.
+        if (_busy && action is HotkeyAction.HoldStart or HotkeyAction.Toggle or HotkeyAction.Rewrite or HotkeyAction.Reinsert)
+        {
+            return;
+        }
         switch (action)
         {
             case HotkeyAction.HoldStart when _controller.State == DictationState.Idle:
@@ -113,10 +119,11 @@ public sealed class InputFlow
                 _mode = Mode.None;
                 _ui.SetPill(0, processing: true);
                 var result = await _controller.StopAsync();
+                // Nichts eingefügt (Fehler, Abbruch): das nächste Ergebnis (Tray, CLI) darf nicht ins alte Ziel.
+                _sink.Disarm();
                 _ui.HidePill();
                 if (result == "error")
                 {
-                    _sink.Disarm();
                     Toast(_controller.LastErrorKey ?? "Overlay_Error");
                 }
                 break;
@@ -140,7 +147,7 @@ public sealed class InputFlow
                 await BeginRewriteAsync();
                 break;
             case HotkeyAction.Reinsert when _controller.State == DictationState.Idle && _mode == Mode.None:
-                await ReinsertAsync(_foreground());
+                await ReinsertAsync();
                 break;
             case HotkeyAction.OverlaySend:
                 await SendAsync(false);
@@ -168,35 +175,6 @@ public sealed class InputFlow
         }
     }
 
-    /// <summary>
-    /// Fügt <paramref name="text"/> in <paramref name="target"/> ein (Ausgabemodus des Profils, ohne Enter); ist das Ziel weg,
-    /// liegt der Text in der Zwischenablage (Toast). Hotkey „erneut einfügen“ und Klick im Tray-Verlauf.
-    /// </summary>
-    /// <returns>Ergebnis des Einfügens (<see cref="InsertOutcome"/>), "busy" oder "error".</returns>
-    public async Task<string> InsertTextAsync(IntPtr target, string text)
-    {
-        if (_controller.State != DictationState.Idle || _mode != Mode.None)
-        {
-            return "busy";
-        }
-        _target = target;
-        _sink.Arm(target, pressEnter: false, InsertModeOf(ProfileFor(target)));
-        try
-        {
-            await _sink.WriteAsync(text, CancellationToken.None);
-        }
-        catch (IOException)
-        {
-            _sink.Disarm();
-            Toast("Error_Output");
-            return "error";
-        }
-        return _sink.LastOutcome?.ToString() ?? "done";
-    }
-
-    /// <summary>Klick im Tray-Verlauf: ins Ziel des letzten Diktats (Tray-Klick nimmt den Fokus), sonst Zwischenablage.</summary>
-    public Task<string> InsertRecentAsync(string text) => InsertTextAsync(_sink.LastTarget, text);
-
     public JsonObject Status()
     {
         var status = _ui.Status();
@@ -221,7 +199,7 @@ public sealed class InputFlow
     private bool Begin(Mode mode, IntPtr target)
     {
         _target = target;
-        // Umschreiben ersetzt nur die Markierung: ohne Profil-Stufe und ohne Enter danach.
+        // Umschreiben ersetzt nur die Markierung: ohne Profil (Stufe, Ausgabe, Enter); Enter nur per Strg+Enter im Overlay.
         var match = mode == Mode.Rewrite ? null : ProfileFor(target);
         _controller.ActiveProfile = match;
         _sink.Arm(target, match?.Profile.PressEnter ?? false, InsertModeOf(match));
@@ -247,49 +225,6 @@ public sealed class InputFlow
         _overlayKeys(true);
     }
 
-    /// <summary>Markierung holen (Zwischenablage gesichert und wiederhergestellt), dann die Anweisung im Overlay aufnehmen.</summary>
-    private async Task BeginRewriteAsync()
-    {
-        if (_capture is null)
-        {
-            return;
-        }
-        var target = _foreground();
-        string? selection;
-        try
-        {
-            selection = await _capture.CaptureAsync(CancellationToken.None);
-        }
-        catch (IOException)
-        {
-            selection = null;
-        }
-        if (selection is null)
-        {
-            _target = target;
-            Toast("Rewrite_NothingSelected");
-            return;
-        }
-        if (_controller.State != DictationState.Idle || _mode != Mode.None || !Begin(Mode.Rewrite, target))
-        {
-            return;
-        }
-        _selection = selection;
-        OpenOverlay(Loc.Instance["Rewrite_Label"]);
-    }
-
-    private async Task ReinsertAsync(IntPtr target)
-    {
-        var text = await _controller.LatestTextAsync();
-        if (string.IsNullOrEmpty(text))
-        {
-            _target = target;
-            Toast("Reinsert_Nothing");
-            return;
-        }
-        await InsertTextAsync(target, text);
-    }
-
     private async Task SendAsync(bool pressEnter)
     {
         if (_mode is not (Mode.Toggle or Mode.Rewrite) || !_controller.IsRecording)
@@ -303,10 +238,10 @@ public sealed class InputFlow
         Overlay.State = OverlayState.Processing;
         var result = rewrite ? await _controller.StopAndRewriteAsync(_selection) : await _controller.StopAsync();
         _selection = "";
+        // Nichts eingefügt (Fehler, Abbruch): das nächste Ergebnis (Tray, CLI) darf nicht ins alte Ziel gehen.
+        _sink.Disarm();
         if (result == "error")
         {
-            // Nichts eingefügt: das nächste Ergebnis (Tray, CLI) darf nicht ins alte Ziel gehen.
-            _sink.Disarm();
             Overlay.ErrorKey = _controller.LastErrorKey;
             Overlay.State = OverlayState.Error;
             await Task.Delay(ErrorDuration);
@@ -405,14 +340,6 @@ public sealed class InputFlow
         }
         _ui.ShowHint("stage", Loc.Instance["Stage_Label"], label, StageHintDuration, _foreground());
     }
-
-    private ProfileMatch? ProfileFor(IntPtr window) =>
-        _describe is null || window == IntPtr.Zero
-            ? null
-            : AppProfiles.Resolve(SettingsStore.Desktop(_controller.Settings).Profiles, _describe(window));
-
-    private static InsertMode? InsertModeOf(ProfileMatch? match) =>
-        match is { Profile.InsertMode.Length: > 0 } ? InsertModes.FromKey(match.Profile.InsertMode) : null;
 
     /// <summary>Toast für einen Fallback (Text liegt in der Zwischenablage).</summary>
     public void ShowFallback(InsertOutcome outcome) =>

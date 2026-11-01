@@ -59,6 +59,17 @@ public sealed class RewritePipelineTest : IAsyncDisposable
     }
 
     [Fact]
+    public async Task Long_rewrite_is_kept_and_edge_whitespace_of_the_selection_stays()
+    {
+        _answer = string.Join(' ', Enumerable.Repeat("Sehr geehrte Frau Müller, gern bestätige ich den Termin morgen um zehn Uhr.", 6));
+
+        var refined = await _pipeline.RewriteAsync("Termin morgen 10 Uhr\r\n", "Schreib daraus eine höfliche E-Mail.", "de", CancellationToken.None);
+
+        Assert.Equal(_answer + "\r\n", refined.Text);
+        Assert.NotNull(refined.Model);
+    }
+
+    [Fact]
     public async Task Failed_rewrite_has_no_model()
     {
         _proxy.Map(Origin + "/chat/completions", _ => new FakeResponse(500, """{"error":{"message":"kaputt"}}"""));

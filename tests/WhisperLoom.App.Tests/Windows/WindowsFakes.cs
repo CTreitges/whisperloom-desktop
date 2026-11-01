@@ -98,9 +98,9 @@ internal sealed class FakeKeys(Steps steps, FakeClipboard clipboard) : IKeySende
     /// <summary>Was das Ziel markiert hat; null = nichts (Strg+C ändert die Zwischenablage nicht).</summary>
     public string? Selection { get; set; }
 
-    public bool SendCtrlC()
+    public bool SendCopy(bool ctrlInsert)
     {
-        steps.Add("ctrl-c");
+        steps.Add(ctrlInsert ? "ctrl-insert" : "ctrl-c");
         if (Selection is not null)
         {
             clipboard.Text = Selection;

@@ -19,8 +19,11 @@ public sealed record HistoryItem(HistoryEntry Entry)
 }
 
 /// <summary>Verlauf (nur Text): neueste zuerst, Kopieren, Löschen, Leeren, neu verarbeiten mit anderer Stufe (WLD-P5b).</summary>
-/// <param name="reprocess">Eintrag mit Stufen-Schlüssel neu verarbeiten (<see cref="Services.DictationController.ReprocessAsync"/>); null = aus.</param>
-public sealed partial class HistoryViewModel(IHistoryStore store, Func<HistoryEntry, string, Task<string>>? reprocess = null) : ObservableObject
+/// <param name="reprocess">Eintrag mit Stufen-Schlüssel neu verarbeiten (<see cref="Services.DictationController.ReprocessAsync"/>); null = aus
+/// (auch bei einer IT-Sperre der Stufe).</param>
+/// <param name="changed">Nach Löschen, Leeren, Neu verarbeiten (Tray-Liste neu aufbauen).</param>
+public sealed partial class HistoryViewModel(IHistoryStore store, Func<HistoryEntry, string, Task<string>>? reprocess = null, Action? changed = null)
+    : ObservableObject
 {
     public ObservableCollection<HistoryItem> Items { get; } = [];
 
@@ -44,14 +47,16 @@ public sealed partial class HistoryViewModel(IHistoryStore store, Func<HistoryEn
         {
             return;
         }
+        string code;
         try
         {
-            Status = await reprocess(item.Entry, stage.Value);
+            code = await reprocess(item.Entry, stage.Value);
         }
         catch (ArgumentException)
         {
-            Status = "stage-unavailable";
+            code = "stage-unavailable";
         }
+        Status = Loc.Instance["History_Status_" + code];
         await LoadAsync();
     }
 
@@ -73,6 +78,7 @@ public sealed partial class HistoryViewModel(IHistoryStore store, Func<HistoryEn
         if (item is not null && await store.DeleteAsync(item.Entry.Id, CancellationToken.None))
         {
             Items.Remove(item);
+            changed?.Invoke();
         }
     }
 
@@ -81,5 +87,6 @@ public sealed partial class HistoryViewModel(IHistoryStore store, Func<HistoryEn
     {
         await store.ClearAsync(CancellationToken.None);
         Items.Clear();
+        changed?.Invoke();
     }
 }

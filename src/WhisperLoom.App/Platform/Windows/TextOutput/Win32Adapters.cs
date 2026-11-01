@@ -26,8 +26,12 @@ internal sealed class Win32KeySender : IKeySender
     public bool SendCtrlV() =>
         Send([Key(Hotkey.VkControl, false), Key('V', false), Key('V', true), Key(Hotkey.VkControl, true)]);
 
-    public bool SendCtrlC() =>
-        Send([Key(Hotkey.VkControl, false), Key('C', false), Key('C', true), Key(Hotkey.VkControl, true)]);
+    // Einfg ist eine erweiterte Taste (KEYEVENTF_EXTENDEDKEY), sonst käme die Ziffernblock-0 an.
+    public bool SendCopy(bool ctrlInsert) => ctrlInsert
+        ? Send([Key(Hotkey.VkControl, false), Key(VkInsert, false, extended: true), Key(VkInsert, true, extended: true), Key(Hotkey.VkControl, true)])
+        : Send([Key(Hotkey.VkControl, false), Key('C', false), Key('C', true), Key(Hotkey.VkControl, true)]);
+
+    private const int VkInsert = 0x2D;
 
     public bool SendEnter() => Send([Key(Hotkey.VkReturn, false), Key(Hotkey.VkReturn, true)]);
 

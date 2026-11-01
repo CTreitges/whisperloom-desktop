@@ -224,7 +224,8 @@ public sealed class ExtrasFlowTest : IDisposable
         var call = Assert.Single(_rewriter.Calls);
         Assert.Equal(("Schick mir den Bericht. " + Injection, "Hallo Welt"), (call.Selection, call.Instruction));
         Assert.Equal("[rewrite] Hallo Welt", _rig.Keys.Target);
-        Assert.Equal("[rewrite] Hallo Welt", _f.Controller.LastResult);
+        // Der umgeschriebene Fremdtext landet nicht in LastResult (Status, Bühne, erneut einfügen).
+        Assert.Equal("", _f.Controller.LastResult);
         Assert.Equal("alt", _rig.Clipboard.Text);
         // Kein Profil beim Umschreiben (Terminal hätte Enter danach) und kein Verlaufseintrag mit fremdem Text.
         Assert.Equal(0, _rig.Keys.Enters);

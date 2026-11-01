@@ -31,7 +31,8 @@ public sealed class AppPipeline(
 
     /// <summary>
     /// Markierung umschreiben (WLD-P5b): derselbe Weg wie „Neu verarbeiten“ (Zugang, Fallback-Zugang, Netz-Vorprüfung), nur
-    /// mit dem Prompt „Umschreiben nach Anweisung“ als Stufe „Prompt“ (die Regeln danach ändern den Text nicht). Ohne lokales
+    /// mit dem Prompt „Umschreiben nach Anweisung“ als Stufe „Prompt“ (die Regeln danach ändern den Text nicht) und eigener
+    /// Nacharbeit (<see cref="TextCleanup.ForRewrite"/>: Ausformulieren darf wachsen, Zitate und Codeblöcke bleiben). Ohne lokales
     /// Textmodell: dessen Auftrag ist fest die Stufe, nicht das Umschreiben — bei lokaler Erkennung gibt es kein Ergebnis.
     /// </summary>
     public async Task<RefinedText> RewriteAsync(string selection, string instruction, string language, CancellationToken ct)
@@ -39,9 +40,16 @@ public sealed class AppPipeline(
         Current();
         var options = CoreText.Options(cache);
         var pipeline = new DictationPipeline(settings, secrets, _http!, new RewritePrompt(instruction), CoreText.Polisher,
-            new DictationPipelineOptions { ModelCache = options.ModelCache });
+            new DictationPipelineOptions { ModelCache = options.ModelCache, Cleanup = TextCleanup.ForRewrite(CoreText.Polisher) });
         var refined = await pipeline.RefineAsync(selection, language, new Refinement(RefineMode.Prompt), ct).ConfigureAwait(false);
-        return refined.Model is null ? refined : refined with { Text = RewritePrompt.CleanOutput(refined.Text) };
+        if (refined.Model is null)
+        {
+            return refined;
+        }
+        // Rand-Leerraum der Markierung (z. B. der Zeilenumbruch einer ganz markierten Zeile) bleibt beim Ersetzen erhalten.
+        var lead = selection[..(selection.Length - selection.TrimStart().Length)];
+        var trail = selection[selection.TrimEnd().Length..];
+        return refined with { Text = lead + RewritePrompt.CleanOutput(refined.Text) + trail };
     }
 
     public void Dispose() => _http?.Dispose();

@@ -111,11 +111,7 @@ public partial class App : Application
             };
             RecordHotkey = async () => (await input.RecordAsync())?.ToString();
             host.InsertRecent = input.Flow.InsertRecentAsync;
-            host.Reinsert = async () =>
-            {
-                await input.Flow.HandleAsync(Platform.Windows.Input.HotkeyAction.Reinsert);
-                return input.Flow.Status()["lastInsert"]?.ToString() ?? "done";
-            };
+            host.Reinsert = input.Flow.ReinsertAsync;
         }
     }
 
@@ -143,7 +139,9 @@ public partial class App : Application
             case "history":
                 if (_historyWindow is null)
                 {
-                    var vm = new HistoryViewModel(host.History, (entry, stage) => host.Controller.ReprocessAsync(stage, entry.Id));
+                    var c = host.Controller;
+                    var vm = new HistoryViewModel(host.History,
+                        c.StageLocked ? null : (entry, stage) => c.ReprocessAsync(stage, entry.Id), c.NotifyHistoryChanged);
                     _historyWindow = new HistoryWindow(vm);
                     _historyWindow.Closed += (_, _) => _historyWindow = null;
                     _ = vm.LoadAsync();

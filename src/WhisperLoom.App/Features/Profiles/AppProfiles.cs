@@ -50,6 +50,23 @@ public static class AppProfiles
         new AppProfile { Name = "Outlook", Process = "OUTLOOK.EXE", Stage = "beautify" },
     ];
 
+    /// <summary>
+    /// Profile aus fremden Dateien (Import, Provisioning, von Hand): null-Einträge fallen weg, null-Felder werden "".
+    /// </summary>
+    public static List<AppProfile> Clean(IEnumerable<AppProfile?>? profiles) =>
+    [
+        .. (profiles ?? []).OfType<AppProfile>().Select(p => new AppProfile
+        {
+            Name = p.Name ?? "",
+            Process = p.Process ?? "",
+            TitlePattern = p.TitlePattern ?? "",
+            Stage = p.Stage ?? "",
+            InsertMode = p.InsertMode ?? "",
+            PressEnter = p.PressEnter,
+            Enabled = p.Enabled,
+        }),
+    ];
+
     public static ProfileMatch? Resolve(IReadOnlyList<AppProfile> profiles, WindowInfo window)
     {
         ProfileMatch? processOnly = null;

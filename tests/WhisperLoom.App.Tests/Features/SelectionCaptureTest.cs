@@ -16,7 +16,7 @@ public sealed class SelectionCaptureTest
     {
         _rig.Keys.Selection = "Markierter Text";
 
-        Assert.Equal("Markierter Text", await Capture().CaptureAsync(CancellationToken.None));
+        Assert.Equal("Markierter Text", await Capture().CaptureAsync(false, CancellationToken.None));
 
         Assert.Equal("alt", _rig.Clipboard.Text);
         Assert.Equal(["wait-modifiers", "save", "ctrl-c", "get-text", "restore"], _rig.Steps);
@@ -25,7 +25,7 @@ public sealed class SelectionCaptureTest
     [Fact]
     public async Task Nothing_selected_gives_null_and_leaves_the_clipboard_alone()
     {
-        Assert.Null(await Capture().CaptureAsync(CancellationToken.None));
+        Assert.Null(await Capture().CaptureAsync(false, CancellationToken.None));
 
         Assert.Equal("alt", _rig.Clipboard.Text);
         Assert.DoesNotContain("restore", _rig.Steps);
@@ -37,7 +37,7 @@ public sealed class SelectionCaptureTest
     {
         _rig.Keys.Selection = " \r\n ";
 
-        Assert.Null(await Capture().CaptureAsync(CancellationToken.None));
+        Assert.Null(await Capture().CaptureAsync(false, CancellationToken.None));
 
         Assert.Equal("alt", _rig.Clipboard.Text);
         Assert.Contains("restore", _rig.Steps);
@@ -49,9 +49,24 @@ public sealed class SelectionCaptureTest
         _rig.Clipboard.Text = null;
         _rig.Keys.Selection = "x";
 
-        Assert.Equal("x", await Capture().CaptureAsync(CancellationToken.None));
+        Assert.Equal("x", await Capture().CaptureAsync(false, CancellationToken.None));
 
         Assert.Null(_rig.Clipboard.Text);
+    }
+
+    [Fact]
+    public async Task Consoles_get_ctrl_insert_instead_of_ctrl_c()
+    {
+        _rig.Keys.Selection = "ls -la";
+
+        Assert.Equal("ls -la", await Capture().CaptureAsync(true, CancellationToken.None));
+
+        Assert.Contains("ctrl-insert", _rig.Steps);
+        Assert.DoesNotContain("ctrl-c", _rig.Steps);
+        Assert.True(SelectionCapture.IsConsole("WindowsTerminal"));
+        Assert.True(SelectionCapture.IsConsole("pwsh.exe"));
+        Assert.False(SelectionCapture.IsConsole("WINWORD"));
+        Assert.False(SelectionCapture.IsConsole("WhisperLoom.TestTarget"));
     }
 
     [Fact]

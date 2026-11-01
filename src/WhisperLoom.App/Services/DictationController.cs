@@ -277,6 +277,10 @@ public sealed partial class DictationController : ObservableObject
         {
             await _history.ClearAsync(CancellationToken.None);
             _log.Event("history.cleared", ("reason", "disabled"));
+            // Auch Tray-Liste und „erneut einfügen“ zeigen danach keinen alten Text mehr.
+            LastRaw = "";
+            LastResult = "";
+            HistoryChanged?.Invoke();
         }
     }
 

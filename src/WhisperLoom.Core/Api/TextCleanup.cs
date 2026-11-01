@@ -10,7 +10,9 @@ namespace WhisperLoom.Core.Api;
 /// </summary>
 /// <param name="fillerSyllables">Füllsilben, die beim Vergleich „hat der Sprecher die erste Zeile selbst gesagt?“ nicht
 /// zählen — auf Android <c>TextPolisher.builtinFillers("de") + ("en")</c>, siehe <see cref="For"/>.</param>
-public sealed partial class TextCleanup(IEnumerable<string> fillerSyllables)
+/// <param name="keepShape">Desktop-eigen (WLD-P5b, Markierung umschreiben): nur Nachdenken, Markierung und Vorrede weg —
+/// keine Längengrenze (Ausformulieren darf wachsen) und kein Auspacken (die Markierung darf selbst Zitat oder Codeblock sein).</param>
+public sealed partial class TextCleanup(IEnumerable<string> fillerSyllables, bool keepShape = false)
 {
     private const int MaxGrowth = 2;
     private const int GrowthSlack = 30;
@@ -22,6 +24,10 @@ public sealed partial class TextCleanup(IEnumerable<string> fillerSyllables)
     /// <summary>Mit den eingebauten Füllwörtern (de + en) des Polishers aus WLD-P1a.</summary>
     public static TextCleanup For(ITextPolisher polisher) =>
         new(polisher.BuiltinFillers("de").Concat(polisher.BuiltinFillers("en")));
+
+    /// <summary>Nacharbeit für das Umschreiben einer Markierung (<c>keepShape</c>).</summary>
+    public static TextCleanup ForRewrite(ITextPolisher polisher) =>
+        new(polisher.BuiltinFillers("de").Concat(polisher.BuiltinFillers("en")), keepShape: true);
 
     // Kotlin-Regex 1:1; matchEntire → \A…\z.
     [GeneratedRegex(@"^\s*<think>.*?</think>\s*", RegexOptions.Singleline)]
@@ -64,7 +70,7 @@ public sealed partial class TextCleanup(IEnumerable<string> fillerSyllables)
     public string Finish(string raw, RefineMode mode, string? output)
     {
         var text = output is null ? null : StripThinking(output).Trim();
-        if (text is not null) text = mode == RefineMode.Prompt ? CleanPrompt(raw, text) : CleanText(raw, text);
+        if (text is not null) text = keepShape ? CleanRewrite(raw, text) : mode == RefineMode.Prompt ? CleanPrompt(raw, text) : CleanText(raw, text);
         if (string.IsNullOrWhiteSpace(text)) throw new RefineRejectedException(TextRefiner.MsgEmpty);
         return text;
     }
@@ -94,6 +100,13 @@ public sealed partial class TextCleanup(IEnumerable<string> fillerSyllables)
         if (!Quoted().IsMatch(raw.Trim())) text = Unwrap(text);
         RequirePlausibleLength(raw, text, "Modell hat geantwortet, statt den Text zu bearbeiten");
         return text;
+    }
+
+    /// <summary>Umschreiben (<c>keepShape</c>): Markierung und Vorrede weg, sonst bleibt die Antwort, wie sie ist.</summary>
+    public string CleanRewrite(string raw, string output)
+    {
+        var text = Marker().Replace(output, "").Trim();
+        return SaidFirst(raw, text) ? text : StripPreamble(text, TextPreamble());
     }
 
     /// <summary>Hat der Sprecher die erste Zeile selbst gesagt? Füllsilben zählen nicht mit.</summary>

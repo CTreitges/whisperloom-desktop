@@ -20,7 +20,8 @@ public sealed partial class RewritePrompt(string instruction) : IRefinePromptBui
 
     public string Instruction { get; } = instruction;
 
-    [GeneratedRegex(@"<(/?\s*(?:anweisung|auswahl|instruction|selection)\s*)>", RegexOptions.IgnoreCase)]
+    // Auch „< /auswahl>“ und Tags mit Attributen: Modelle lesen sie oft trotzdem als Tag.
+    [GeneratedRegex(@"<\s*/?\s*(?:anweisung|auswahl|instruction|selection)\b[^<>]*>", RegexOptions.IgnoreCase)]
     private static partial Regex BlockTag();
 
     [GeneratedRegex(@"\A\s*<(auswahl|selection)>\s*(.*?)\s*</\1>\s*\z", RegexOptions.IgnoreCase | RegexOptions.Singleline)]
@@ -37,7 +38,7 @@ public sealed partial class RewritePrompt(string instruction) : IRefinePromptBui
     }
 
     /// <summary>Entschärft die vier Block-Tags (beide Sprachen) in einem Text: „&lt;auswahl&gt;“ → „‹auswahl›“.</summary>
-    public static string Neutralize(string text) => BlockTag().Replace(text, "‹$1›");
+    public static string Neutralize(string text) => BlockTag().Replace(text, m => "‹" + m.Value[1..^1] + "›");
 
     /// <summary>Hat das Modell das Ergebnis doch in einen Block-Tag gepackt, kommt er weg.</summary>
     public static string CleanOutput(string output)
