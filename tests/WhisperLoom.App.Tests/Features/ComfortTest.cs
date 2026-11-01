@@ -200,7 +200,9 @@ public sealed class ComfortTest
         Assert.True(flow.Overlay.CanRetry);
         f.Pipeline.Failure = FakeFailure.None;
         flow.Overlay.RetrySendCommand.Execute(null);
-        await WaitFor(() => rig.Keys.Target.Length > 0);
+        // Bis der Durchlauf ganz fertig ist: nach dem Einfügen schreibt der Controller noch den Verlauf – sonst löschte Dispose den
+        // Datenordner, während die .tmp-Datei offen ist (CI-Fund W2-OUT, IOException in ControllerFixture.Dispose).
+        await WaitFor(() => rig.Keys.Target.Length > 0 && f.Controller.State == DictationState.Idle && HistoryWritten(f));
         Assert.Equal(f.Controller.LastResult, rig.Keys.Target);
         GC.KeepAlive(send); // läuft im Hintergrund bis zum Ende des Retry-Fensters aus
     }
@@ -217,6 +219,13 @@ public sealed class ComfortTest
         f.Pipeline.RawText = "Hallo Welt";
         var flow = new InputFlow(f.Controller, sink, ui, () => rig.Windows.Current, _ => { });
         return (f, rig, flow, ui);
+    }
+
+    /// <summary>Genau ein fertiger Verlaufseintrag und kein halb geschriebener (.tmp) mehr.</summary>
+    private static bool HistoryWritten(ControllerFixture f)
+    {
+        var dir = Path.Combine(f.DataDir, "history");
+        return Directory.Exists(dir) && Directory.EnumerateFiles(dir, "*.json").Count() == 1 && !Directory.EnumerateFiles(dir, "*.tmp").Any();
     }
 
     private static async Task WaitFor(Func<bool> done)
