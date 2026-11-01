@@ -133,7 +133,7 @@ Ablagefehler: `IOException`.
 | `ProviderInfo`, `ModelOption` | Katalogdaten eines Anbieters (Port der Daten von `Provider`/`ModelOption`), keine Keys. |
 | `ApiStyle` | `OpenAi`, `Ollama`, `ElevenLabs`. |
 | `PolishOptions` | Optionen von `ITextPolisher`. |
-| `HistoryEntry` | Verlaufseintrag (siehe oben). W2-OUT, additiv: optional `Versions` (letzter Parameter, `null` = nur die damalige Fassung `Text`, so wie ältere Dateien; im JSON fehlt `versions` dann). `Raw` ist der Ursprung und wird nie überschrieben. |
+| `HistoryEntry` | Verlaufseintrag (siehe oben). W2-OUT, additiv: optional `Versions` (letzter Parameter, `null` = nur die damalige Fassung `Text`, so wie ältere Dateien; im JSON fehlt `versions` dann). `Raw` ist der Ursprung und wird nie überschrieben. W2-SEL, additiv: optional `Source` (letzter Parameter; `null` = Diktat, im JSON fehlt `source` dann; `HistoryEntry.SourceSelection` = `"selection"` für „Markierung verarbeiten“, `Raw` ist dann die Markierung). Android kennt dasselbe Feld (`bubble`/`keyboard`). |
 | `HistoryVersion` | W2-OUT: eine Fassung (`Processing` = Stufen-Schlüssel oder `edited` für den bearbeiteten Ursprung, `Text`, `CreatedAt`, `Model`, `Failed`, `Edited`); je Eintrag höchstens eine Fassung je Schlüssel, Ersetzen am Platz. Bearbeiten und Neu verarbeiten schreiben den Eintrag per `AddAsync` unter derselben Id. |
 
 ## Stufen: `RefineMode` und `Refinement` (portiert)
