@@ -102,7 +102,10 @@ public sealed class MouseHook(MouseGestures gestures, Action<MouseDecision> onAc
         }
     }
 
-    private IntPtr Callback(int nCode, IntPtr wParam, IntPtr lParam)
+    private IntPtr Callback(int nCode, IntPtr wParam, IntPtr lParam) =>
+        HookGuard.Invoke(() => Handle(nCode, wParam, lParam), () => CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam)); // W2-FIX N-8
+
+    private IntPtr Handle(int nCode, IntPtr wParam, IntPtr lParam)
     {
         var message = (int)wParam;
         if (nCode < 0 || message == WmMouseMove || Kind(message) is not { } kind)

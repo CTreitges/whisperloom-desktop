@@ -87,7 +87,10 @@ public sealed class KeyboardHook : IDisposable
         }
     }
 
-    private IntPtr Callback(int nCode, IntPtr wParam, IntPtr lParam)
+    private IntPtr Callback(int nCode, IntPtr wParam, IntPtr lParam) =>
+        HookGuard.Invoke(() => Handle(nCode, wParam, lParam), () => CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam)); // W2-FIX N-8
+
+    private IntPtr Handle(int nCode, IntPtr wParam, IntPtr lParam)
     {
         if (nCode < 0)
         {

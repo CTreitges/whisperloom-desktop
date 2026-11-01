@@ -232,6 +232,25 @@ public sealed class UpdateCliTest
     public void FalscheUpdateArgumente(params string[] args) => Assert.Throws<UsageException>(() => CommandLine.Parse(args));
 
     [Theory]
+    [InlineData("http://example.invalid/feed", false)]
+    [InlineData("HTTP://10.0.0.5:8080/feed", false)]
+    [InlineData("http://localhost:8080/feed", true)]
+    [InlineData("http://127.0.0.1:9/feed", true)]
+    [InlineData("http://[::1]:9/feed", true)]
+    [InlineData("https://example.invalid/feed", true)]
+    public void N18_Feed_per_http_nur_zu_localhost(string feed, bool ok)
+    {
+        if (ok)
+        {
+            Assert.Equal([feed], CommandLine.Parse(["update", "--feed", feed]).Args);
+        }
+        else
+        {
+            Assert.Throws<UsageException>(() => CommandLine.Parse(["update", "--feed", feed]));
+        }
+    }
+
+    [Theory]
     [InlineData("0.9.1+abc123", "0.9.1")]
     [InlineData("1.0.0-beta.2", "1.0.0-beta.2")]
     [InlineData(null, "0.0.0")]
