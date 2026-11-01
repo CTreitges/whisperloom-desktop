@@ -182,6 +182,7 @@
   "State_recording": "Aufnahme läuft",
   "Sync_Applied": "Importiert.",
   "Sync_Apply": "Änderungen übernehmen",
+  "Sync_EnterDisabled": "Profil „{0}“: „Enter danach“ ist ausgeschaltet (fremde Datei). Bei Bedarf im Profil selbst einschalten.",
   "Sync_Export": "Exportieren …",
   "Sync_Exported": "Exportiert: {0}",
   "Sync_Hint": "Einstellungen als Datei teilen, z. B. mit der Android-App. Keys werden nie exportiert.",

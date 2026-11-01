@@ -113,6 +113,34 @@ public class ImportSafetyTest
         Assert.DoesNotContain("angreifer", SettingsJson.Serialize(preview.Settings!), StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("""{"desktop":{"profiles":[{"name":"Terminal","process":"WindowsTerminal.exe","insertMode":"type","pressEnter":true}]}}""")]
+    [InlineData("""{"desktop":{"Profiles":[{"name":"Terminal","Process":"WindowsTerminal.exe","PressEnter":true}]}}""")] // App liest case-insensitiv
+    public void Imported_profile_with_press_enter_arrives_without_enter(string json)
+    {
+        var preview = SyncFixtures.Import(json);
+
+        Assert.True(preview.CanApply, string.Join("; ", preview.Errors));
+        Assert.Equal(["Terminal"], preview.EnterDisabled);
+        var exported = SyncExport.ToJson(preview.Settings!);
+        Assert.DoesNotContain("true", Profiles(exported), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void A_profile_that_already_pressed_enter_keeps_it()
+    {
+        var current = SettingsJson.Deserialize("""{"desktop":{"profiles":[{"process":"WindowsTerminal.exe","pressEnter":true,"stage":"prompt"}]}}""");
+
+        var preview = SyncFixtures.Import("""{"desktop":{"profiles":[{"process":"windowsterminal.exe","pressEnter":true,"stage":"polish"}]}}""", current);
+
+        Assert.Empty(preview.EnterDisabled);
+        Assert.Contains("\"pressEnter\":true", Profiles(SyncExport.ToJson(preview.Settings!)).Replace(" ", "", StringComparison.Ordinal), StringComparison.Ordinal);
+    }
+
+    /// <summary>Nur der Abschnitt desktop.profiles des Exports, ohne Zeilenumbrüche.</summary>
+    private static string Profiles(string exported) =>
+        SyncFixtures.Tree(exported)["desktop"]!.AsObject().First(p => p.Key.Equals("profiles", StringComparison.OrdinalIgnoreCase)).Value!.ToJsonString();
+
     [Fact]
     public void A_key_locked_by_it_is_never_dropped_the_import_is_refused()
     {

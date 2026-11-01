@@ -63,7 +63,8 @@ internal sealed class SyncCommands(string dataDir, ISecretStore secrets, TextWri
     {
         var stored = await StoredKeysAsync(secrets, ct);
         var preview = SyncImport.Preview(_settings.Load(), SyncDocument.Parse(File.ReadAllText(path)), _policy.Load(), stored);
-        Report([.. preview.Warnings, .. preview.DroppedKeys.Select(DropWarning)], preview.Errors);
+        Report([.. preview.Warnings, .. preview.DroppedKeys.Select(DropWarning),
+            .. preview.EnterDisabled.Select(p => $"Profil {p}: Enter danach ausgeschaltet (fremde Datei); bei Bedarf im Profil selbst einschalten")], preview.Errors);
         foreach (var c in preview.Changes)
         {
             output.WriteLine($"{(c.Locked ? "locked" : "change")} {c.Path}: {c.Old ?? "-"} -> {c.New ?? "-"}");

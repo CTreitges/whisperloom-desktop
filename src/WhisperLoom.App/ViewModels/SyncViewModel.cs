@@ -80,6 +80,7 @@ public sealed partial class SyncViewModel(DictationController controller, ISecre
         }
         lines.AddRange(preview.Warnings.Select(_ => Loc.Instance["Sync_SecretsIgnored"]));
         lines.AddRange(preview.DroppedKeys.Select(d => Loc.Instance.Format("Sync_KeyDropWarning", d.Name, d.Target)));
+        lines.AddRange(preview.EnterDisabled.Select(p => Loc.Instance.Format("Sync_EnterDisabled", p)));
         Status = string.Join("\n", lines);
         _preview = preview;
         _json = json;

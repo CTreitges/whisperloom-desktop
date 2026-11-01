@@ -222,6 +222,21 @@ public sealed class SyncCommandsTest : IDisposable
     }
 
     [Fact]
+    public async Task Imported_terminal_profile_does_not_press_enter_until_the_user_confirms_it()
+    {
+        // Security-Review K1-Verstärker: fremde Datei legt ein Terminal-Profil mit Enter an → Antwort samt Enter in die Shell.
+        var file = Write("profile.json",
+            """{"schemaVersion":1,"desktop":{"profiles":[{"name":"Terminal","process":"WindowsTerminal.exe","insertMode":"type","pressEnter":true}]}}""");
+
+        Assert.Equal(0, await Run("import", file));
+
+        var profile = Assert.Single(SettingsStore.Desktop(new SettingsStore(_dir).Load()).Profiles);
+        Assert.Equal("WindowsTerminal.exe", profile.Process);
+        Assert.False(profile.PressEnter);
+        Assert.Contains("warn Profil Terminal: Enter danach ausgeschaltet", _err.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Import_that_moves_a_stored_key_to_another_host_deletes_it_and_says_so()
     {
         // Security-Review K1 (PoC): fremde Datei lenkt den groq-Key auf einen anderen Host und hängt eine Datei als Vokabular an.

@@ -182,6 +182,7 @@
   "State_recording": "Recording",
   "Sync_Applied": "Imported.",
   "Sync_Apply": "Apply changes",
+  "Sync_EnterDisabled": "Profile \"{0}\": \"Enter afterwards\" is turned off (foreign file). Turn it on in the profile itself if needed.",
   "Sync_Export": "Export …",
   "Sync_Exported": "Exported: {0}",
   "Sync_Hint": "Share settings as a file, e.g. with the Android app. Keys are never exported.",

@@ -20,6 +20,12 @@ public sealed record ImportPreview(
 
     /// <summary>Gespeicherte Keys, die beim Übernehmen gelöscht werden: Der Import lenkte sie an ein neues Ziel.</summary>
     public IReadOnlyList<KeyDrop> DroppedKeys { get; init; } = [];
+
+    /// <summary>
+    /// App-Profile (<c>desktop.profiles</c>, Anzeige: Name bzw. Prozess), bei denen der Import „Enter danach“ ausgeschaltet
+    /// hat: Enter in eine Konsole ist ein Befehl — das bestätigt der Nutzer im Profil selbst.
+    /// </summary>
+    public IReadOnlyList<string> EnterDisabled { get; init; } = [];
 }
 
 /// <summary>Ein gespeicherter Key (<see cref="Contracts.SecretNames"/>), den ein Import an <paramref name="Target"/> lenken würde.</summary>
@@ -61,7 +67,8 @@ public static class SyncImport
                 local.Remove(name);
             }
         }
-        var preview = Merge(current, file with { Settings = settings }, policy, policy.IsLocked, warnings);
+        var enterDisabled = ImportProfiles.DisableNewEnter(settings, Tree(current));
+        var preview = Merge(current, file with { Settings = settings }, policy, policy.IsLocked, warnings) with { EnterDisabled = enterDisabled };
         if (preview.Settings is null)
         {
             return preview;
