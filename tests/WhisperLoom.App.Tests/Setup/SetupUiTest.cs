@@ -87,7 +87,7 @@ public sealed class SetupUiTest
         Assert.Equal("de", s.F.Controller.Settings.Language);
         Assert.False(File.Exists(s.F.Store.FilePath));
         Assert.False(s.Autostart.IsEnabled);
-        Assert.Equal("de", Loc.Instance.Language); // Vorschau zurück
+        Assert.Equal(Loc.OsLanguage(), Loc.Instance.Language); // Vorschau zurück auf die gespeicherte Wahl „wie System“
         Assert.False(window.IsVisible);
     }
 
