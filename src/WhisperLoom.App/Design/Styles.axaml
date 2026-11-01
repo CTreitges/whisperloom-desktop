@@ -18,6 +18,10 @@
     <Setter Property="FontSize" Value="{DynamicResource Loom.Font.Caption}" />
     <Setter Property="Cursor" Value="Hand" />
   </Style>
+  <Style Selector="Button.link /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Foreground" Value="{DynamicResource Loom.Accent}" />
+    <Setter Property="TextBlock.TextDecorations" Value="Underline" />
+  </Style>
   <Style Selector="Button.link:pointerover /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="Foreground" Value="{DynamicResource Loom.Accent}" />
@@ -40,6 +44,16 @@
 
   <!-- „Erweitert“ in einer Gruppe: schlicht, ohne eigenen Rahmen. -->
   <Style Selector="Expander.advanced">
+    <Style.Resources>
+      <SolidColorBrush x:Key="ExpanderHeaderBackground" Color="Transparent" />
+      <SolidColorBrush x:Key="ExpanderHeaderBackgroundPointerOver" Color="#14808080" />
+      <SolidColorBrush x:Key="ExpanderHeaderBackgroundPressed" Color="#28808080" />
+      <SolidColorBrush x:Key="ExpanderHeaderBorderBrush" Color="Transparent" />
+      <SolidColorBrush x:Key="ExpanderHeaderBorderBrushPointerOver" Color="Transparent" />
+      <SolidColorBrush x:Key="ExpanderHeaderBorderBrushPressed" Color="Transparent" />
+      <SolidColorBrush x:Key="ExpanderContentBackground" Color="Transparent" />
+      <SolidColorBrush x:Key="ExpanderContentBorderBrush" Color="Transparent" />
+    </Style.Resources>
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderThickness" Value="0,1,0,0" />
     <Setter Property="BorderBrush" Value="{DynamicResource Loom.Separator}" />
