@@ -29,6 +29,7 @@ from pathlib import Path
 
 TOOLS = Path(__file__).resolve().parent
 SERVER_DIR = TOOLS.parent / "server"
+PROXY_ENTRY = "company:proxy"
 TENANT = "Smoke GmbH"
 
 
@@ -55,13 +56,15 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 class LocalServer:
     """Firmen-Server als Kindprozess mit eigenem Datenordner; Portal-Anmeldung über local_only (nur Loopback)."""
 
-    def __init__(self, python: str, data: Path):
+    def __init__(self, python: str, data: Path, server_dir: Path = SERVER_DIR):
         self.python = python
+        self.server_dir = server_dir
         self.port = free_port()
         self.base = f"http://127.0.0.1:{self.port}"
         self.data = data
+        # SSRF-Schutz (W2-SRV2) erlaubt Anbieter auf Loopback nur ausdrücklich: der Fake-Anbieter läuft auf 127.0.0.1.
         self.env = {**os.environ, "WL_DATA_DIR": str(data), "WL_BASE_URL": self.base, "WL_AUTH_MODES": "local_only",
-                    "PYTHONIOENCODING": "utf-8"}
+                    "WL_UPSTREAM_ALLOW": "127.0.0.1/32", "PYTHONIOENCODING": "utf-8"}
         for k in ("WL_MASTER_KEY", "WL_MASTER_KEY_FILE", "WL_CONFIG_FILE", "WL_TRUSTED_PROXIES"):
             self.env.pop(k, None)
         self.proc: subprocess.Popen | None = None
@@ -70,7 +73,7 @@ class LocalServer:
                                                   NoRedirect)
 
     def cli(self, *args: str) -> str:
-        r = subprocess.run([self.python, "-m", "whisperloom_server", *args], cwd=SERVER_DIR, env=self.env,
+        r = subprocess.run([self.python, "-m", "whisperloom_server", *args], cwd=self.server_dir, env=self.env,
                            capture_output=True, timeout=60)
         if r.returncode != 0:
             raise RuntimeError(f"Server-CLI {args[0]}: {r.stderr.decode('utf-8', 'replace').strip()[:200]}")
@@ -80,7 +83,7 @@ class LocalServer:
         self.data.mkdir(parents=True, exist_ok=True)
         self.cli("init")
         self.log = open(self.data / "server.log", "wb")  # noqa: SIM115 (bis zum Ende offen)
-        self.proc = subprocess.Popen([self.python, "-m", "whisperloom_server", "serve", "--port", str(self.port)], cwd=SERVER_DIR,
+        self.proc = subprocess.Popen([self.python, "-m", "whisperloom_server", "serve", "--port", str(self.port)], cwd=self.server_dir,
                                      env=self.env, stdout=self.log, stderr=subprocess.STDOUT)
         deadline = time.time() + 30
         while time.time() < deadline:
@@ -163,7 +166,8 @@ def run(args, work: Path, report, smoke) -> None:
     prefix = f"WhisperLoom-Test-{args.id}:"
     (data / "settings.json").write_text(json.dumps({"schemaVersion": 1, "language": "en", "engine": "online"}), encoding="utf-8")
     secrets_seen: list[str] = []
-    with smoke_full.FakeApi() as fake, LocalServer(server_python(args.server_python), server_data) as server:
+    server_dir = Path(args.server_dir) if getattr(args, "server_dir", None) else SERVER_DIR
+    with smoke_full.FakeApi() as fake, LocalServer(server_python(args.server_python), server_data, server_dir) as server:
         app = smoke.AppRun(args.app, data, prefix, ["--test-audio", str(wav), "--output-file", str(out)])
         try:
             code = server.tenant()
@@ -199,7 +203,8 @@ def run(args, work: Path, report, smoke) -> None:
             reasons = []
             if "sync=synced" not in sync.stdout or m.get("state") != "approved" or m.get("lastSync", 0) <= 0:
                 reasons.append(f"sync={sync.stdout.strip()} management={m}")
-            if (settings.get("stt") or {}).get("baseUrl") != server.base + "/api/v1/proxy" or "stt.baseUrl" not in policy.get("locked", []):
+            # Zugang = Eintrag „Firma“ (company:proxy, Adresse <server>/api/v1/proxy, Key = Geräte-Token), Fest.
+            if (settings.get("stt") or {}).get("providerId") != PROXY_ENTRY or "stt.providerId" not in policy.get("locked", []):
                 reasons.append(f"Proxy-Zugang nicht Fest: stt={settings.get('stt')} locked={policy.get('locked')}")
             report.check("approve-sync", not reasons, "; ".join(reasons) or f"device={device}")
 

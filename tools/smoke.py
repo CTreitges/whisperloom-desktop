@@ -331,6 +331,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--only", choices=["extras"], help="--suite input: nur diesen Teil (extras = WLD-P5b)")
     parser.add_argument("--server-local", action="store_true", help="--suite enroll: Server aus server/ lokal starten")
     parser.add_argument("--server-python", help="--suite enroll: Python der Server-venv (sonst server/.venv)")
+    parser.add_argument("--server-dir", help="--suite enroll: anderer server/-Ordner (z. B. Worktree eines Server-Branches)")
     args = parser.parse_args(argv)
     args.app = str(Path(args.app).resolve())
     work = args.work_dir or default_work_dir(args.platform)
