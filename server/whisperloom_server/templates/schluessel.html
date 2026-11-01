@@ -26,11 +26,15 @@
       {% for z in zugaenge %}<option value="{{ z }}">{{ t('zugang.' ~ z) }}</option>{% endfor %}
       <option value="eigen">{{ t('zugang.eigen') }}</option>
     </select>
-    <label for="eigener_name">{{ t('p.eigener_name') }}</label>
-    <input id="eigener_name" name="eigener_name" maxlength="40" aria-describedby="eigen-hinweis" autocapitalize="none">
-    <p id="eigen-hinweis" class="klein">{{ t('p.eigener_name_text') }}</p>
-    <label for="anbieter">{{ t('p.anbieter') }}</label>
-    <select id="anbieter" name="anbieter">{% for a in anbieter %}<option value="{{ a }}">{{ opt('stt.providerId', a) }}</option>{% endfor %}</select>
+    <div class="formular" data-zeigen-wenn="name=eigen">
+      <label for="eigener_name">{{ t('p.eigener_name') }}</label>
+      <input id="eigener_name" name="eigener_name" maxlength="40" aria-describedby="eigen-hinweis" autocapitalize="none">
+      <p id="eigen-hinweis" class="klein">{{ t('p.eigener_name_text') }}</p>
+    </div>
+    <div class="formular" data-zeigen-wenn="name!=eigen">
+      <label for="anbieter">{{ t('p.anbieter') }}</label>
+      <select id="anbieter" name="anbieter">{% for a in anbieter %}<option value="{{ a }}">{{ opt('stt.providerId', a) }}</option>{% endfor %}</select>
+    </div>
     <label for="basis_url">{{ t('p.basis_url') }}</label>
     <input id="basis_url" name="basis_url" type="url" maxlength="300" placeholder="https://" aria-describedby="url-hinweis">
     <p id="url-hinweis" class="klein">{{ t('p.basis_url_text') }}</p>

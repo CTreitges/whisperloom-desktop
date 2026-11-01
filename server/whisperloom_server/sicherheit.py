@@ -20,7 +20,8 @@ HEADER = [
     (b"strict-transport-security", b"max-age=31536000"),
     (b"x-content-type-options", b"nosniff"),
     (b"x-frame-options", b"DENY"),
-    (b"referrer-policy", b"no-referrer"),
+    # same-origin statt no-referrer: sonst senden Browser bei Formular-POSTs „Origin: null“ (CSRF-Prüfung schlägt fehl).
+    (b"referrer-policy", b"same-origin"),
     (b"permissions-policy", b"camera=(), microphone=(), geolocation=()"),
     (b"cross-origin-opener-policy", b"same-origin"),
 ]

@@ -3,14 +3,14 @@
 :root {
   color-scheme: light dark;
   --hg: #f2f2f7; --flaeche: #ffffff; --text: #1c1c1e; --leise: #5a5a5f; --linie: #d8d8dd;
-  --akzent: #0062cc; --akzent-text: #ffffff; --gefahr: #c4231a; --ok: #1d7a34; --warn: #8a5a00;
+  --akzent: #0062cc; --akzent-text: #ffffff; --gefahr: #c4231a; --ok: #1d7a34; --warn: #8a5a00; --feldrand: #8a8a8e;
   --ok-hg: #e6f4ea; --warn-hg: #fff4e0; --fehler-hg: #fdecea; --info-hg: #e8f0fb;
   --radius: 12px; --fokus: 0 0 0 3px rgba(0, 98, 204, .45);
 }
 @media (prefers-color-scheme: dark) {
   :root {
     --hg: #000000; --flaeche: #1c1c1e; --text: #f2f2f7; --leise: #aeaeb2; --linie: #3a3a3c;
-    --akzent: #4ea1ff; --akzent-text: #00172e; --gefahr: #ff6b61; --ok: #5ad27c; --warn: #ffc65c;
+    --akzent: #4ea1ff; --akzent-text: #00172e; --gefahr: #ff6b61; --ok: #5ad27c; --warn: #ffc65c; --feldrand: #7c7c80;
     --ok-hg: #11301a; --warn-hg: #3a2a08; --fehler-hg: #3d1512; --info-hg: #102540; --fokus: 0 0 0 3px rgba(78, 161, 255, .55);
   }
 }
@@ -29,7 +29,9 @@ code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-si
 :focus-visible { outline: none; box-shadow: var(--fokus); border-radius: 6px; }
 
 .rahmen { min-height: 100vh; }
-.rahmen.mit-leiste { display: grid; grid-template-columns: 15rem 1fr; }
+.rahmen.mit-leiste { display: grid; grid-template-columns: 15rem 1fr;
+  /* Leistenfläche läuft über die ganze Seitenhöhe, auch wenn die Leiste selbst klebt */
+  background: linear-gradient(to right, var(--flaeche) calc(15rem - 1px), var(--linie) calc(15rem - 1px), var(--linie) 15rem, transparent 15rem); }
 .leiste {
   background: var(--flaeche); border-right: 1px solid var(--linie); padding: 1.25rem 1rem;
   position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: .5rem; overflow-y: auto;
@@ -43,6 +45,11 @@ code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-si
 .leiste a[aria-current="page"] { background: var(--akzent); color: var(--akzent-text); font-weight: 600; }
 .leiste-fuss { margin-top: auto; border-top: 1px solid var(--linie); padding-top: .75rem; }
 .sprachwahl a[aria-current] { font-weight: 600; color: var(--text); text-decoration: none; }
+.leiste .sprachwahl a { display: inline; padding: 0; border-radius: 0; }
+.leiste .sprachwahl a:hover { background: none; text-decoration: underline; }
+.einstellung.ohne-wert .einstellung-wert { opacity: .45; }
+.formular > .formular { margin: 0; }
+[hidden] { display: none !important; }
 
 main { padding: 2rem clamp(1rem, 4vw, 3rem) 5rem; max-width: 60rem; width: 100%; }
 main.schmal { max-width: 26rem; margin: 0 auto; padding-top: 1rem; }
@@ -58,7 +65,8 @@ main.schmal { max-width: 26rem; margin: 0 auto; padding-top: 1rem; }
 .karte { padding: 1.5rem; }
 .gruppe-box.hervor { border-color: var(--akzent); }
 fieldset.gruppe-box { min-width: 0; }
-fieldset.gruppe-box legend { font-weight: 600; padding: 0 .25rem; }
+fieldset.gruppe-box legend { font-weight: 700; font-size: 1.05rem; float: left; width: 100%; padding: 0; margin: 0 0 .5rem; }
+fieldset.gruppe-box legend + * { clear: both; }
 .raster { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 0 1.25rem; }
 
 .liste { list-style: none; margin: 0; padding: 0; }
@@ -84,7 +92,7 @@ fieldset.gruppe-box legend { font-weight: 600; padding: 0 .25rem; }
 .formular label { font-weight: 500; margin-top: .4rem; }
 .formular.reihe label { margin-top: 0; }
 input, select, textarea {
-  font: inherit; color: var(--text); background: var(--flaeche); border: 1px solid var(--linie); border-radius: 8px;
+  font: inherit; color: var(--text); background: var(--flaeche); border: 1px solid var(--feldrand); border-radius: 8px;
   padding: .55rem .7rem; min-height: 2.5rem; width: 100%;
 }
 textarea { resize: vertical; }

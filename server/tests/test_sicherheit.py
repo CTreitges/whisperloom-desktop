@@ -66,6 +66,23 @@ def test_sicherheits_header_und_cookies(app, einst, uhr, client):
     assert "HttpOnly" in r.headers["set-cookie"] and "SameSite=strict" in r.headers["set-cookie"]
 
 
+def test_referrer_policy_laesst_origin_bei_formularen_zu(client):
+    """Bei „no-referrer“ schicken Browser für Formular-POSTs `Origin: null` → die Origin-Prüfung sperrte jedes Formular
+    (gefunden mit Playwright/Chromium). „same-origin“ schützt nach außen und lässt Origin für die eigene Seite stehen."""
+    assert client.get("/login").headers["referrer-policy"] == "same-origin"
+
+
+def test_origin_null_wird_abgelehnt(client, einst):
+    from .conftest import csrf_aus
+
+    f = neue_firma(einst, "firma-a")
+    neuer_admin(einst, f["id"], "anna")
+    r = client.get("/login")
+    r = client.post("/login", data={"benutzername": "anna", "passwort": PASSWORT, "csrf": csrf_aus(r.text)},
+                    headers={"Origin": "null"}, follow_redirects=False)
+    assert r.status_code == 403
+
+
 def test_anfrage_zu_gross(client):
     r = client.post("/api/v1/enroll", content=b"{" + b" " * 70_000 + b"}", headers={"content-type": "application/json"})
     assert r.status_code == 413 and r.json()["error"] == "payload_too_large"
