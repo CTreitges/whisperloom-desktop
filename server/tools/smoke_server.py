@@ -12,6 +12,7 @@ import http.cookiejar
 import json
 import os
 import re
+import shutil
 import socket
 import subprocess
 import sys
@@ -43,6 +44,8 @@ class Sitzung:
     def anfrage(self, methode: str, pfad: str, formular: dict | None = None, json_body: dict | None = None,
                 headers: dict | None = None) -> tuple[int, dict, bytes]:
         daten, kopf = None, dict(headers or {})
+        if methode == "POST":
+            kopf.setdefault("Origin", self.basis)  # wie ein Browser; die Portal-Formulare prüfen die Herkunft
         if formular is not None:
             daten = urllib.parse.urlencode(formular).encode()
             kopf["Content-Type"] = "application/x-www-form-urlencoded"
@@ -169,9 +172,15 @@ def main() -> int:
         log.close()
         print(f"ok  Server-Prozess {int((daten / 'server.pid').read_text())} beendet")
         if not a.keep:
-            for datei in sorted(daten.rglob("*"), reverse=True):
-                datei.unlink() if datei.is_file() else datei.rmdir()
-            daten.rmdir()
+            # Windows gibt Dateigriffe eines beendeten Prozesses mitunter erst kurz danach frei.
+            for _ in range(20):
+                try:
+                    shutil.rmtree(daten)
+                    break
+                except OSError:
+                    time.sleep(0.25)
+            else:
+                print(f"hinweis: Datenordner nicht gelöscht: {daten}")
     print("SERVER SMOKE OK")
     return 0
 
