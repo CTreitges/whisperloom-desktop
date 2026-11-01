@@ -31,7 +31,7 @@ class TemplateTest(unittest.TestCase):
         self.assertIsNotNone(size, "max_size in MiB angeben")
         self.assertGreaterEqual(int(size.group(1)) * 1024 * 1024, 25 * 1024 * 1024 + 64 * 1024)
         env = env_values()
-        self.assertEqual("password_totp", env["WL_AUTH_MODES"])
+        self.assertEqual("password_totp,password", env["WL_AUTH_MODES"])  # W2-SFIX: Zwei-Faktor optional
         self.assertTrue(env["WL_BASE_URL"].startswith("https://whisperloom-admin."))
         self.assertEqual("127.0.0.1/32", env["WL_TRUSTED_PROXIES"])
         self.assertFalse(env["WL_MASTER_KEY_FILE"].startswith(env["WL_DATA_DIR"]), "Schlüssel nicht im Datenordner")
@@ -41,7 +41,8 @@ class TemplateTest(unittest.TestCase):
         fake_unit = (DEPLOY / "whisperloom-admin-fake.service").read_text(encoding="utf-8")
         host, port = re.search(r"--host (\S+) --port (\d+)", fake_unit).groups()
         self.assertEqual(f"{host}:{port}", env["WL_DEMO_FAKE"])
-        self.assertEqual(f"{host}/32", env["WL_UPSTREAM_ALLOW"])
+        # W2-SFIX: Freigabe mit Port, sonst wären alle Ports von 127.0.0.2 erreichbar (sshd, Dev-Server, …).
+        self.assertEqual(f"{host}:{port}", env["WL_UPSTREAM_ALLOW"])
         self.assertNotEqual("127.0.0.1", host)
 
     def test_no_secrets_in_templates(self):
