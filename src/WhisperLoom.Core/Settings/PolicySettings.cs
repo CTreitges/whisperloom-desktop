@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using WhisperLoom.Core.Api;
 using WhisperLoom.Core.Contracts.Settings;
 
 namespace WhisperLoom.Core.Settings;
@@ -46,20 +47,48 @@ public sealed record PolicySettings
         }
     }
 
-    /// <summary>Genutzte Anbieter, die die Richtlinie nicht erlaubt (abgeschaltete Fallbacks zählen nicht).</summary>
+    /// <summary>
+    /// Genutzte Anbieter, die die Richtlinie nicht erlaubt (abgeschaltete Fallbacks zählen nicht). Mit Freigabeliste
+    /// zählt bei Anbietern mit fester Adresse auch eine eigene Base-URL zu einem anderen Host als Verstoß — sonst gingen
+    /// Diktate und der Key eines erlaubten Anbieters an einen beliebigen Server. Eigener Server und Ollama haben keine
+    /// feste Adresse; wer sie freigibt, gibt jeden Server frei.
+    /// </summary>
     public IReadOnlyList<string> Violations(WhisperLoomSettings s)
     {
-        var used = new List<(string Path, string Id)> { ("stt.providerId", s.Stt.ProviderId), ("llm.providerId", s.Llm.ProviderId) };
+        var same = s.Llm.ProviderId == LlmSettings.Same;
+        var used = new List<(string Path, string Id, string? Url)>
+        {
+            ("stt", s.Stt.ProviderId, s.Stt.BaseUrl),
+            ("llm", s.Llm.ProviderId, same ? null : s.Llm.BaseUrl), // „wie Erkennung“ nutzt die Adresse der Erkennung
+        };
         if (s.SttFallback.Enabled)
         {
-            used.Add(("sttFallback.providerId", s.SttFallback.ProviderId));
+            used.Add(("sttFallback", s.SttFallback.ProviderId, s.SttFallback.BaseUrl));
         }
         if (s.LlmFallback.Enabled)
         {
-            used.Add(("llmFallback.providerId", s.LlmFallback.ProviderId));
+            used.Add(("llmFallback", s.LlmFallback.ProviderId, s.LlmFallback.BaseUrl));
         }
-        return [.. used.Where(u => !IsProviderAllowed(u.Id)).Select(u => $"{u.Path}: Anbieter \"{u.Id}\" ist von IT nicht freigegeben")];
+        var violations = used.Where(u => !IsProviderAllowed(u.Id))
+            .Select(u => $"{u.Path}.providerId: Anbieter \"{u.Id}\" ist von IT nicht freigegeben").ToList();
+        if (AllowedProviders is not null)
+        {
+            violations.AddRange(used
+                .Where(u => IsProviderAllowed(u.Id) && !IsAddressAllowed(u.Id, u.Url))
+                .Select(u => $"{u.Path}.baseUrl: von IT ist nur der Server von \"{u.Id}\" freigegeben ({KeyRoutes.Origin(u.Url!)})"));
+        }
+        return violations;
     }
+
+    /// <summary>
+    /// Darf ein Key an diesen Zugang gehen (auch „Zugang prüfen“)? Anbieter freigegeben und, bei Freigabeliste und fester
+    /// Adresse des Anbieters, leere bzw. gleiche Adresse wie im Katalog.
+    /// </summary>
+    public bool AllowsTarget(string providerId, string? baseUrl) => IsProviderAllowed(providerId) && IsAddressAllowed(providerId, baseUrl);
+
+    private bool IsAddressAllowed(string providerId, string? baseUrl) =>
+        AllowedProviders is null || string.IsNullOrWhiteSpace(baseUrl) || ProviderCatalog.Find(providerId) is not { } p || p.NeedsUrl ||
+        KeyRoutes.Origin(baseUrl) == KeyRoutes.Origin(p.BaseUrl);
 
     /// <summary>
     /// Liest den Abschnitt <c>policy</c> einer Provisioning-Datei. <c>lockSettings</c>: <c>true</c> sperrt alle Pfade,
@@ -132,7 +161,7 @@ public static class PolicyJson
 
     public static string Serialize(PolicySettings policy) => JsonSerializer.Serialize(policy, Options);
 
-    /// <exception cref="JsonException">Kein gültiges JSON.</exception>
+    /// <exception cref="JsonException">Kein gültiges JSON oder <c>null</c> (zählt wie unlesbar: key und update brechen ab).</exception>
     public static PolicySettings Deserialize(string json) =>
-        JsonSerializer.Deserialize<PolicySettings>(json, Options) ?? PolicySettings.None;
+        JsonSerializer.Deserialize<PolicySettings>(json, Options) ?? throw new JsonException("policy.json enthält null");
 }

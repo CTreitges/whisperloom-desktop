@@ -195,6 +195,96 @@ public sealed class SyncCommandsTest : IDisposable
         Assert.Empty(_secrets.Values);
         Assert.Contains("ok delete stt (Speicher)", _out.ToString(), StringComparison.Ordinal);
     }
+
+    [Theory]
+    [InlineData("set")]
+    [InlineData("delete")]
+    public async Task Key_command_with_a_broken_policy_fails_closed(string action)
+    {
+        // Security-Review D2: wie „update“ — eine kaputte policy.json heißt nicht „keine Richtlinie“.
+        await _secrets.SetAsync(SecretNames.Stt, "test-key-not-real-1", CancellationToken.None);
+        File.WriteAllText(Path.Combine(_dir, "policy.json"), "{ kaputt");
+
+        var code = await KeyCommand.RunAsync(action, SecretNames.Stt, () => "test-key-not-real-7\n", _secrets, _dir, _out, _err, CancellationToken.None);
+
+        Assert.NotEqual(0, code);
+        Assert.Equal("test-key-not-real-1", _secrets.Values[SecretNames.Stt]);
+        Assert.Contains("policy.json", _err.ToString(), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("set")]
+    [InlineData("delete")]
+    public async Task Key_command_with_a_null_policy_fails_closed(string action)
+    {
+        await _secrets.SetAsync(SecretNames.Stt, "test-key-not-real-1", CancellationToken.None);
+        File.WriteAllText(Path.Combine(_dir, "policy.json"), "null");
+
+        var code = await KeyCommand.RunAsync(action, SecretNames.Stt, () => "test-key-not-real-7\n", _secrets, _dir, _out, _err, CancellationToken.None);
+
+        Assert.NotEqual(0, code);
+        Assert.Equal("test-key-not-real-1", _secrets.Values[SecretNames.Stt]);
+    }
+
+    [Fact]
+    public async Task Import_that_sends_dictations_to_a_new_host_warns_without_a_key()
+    {
+        var file = Write("llm.json", """{"schemaVersion":1,"llm":{"providerId":"custom","baseUrl":"https://angreifer.example/v1"}}""");
+
+        Assert.Equal(0, await Run("import", file, dryRun: true));
+
+        Assert.Contains("warn Diktate gehen künftig auch an https://angreifer.example", _err.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Key_command_reads_the_policy_from_the_data_dir()
+    {
+        new PolicyStore(_dir).Save(new PolicySettings { Locked = ["secrets.stt"] });
+
+        Assert.Equal(1, await KeyCommand.RunAsync("set", SecretNames.Stt, () => "test-key-not-real-7\n", _secrets, _dir, _out, _err, CancellationToken.None));
+        Assert.Equal(0, await KeyCommand.RunAsync("set", SecretNames.Llm, () => "test-key-not-real-8\n", _secrets, _dir, _out, _err, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Imported_terminal_profile_does_not_press_enter_until_the_user_confirms_it()
+    {
+        // Security-Review K1-Verstärker: fremde Datei legt ein Terminal-Profil mit Enter an → Antwort samt Enter in die Shell.
+        var file = Write("profile.json",
+            """{"schemaVersion":1,"desktop":{"profiles":[{"name":"Terminal","process":"WindowsTerminal.exe","insertMode":"type","pressEnter":true}]}}""");
+
+        Assert.Equal(0, await Run("import", file));
+
+        var profile = Assert.Single(SettingsStore.Desktop(new SettingsStore(_dir).Load()).Profiles);
+        Assert.Equal("WindowsTerminal.exe", profile.Process);
+        Assert.False(profile.PressEnter);
+        Assert.Contains("warn Profil Terminal: Enter danach ausgeschaltet", _err.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Import_that_moves_a_stored_key_to_another_host_deletes_it_and_says_so()
+    {
+        // Security-Review K1 (PoC): fremde Datei lenkt den groq-Key auf einen anderen Host und hängt eine Datei als Vokabular an.
+        new SettingsStore(_dir).Save(SettingsJson.Deserialize("""{"stt":{"providerId":"groq"}}"""));
+        await _secrets.SetAsync(SecretNames.Stt, "test-key-not-real-7", CancellationToken.None);
+        await _secrets.SetAsync(SecretNames.Llm, "test-key-not-real-8", CancellationToken.None);
+        var file = Write("evil.json",
+            """{"schemaVersion":1,"stt":{"providerId":"groq","baseUrl":"https://angreifer.example/openai/v1","vocabularyFile":"C:/geheim.txt"}}""");
+
+        Assert.Equal(0, await Run("import", file, dryRun: true));
+        Assert.Equal("test-key-not-real-7", _secrets.Values[SecretNames.Stt]); // Probelauf ändert nichts
+        Assert.Equal(0, await Run("import", file));
+
+        var settings = new SettingsStore(_dir).Load();
+        Assert.Equal("https://angreifer.example/openai/v1", settings.Stt.BaseUrl);
+        Assert.Equal("", settings.Stt.VocabularyFile);
+        Assert.False(_secrets.Values.ContainsKey(SecretNames.Stt));
+        // „wie Erkennung“: „Zugang prüfen“ schickte den llm-Key an die Adresse der Erkennung — er geht mit.
+        Assert.False(_secrets.Values.ContainsKey(SecretNames.Llm));
+        Assert.Contains("change secrets.stt: stored -> deleted (https://angreifer.example)", _out.ToString(), StringComparison.Ordinal);
+        Assert.Contains("warn Key stt wird gelöscht", _err.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("vocabularyFile", _out.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("test-key-not-real", _out.ToString() + _err, StringComparison.Ordinal);
+    }
 }
 
 public class DesktopSectionTest

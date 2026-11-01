@@ -24,7 +24,7 @@ internal sealed class SyncCommands(string dataDir, ISecretStore secrets, TextWri
             return verb switch
             {
                 "provision" => await ProvisionAsync(path, ct),
-                "import" => Import(path, dryRun),
+                "import" => await ImportAsync(path, dryRun, ct),
                 "export" => Export(path),
                 _ => throw new ArgumentOutOfRangeException(nameof(verb), verb, null),
             };
@@ -59,13 +59,21 @@ internal sealed class SyncCommands(string dataDir, ISecretStore secrets, TextWri
         return 0;
     }
 
-    private int Import(string path, bool dryRun)
+    private async Task<int> ImportAsync(string path, bool dryRun, CancellationToken ct)
     {
-        var preview = SyncImport.Preview(_settings.Load(), SyncDocument.Parse(File.ReadAllText(path)), _policy.Load());
-        Report(preview.Warnings, preview.Errors);
+        var stored = await StoredKeysAsync(secrets, ct);
+        var preview = SyncImport.Preview(_settings.Load(), SyncDocument.Parse(File.ReadAllText(path)), _policy.Load(), stored);
+        Report([.. preview.Warnings, .. preview.DroppedKeys.Select(DropWarning),
+            .. preview.EnterDisabled.Select(p => $"Profil {p}: Enter danach ausgeschaltet (fremde Datei); bei Bedarf im Profil selbst einschalten"),
+            .. preview.DictationTargets.Select(t => $"Diktate gehen künftig auch an {t} (Erkennung bzw. Textverbesserung); nur übernehmen, wenn du dem Server vertraust")],
+            preview.Errors);
         foreach (var c in preview.Changes)
         {
             output.WriteLine($"{(c.Locked ? "locked" : "change")} {c.Path}: {c.Old ?? "-"} -> {c.New ?? "-"}");
+        }
+        foreach (var d in preview.DroppedKeys)
+        {
+            output.WriteLine($"change secrets.{d.Name}: stored -> deleted ({d.Target})");
         }
         if (!preview.CanApply)
         {
@@ -73,6 +81,8 @@ internal sealed class SyncCommands(string dataDir, ISecretStore secrets, TextWri
         }
         if (!dryRun)
         {
+            // Erst die Keys: scheitert das Löschen, bleiben die Einstellungen wie vorher (kein Key an ein neues Ziel).
+            await DropKeysAsync(secrets, preview, ct);
             _settings.Save(preview.Settings!);
         }
         output.WriteLine(dryRun ? "ok import dry-run" : $"ok import {preview.Changes.Count(c => !c.Locked)} changes");
@@ -86,6 +96,30 @@ internal sealed class SyncCommands(string dataDir, ISecretStore secrets, TextWri
         output.WriteLine($"ok export {path}");
         return 0;
     }
+
+    /// <summary>Namen der Keys, die im Speicher liegen (für die Schutzregel des Imports).</summary>
+    internal static async Task<IReadOnlyCollection<string>> StoredKeysAsync(ISecretStore store, CancellationToken ct)
+    {
+        var stored = new List<string>();
+        foreach (var name in SecretNames.All)
+        {
+            if (!string.IsNullOrWhiteSpace(await store.GetAsync(name, ct)))
+            {
+                stored.Add(name);
+            }
+        }
+        return stored;
+    }
+
+    internal static async Task DropKeysAsync(ISecretStore store, ImportPreview preview, CancellationToken ct)
+    {
+        foreach (var drop in preview.DroppedKeys)
+        {
+            await store.DeleteAsync(drop.Name, ct);
+        }
+    }
+
+    private static string DropWarning(KeyDrop d) => $"Key {d.Name} wird gelöscht: der Import würde ihn an {d.Target} schicken; nur neu eingeben, wenn du {d.Target} vertraust";
 
     private void Report(IReadOnlyList<string> warnings, IReadOnlyList<string> errorList)
     {

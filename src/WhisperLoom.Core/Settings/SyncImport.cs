@@ -17,7 +17,23 @@ public sealed record ImportPreview(
     IReadOnlyList<string> Warnings)
 {
     public bool CanApply => Settings is not null && Errors.Count == 0;
+
+    /// <summary>Gespeicherte Keys, die beim Übernehmen gelöscht werden: Der Import lenkte sie an ein neues Ziel.</summary>
+    public IReadOnlyList<KeyDrop> DroppedKeys { get; init; } = [];
+
+    /// <summary>
+    /// App-Profile (<c>desktop.profiles</c>, Anzeige: Name bzw. Prozess), bei denen der Import „Enter danach“ ausgeschaltet
+    /// hat: Enter in eine Konsole ist ein Befehl — das bestätigt der Nutzer im Profil selbst.
+    /// </summary>
+    public IReadOnlyList<string> EnterDisabled { get; init; } = [];
+
+    /// <summary>Neue Ziele (Origin) für Diktattext — Erkennung, Textverbesserung, eingeschaltete Fallbacks —, auch ohne Key.</summary>
+    public IReadOnlyList<string> DictationTargets { get; init; } = [];
 }
+
+/// <summary>Ein gespeicherter Key (<see cref="Contracts.SecretNames"/>), den ein Import an <paramref name="Target"/> lenken würde.</summary>
+/// <param name="Target">Neues Ziel als Origin (<c>https://host</c>) bzw. <c>Proxy http://host:port</c>.</param>
+public sealed record KeyDrop(string Name, string Target);
 
 /// <summary>
 /// Import einer Datei im Format v1 in die aktuellen Einstellungen: Felder der Datei ersetzen die aktuellen, fehlende
@@ -27,15 +43,54 @@ public sealed record ImportPreview(
 /// </summary>
 public static class SyncImport
 {
-    public static ImportPreview Preview(WhisperLoomSettings current, SyncDocument file, PolicySettings policy)
+    /// <summary>Abschnitt der lokalen Verarbeitung (Desktop, <c>LocalSettings</c> der App).</summary>
+    private const string LocalSection = "local";
+
+    /// <summary>
+    /// Vorschau eines Imports aus einer fremden Datei. Schutzregeln: <c>stt.vocabularyFile</c> wird nie übernommen;
+    /// lenkt die Datei einen gespeicherten Key an ein neues Ziel (Adresse, Anbieter oder manueller Proxy), steht er in
+    /// <see cref="ImportPreview.DroppedKeys"/> und der Aufrufer löscht ihn beim Übernehmen.
+    /// </summary>
+    /// <param name="storedKeys">Namen der gespeicherten Keys (<see cref="Contracts.SecretNames"/>).</param>
+    public static ImportPreview Preview(WhisperLoomSettings current, SyncDocument file, PolicySettings policy, IReadOnlyCollection<string> storedKeys)
     {
         var warnings = new List<string>();
         if (file.Secrets.Count > 0 || file.Policy is not null)
         {
             warnings.Add("Keys und Richtlinie (secrets, policy) übernimmt nur „WhisperLoom provision“; hier ignoriert.");
         }
-        return Merge(current, file, policy, policy.IsLocked, warnings);
+        // Gerätebezogene Ziele, die keine fremde Datei setzen darf: Vokabular-Datei und die Ollama-Adresse (lokale
+        // Textverbesserung, ohne Key, aber mit Diktattext). „local“ liest die App ohne Rücksicht auf Groß-/Kleinschreibung.
+        var settings = (JsonObject)file.Settings.DeepClone();
+        (settings["stt"] as JsonObject)?.Remove("vocabularyFile");
+        if (settings[LocalSection] is JsonObject local)
+        {
+            foreach (var name in local.Select(p => p.Key).Where(k => k.Equals("ollamaUrl", StringComparison.OrdinalIgnoreCase)).ToList())
+            {
+                local.Remove(name);
+            }
+        }
+        var enterDisabled = ImportProfiles.DisableNewEnter(settings, Tree(current));
+        var preview = Merge(current, file with { Settings = settings }, policy, policy.IsLocked, warnings) with { EnterDisabled = enterDisabled };
+        if (preview.Settings is null)
+        {
+            return preview;
+        }
+        var drops = KeyRoutes.Dropped(current, preview.Settings, storedKeys);
+        // Einen von IT festgelegten Key löscht kein Import (wie „key delete“): dann lieber gar nicht übernehmen.
+        var locked = drops.Where(d => policy.IsLocked("secrets." + d.Name))
+            .Select(d => $"secrets.{d.Name}: von IT festgelegter Key ginge an {d.Target}").ToList();
+        return locked.Count > 0
+            ? preview with { Settings = null, Errors = [.. preview.Errors, .. locked] }
+            : preview with { DroppedKeys = drops, DictationTargets = KeyRoutes.NewDictationTargets(current, preview.Settings) };
     }
+
+    /// <summary>
+    /// Eigene Änderungen aus dem Einstellungsfenster unter der Richtlinie: gesperrte Felder bleiben, fester Verlauf gilt,
+    /// Verstöße sind Fehler. Ohne die Schutzregeln von <see cref="Preview"/> für fremde Dateien.
+    /// </summary>
+    public static ImportPreview ApplyPolicy(WhisperLoomSettings current, WhisperLoomSettings edited, PolicySettings policy) =>
+        Merge(current, SyncDocument.Parse(SettingsJson.Serialize(edited)), policy, policy.IsLocked, []);
 
     /// <summary>Gemeinsamer Teil von Import und Provisioning.</summary>
     internal static ImportPreview Merge(WhisperLoomSettings current, SyncDocument file, PolicySettings policy, Func<string, bool> locked, List<string> warnings)
@@ -99,7 +154,7 @@ public static class SyncImport
         path == SyncDocument.AndroidSection || path.StartsWith(SyncDocument.AndroidSection + ".", StringComparison.Ordinal);
 }
 
-/// <summary>Export im Format v1: die ganzen Einstellungen samt <c>desktop</c>/<c>android</c>, nie Keys oder Richtlinie.</summary>
+/// <summary>Export im Format v1: die ganzen Einstellungen samt <c>desktop</c>/<c>android</c>, nie Keys, Richtlinie oder Vokabular-Pfad.</summary>
 public static class SyncExport
 {
     public static string ToJson(WhisperLoomSettings settings)
@@ -108,6 +163,7 @@ public static class SyncExport
         // Keys stehen nie in settings.json; falls doch jemand den Abschnitt von Hand eingetragen hat: nicht exportieren.
         tree.Remove(SyncDocument.SecretsSection);
         tree.Remove(SyncDocument.PolicySection);
+        (tree["stt"] as JsonObject)?.Remove("vocabularyFile");
         return tree.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
     }
 }

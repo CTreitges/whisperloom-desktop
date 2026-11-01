@@ -109,6 +109,11 @@ public sealed class TextInserter(IClipboardAdapter clipboard, IKeySender keys, I
         if (mode == InsertMode.Type)
         {
             LastReport = Describe(target);
+            // Ein getippter Zeilenumbruch ist Umschalt+Enter — in einer Konsole führt das die Zeile aus (Review WLD-FIX R-1).
+            if (Features.Rewrite.SelectionCapture.IsConsole(windows.ProcessName(target)))
+            {
+                text = OneLine(text);
+            }
             if (!keys.Type(text))
             {
                 return Fallback(text, InsertOutcome.InputRejected);
@@ -151,6 +156,9 @@ public sealed class TextInserter(IClipboardAdapter clipboard, IKeySender keys, I
             }
         }
     }
+
+    /// <summary>Zeilenumbrüche (\r\n, \n, \r) als je ein Leerzeichen.</summary>
+    internal static string OneLine(string text) => text.Replace("\r\n", " ", StringComparison.Ordinal).Replace('\n', ' ').Replace('\r', ' ');
 
     private InsertReport Describe(IntPtr target)
     {

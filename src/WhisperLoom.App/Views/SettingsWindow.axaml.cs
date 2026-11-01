@@ -72,7 +72,7 @@ public partial class SettingsWindow : Window
         {
             await using var stream = await files[0].OpenReadAsync();
             using var reader = new StreamReader(stream);
-            sync.Preview(await reader.ReadToEndAsync());
+            await sync.Preview(await reader.ReadToEndAsync());
         }
         catch (IOException)
         {

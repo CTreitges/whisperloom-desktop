@@ -35,7 +35,11 @@ public enum ProxyMode
     None,
 }
 
-/// <summary>Proxy des gemeinsamen Handlers. Anmeldung mit dem Konto des Nutzers (DefaultCredentials) oder Name/Passwort.</summary>
+/// <summary>
+/// Proxy des gemeinsamen Handlers. Anmeldung beim System-Proxy mit dem Konto des Nutzers (DefaultCredentials) oder
+/// Name/Passwort; ein manueller Proxy bekommt nur Name/Passwort, nie DefaultCredentials.
+/// </summary>
+/// <param name="UseDefaultCredentials">Nur beim System-Proxy.</param>
 public sealed record HttpProxyOptions(
     ProxyMode Mode = ProxyMode.System,
     string Address = "",
@@ -78,17 +82,21 @@ public static class Http
             PooledConnectionLifetime = TimeSpan.FromMinutes(5),
             UseProxy = proxy.Mode != ProxyMode.None,
         };
-        ICredentials? credentials = proxy.UseDefaultCredentials
-            ? CredentialCache.DefaultCredentials
-            : new NetworkCredential(proxy.UserName, proxy.Password);
         if (proxy.Mode == ProxyMode.Manual)
         {
-            handler.Proxy = new WebProxy(proxy.Address) { Credentials = credentials };
+            // Die Windows-Anmeldung (NTLM/Kerberos) nie an eine eingetragene Adresse: sie kann aus einer fremden
+            // Einstellungsdatei stammen (Security-Review R2). Name/Passwort nur, wenn ausdrücklich gesetzt.
+            handler.Proxy = new WebProxy(proxy.Address)
+            {
+                Credentials = proxy.UserName.Length > 0 ? new NetworkCredential(proxy.UserName, proxy.Password) : null,
+            };
         }
         else if (proxy.Mode == ProxyMode.System)
         {
-            // Proxy = null heißt System-Proxy (HttpClient.DefaultProxy).
-            handler.DefaultProxyCredentials = credentials;
+            // Proxy = null heißt System-Proxy (HttpClient.DefaultProxy, PAC); den hat das System bzw. die IT gesetzt.
+            handler.DefaultProxyCredentials = proxy.UseDefaultCredentials
+                ? CredentialCache.DefaultCredentials
+                : new NetworkCredential(proxy.UserName, proxy.Password);
         }
         return handler;
     }

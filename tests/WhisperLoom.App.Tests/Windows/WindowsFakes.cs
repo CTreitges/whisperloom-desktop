@@ -153,7 +153,10 @@ internal sealed class FakeWindows(Steps steps) : IWindowAdapter
 
     public bool IsProtected(IntPtr window) => Elevated.Contains(window);
 
-    public string ProcessName(IntPtr window) => $"proc-{(long)window}";
+    /// <summary>Prozessnamen je Fenster; sonst „proc-&lt;handle&gt;“.</summary>
+    public Dictionary<IntPtr, string> Processes { get; } = [];
+
+    public string ProcessName(IntPtr window) => Processes.GetValueOrDefault(window, $"proc-{(long)window}");
 
     public string FocusClass(IntPtr window) => window == 42 ? "Edit" : "";
 

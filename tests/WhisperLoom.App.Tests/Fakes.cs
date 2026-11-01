@@ -75,8 +75,14 @@ internal sealed class MemorySecretStore : ISecretStore
 
 internal sealed class FakeAccessChecker : IAccessChecker
 {
-    public Task<AccessResult> CheckAsync(string providerId, string baseUrl, string? key, CancellationToken ct) =>
-        Task.FromResult(new AccessResult(key is not null, key is null ? "Access_NoKey" : "Access_Ok", 200));
+    /// <summary>Anbieter und Adresse des letzten Aufrufs.</summary>
+    public (string ProviderId, string BaseUrl)? Last { get; private set; }
+
+    public Task<AccessResult> CheckAsync(string providerId, string baseUrl, string? key, CancellationToken ct)
+    {
+        Last = (providerId, baseUrl);
+        return Task.FromResult(new AccessResult(key is not null, key is null ? "Access_NoKey" : "Access_Ok", 200));
+    }
 }
 
 /// <summary>Ein Controller mit Fakes und Temp-Datenordner; räumt beim Dispose auf.</summary>

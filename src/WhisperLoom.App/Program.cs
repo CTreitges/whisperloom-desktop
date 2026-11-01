@@ -142,16 +142,8 @@ internal static class Program
         {
             var store = SecretStoreFactory.CreateAsync(request.Options.DataDir, request.Options.SecretPrefix, CancellationToken.None)
                 .GetAwaiter().GetResult();
-            Core.Settings.PolicySettings policy;
-            try
-            {
-                policy = new Services.PolicyStore(request.Options.DataDir).Load();
-            }
-            catch (JsonException)
-            {
-                policy = Core.Settings.PolicySettings.None; // wie beim App-Start: kaputte policy.json = keine Richtlinie
-            }
-            return KeyCommand.RunAsync(action, name, () => Console.In.ReadToEnd(), store, policy, Console.Out, Console.Error, CancellationToken.None)
+            return KeyCommand.RunAsync(action, name, () => Console.In.ReadToEnd(), store, request.Options.DataDir, Console.Out, Console.Error,
+                    CancellationToken.None)
                 .GetAwaiter().GetResult();
         }
         catch (Exception e) when (e is ArgumentException or IOException)

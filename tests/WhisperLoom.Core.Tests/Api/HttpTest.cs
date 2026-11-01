@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text;
 using WhisperLoom.Core.Api;
 using WhisperLoom.Core.Contracts;
@@ -154,6 +155,27 @@ public sealed class HttpTest : IAsyncLifetime
     {
         Assert.Equal("https://x/v1/audio/transcriptions", Http.Endpoint(" https://x/v1/ ", "/audio/transcriptions"));
         Assert.Equal("https://x/v1/chat/completions", Http.Endpoint("https://x/v1", "/chat/completions"));
+    }
+
+    /// <summary>
+    /// Security-Review R2: Ein manueller Proxy (auch aus einem Import) bekommt nie die Windows-Anmeldung (NTLM/Kerberos);
+    /// Name/Passwort nur, wenn ausdrücklich gesetzt. Der System-Proxy behält DefaultCredentials.
+    /// </summary>
+    [Fact]
+    public void ManuellerProxyOhneWindowsAnmeldungSystemProxyMit()
+    {
+        using var manual = (SocketsHttpHandler)Http.CreateHandler(new HttpProxyOptions(ProxyMode.Manual, "http://proxy.example:3128"));
+        var proxy = Assert.IsType<WebProxy>(manual.Proxy);
+        Assert.Null(proxy.Credentials);
+        Assert.Null(manual.DefaultProxyCredentials);
+
+        using var basic = (SocketsHttpHandler)Http.CreateHandler(
+            new HttpProxyOptions(ProxyMode.Manual, "http://proxy.example:3128", UseDefaultCredentials: false, UserName: "u", Password: "p"));
+        Assert.Equal("u", Assert.IsType<NetworkCredential>(((WebProxy)basic.Proxy!).Credentials).UserName);
+
+        using var system = (SocketsHttpHandler)Http.CreateHandler(new HttpProxyOptions(ProxyMode.System));
+        Assert.Null(system.Proxy);
+        Assert.Same(CredentialCache.DefaultCredentials, system.DefaultProxyCredentials);
     }
 
     /// <summary>Desktop: Abbruch über den Token bleibt Abbruch und wird nie zum Netzfehler (Vertrag „Threading“).</summary>

@@ -128,4 +128,13 @@ public class PolicyTest
         Assert.Null(tree["updatesEnabled"]);
         Assert.Null(tree["isActive"]);
     }
+
+    [Theory]
+    [InlineData("null")]
+    [InlineData(" null ")]
+    public void Policy_json_null_counts_as_unreadable(string json)
+    {
+        // Review WLD-FIX D-2: „null“ ergab bisher „keine Richtlinie“ — key und update sind bei unlesbarer Datei fail-closed.
+        Assert.ThrowsAny<System.Text.Json.JsonException>(() => PolicyJson.Deserialize(json));
+    }
 }

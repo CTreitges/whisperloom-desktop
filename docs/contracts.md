@@ -160,6 +160,8 @@ Ablagefehler: `IOException`.
 - **Nicht übernommen** (Android-UI, auf Desktop ohne Bedeutung): `vocab_file_name`, `welcome_seen`, `overlay_skipped`,
   `setup_skip_*`, `tutorial_seen`, `float_x`/`float_y`, `agent_enabled`, `agent_tutorial_seen`, Legacy `agent_url`/`agent_token`.
   `stt.vocabularyFile` ist ein Dateipfad (Android: `content://`-URI) und wird **nicht** synchronisiert.
+  Umsetzung: `SyncImport.Preview` übernimmt das Feld nicht, `SyncExport` lässt es weg; nur das Provisioning setzt es.
+  `VocabularySource` liest nur `.md`, `.markdown` und `.txt`.
 - Lesen: unbekannte Felder werden toleriert, fehlende bekommen ihren Standardwert, `null` für einen Abschnitt →
   `JsonException`, neueres Schema → `NotSupportedException`. Migration kommt mit dem ersten Schema-Wechsel.
 - Speichern: unbekannte Felder der **obersten Ebene** (z. B. `android`) bleiben über `Extra` (`[JsonExtensionData]`)
