@@ -45,12 +45,50 @@ public class OutputDecisionTest
         Assert.Equal(new OutputPlan(action, copy, hint, history), OutputDecision.Decide(focus, attempt, alwaysCopy));
     }
 
+    /// <summary>Browser („Vorsichtig im Browser“, Entscheidung Christof): nur die Zeilen, die sich vom Nicht-Browser unterscheiden.</summary>
+    public static TheoryData<FocusKind, InsertAttempt, bool, OutputAction, bool, OutputHint, bool> BrowserRows() => new()
+    {
+        { Unknown, Inserted, false, Insert, false, None, true }, // einfügen, alte Zwischenablage zurück, Verlauf ja
+        { Unknown, Inserted, true, Insert, true, None, true }, // alwaysCopy gewinnt
+    };
+
+    [Theory]
+    [MemberData(nameof(BrowserRows))]
+    public void BrowserZeilen(FocusKind focus, InsertAttempt attempt, bool alwaysCopy, OutputAction action, bool copy, OutputHint hint, bool history)
+    {
+        Assert.Equal(new OutputPlan(action, copy, hint, history), OutputDecision.Decide(focus, attempt, alwaysCopy, browser: true));
+    }
+
+    [Fact]
+    public void ImBrowserAendertSichNurUnbekanntEingefuegtOhneAlwaysCopy()
+    {
+        var changed = OutputDecision.Table().Where(r => r.Browser)
+            .Where(r => r.Plan != OutputDecision.Decide(r.Focus, r.Attempt, r.AlwaysCopy, browser: false))
+            .Select(r => (r.Focus, r.Attempt, r.AlwaysCopy))
+            .ToList();
+        Assert.Equal([(Unknown, Inserted, false)], changed);
+    }
+
     [Fact]
     public void TabelleHatAlleKombinationen()
     {
-        Assert.Equal(24, OutputDecision.Table().Count());
-        Assert.Equal(Rows().Count, OutputDecision.Table().Count());
+        Assert.Equal(48, OutputDecision.Table().Count());
+        Assert.Equal(Rows().Count, OutputDecision.Table().Count(r => !r.Browser));
     }
+
+    [Theory]
+    [InlineData("chrome", true)]
+    [InlineData("MSEDGE.EXE", true)]
+    [InlineData("Firefox.exe", true)]
+    [InlineData("brave", true)]
+    [InlineData("opera", true)]
+    [InlineData("vivaldi.exe", true)]
+    [InlineData("notepad", false)]
+    [InlineData("WINWORD.EXE", false)]
+    [InlineData("", false)]
+    [InlineData(null, false)]
+    public void BrowserErkennungAmProzessnamen(string? process, bool expected) =>
+        Assert.Equal(expected, OutputDecision.IsBrowser(process));
 
     [Theory]
     [InlineData(Editable, true, true)]

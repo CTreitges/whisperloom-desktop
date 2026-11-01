@@ -90,8 +90,19 @@ public sealed partial class HistoryViewModel(IHistoryStore store, HistoryActions
             return;
         }
         var code = await actions.Insert(detail.Text);
-        Status = Loc.Instance[code is "Pasted" or "Typed" ? "History_Status_inserted" : code == "PasswordField" ? "Output_Hint_Password" : "Output_Hint_Copied"];
+        Status = Loc.Instance[InsertStatusKey(code)];
     }
+
+    /// <summary>Ergebnis von „einfügen“ (<c>InputFlow.InsertTextAsync</c>) → Statustext; „Kopiert“ nur, wenn der Text dort liegt.</summary>
+    internal static string InsertStatusKey(string code) => code switch
+    {
+        "Pasted" or "Typed" => "History_Status_inserted",
+        "PasswordField" => "Output_Hint_Password",
+        "ClipboardOnly" or "NoTextField" or "TargetGone" or "TargetProtected" or "NotForeground" or "InputRejected" or "copied" => "Output_Hint_Copied",
+        "busy" => "History_Status_busy",
+        _ => "History_Status_insertFailed",
+    };
+
 
     /// <summary>Strg+C: gewählte Fassung kopieren; „Kopiert“ erst nach erfolgreicher Gegenprobe.</summary>
     [RelayCommand]

@@ -95,7 +95,8 @@ public partial class HistoryWindow : Window
             }
             return;
         }
-        if (focused is TextBox)
+        // Fokussierte Knöpfe (Bestätigen, Ersetzen, Chips) behalten ihre Tasten: Enter löst den Knopf aus, nicht „einfügen“.
+        if (focused is TextBox or Button or Avalonia.Controls.Primitives.ToggleButton)
         {
             return;
         }

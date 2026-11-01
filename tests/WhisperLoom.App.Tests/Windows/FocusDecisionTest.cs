@@ -208,6 +208,39 @@ public class FocusDecisionTest
         Assert.Equal("Hallo Welt", _rig.Clipboard.Text);
     }
 
+    [Theory]
+    [InlineData("chrome")]
+    [InlineData("MSEDGE.EXE")]
+    [InlineData("firefox")]
+    public async Task UnbekannterFokusImBrowserStelltDieAlteZwischenablageWiederHer(string browser)
+    {
+        // „Vorsichtig im Browser“ (Entscheidung Christof): ein Web-Passwortfeld ist per UIA nicht erkennbar.
+        _rig.Focus.Kind = FocusKind.Unknown;
+        _rig.Windows.Processes[42] = browser;
+        Assert.Equal(InsertOutcome.Pasted, await Insert());
+        Assert.Equal("Hallo Welt", _rig.Keys.Target);
+        Assert.Equal("alt", _rig.Clipboard.Text);
+        Assert.Contains("restore", _rig.Steps);
+    }
+
+    [Fact]
+    public async Task ImBrowserGewinntImmerKopieren()
+    {
+        _rig.Focus.Kind = FocusKind.Unknown;
+        _rig.Windows.Processes[42] = "chrome.exe";
+        Assert.Equal(InsertOutcome.Pasted, await Insert(alwaysCopy: true));
+        Assert.Equal("Hallo Welt", _rig.Clipboard.Text);
+    }
+
+    [Fact]
+    public async Task UnbekannterFokusAusserhalbDesBrowsersBehaeltDieKopie()
+    {
+        _rig.Focus.Kind = FocusKind.Unknown;
+        _rig.Windows.Processes[42] = "WindowsTerminal";
+        Assert.Equal(InsertOutcome.Pasted, await Insert());
+        Assert.Equal("Hallo Welt", _rig.Clipboard.Text);
+    }
+
     [Fact]
     public async Task TippenMitImmerKopieren()
     {

@@ -68,7 +68,29 @@ public static class OutputDecision
     public static bool ShouldInsert(FocusKind focus, bool canInsert) =>
         canInsert && focus is FocusKind.Editable or FocusKind.Unknown;
 
-    public static OutputPlan Decide(FocusKind focus, InsertAttempt attempt, bool alwaysCopy)
+    /// <summary>
+    /// Browser-Prozesse (ohne „.exe“, Vergleich ohne Groß-/Kleinschreibung). Sie melden ihren Webinhalt per UI Automation nur als
+    /// „Pane“ – ein Web-Passwortfeld ist dort nicht von einem Textfeld zu unterscheiden (Messung W2-OUT).
+    /// </summary>
+    public static readonly IReadOnlyList<string> BrowserProcesses = ["chrome", "msedge", "firefox", "brave", "opera", "vivaldi"];
+
+    /// <summary>Ist der Prozess (z. B. "MSEDGE.EXE", "chrome") ein Browser aus <see cref="BrowserProcesses"/>?</summary>
+    public static bool IsBrowser(string? process)
+    {
+        var name = (process ?? "").Trim();
+        if (name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+        {
+            name = name[..^4];
+        }
+        return BrowserProcesses.Contains(name, StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <param name="browser">
+    /// Ziel ist ein Browser (<see cref="IsBrowser"/>). Entscheidung Christof 2026-11-01 „Vorsichtig im Browser“: bei unbekanntem
+    /// Fokus einfügen, danach die vorherige Zwischenablage wiederherstellen – ein Diktat in ein Web-Passwortfeld bleibt so nicht in
+    /// der Zwischenablage. <c>output.alwaysCopy</c> gewinnt (Wahl des Nutzers).
+    /// </param>
+    public static OutputPlan Decide(FocusKind focus, InsertAttempt attempt, bool alwaysCopy, bool browser = false)
     {
         if (focus == FocusKind.Password)
         {
@@ -76,8 +98,8 @@ public static class OutputDecision
         }
         if (attempt == InsertAttempt.Inserted)
         {
-            // Unbekannter Fokus: ob der Text wirklich ankam, weiß niemand – er bleibt still auch in der Zwischenablage.
-            return new OutputPlan(OutputAction.Insert, Copy: alwaysCopy || focus == FocusKind.Unknown, OutputHint.None, History: true);
+            // Unbekannter Fokus: ob der Text wirklich ankam, weiß niemand – er bleibt still auch in der Zwischenablage, außer im Browser.
+            return new OutputPlan(OutputAction.Insert, Copy: alwaysCopy || (focus == FocusKind.Unknown && !browser), OutputHint.None, History: true);
         }
         return new OutputPlan(OutputAction.ClipboardWithHint, Copy: true, OutputHint.Copied, History: true);
     }
@@ -90,9 +112,10 @@ public static class OutputDecision
         trailingSpace && text.Length > 0 && !char.IsWhiteSpace(text[^1]) ? text + " " : text;
 
     /// <summary>Alle Zeilen der Tabelle (Doku und Tests).</summary>
-    public static IEnumerable<(FocusKind Focus, InsertAttempt Attempt, bool AlwaysCopy, OutputPlan Plan)> Table() =>
+    public static IEnumerable<(FocusKind Focus, InsertAttempt Attempt, bool AlwaysCopy, bool Browser, OutputPlan Plan)> Table() =>
         from focus in Enum.GetValues<FocusKind>()
         from attempt in Enum.GetValues<InsertAttempt>()
         from alwaysCopy in new[] { false, true }
-        select (focus, attempt, alwaysCopy, Decide(focus, attempt, alwaysCopy));
+        from browser in new[] { false, true }
+        select (focus, attempt, alwaysCopy, browser, Decide(focus, attempt, alwaysCopy, browser));
 }

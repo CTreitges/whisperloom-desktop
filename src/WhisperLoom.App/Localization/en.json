@@ -88,6 +88,7 @@
   "History_Status_edited": "Saved",
   "History_Status_error": "Processing failed",
   "History_Status_gone": "Entry no longer exists",
+  "History_Status_insertFailed": "Insert failed – press Ctrl+C and paste yourself",
   "History_Status_inserted": "Inserted – also on the clipboard",
   "History_Status_kept": "The version was edited meanwhile – the edit stays",
   "History_Status_no-entry": "Entry not found",

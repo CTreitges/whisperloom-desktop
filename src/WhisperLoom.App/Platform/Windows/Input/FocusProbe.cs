@@ -57,8 +57,7 @@ public sealed class FocusProbe(IFocusSource source, TimeSpan? timeout = null, IF
                 return Classify(primary) == FocusKind.Unknown && fallback is not null ? Query(fallback) ?? primary : primary;
             }, ct).WaitAsync(Timeout, ct).ConfigureAwait(false);
         }
-        catch (Exception e) when (e is TimeoutException or System.Runtime.InteropServices.COMException or InvalidCastException
-                                      or UnauthorizedAccessException or InvalidOperationException)
+        catch (Exception e) when (e is not OperationCanceledException)
         {
             info = null;
         }
@@ -82,15 +81,17 @@ public sealed class FocusProbe(IFocusSource source, TimeSpan? timeout = null, IF
         };
     }
 
-    /// <summary>Eine Quelle fragen; COM-Fehler einer Quelle = keine Auskunft (die andere darf noch antworten).</summary>
+    /// <summary>
+    /// Eine Quelle fragen; jeder Fehler einer Quelle = keine Auskunft (die andere darf noch antworten). Fremde COM-Server melden
+    /// auch E_NOTIMPL/E_POINTER (→ NotImplementedException, NullReferenceException): das Einfügen darf daran nie scheitern.
+    /// </summary>
     private static FocusInfo? Query(IFocusSource s)
     {
         try
         {
             return s.Focused();
         }
-        catch (Exception e) when (e is System.Runtime.InteropServices.COMException or InvalidCastException or UnauthorizedAccessException
-                                      or InvalidOperationException or ArgumentException)
+        catch (Exception e) when (e is not OperationCanceledException)
         {
             return null;
         }

@@ -151,7 +151,8 @@ public sealed class TextInserter(
             return await FallbackAsync(text, InsertOutcome.NoTextField);
         }
         // Unbekannter Fokus (UIA meldet nichts Brauchbares) oder „immer kopieren“: der Text bleibt danach in der Zwischenablage.
-        var keep = OutputDecision.Decide(kind, InsertAttempt.Inserted, alwaysCopy).Copy;
+        // Im Browser („Vorsichtig im Browser“, Entscheidung Christof): unbekannter Fokus → alte Zwischenablage zurück.
+        var keep = OutputDecision.Decide(kind, InsertAttempt.Inserted, alwaysCopy, OutputDecision.IsBrowser(windows.ProcessName(target))).Copy;
         if (mode == InsertMode.Type)
         {
             LastReport = Describe(target);
@@ -170,7 +171,7 @@ public sealed class TextInserter(
             }
             if (keep)
             {
-                await CopyAsync(text);
+                await TryCopyAsync(text);
             }
             return InsertOutcome.Typed;
         }
@@ -201,7 +202,8 @@ public sealed class TextInserter(
             {
                 // Statt der alten Zwischenablage bleibt der Text – öffentlich, damit Win+V ihn zeigt.
                 restore = false;
-                await CopyAsync(text);
+                // Scheitert das, liegt der Text noch privat in der Zwischenablage (eben eingefügt) – nichts geht verloren.
+                await TryCopyAsync(text);
             }
             return InsertOutcome.Pasted;
         }
@@ -247,6 +249,19 @@ public sealed class TextInserter(
         if (!await copier.CopyAsync(text).ConfigureAwait(false))
         {
             throw new IOException("Zwischenablage ist belegt.");
+        }
+    }
+
+    /// <summary>Zusätzliche Kopie nach erfolgreichem Einfügen; belegt = ohne Kopie weiter (eingefügt ist eingefügt).</summary>
+    private async Task TryCopyAsync(string text)
+    {
+        try
+        {
+            await CopyAsync(text).ConfigureAwait(false);
+        }
+        catch (IOException)
+        {
+            // Zwischenablage auch nach allen Versuchen belegt.
         }
     }
 

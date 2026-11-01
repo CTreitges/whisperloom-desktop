@@ -88,6 +88,7 @@
   "History_Status_edited": "Gespeichert",
   "History_Status_error": "Neu verarbeiten fehlgeschlagen",
   "History_Status_gone": "Eintrag ist nicht mehr da",
+  "History_Status_insertFailed": "Einfügen fehlgeschlagen – bitte Strg+C und selbst einfügen",
   "History_Status_inserted": "Eingefügt – auch in der Zwischenablage",
   "History_Status_kept": "Fassung wurde inzwischen bearbeitet – die Bearbeitung bleibt",
   "History_Status_no-entry": "Eintrag nicht gefunden",

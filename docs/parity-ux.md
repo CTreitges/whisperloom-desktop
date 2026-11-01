@@ -8,7 +8,8 @@ Schema, in `progress.md › Funde` begründet).
 ## Ausgabe-Entscheidung
 
 Core, OS-frei: `src/WhisperLoom.Core/Output/OutputDecision.cs`. Eingaben: Fokus-Klasse des Ziels (Windows: UI Automation,
-Rückfall MSAA; Linux: immer unbekannt), Ergebnis des Einfügens, `output.alwaysCopy`. Eingefügt wird nur in ein
+Rückfall MSAA; Linux: immer unbekannt), Ergebnis des Einfügens, `output.alwaysCopy` und ob das Ziel ein Browser ist
+(`OutputDecision.BrowserProcesses`: chrome, msedge, firefox, brave, opera, vivaldi; Prozessname ohne Groß-/Kleinschreibung). Eingefügt wird nur in ein
 Eingabefeld oder bei unbekanntem Fokus (`OutputDecision.ShouldInsert`); bei Passwortfeld und „kein Eingabefeld“ wird es gar
 nicht versucht (Spalte „Einfügen“ = nicht versucht). Jede Zeile hat einen xUnit-Fall (`OutputDecisionTest.JedeZeileDerTabelle`).
 
@@ -20,7 +21,9 @@ nicht versucht (Spalte „Einfügen“ = nicht versucht). Jede Zeile hat einen x
 | Passwortfeld | egal | egal | nichts | unverändert | „Passwortfeld – nicht eingefügt“ | **nein** |
 | kein Eingabefeld | nicht versucht / gescheitert | egal | Zwischenablage | Text | „Kopiert – Strg+V“ | ja |
 | kein Eingabefeld | eingefügt¹ | aus / an | einfügen | alte / Text | – | ja |
-| unbekannt | eingefügt | egal | einfügen | **Text bleibt** | – | ja |
+| unbekannt (kein Browser) | eingefügt | egal | einfügen | **Text bleibt** | – | ja |
+| unbekannt, **Browser** | eingefügt | aus | einfügen | **alte wiederhergestellt** | – | ja |
+| unbekannt, **Browser** | eingefügt | an | einfügen | Text bleibt (Wahl des Nutzers gewinnt) | – | ja |
 | unbekannt | gescheitert / nicht versucht (Linux) | egal | Zwischenablage | Text | „Kopiert – Strg+V“ | ja |
 
 ¹ kommt im Ablauf nicht vor (ohne Eingabefeld wird nicht eingefügt), der Vollständigkeit halber in der Tabelle und im Test.
@@ -50,10 +53,13 @@ nicht an (z. B. kein Feld auf der Webseite), genügt Strg+V; es geht nichts verl
 wurde. Bei „unbekannt“ fragt die App zusätzlich MSAA (`MsaaFocusSource`: Rolle und `STATE_SYSTEM_PROTECTED`); das hilft
 bei Programmen mit MSAA, in der Nachmessung an Edge/Chrome aber nicht (weiter „unbekannt“).
 
-**Offen (Entscheidung Christof):** Passwortfelder auf Webseiten werden damit nicht sicher erkannt; ein Diktat dort würde
-eingefügt, bliebe in der Zwischenablage und käme in den Verlauf. Einschränkung der Messung: ob `autofocus` in einer
-`data:`-Seite im neuen Fenster wirklich das Feld fokussiert, ist nicht belegt. Mögliche Folge: Messung mit echter Seite und
-Klick ins Feld; als Schutz z. B. „unbekannt“ in Browsern ohne Verlaufseintrag.
+**Entschieden (Christof, 2026-11-01): „Vorsichtig im Browser“.** Passwortfelder auf Webseiten sind per UIA nicht
+erkennbar. Bei Fokus „unbekannt“ in einem Browser-Prozess wird eingefügt und danach die vorherige Zwischenablage
+wiederhergestellt – der Text bleibt **nicht** in der Zwischenablage; der Eintrag kommt in den Verlauf. In allen anderen
+Apps bleibt „unbekannt“ wie oben (Text bleibt in der Zwischenablage). `output.alwaysCopy = an` gewinnt immer. Tests:
+`OutputDecisionTest.BrowserZeilen`, `ImBrowserAendertSichNurUnbekanntEingefuegtOhneAlwaysCopy`, `BrowserErkennungAmProzessnamen`,
+`FocusDecisionTest.UnbekannterFokusImBrowser…`, `ImBrowserGewinntImmerKopieren`, `UnbekannterFokusAusserhalbDesBrowsers…`.
+Einschränkung der Messung: ob `autofocus` in einer `data:`-Seite im neuen Fenster wirklich das Feld fokussiert, ist nicht belegt.
 
 ## Android-Punkte
 
