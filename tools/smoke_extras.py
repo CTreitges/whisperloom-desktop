@@ -149,8 +149,13 @@ def profile_check(run, keys, exe, out, report, fake, data: Path) -> None:
         time.sleep(1.5)
         saved = json.loads((data / "settings.json").read_text(encoding="utf-8"))
         profile_stage = ((saved.get("desktop") or {}).get("profiles") or [{}])[0].get("stage")
+        first = t.read().get("text") or ""
         hold(keys)
-        s2, d2 = si.inserted(t, run)
+        # Zweites Diktat ins selbe Ziel: dort steht danach erstes + zweites Ergebnis.
+        s2 = si.idle(run)
+        want2 = s2.get("lastResult") or ""
+        d2 = si.wait_for(lambda: (lambda x: x if want2 and x.get("text") == first + want2 else None)(t.read()), 5) or t.read()
+        d2["_landed"] = bool(want2) and d2.get("text") == first + want2 and si.went_to(s2, t.hwnd)[0]
         latest2 = (s2.get("history") or {}).get("latest") or {}
     report.check("profile-stage",
                  d1["_landed"] and latest1.get("stage") == "polish" and s1.get("stage") == "off"
