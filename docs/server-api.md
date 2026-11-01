@@ -44,7 +44,7 @@ Die App wählt ihren Text nach `error` (DE/EN aus `Localization`); `message` ist
 | `device_blocked` | 403 | Gerät gesperrt | `management.state = "blocked"`, Proxy-Zugang aus |
 | `tenant_blocked` | 403 | Firma gesperrt | wie `device_blocked` |
 | `leave_not_allowed` | 403 | Abmelden ist von der Firma verboten | „Abmelden“ ausblenden |
-| `budget_exhausted` | 403 | Proxy: Budget des Geräts bzw. der Gruppe aufgebraucht (auch: Budget der Firma; Monatsdeckel, §3.7) | Fehler wie Anbieter-Fehler, Fallback greift |
+| `budget_exhausted` | 403 | Proxy: Budget des Geräts bzw. der Gruppe aufgebraucht (auch: Budget der Firma; Monatsdeckel, §3.7) | Der Proxy lehnt ab, kein Ersatz-Anbieter; die App zeigt „Firmenbudget für diesen Monat erreicht – bitte IT fragen“ |
 | `too_many_pending` | 409 | Zu viele wartende Geräte für diesen Code | später erneut |
 | `payload_too_large` | 413 | Body zu groß | nicht wiederholen |
 | `client_outdated` | 426 | App-Version zu alt; Feld `minAppVersion` | Update anbieten |
@@ -249,7 +249,10 @@ Fehler: `401 device_unknown`, `403 device_blocked`, `403 budget_exhausted`, `413
   `response_format`, `temperature` (jedes höchstens einmal); `/chat/completions` nimmt `model`, `messages` (Rollen
   `system`, `user`, `assistant`, `content` als Text), `temperature`, `top_p`, `max_tokens`, `max_completion_tokens`,
   `reasoning_effort`, `thinking`, `stream` (nur `false`). Anderes → `400 invalid_request`. Die Antwort ist immer JSON.
-- **Grenzen:** Audio-Body höchstens 25 MiB (+ 64 KiB Multipart-Rahmen), Text-Body höchstens 1 MiB.
+- **Grenzen:** Audio-Body höchstens 25 MiB (+ 64 KiB Multipart-Rahmen), Text-Body höchstens 1 MiB. Große Bodies liest
+  der Server erst nach Prüfung des Geräte-Tokens (sonst `401`/`403` ohne Lesen); gleichzeitige Uploads je Gerät und
+  Firma sind begrenzt (`429` mit `Retry-After`), je Instanz `503`. Ein Body ohne Daten über 15 s bzw. länger als
+  300 s → `400 invalid_request`.
 - **Zugänge und Modell:** Erkennung nutzt die Zugänge `stt` und `stt_fallback` der eigenen Firma, Text `llm` und
   `llm_fallback` (ohne `llm` den Erkennungs-Zugang). Legt ein Zugang ein Modell fest, geht dieses an den Anbieter, sonst
   das Modell der Anfrage; `GET /config` setzt dann `stt.model` bzw. `llm.model` als `fixed`.
@@ -257,7 +260,8 @@ Fehler: `401 device_unknown`, `403 device_blocked`, `403 budget_exhausted`, `413
   Antwort des Anbieters; nicht bei `400`/`404`/`413`/`422` (Fehler der Anfrage). Zeitlimits wie die App: Verbindung
   15 s, mit Ersatz 8 s; Antwort 90 s, eigene Server (`custom`, `ollama`) 600 s.
 - **Budget:** Monatsdeckel (UTC-Monat) je Firma, Gruppe und Gerät für Anfragen, Audio-Minuten, Tokens und geschätzte
-  Kosten. Ist eine Grenze erreicht, antwortet der Server `403 budget_exhausted`, ohne den Anbieter zu fragen.
+  Kosten. Ist eine Grenze erreicht, antwortet der Server `403 budget_exhausted`, ohne den Anbieter zu fragen; einen
+  Ersatz-Anbieter gibt es dann nicht. Laufende Anfragen zählen bei der Prüfung mit (Anzahl, Audio-Minuten).
 - **Weitere Fehler:** `400 invalid_request`, `403 device_pending`, `403 tenant_blocked`, `404 not_found` (§1.2).
 - **Datenschutz:** Audio und Text bleiben im Arbeitsspeicher der Anfrage. Der Server speichert je Gerät, Gruppe und Monat
   nur Zähler (Anfragen, Audio-Dauer, Tokens, geschätzte Kosten, Fehler je Klasse) und reicht Antworten des Anbieters nur

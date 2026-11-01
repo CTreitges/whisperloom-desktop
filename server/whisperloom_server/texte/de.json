@@ -382,7 +382,7 @@
   "fk.upstream_timeout": "Zeitüberschreitung",
   "fk.budget": "Budget erreicht",
   "fk.invalid_request": "Ungültige Anfrage",
-  "p.budget_text": "Monatsdeckel für den Proxy je Firma, Gruppe oder Gerät. Ist eine Grenze erreicht, lehnt der Proxy weitere Anfragen bis zum Monatsende ab; die App weicht dann auf ihren Ersatz aus.",
+  "p.budget_text": "Monatsdeckel für den Proxy je Firma, Gruppe oder Gerät. Ist eine Grenze erreicht, lehnt der Proxy weitere Anfragen bis zum Monatsende ab – ohne Ersatz-Anbieter. Die App zeigt dann „Firmenbudget für diesen Monat erreicht – bitte IT fragen“.",
   "p.budget_stand": "Stand",
   "p.budget_leer": "Noch kein Budget festgelegt – die Nutzung ist unbegrenzt.",
   "p.budget_setzen": "Budget festlegen",

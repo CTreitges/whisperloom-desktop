@@ -382,7 +382,7 @@
   "fk.upstream_timeout": "Timeout",
   "fk.budget": "Budget reached",
   "fk.invalid_request": "Invalid request",
-  "p.budget_text": "Monthly caps for the proxy per company, group or device. Once a limit is reached, the proxy declines further requests until the end of the month; the app then falls back.",
+  "p.budget_text": "Monthly caps for the proxy per company, group or device. Once a limit is reached, the proxy declines further requests until the end of the month – without a fallback provider. The app then shows “Company budget for this month reached – please ask IT”.",
   "p.budget_stand": "Status",
   "p.budget_leer": "No budget set yet – usage is unlimited.",
   "p.budget_setzen": "Set budget",

@@ -206,8 +206,10 @@ Anthropic Messages, Gemini und Ollama. Die App braucht dafür keine Sonderlogik 
   `…_fallback`-Zugang; nicht bei Fehlern der Anfrage (`400`/`404`/`413`/`422`). Zeitlimits wie die App: Verbindung 15 s
   (mit Ersatz 8 s), Antwort 90 s, eigene Server 600 s.
 - **Grenzen:** Audio als WAV bis 25 MiB, Text bis 1 MiB. Gerät muss freigegeben sein, die Firma nicht gesperrt.
-  Höchstens 20 gleichzeitige Anbieter-Anfragen je Firma (sonst `429` mit `Retry-After`) und 16 gleichzeitige große
-  Uploads je Instanz (sonst `503`); jede Anbieter-Anfrage endet spätestens nach Antwort- plus Verbindungs-Zeitlimit.
+  Höchstens 20 gleichzeitige Anbieter-Anfragen je Firma (sonst `429` mit `Retry-After`). Große Uploads liest der
+  Server erst nach Prüfung des Geräte-Tokens (unbekannt → `401`, ohne Lesen) und mit freiem Slot: je Gerät 2, je Firma
+  8, je Instanz 32 gleichzeitig (sonst `429` bzw. `503`). Jeder Body muss ohne Pause über 15 s und insgesamt in 300 s
+  ankommen (sonst `400`). Jede Anbieter-Anfrage endet spätestens nach Antwort- plus Verbindungs-Zeitlimit.
 - **Kosten verlässlich schätzen:** Modell am Zugang festlegen. Sonst rechnet der Server mit dem Modellnamen der Anfrage,
   und ein Name ohne Eintrag in der Preistabelle zählt 0. Fehlgeschlagene Anfragen zählen nur als Fehler je Klasse.
 - Zugang per Kommandozeile (Key über stdin, nie als Argument):
@@ -233,8 +235,12 @@ für alle Firmen – dort nur Netze freigeben, die jede Firma erreichen darf.
   Zeitüberschreitung, Budget erreicht, ungültige Anfrage).
 - **Budget** (Seite „Budget“, nur owner ändern): Monatsdeckel je Firma, Gruppe oder Gerät für Anfragen, Audio-Minuten,
   Tokens und/oder Kosten, mit Warnschwelle (Standard 80 %). Ist eine Grenze erreicht, lehnt der Proxy bis Monatsende mit
-  `403 budget_exhausted` ab, ohne den Anbieter zu fragen; die App weicht auf ihren Ersatz aus. Die Grenze ist weich:
-  gleichzeitige Anfragen können sie knapp überschreiten.
+  `403 budget_exhausted` ab, ohne den Anbieter zu fragen, und ohne Ersatz-Anbieter: Die App zeigt „Firmenbudget für
+  diesen Monat erreicht – bitte IT fragen“. Laufende Anfragen zählen bei der Prüfung schon mit (Reservierung von Anfrage
+  und Audio-Minuten), gleichzeitige Anfragen verhalten sich also wie nacheinander gestellte: Die Anfrage, die die
+  Grenze überschreitet, läuft noch, die nächste nicht. Tokens und Kosten stehen erst nach der Antwort fest; dort kann
+  eine Welle gleichzeitiger Anfragen den Deckel überschreiten, höchstens um 20 Anfragen je Firma (Parallelitätsgrenze),
+  je Anfrage bis zur Antwortlänge des Modells.
 - **Preistabelle** (Seite „Budget“): Preis je Modell und Audio-Minute bzw. je 1 Mio. Tokens ein/aus, Grundlage der
   Kosten-Schätzung. Ohne Eintrag zählt ein Modell 0.
 
@@ -369,8 +375,10 @@ Anthropic Messages, Gemini and Ollama. The app needs no special logic (provider 
   `…_fallback` access; not on request errors (`400`/`404`/`413`/`422`). Timeouts as in the app: connect 15 s (8 s with a
   fallback), response 90 s, own servers 600 s.
 - **Limits:** audio as WAV up to 25 MiB, text up to 1 MiB. The device must be approved and the company not blocked.
-  At most 20 concurrent provider requests per company (otherwise `429` with `Retry-After`) and 16 concurrent large
-  uploads per instance (otherwise `503`); every provider request ends after the response plus connect timeout.
+  At most 20 concurrent provider requests per company (otherwise `429` with `Retry-After`). Large uploads are read only
+  after the device token has been checked (unknown → `401`, nothing read) and with a free slot: 2 per device, 8 per
+  company, 32 per instance at a time (otherwise `429` or `503`). Every body must arrive without a pause of more than 15 s
+  and within 300 s in total (otherwise `400`). Every provider request ends after the response plus connect timeout.
 - **Reliable cost estimates:** set the model on the access. Otherwise the server uses the model name of the request, and
   a name without a price table entry counts as 0. Failed requests only count as errors per class.
 - Command line (key via stdin, never as an argument):
@@ -395,8 +403,12 @@ allowance applies to every company – only allow networks every company may rea
   audio minutes, tokens (as reported by the provider), estimated cost and errors per class.
 - **Budget** (page “Budget”, owners change it): monthly caps per company, group or device for requests, audio minutes,
   tokens and/or cost, with a warning threshold (default 80 %). Once a limit is reached the proxy declines with
-  `403 budget_exhausted` until the end of the month without asking the provider; the app falls back. The limit is soft:
-  concurrent requests may exceed it slightly.
+  `403 budget_exhausted` until the end of the month without asking the provider and without a fallback provider: the
+  app shows “Company budget for this month reached – please ask IT”. Running requests already count during the check
+  (requests and audio minutes are reserved), so concurrent requests behave like sequential ones: the request that crosses
+  the limit still runs, the next one does not. Tokens and cost are only known after the response; there a wave of
+  concurrent requests can exceed the cap, by at most 20 requests per company (concurrency limit), each up to the
+  model's response length.
 - **Price table** (page “Budget”): price per model and audio minute or per 1M tokens in/out, the basis of the cost
   estimate. Models without an entry count as 0.
 
