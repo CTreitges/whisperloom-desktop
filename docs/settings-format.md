@@ -34,6 +34,12 @@ Richtlinie), Modell `src/WhisperLoom.Core/Contracts/Settings/WhisperLoomSettings
   Textverbesserung und eingeschaltete Fallbacks. Die Antwort eines Textmodells wird eingefügt bzw. getippt.
 - **Gerätebezogene Ziele** übernimmt ein Import nie: `stt.vocabularyFile` und `local.ollamaUrl` (Adresse der lokalen
   Textverbesserung). Ein Export enthält `stt.vocabularyFile` nicht.
+- **W2, gerätebezogen:** `offline.customModels` (Dateipfade) und `local.servers` (Ziele für Diktattext) übernimmt kein
+  Import, kein Export enthält sie; nur das Provisioning setzt sie.
+- **W2, `management`** (Firmen-Anbindung, Gerätezustand) übernimmt kein Import (Warnung „management … ignoriert“), kein
+  Export enthält ihn, auch nicht in anderer Schreibweise (`Management`).
+- **W2, `output.pressEnter`:** `true` übernimmt ein Import nur, wenn es schon `true` war; sonst kommt `false` an
+  (`ImportPreview.EnterDisabled` enthält dann `output.pressEnter`), wie bei App-Profilen.
 
 ## Felder
 
@@ -65,12 +71,54 @@ Richtlinie), Modell `src/WhisperLoom.Core/Contracts/Settings/WhisperLoomSettings
 | `offline.model` / `.accurate` / `.refine` / `.localLlmModel` | | `"small"` / `true` / `"local"` / `"gemma4_e2b"` | lokale Erkennung; `refine`: `local`, `online_local`, `skip` |
 | `history.enabled` / `history.size` | bool / Zahl | `true` / `50` | Verlauf; Größe: 10, 25, 50, 100, 250, 500 |
 | `serverModelsEnabled` | bool | `false` | Modellliste des Anbieters statt Katalog |
+| `offline.model` (W2) | Text | `"small"` | zusätzlich `"custom:<name>"` = Eintrag aus `offline.customModels`; unbekannter Name ist ein Fehler |
+| `offline.customModels` (W2) | Liste | `[]` | eigene Whisper-Dateien `{name, path}`; `name` eindeutig, nicht leer — gerätebezogen |
+| `output.alwaysCopy` (W2) | bool | `false` | Text zusätzlich immer in die Zwischenablage |
+| `output.pressEnter` (W2) | bool | `false` | Nach dem Einfügen Enter senden; ersetzt die Strg+Enter-Taste; Profile mit `pressEnter: null` erben es |
+| `selection.hotkeyCombo` (W2) | Text | `"Ctrl+Alt+Shift+S"` | Kombi „Markierten Text verarbeiten“, `""` = aus. Name statt `hotkey`, weil kein Schema-Feld auf `key` enden darf |
+| `selection.floatingButton` (W2) | bool | `false` | schwebender Knopf an der Markierung |
+| `selection.ctrlRightClick` (W2) | bool | `false` | Strg+Rechtsklick auf die Markierung |
+| `providers.custom` (W2) | Liste | `[]` | eigene Anbieter, siehe unten |
+| `management.*` (W2) | | | Firmen-Anbindung, siehe unten; nie exportiert, nie importiert |
+
+### Eigene Anbieter (`providers.custom`, W2)
+
+| Feld | Typ | Standard | Bedeutung |
+|---|---|---|---|
+| `id` | Text | `""` | `[a-z0-9][a-z0-9_-]{0,31}`, eindeutig. Ein Zugang nennt den Eintrag mit `*.providerId = "custom:<id>"` |
+| `name` | Text | `""` | Anzeige, nicht leer |
+| `protocol` | Text | `"openai"` | `openai` (Erkennung + Text), `ollama` (Text), `elevenlabs` (Erkennung), `anthropic` (Text); ein Zugang ohne passende Fähigkeit ist ein Fehler |
+| `baseUrl` | Text | `""` | `https://…`, `http://` nur zu privaten Adressen |
+| `models` | Liste | `[]` | angebotene Modell-IDs; leer = Liste vom Server |
+| `keyOptional` | bool | `false` | Zugang ohne Key erlaubt |
+
+Keys der eigenen Anbieter liegen wie alle Keys im Secret-Store. Verdrahtung in Erkennung, Text, `KeyRoutes` und
+`allowedProviders` ist W2-LOCAL; bis dahin prüft der Validator nur Form und Verweis.
+
+### Firmen-Anbindung (`management`, W2)
+
+| Feld | Typ | Standard | Bedeutung |
+|---|---|---|---|
+| `serverUrl` | Text | `""` | Firmen-Server ohne `/api/v1` ([server-api.md](server-api.md)); `""` = keiner |
+| `deviceId` | Text | `""` | Geräte-ID vom Server (`d_…`) |
+| `tenantName` | Text | `""` | Firmenname für „Einige Einstellungen verwaltet <Firma>“ |
+| `state` | Text | `"none"` | `none`, `pending`, `approved`, `blocked`, `revoked` |
+| `lastSync` | Zahl | `0` | letzter Abgleich, ms seit 1970 (UTC) |
+| `keyMode` | Text | `"proxy"` | `proxy` oder `distribute` (vom Server) |
+| `allowLeave` | bool | `true` | Nutzer darf die Anbindung lösen; einziges `management`-Feld, das Fest sein darf |
+| `code` | Text | `""` | Firmencode, nur als Eingabe einer Provisioning-Datei; die App verwirft ihn nach dem Enrollment |
+| `overrides` | Liste | `[]` | Vorgabe-Pfade, die der Nutzer geändert hat (siehe Richtlinie) |
+
+Eine Provisioning-Datei bzw. die Server-Antwort darf nur `serverUrl`, `code` und `allowLeave` setzen; die übrigen
+Felder sind Gerätezustand (Warnung, ignoriert). Das Geräte-Token liegt im Secret-Store unter `device`, nie hier und nie
+in `secrets` einer Datei (Fehler).
 
 ## Abschnitte je App
 
 | Abschnitt | Gehört | Andere App |
 |---|---|---|
 | `desktop` | Desktop: `uiLanguage` (`""`/`de`/`en`), `output`, `microphone` (gerätebezogen), `stageFontSize`, `proxyMode` (`system`/`off`/`manual`), `proxyUrl` (ein manueller Proxy bekommt nie die Windows-Anmeldung NTLM/Kerberos, nur der System-Proxy); Windows: `hotkeysEnabled`, `hotkeyHold`, `hotkeyToggle`, `hotkeyStage`, `hotkeyReinsert` (`Ctrl+Alt+Shift+V`), `hotkeyRewrite` (`Ctrl+Alt+Shift+R`), `insertMode` (`paste`/`type`/`clipboard`; `type` in Konsolen und Editoren mit Terminal tippt Zeilenumbrüche als Leerzeichen, sonst führte Umschalt+Enter die Zeile aus), `profiles` (App-Profile, siehe unten) | Android liest ihn nicht, speichert ihn beim Import und gibt ihn beim Export unverändert zurück |
+| `local` | Desktop (`LocalSettings`): `ollamaModel`, `ollamaUrl` (gerätebezogen), `backend` (`auto`/`cpu`), `idleMinutes`; W2: `textEngine` (`ollama` Standard, `bundled`, `server`), `bundledModel` (ID, `""` = Empfehlung), `servers` (Liste `{name, kind: stt\|text, baseUrl, model}`, gerätebezogen) | Android liest ihn nicht |
 | `android` | Android-eigene Felder (Inhalt bestimmt die Android-App) | Desktop liest ihn nicht, zeigt ihn nicht in der Vorschau, prüft ihn nicht und gibt ihn unverändert weiter |
 
 ### App-Profile (`desktop.profiles`, Windows)
@@ -84,7 +132,7 @@ Liste von Objekten; gilt für Diktate per Tastenkürzel ins Zielfenster.
 | `titlePattern` | Text | `""` | Regex auf den Fenstertitel (ohne Groß-/Kleinschreibung); `""` = jeder Titel; ungültig = Profil greift nie |
 | `stage` | Text | `""` | Stufen-Schlüssel wie `refine.stage`; `""` = Standard-Stufe. Eine von IT gesperrte Stufe geht vor |
 | `insertMode` | Text | `""` | `paste`/`type`/`clipboard`; `""` = `desktop.insertMode` |
-| `pressEnter` | bool | `false` | Nach dem Einfügen Enter senden. Ein Import übernimmt `true` nur für ein Profil, das es so schon gab; sonst kommt das Profil mit `false` an (Warnung in der Vorschau) und Enter gilt erst, wenn der Nutzer es im Profil selbst einschaltet |
+| `pressEnter` | bool/null | `null` (W2; früher `false`) | Erben/An/Aus: `null` = `output.pressEnter`, `true` = An, `false` = Aus (ältere Dateien mit `false` bleiben „Aus“, gleiches Verhalten). Nach dem Einfügen Enter senden. Ein Import übernimmt `true` nur für ein Profil, das es so schon gab; sonst kommt das Profil mit `false` an (Warnung in der Vorschau) und Enter gilt erst, wenn der Nutzer es im Profil selbst einschaltet |
 | `enabled` | bool | `true` | Profil aktiv |
 
 Vorrang: ein Profil mit passendem `titlePattern` vor einem Profil nur mit `process`; unter gleich genauen das erste der
@@ -127,7 +175,47 @@ Ein neues Provisioning ersetzt die Richtlinie vollständig. Die Sperren sind kei
 [provisioning.md](provisioning.md)).
 
 Gespeichert wird die Richtlinie getrennt in `<Datenordner>/policy.json` (Felder `locked` als aufgelöste Pfadliste,
-`historyEnabled`, `updatesEnabled`, `allowedProviders`); `status --json` zeigt sie unter `policy`.
+`historyEnabled`, `updatesEnabled`, `allowedProviders`; W2: `defaults` = Blatt-Pfad → Firmenwert); `status --json`
+zeigt sie unter `policy`. Pfade der Sperre vergleichen ohne Rücksicht auf Groß-/Kleinschreibung (W2-C0: vorher umging
+`desktop.ProxyMode` die Sperre `desktop.proxyMode`).
+
+## Richtlinie: drei Stufen
+
+Quelle ist eine Provisioning-Datei oder der Firmen-Server (`GET /api/v1/config`, [server-api.md](server-api.md)); beide
+liefern dasselbe Modell (`settings` + `policy`) und laufen durch `Provisioning.Plan`.
+
+| Stufe | `levels` | Wirkung |
+|---|---|---|
+| **Fest** | `"fixed"` | Wert aus der Datei (oder der aktuelle, wenn die Datei keinen hat), in der App ausgeblendet; die Seite zeigt nur „Einige Einstellungen verwaltet <Firma>“. Import, Hotkey, Tray, CLI ändern ihn nicht |
+| **Vorgabe** | `"default"` | Wert aus der Datei (Pflicht), der Nutzer darf ändern. Seine Änderung gewinnt (`management.overrides`), bis „Auf Firmenvorgabe zurücksetzen“ |
+| **Frei** | `"free"` | nichts zentral; ein Wert der Datei wird einmalig gesetzt wie bisher |
+
+```json
+{
+  "refine": {"stage": "polish"},
+  "desktop": {"proxyMode": "system", "hotkeyHold": "Ctrl+Win"},
+  "policy": {
+    "lockSettings": true,
+    "levels": {"refine.stage": "default", "desktop.hotkeyHold": "default", "polish": "free"}
+  }
+}
+```
+
+- `policy.levels`: Objekt Pfad → Stufe; ein Abschnitt (`"llm"`) gilt für alles darunter. Unbekannter Pfad, unbekannte
+  Stufe, Vorgabe ohne Wert in der Datei → Fehler, nichts wird übernommen.
+- **`lockSettings` bleibt gültig** und bedeutet Fest (`true` = alle Pfade der Datei, Liste = genau diese). Ein Eintrag in
+  `levels` geht `lockSettings` für denselben Pfad und alles darunter vor (im Beispiel: alles Fest außer
+  `refine.stage`, `desktop.hotkeyHold` und `polish`).
+- **Pfade ohne Stufe** sind Frei. Ein Server-Abgleich ohne Eintrag für einen früher festen Pfad gibt ihn frei; der Wert bleibt.
+- **Tastenkürzel sind nie Fest** (jeder Pfad-Teil, der mit `hotkey` beginnt: `desktop.hotkey*`, `desktop.hotkeysEnabled`,
+  `selection.hotkeyCombo`): gewünscht Fest → Vorgabe mit Warnung; unter einem festen Abschnitt (`"desktop"`) ebenso
+  Vorgabe. Auch eine ältere `policy.json` mit gesperrtem Tastenkürzel sperrt es nicht mehr.
+- **`management.*` ist nie Fest und nie Vorgabe** (Warnung, ignoriert), außer `management.allowLeave`, das Fest sein darf.
+  `secrets.<zugang>` kann Fest, aber keine Vorgabe sein.
+- **User-Override:** Ein Vorgabe-Pfad, dessen Wert von der Vorgabe abweicht, steht in `management.overrides`
+  (`ManagedDefaults.TrackOverrides`, nach eigener Änderung und Import). Eine neue Vorgabe setzt nur Pfade ohne Override.
+  „Auf Firmenvorgabe zurücksetzen“ (`ManagedDefaults.Reset`, ein Pfad oder alle) setzt den Firmenwert und entfernt den
+  Override. Ändert der Nutzer auf genau den Firmenwert zurück, ist es kein Override mehr.
 
 ## Migration
 
