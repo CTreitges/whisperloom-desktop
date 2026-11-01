@@ -37,6 +37,9 @@ public sealed class LocalSettings
     /// <summary>Lokale OpenAI-kompatible Server für Erkennung bzw. Text (W2); gerätebezogen: Import und Export lassen sie weg.</summary>
     public List<LocalServer> Servers { get; set; } = [];
 
+    /// <summary>Name des Text-Servers aus <see cref="Servers"/> bei <see cref="TextEngine"/> "server"; "" = erster Text-Server (gerätebezogen).</summary>
+    public string TextServer { get; set; } = "";
+
     public static LocalSettings Of(WhisperLoomSettings settings)
     {
         if (settings.Extra is not null && settings.Extra.TryGetValue(SectionName, out var element))

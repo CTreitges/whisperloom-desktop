@@ -276,7 +276,8 @@ public partial class App : Application
     }
 
     private SettingsViewModel CreateSettings(AppHost host) =>
-        new(host.Controller, host.Secrets, new HttpAccessChecker(() => HttpClients.Create(SettingsStore.Desktop(host.Controller.Settings))),
+        new(host.Controller, host.Secrets, new HttpAccessChecker(() => HttpClients.Create(SettingsStore.Desktop(host.Controller.Settings)),
+                () => Core.Api.ProviderDirectory.For(host.Controller.Settings)),
             Microphones(host), host.Local, RecordHotkey);
 
     /// <summary>Eigener Recorder für den Pegel-Test, damit ein laufendes Diktat unberührt bleibt.</summary>

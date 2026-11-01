@@ -27,6 +27,10 @@ DYNAMIC = (
     + [f"History_Status_{k}" for k in ("done", "skipped", "no-entry", "busy", "error", "cancelled", "stage-locked", "stage-unavailable",
                                               "saved", "kept", "gone")]
     + [f"Setup_Step_{k}" for k in ("Language", "Microphone", "Recognition", "Stage", "Hotkey", "Autostart", "Done")]
+    # W2-LOCAL: Text-Engine, Protokoll eigener Anbieter, Art lokaler Server.
+    + [f"TextEngine_{k}" for k in ("ollama", "bundled", "server")]
+    + [f"Protocol_{k}" for k in ("openai", "ollama", "elevenlabs", "anthropic")]
+    + [f"ServerKind_{k}" for k in ("stt", "text")]
 )
 
 XAML_KEY = re.compile(r"\{Binding \[([A-Za-z]+_[A-Za-z0-9_]+)\], Source=\{x:Static l:Loc\.Instance\}\}")

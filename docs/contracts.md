@@ -192,5 +192,20 @@ neue Felder), Client↔Server: [server-api.md](server-api.md).
 | `SecretNames.Device` (`"device"`) | Geräte-Token des Firmen-Servers; nicht in `SecretNames.All`, nie per Provisioning |
 | App: `AppProfile.PressEnter` | `bool?`: null = Erben (`output.pressEnter`), true/false = An/Aus. Einzige Typänderung: `bool` → `bool?` liest alte Dateien unverändert; Aufrufer nutzen bis W2-OUT `?? false` |
 
+### W2-LOCAL: Anbieter-Verzeichnis, Einträge mit eigenem Key (additiv)
+
+| Typ / Member | Inhalt |
+|---|---|
+| `ProviderInfo.Family` (optional, `""`) | nur bei Einträgen außerhalb des Katalogs: Katalog-ID, deren Regeln gelten (`custom`, `anthropic`, `ollama`, `elevenlabs`). Gesetzt = feste Adresse; Fähigkeit über die Modell-Listen (`null` = kann es nicht, leer = Modelle vom Server) |
+| `Core/Api/ProviderDirectory` + `IProviderSource` (`Prefix`, `Providers`) | löst `*.providerId` auf: Katalog, `custom:<id>` (`CustomProviderSource`), `local:<name>` (`LocalServerSource`); weitere Quelle per `With(source)` (W2-ENR: `company:`). Unbekannte ID mit Präfix → Anbieter ohne Adresse (nie OpenAI) |
+| `ProviderDirectory.KeyOf(entry)`, `WithKeys(...)` | Key eines Eintrags: nur sein eigener, nie der des Zugangs, nie geerbt; lokale Server nie |
+| `AccessResolver.Resolve*(…, providers)` | optionaler Parameter; Einträge nutzen nie Adresse oder Key des Zugangs |
+| `SecretNames.ForProvider(id)`, `IsProviderKey(name)` | Key-Name eines eigenen Anbieters = Anbieter-ID `custom:<id>`; die Key-Ablagen akzeptieren ihn |
+| `AccessKeys.Providers` | Keys der eigenen Anbieter (Name → Key); `SettingsAccess.KeysAsync(store, ct, settings)` lädt sie |
+| `*.providerId = "local:<name>"` | Eintrag aus `local.servers` dieses Geräts (gerätebezogen; ein Import ohne passenden Server ist ein Fehler) |
+| App-Abschnitt `local.textServer` | Name des Text-Servers bei `textEngine = "server"`, `""` = erster; gerätebezogen wie `local.servers` |
+| `Core/Local/WhisperModels` | `offline.model` → Datei; `custom:<name>` fällt nie still auf Small zurück (Meldung bei fehlendem Eintrag, fehlender Datei, keiner ggml/gguf-Magic) |
+| `Core/Local/TextModelCatalog`, `LocalServerRefiner` | mitgelieferte Textmodelle (Apache-2.0, SHA-256), lokaler OpenAI-kompatibler Text-Server |
+
 Abweichungen von den Namensvorschlägen des Issues: `selection.hotkey` heißt `selection.hotkeyCombo` (kein Schema-Feld
 darf auf `key` enden, Test `KeinKeyFeldImSchema`); `local.servers[].kind` (`stt`/`text`) nennt den Zweck.

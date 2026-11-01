@@ -52,8 +52,9 @@ public sealed partial class SyncViewModel(DictationController controller, ISecre
         ImportPreview preview;
         try
         {
-            var stored = await SyncCommands.StoredKeysAsync(secrets, CancellationToken.None);
-            preview = SyncImport.Preview(controller.Settings, SyncDocument.Parse(json), controller.Policy, stored);
+            var file = SyncDocument.Parse(json);
+            var stored = await SyncCommands.StoredKeysAsync(secrets, CancellationToken.None, controller.Settings, SyncImport.ProviderKeyNames(file));
+            preview = SyncImport.Preview(controller.Settings, file, controller.Policy, stored);
         }
         catch (Exception e) when (e is SyncFormatException or NotSupportedException)
         {
@@ -79,7 +80,9 @@ public sealed partial class SyncViewModel(DictationController controller, ISecre
             lines.Add(Loc.Instance.Format("Sync_Preview", preview.Changes.Count(c => !c.Locked)));
         }
         lines.AddRange(preview.Warnings.Select(_ => Loc.Instance["Sync_SecretsIgnored"]));
-        lines.AddRange(preview.DroppedKeys.Select(d => Loc.Instance.Format("Sync_KeyDropWarning", d.Name, d.Target)));
+        lines.AddRange(preview.DroppedKeys.Select(d => d.EntryRemoved
+            ? Loc.Instance.Format("Sync_KeyDropRemoved", d.Name)
+            : Loc.Instance.Format("Sync_KeyDropWarning", d.Name, d.Target)));
         lines.AddRange(preview.EnterDisabled.Select(p => Loc.Instance.Format("Sync_EnterDisabled", p)));
         lines.AddRange(preview.DictationTargets.Select(t => Loc.Instance.Format("Sync_DictationTarget", t)));
         Status = string.Join("\n", lines);
@@ -100,8 +103,9 @@ public sealed partial class SyncViewModel(DictationController controller, ISecre
         try
         {
             // Neu berechnen: Seit der Vorschau kann ein Key gespeichert worden sein, den der Import umlenkt.
-            var stored = await SyncCommands.StoredKeysAsync(secrets, CancellationToken.None);
-            var preview = SyncImport.Preview(controller.Settings, SyncDocument.Parse(_json), controller.Policy, stored);
+            var file = SyncDocument.Parse(_json);
+            var stored = await SyncCommands.StoredKeysAsync(secrets, CancellationToken.None, controller.Settings, SyncImport.ProviderKeyNames(file));
+            var preview = SyncImport.Preview(controller.Settings, file, controller.Policy, stored);
             if (preview.Settings is not { } settings)
             {
                 Status = string.Join("\n", [Loc.Instance["Sync_Invalid"], .. preview.Errors]);

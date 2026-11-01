@@ -4,6 +4,7 @@
              xmlns:v="using:WhisperLoom.App.Views"
              xmlns:ds="using:WhisperLoom.App.Design"
              xmlns:l="using:WhisperLoom.App.Localization"
+             xmlns:vs="using:WhisperLoom.App.Views.Settings"
              x:Class="WhisperLoom.App.Views.Settings.TextPage"
              x:DataType="vm:TextPageViewModel">
   <ds:SettingsPage TitleKey="Page_text">
@@ -41,11 +42,14 @@
           <ds:SettingRow Path="llm.providerId">
             <ComboBox x:Name="LlmProviderBox" Classes="row" ItemsSource="{Binding Session.LlmProviders}" SelectedItem="{Binding Session.LlmProvider}" />
           </ds:SettingRow>
-          <ds:SettingRow Path="secrets.llm" Stacked="True">
-            <v:KeyFieldView x:Name="LlmKeyView" DataContext="{Binding Session.LlmKey}" />
-          </ds:SettingRow>
+          <Panel IsVisible="{Binding !Session.LlmUsesEntry}">
+            <ds:SettingRow Path="secrets.llm" Stacked="True">
+              <v:KeyFieldView x:Name="LlmKeyView" DataContext="{Binding Session.LlmKey}" />
+            </ds:SettingRow>
+          </Panel>
+          <ds:HintRow TextKey="Key_AtEntry" IsVisible="{Binding Session.LlmUsesEntry}" Margin="14,4,14,10" />
           <ds:SettingRow Path="llm.model">
-            <ds:CustomChoiceBox DataContext="{Binding LlmModel}" />
+            <vs:ModelPickerView x:Name="LlmModelPicker" DataContext="{Binding LlmModelPicker}" />
           </ds:SettingRow>
           <Expander Classes="advanced" IsExpanded="{Binding AdvancedOpen}" Header="{Binding [Advanced], Source={x:Static l:Loc.Instance}}">
             <StackPanel>
@@ -74,6 +78,22 @@
           <ds:SettingRow Path="offline.refine">
             <ComboBox Classes="row" ItemsSource="{Binding Local.Rules}" SelectedItem="{Binding Local.Rule}" />
           </ds:SettingRow>
+          <ds:SettingRow Path="local.textEngine">
+            <ComboBox x:Name="TextEngineBox" Classes="row" ItemsSource="{Binding Local.TextEngines}" SelectedItem="{Binding Local.TextEngine}" />
+          </ds:SettingRow>
+          <StackPanel IsVisible="{Binding Local.IsBundled}">
+            <ds:SettingRow Path="local.bundledModel">
+              <ComboBox x:Name="BundledModelBox" Classes="row" ItemsSource="{Binding Local.BundledModels}" SelectedItem="{Binding Local.BundledModel}" />
+            </ds:SettingRow>
+            <ds:HintRow TextKey="Local_BundledHint" Margin="14,4,14,10" />
+          </StackPanel>
+          <StackPanel IsVisible="{Binding Local.IsServer}">
+            <ds:SettingRow Path="local.textServer">
+              <ComboBox x:Name="TextServerBox" Classes="row" ItemsSource="{Binding Local.TextServers}" SelectedItem="{Binding Local.TextServer}" />
+            </ds:SettingRow>
+            <ds:HintRow TextKey="Local_ServerHint" Margin="14,4,14,10" />
+          </StackPanel>
+          <StackPanel IsVisible="{Binding Local.IsOllama}">
           <ds:SettingRow Path="local.ollamaModel">
             <StackPanel Orientation="Horizontal" Spacing="8">
               <ComboBox x:Name="OllamaBox" MinWidth="180" ItemsSource="{Binding Local.OllamaModels}" SelectedItem="{Binding Local.OllamaModel}" />
@@ -90,6 +110,7 @@
               </ds:SettingRow>
             </StackPanel>
           </Expander>
+          </StackPanel>
         </StackPanel>
       </ds:SettingsGroup>
 
@@ -102,11 +123,14 @@
             <ds:SettingRow Path="llmFallback.providerId">
               <ComboBox Classes="row" ItemsSource="{Binding Session.LlmFallbackProviders}" SelectedItem="{Binding Session.LlmFallbackProvider}" />
             </ds:SettingRow>
-            <ds:SettingRow Path="secrets.llmFallback" Stacked="True">
-              <v:KeyFieldView x:Name="LlmFallbackKeyView" DataContext="{Binding Session.LlmFallbackKey}" />
-            </ds:SettingRow>
+            <Panel IsVisible="{Binding !Session.LlmFallbackUsesEntry}">
+              <ds:SettingRow Path="secrets.llmFallback" Stacked="True">
+                <v:KeyFieldView x:Name="LlmFallbackKeyView" DataContext="{Binding Session.LlmFallbackKey}" />
+              </ds:SettingRow>
+            </Panel>
+            <ds:HintRow TextKey="Key_AtEntry" IsVisible="{Binding Session.LlmFallbackUsesEntry}" Margin="14,4,14,10" />
             <ds:SettingRow Path="llmFallback.model">
-              <ds:CustomChoiceBox DataContext="{Binding LlmFallbackModel}" />
+              <vs:ModelPickerView DataContext="{Binding LlmFallbackModelPicker}" />
             </ds:SettingRow>
             <Expander Classes="advanced" IsExpanded="{Binding FallbackAdvancedOpen}" Header="{Binding [Advanced], Source={x:Static l:Loc.Instance}}">
               <StackPanel>

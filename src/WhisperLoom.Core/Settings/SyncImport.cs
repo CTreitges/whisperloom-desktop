@@ -33,7 +33,14 @@ public sealed record ImportPreview(
 
 /// <summary>Ein gespeicherter Key (<see cref="Contracts.SecretNames"/>), den ein Import an <paramref name="Target"/> lenken würde.</summary>
 /// <param name="Target">Neues Ziel als Origin (<c>https://host</c>) bzw. <c>Proxy http://host:port</c>.</param>
-public sealed record KeyDrop(string Name, string Target);
+public sealed record KeyDrop(string Name, string Target)
+{
+    /// <summary>Ziel, wenn es den eigenen Anbieter danach nicht mehr gibt (W2-LOCAL Prüfrunde 1 K-1).</summary>
+    public const string EntryRemovedTarget = "(Eintrag entfernt)";
+
+    /// <summary>Der Key gehörte zu einem eigenen Anbieter, den es danach nicht mehr gibt.</summary>
+    public bool EntryRemoved => Target == EntryRemovedTarget;
+}
 
 /// <summary>
 /// Import einer Datei im Format v1 in die aktuellen Einstellungen: Felder der Datei ersetzen die aktuellen, fehlende
@@ -69,6 +76,7 @@ public static class SyncImport
         {
             RemoveIgnoringCase(local, "ollamaUrl");
             RemoveIgnoringCase(local, "servers");
+            RemoveIgnoringCase(local, "textServer");
         }
         // management.* ist Gerätezustand: nie importiert.
         if (RemoveIgnoringCase(settings, ManagedPaths.ManagementSection))
@@ -110,6 +118,17 @@ public static class SyncImport
         }
         return preview;
     }
+
+    /// <summary>
+    /// Key-Namen (<c>custom:&lt;id&gt;</c>) der eigenen Anbieter in einer Datei: Der Aufrufer prüft sie zusätzlich zu den
+    /// aktuellen Einträgen auf gespeicherte Keys, damit ein verwaister Key nie an einen neu importierten Eintrag gleicher
+    /// ID geht (Prüfrunde 1 K-1).
+    /// </summary>
+    public static IReadOnlyList<string> ProviderKeyNames(SyncDocument file) =>
+        file.Settings["providers"] is JsonObject providers && providers["custom"] is JsonArray custom
+            ? [.. custom.OfType<JsonObject>().Select(e => e["id"] is JsonValue v && v.TryGetValue<string>(out var id) ? ProvidersSettings.CustomPrefix + id : "")
+                .Where(Contracts.SecretNames.IsProviderKey).Distinct(StringComparer.Ordinal)]
+            : [];
 
     /// <summary>Entfernt alle Schreibweisen von <paramref name="name"/>; true, wenn es eine gab.</summary>
     internal static bool RemoveIgnoringCase(JsonObject o, string name)
@@ -202,6 +221,7 @@ public static class SyncExport
         foreach (var local in tree.Where(p => p.Key.Equals("local", StringComparison.OrdinalIgnoreCase)).Select(p => p.Value).OfType<JsonObject>())
         {
             SyncImport.RemoveIgnoringCase(local, "servers");
+            SyncImport.RemoveIgnoringCase(local, "textServer");
         }
         return tree.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
     }

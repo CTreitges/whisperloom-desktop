@@ -56,8 +56,10 @@ public sealed record PolicySettings
          || (HistoryEnabled is not null && path.Equals("history.enabled", StringComparison.OrdinalIgnoreCase)));
 
     /// <summary>„wie Erkennung“ (<see cref="LlmSettings.Same"/>) ist immer erlaubt, es nutzt den erlaubten Erkennungs-Anbieter.</summary>
+    /// <remarks>W2: <c>custom:&lt;id&gt;</c> ist auch mit „custom“ frei, <c>local:&lt;name&gt;</c> auch mit „local“.</remarks>
     public bool IsProviderAllowed(string providerId) =>
-        AllowedProviders is null || providerId == LlmSettings.Same || AllowedProviders.Contains(providerId);
+        AllowedProviders is null || providerId == LlmSettings.Same || AllowedProviders.Contains(providerId) ||
+        (providerId.IndexOf(':', StringComparison.Ordinal) is > 0 and var i && AllowedProviders.Contains(providerId[..i]));
 
     /// <summary>Setzt die festen Werte (Verlauf) in <paramref name="settings"/>.</summary>
     public void Enforce(WhisperLoomSettings settings)

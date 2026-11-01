@@ -220,7 +220,7 @@ public sealed class ComfortTest
 
     private static async Task WaitFor(Func<bool> done)
     {
-        for (var i = 0; i < 300 && !done(); i++)
+        for (var i = 0; i < 1000 && !done(); i++) // bis 10 s: im Gesamtlauf unter Last einmal knapp (W2-OUT)
         {
             await Task.Delay(10);
         }

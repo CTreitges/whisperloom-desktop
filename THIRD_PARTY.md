@@ -59,6 +59,13 @@ never written to disk.
 | whisper.cpp `whisper-server` (our CI build, tag `b5454` = v1.9.5, Vulkan or CPU) | MIT, © The ggml authors; each archive contains `LICENSE-whisper.cpp.txt` | https://github.com/ggml-org/whisper.cpp |
 | ggml (part of whisper.cpp) | MIT | https://github.com/ggml-org/ggml |
 | Whisper models `ggml-*.bin` (tiny, base, small, large-v3-turbo) | MIT (OpenAI Whisper weights, converted by the whisper.cpp project) | https://huggingface.co/ggerganov/whisper.cpp, https://github.com/openai/whisper |
+| llama.cpp `llama-server` (official release `b11569`, Windows x64 CPU/Vulkan, Linux x64 CPU/Vulkan; size and SHA-256 pinned in `LlamaRelease.cs`) — only for the bundled text model / nur für das mitgelieferte Textmodell | MIT, © The ggml authors (`LICENSE` in the Linux archive; Windows archives also contain `LICENSE-LLVM-OpenMP`, Apache-2.0 WITH LLVM-exception) | https://github.com/ggml-org/llama.cpp |
+| Text model Qwen2.5-1.5B-Instruct GGUF Q4_K_M (recommended; downloaded by the user from Hugging Face, pinned commit + SHA-256) | Apache-2.0, © Alibaba Cloud (Qwen team) | https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF |
+| Text model Qwen3-4B-Instruct-2507 GGUF Q4_K_M (optional, ≥ 16 GB RAM; quantization by Unsloth) | Apache-2.0, © Alibaba Cloud (Qwen team) | https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF, https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507 |
+
+Not offered: Gemma (Gemma Terms of Use with use restrictions that must be passed on; Google's Hugging Face repositories
+are gated, so no anonymous download by the user) and Qwen2.5-3B (Qwen Research License, non-commercial). Rationale:
+`docs/local-models.md`. Nicht angeboten: Gemma und Qwen2.5-3B (Lizenzgründe, siehe `docs/local-models.md`).
 
 The Vulkan build uses the Vulkan loader of the graphics driver (`vulkan-1.dll` / `libvulkan.so.1`); it is not shipped.
 The Vulkan SDK (LunarG) is only used in CI to build `whisper-server`.

@@ -199,14 +199,19 @@ public sealed partial class AppHost
         }
         var cache = new ModelCache(Path.Combine(options.DataDir, "model-cache.json"));
         LocalParts? local = null;
+        AppPipeline? pipeline = null;
         var desktop = SettingsStore.Desktop(TryLoad(options.DataDir));
         host = new AppHost(options, secrets, settings =>
         {
             local = new LocalParts(options, settings, desktop);
-            return new AppPipeline(settings, secrets, cache, local.Stt, local.Refiner);
+            return pipeline = new AppPipeline(settings, secrets, cache, local.Stt, local.Text);
         }, recorder, output);
         host.Clipboard = clipboard;
         host.Local = local;
+        if (local is not null && pipeline is not null)
+        {
+            LocalWarmUp.Attach(host.Controller, pipeline.ShouldWarmUpLocalAsync, local.Text);
+        }
         return host;
     }
 
@@ -315,6 +320,9 @@ public sealed partial class AppHost
             ["engine"] = Controller.Settings.Engine,
             ["model"] = Controller.Settings.Offline.Model,
             ["sidecarPid"] = server is { HasExited: false } ? server.Pid : null,
+            ["textEngine"] = Local?.Text.Engine,
+            ["llamaPid"] = Local?.Bundled.Server is { HasExited: false } llama ? llama.Pid : null,
+            ["llamaBackend"] = Local?.Bundled.Server?.Backend,
             ["backend"] = last?.Backend,
             ["device"] = last?.Device,
             ["ollamaModel"] = LocalSettings.Of(Controller.Settings).OllamaModel,

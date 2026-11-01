@@ -56,6 +56,9 @@ public sealed class AppPipeline(
         return refined with { Text = lead + RewritePrompt.CleanOutput(refined.Text) + trail };
     }
 
+    /// <summary>Aufnahmestart: wird gleich lokal verbessert (Stufe des Diktats)? Dann lohnt das Vorladen (W2-LOCAL).</summary>
+    public Task<bool> ShouldWarmUpLocalAsync(CancellationToken ct) => Current().ShouldWarmUpLocalAsync(null, ct);
+
     public void Dispose() => _http?.Dispose();
 
     private DictationPipeline Current()

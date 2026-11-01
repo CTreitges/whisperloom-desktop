@@ -11,6 +11,9 @@ Prüfungen:
 - offline-refine-ollama: Stufe Glätten, Regel "lokal", Ollama-Fake (eigener Port über local.ollamaUrl): Ergebnis vom
   Fake, Modell = Fake-Modell. Ein echtes Ollama wird nur gelesen (/api/tags) und nur gemeldet.
 - raw-plus-rules: wie oben, aber kein Ollama erreichbar: Rohtext + Regeln, kein Textverlust, Hinweis gesetzt.
+- offline-refine-bundled (W2-LOCAL): Stufe Glätten, local.textEngine "bundled" mit dem Minimodell stories260K.gguf
+  (--test-text-model, 1,2 MB, SHA256 geprüft) über das echte llama-server (offizielles Release, CPU, lädt die App beim
+  ersten Lauf selbst nach): der Begleitprozess lief, endet mit der App, kein Textverlust.
 
 Prozesse startet und beendet das Skript nur über die eigene PID.
 """
@@ -31,6 +34,8 @@ from pathlib import Path
 JFK_URL = "https://raw.githubusercontent.com/ggml-org/whisper.cpp/d1be6fde11ac6e0407606b4e42fe72d34add8037/samples/jfk.wav"
 JFK_SHA256 = "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e"
 EXPECT = "fellow americans"
+TINY_URL = "https://huggingface.co/ggml-org/models/resolve/499bc8821c6b12b4e53c5bffcb21ec206f212d81/tinyllamas/stories260K.gguf"
+TINY_SHA256 = "270cba1bd5109f42d03350f60406024560464db173c0e387d91f0426d3bd256d"
 FAKE_MODEL = "fake-ollama:1b"
 SMALL_MODEL_HINTS = (":0.5b", ":1b", ":1.5b", ":2b", "e2b", ":3b", ":270m", ":360m")
 
@@ -80,19 +85,19 @@ def free_port() -> int:
         return s.getsockname()[1]
 
 
-def pid_alive(platform: str, pid: int) -> bool:
+def pid_alive(platform: str, pid: int, name: str = "whisper-server") -> bool:
     if platform == "linux":
         try:
-            return Path(f"/proc/{pid}/comm").read_text().strip() == "whisper-server"
+            return Path(f"/proc/{pid}/comm").read_text().strip() == name
         except OSError:
             return False
     out = subprocess.run(["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"], capture_output=True, text=True, encoding="utf-8", errors="replace").stdout or ""
-    return "whisper-server" in out
+    return name in out
 
 
-def wait_gone(platform: str, pid: int, seconds: float = 15) -> bool:
+def wait_gone(platform: str, pid: int, seconds: float = 15, name: str = "whisper-server") -> bool:
     deadline = time.time() + seconds
-    while pid_alive(platform, pid):
+    while pid_alive(platform, pid, name):
         if time.time() > deadline:
             return False
         time.sleep(0.3)
@@ -115,6 +120,27 @@ def prepare(args, cache: Path) -> Path:
     return jfk
 
 
+def tiny_text_model(cache: Path) -> Path:
+    """Minimodell für das mitgelieferte Textmodell (nie in die CI, nur lokal); SHA256 geprüft."""
+    path = cache / "stories260K.gguf"
+    if not path.exists() or hashlib.sha256(path.read_bytes()).hexdigest() != TINY_SHA256:
+        data = urllib.request.urlopen(TINY_URL, timeout=60).read()
+        if hashlib.sha256(data).hexdigest() != TINY_SHA256:
+            raise RuntimeError("stories260K.gguf: Prüfsumme passt nicht")
+        path.write_bytes(data)
+    return path
+
+
+def bundled_settings(stage: str) -> dict:
+    return {
+        "language": "en",
+        "engine": "offline",
+        "offline": {"model": "tiny", "accurate": False, "refine": "local"},
+        "refine": {"stage": stage},
+        "local": {"backend": "cpu", "textEngine": "bundled"},
+    }
+
+
 def settings(stage: str, ollama_url: str) -> dict:
     return {
         "language": "en",
@@ -125,7 +151,7 @@ def settings(stage: str, ollama_url: str) -> dict:
     }
 
 
-def run_app(args, smoke, work: Path, cache: Path, jfk: Path, name: str, conf: dict):
+def run_app(args, smoke, work: Path, cache: Path, jfk: Path, name: str, conf: dict, extra: list[str] | None = None):
     """Eine App-Instanz mit eigenem Datenordner (Cache hineinkopiert); liefert (Status nach dem Diktat, Sidecar-PID, gone)."""
     data = work / args.id / f"smoke-data-offline-{name}"
     smoke.fresh_dir(data)
@@ -134,7 +160,7 @@ def run_app(args, smoke, work: Path, cache: Path, jfk: Path, name: str, conf: di
     out = work / args.id / f"smoke-output-offline-{name}.txt"
     out.unlink(missing_ok=True)
     prefix = f"WhisperLoom-Test-{args.id}:"
-    app = smoke.AppRun(args.app, data, prefix, ["--test-audio", str(jfk), "--output-file", str(out)])
+    app = smoke.AppRun(args.app, data, prefix, ["--test-audio", str(jfk), "--output-file", str(out), *(extra or [])])
     pid = None
     try:
         app.start(timeout=60)
@@ -147,6 +173,12 @@ def run_app(args, smoke, work: Path, cache: Path, jfk: Path, name: str, conf: di
     finally:
         app.stop()
     gone = pid is None or wait_gone(args.platform, pid)
+    llama = (s.get("local") or {}).get("llamaPid")
+    s["_llamaGone"] = llama is None or wait_gone(args.platform, llama, name="llama-server")
+    # Den von der App nachgeladenen llama-server für die nächsten Läufe im Cache behalten.
+    loaded = data / "local" / "llama-server"
+    if loaded.exists() and not (cache / "local" / "llama-server").exists():
+        shutil.copytree(loaded, cache / "local" / "llama-server")
     return s, pid, gone
 
 
@@ -186,6 +218,18 @@ def run(args, work: Path, report, smoke) -> None:
     report.check("raw-plus-rules", EXPECT in raw.lower() and EXPECT in result.lower() and s.get("lastModel") is None
                  and s["_out"] == result and s.get("lastError") is None and gone,
                  f"raw={len(raw)} result={len(result)} model={s.get('lastModel')} error={s.get('lastError')} gone={gone}")
+
+    tiny = tiny_text_model(cache)
+    s, pid, gone = run_app(args, smoke, work, cache, jfk, "bundled", bundled_settings("polish"), ["--test-text-model", str(tiny)])
+    local = s.get("local") or {}
+    result = str(s.get("lastResult") or "")
+    raw = str(s.get("lastRaw") or "")
+    # Das Minimodell erzählt Geschichten: Ergebnis vom Modell oder abgelehnt (Rohtext + Regeln) — beides ohne Textverlust.
+    report.check("offline-refine-bundled", EXPECT in raw.lower() and local.get("textEngine") == "bundled" and local.get("llamaPid") is not None
+                 and local.get("llamaBackend") == "cpu" and s["_llamaGone"] and result != "" and s["_out"] == result
+                 and s.get("lastError") is None and gone,
+                 f"engine={local.get('textEngine')} llamaPid={local.get('llamaPid')} backend={local.get('llamaBackend')} "
+                 f"llamaGone={s['_llamaGone']} model={s.get('lastModel')} result={len(result)} error={s.get('lastError')} gone={gone}")
 
 
 if __name__ == "__main__":

@@ -42,7 +42,23 @@ class SettingsTest(unittest.TestCase):
         self.assertEqual(s["local"], {"backend": "cpu", "ollamaModel": off.FAKE_MODEL, "ollamaUrl": "http://127.0.0.1:1"})
 
 
+class BundledSettingsTest(unittest.TestCase):
+    def test_bundled_engine_on_the_cpu(self):
+        s = off.bundled_settings("polish")
+        self.assertEqual((s["engine"], s["refine"]["stage"]), ("offline", "polish"))
+        self.assertEqual(s["local"], {"backend": "cpu", "textEngine": "bundled"})
+
+    def test_tiny_model_is_pinned(self):
+        self.assertIn("/resolve/499bc8821c6b12b4e53c5bffcb21ec206f212d81/", off.TINY_URL)
+        self.assertEqual(len(off.TINY_SHA256), 64)
+
+
 class PidAliveTest(unittest.TestCase):
+    def test_other_process_name(self):
+        with mock.patch.object(Path, "read_text", return_value="llama-server\n"):
+            self.assertTrue(off.pid_alive("linux", 5, "llama-server"))
+            self.assertFalse(off.pid_alive("linux", 5))
+
     def test_linux_reads_comm(self):
         with mock.patch.object(Path, "read_text", return_value="whisper-server\n"):
             self.assertTrue(off.pid_alive("linux", 5))
