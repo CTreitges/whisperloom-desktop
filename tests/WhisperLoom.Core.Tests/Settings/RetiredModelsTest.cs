@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using WhisperLoom.Core.Api;
 using WhisperLoom.Core.Contracts.Settings;
@@ -14,7 +15,7 @@ public class RetiredModelsTest
     private static WhisperLoomSettings Load(string json)
     {
         var root = JsonNode.Parse(json)!.AsObject();
-        RetiredModels.Apply(root);
+        RetiredModels.ApplyFull(root);
         return SettingsJson.Deserialize(root.ToJsonString());
     }
 
@@ -67,11 +68,70 @@ public class RetiredModelsTest
     public void ZweiterLaufAendertNichtsUndMeldetNurGeaenderte()
     {
         var root = JsonNode.Parse("""{"stt":{"model":"gpt-4o-transcribe"},"llm":{"stageModels":{"polish":"gpt-6-luna"}}}""")!.AsObject();
-        Assert.Equal(["stt.model"], RetiredModels.Apply(root));
+        Assert.Equal(["stt.model"], RetiredModels.ApplyFull(root));
         var after = root.ToJsonString();
-        Assert.Empty(RetiredModels.Apply(root));
+        Assert.Empty(RetiredModels.ApplyFull(root));
         Assert.Equal(after, root.ToJsonString());
-        Assert.Empty(RetiredModels.Apply(new JsonObject()));
+        Assert.Empty(RetiredModels.ApplyFull(new JsonObject()));
+    }
+
+    /// <summary>Prüfrunde 1, R1: eine Teil-Datei ohne providerId gilt nicht als OpenAI — der Anbieter des Geräts zählt.</summary>
+    [Theory]
+    [InlineData("custom", "whisper-1")]
+    [InlineData("groq", "whisper-1")]
+    [InlineData("openai", "gpt-transcribe")]
+    public void TeilImportOhneAnbieterNimmtDenAnbieterDesGeraets(string device, string expected)
+    {
+        var current = new WhisperLoomSettings();
+        current.Stt.ProviderId = device;
+        current.Stt.BaseUrl = device == "custom" ? "http://192.168.1.5:8000/v1" : "";
+        var file = SyncDocument.Parse("""{"schemaVersion":1,"stt":{"model":"whisper-1"},"llm":{"stageModels":{"polish":"gpt-5-mini"}}}""");
+        Assert.Empty(file.RetiredModels!); // ohne Stand kein Anbieter bekannt: Parse fasst es nicht an
+        Assert.Equal("whisper-1", (string?)file.Settings["stt"]!["model"]);
+
+        var preview = SyncImport.Preview(current, file, PolicySettings.None, []);
+
+        Assert.True(preview.CanApply, string.Join("; ", preview.Errors));
+        Assert.Equal(expected, preview.Settings!.Stt.Model);
+        // „wie Erkennung“: die Stufe folgt demselben Anbieter.
+        Assert.Equal(device == "openai" ? "gpt-5.6-terra" : "gpt-5-mini", preview.Settings.Llm.StageModels["polish"]);
+    }
+
+    /// <summary>Prüfrunde 1, R2: Vorgaben der Richtlinie gehen auf den Nachfolger (sonst setzte „Zurücksetzen“ das alte Modell).</summary>
+    [Fact]
+    public void VorgabenDerRichtlinieGehenAufDenNachfolger()
+    {
+        var policy = new PolicySettings
+        {
+            Defaults = new Dictionary<string, JsonElement>
+            {
+                ["stt.model"] = JsonSerializer.SerializeToElement("whisper-1"),
+                ["llmFallback.model"] = JsonSerializer.SerializeToElement("gpt-5-nano"),
+                ["polish.trailingSpace"] = JsonSerializer.SerializeToElement(true),
+            },
+        };
+        var (migrated, changed) = RetiredModels.ApplyDefaults(policy, new WhisperLoomSettings());
+        Assert.Equal(["stt.model", "llmFallback.model"], changed);
+        Assert.Equal("gpt-transcribe", migrated.Defaults!["stt.model"].GetString());
+        Assert.Equal("gpt-5.6-luna", migrated.Defaults["llmFallback.model"].GetString());
+        Assert.True(migrated.Defaults["polish.trailingSpace"].GetBoolean());
+
+        // Eigener Server als Vorgabe-Anbieter: whisper-1 bleibt; ohne Modell-Vorgaben dieselbe Instanz.
+        var custom = policy with { Defaults = new Dictionary<string, JsonElement>(policy.Defaults!) { ["stt.providerId"] = JsonSerializer.SerializeToElement("custom") } };
+        Assert.Equal("whisper-1", RetiredModels.ApplyDefaults(custom, new WhisperLoomSettings()).Policy.Defaults!["stt.model"].GetString());
+        Assert.Same(PolicySettings.None, RetiredModels.ApplyDefaults(PolicySettings.None, new WhisperLoomSettings()).Policy);
+    }
+
+    [Fact]
+    public void ProvisioningMitVorgabeStelltDieVorgabeUm()
+    {
+        var plan = Provisioning.Plan(new WhisperLoomSettings(), SyncDocument.Parse("""
+            {"schemaVersion":1,"stt":{"model":"whisper-1"},"policy":{"levels":{"stt.model":"default"}}}
+            """));
+        Assert.True(plan.CanApply, string.Join("; ", plan.Errors));
+        Assert.Equal("gpt-transcribe", plan.Settings!.Stt.Model);
+        Assert.Equal("gpt-transcribe", plan.Policy.Defaults!["stt.model"].GetString());
+        Assert.Empty(plan.RetiredFixed); // Vorgabe ist nicht Fest
     }
 
     [Fact]

@@ -231,5 +231,5 @@ darf auf `key` enden, Test `KeinKeyFeldImSchema`); `local.servers[].kind` (`stt`
 | `ModelOption.KeywordsField` | optional (letzter Parameter, `null`): Multipart-Feld für das Vokabular als Einzelbegriffe zusätzlich zu `prompt` (gpt-transcribe `keywords[]`) |
 | `ProviderInfo.SttBiasField` | optional (letzter Parameter, `null`): Wortlisten-Feld statt `prompt` (Mistral `context_bias[]`, ≤ 100, mehrteilige Begriffe mit `_`) |
 | `TranscriptResult.DetectedLanguage` (unverändert) | kommt jetzt auch aus `languages[0].code` (gpt-transcribe), ISO 639-3 → 639-1 |
-| `SyncDocument.RetiredModels`, `ProvisioningPlan.RetiredFixed` | TD-A4: Pfade, deren abgeschaltetes OpenAI-Modell beim Lesen auf den Nachfolger ging (`ProviderCatalog.SuccessorOf`), bzw. die davon festen (Fest) — nur Pfade, kein Wert |
+| `SyncDocument.RetiredModels`, `ImportPreview.RetiredModels`, `ProvisioningPlan.RetiredFixed` | TD-A4: Pfade, deren abgeschaltetes OpenAI-Modell beim Lesen (nur Abschnitte mit eigenem `providerId`) bzw. auf dem zusammengeführten Stand auf den Nachfolger ging (`ProviderCatalog.SuccessorOf`, `RetiredModels.Apply`/`ApplyFull`), bzw. die davon festen (Fest) — nur Pfade, kein Wert. `RetiredModels.ApplyDefaults` stellt Vorgabe-Werte der Richtlinie um. |
 

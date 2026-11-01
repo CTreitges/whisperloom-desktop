@@ -17,8 +17,11 @@ Richtlinie), Modell `src/WhisperLoom.Core/Contracts/Settings/WhisperLoomSettings
   Provisioning- oder Server-Datei gehen `stt.model`, `sttFallback.model`, `llm.model`, `llm.stageModels.*` und
   `llmFallback.model` mit Anbieter `openai` von `gpt-5-mini` → `gpt-5.6-terra`, `gpt-5-nano` → `gpt-5.6-luna`,
   `gpt-4o-transcribe`/`gpt-4o-mini-transcribe`/`whisper-1` → `gpt-transcribe` (auch datierte Snapshots). Idempotent, ohne
-  neue `schemaVersion`; andere Anbieter und eigene Server bleiben. Ein fest gesetzter (Fest) Wert geht ebenfalls auf den
-  Nachfolger, mit Warnung bzw. Log-Eintrag `management.retired_model` (nur Pfad).
+  neue `schemaVersion`; andere Anbieter und eigene Server bleiben. Maßgeblich ist der wirksame Anbieter: Eine Teil-Datei
+  ohne `providerId` wird erst auf dem zusammengeführten Stand umgestellt (Gerät mit eigenem Server behält `whisper-1`).
+  Ein fest gesetzter (Fest) Wert geht ebenfalls auf den Nachfolger, auch der vor dem Update in `policy-fixed.json`
+  festgehaltene (die Datei wird beim Start neu geschrieben), dazu die Vorgabe-Werte in `policy.json`; Warnung bzw.
+  Log-Eintrag `management.retired_model` mit `path` und `level` (`fixed`/`default`), nie mit Wert.
 - **Teil-Dateien sind erlaubt.** Beim Import ersetzen die Felder der Datei die aktuellen Werte, fehlende Felder bleiben,
   wie sie sind. Objekte werden feldweise gemischt, Listen und einzelne Werte ganz ersetzt.
 - **Keys stehen nie in Einstellungen oder Exporten.** Nur Provisioning-Dateien dürfen `secrets` enthalten.

@@ -124,7 +124,12 @@ public static class Provisioning
         }
 
         // TD-A4: ein Fest-Wert mit abgeschaltetem Modell geht auf den Nachfolger, aber nicht still (nur Pfad, kein Wert).
-        var retiredFixed = (file.RetiredModels ?? []).Where(policy.IsLocked).ToList();
+        var retiredFixed = (file.RetiredModels ?? []).Concat(preview.RetiredModels).Distinct(StringComparer.Ordinal).Where(policy.IsLocked).ToList();
+        if (preview.Settings is not null)
+        {
+            // Vorgaben (Stufe „Vorgabe“) ebenfalls auf den Nachfolger, sonst setzte „Zurücksetzen“ das alte Modell.
+            policy = RetiredModels.ApplyDefaults(policy, preview.Settings).Policy;
+        }
         warnings.AddRange(retiredFixed.Select(p => $"{p}: festes Modell abgeschaltet, auf den Nachfolger umgestellt"));
 
         var secrets = preview.Settings is null ? new Dictionary<string, string>() : MapSecrets(preview.Settings, file.Secrets, errors, warnings);

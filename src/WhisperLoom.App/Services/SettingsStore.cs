@@ -88,7 +88,7 @@ public sealed class SettingsStore
     internal static WhisperLoomSettings Read(string json)
     {
         if (JsonNode.Parse(json) is not JsonObject root) return SettingsJson.Deserialize(json);
-        RetiredModels.Apply(root);
+        RetiredModels.ApplyFull(root);
         return SettingsJson.Deserialize(root.ToJsonString());
     }
 
