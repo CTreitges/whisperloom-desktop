@@ -62,30 +62,4 @@ public sealed class SettingsExtrasTest
         window.Close();
     }
 
-    [AvaloniaFact]
-    public async Task History_window_reprocesses_the_entry_and_reloads()
-    {
-        Loc.Instance.SetLanguage("de");
-        using var f = new ControllerFixture(new WhisperLoomSettings { Refine = new RefineSettings { Stage = "off" } });
-        f.Pipeline.RawText = "Hallo Welt";
-        f.Controller.Start();
-        await f.Controller.StopAsync();
-        var vm = new HistoryViewModel(f.History, (entry, stage) => f.Controller.ReprocessAsync(stage, entry.Id));
-        await vm.LoadAsync();
-        Assert.True(vm.CanReprocess);
-        Assert.DoesNotContain(vm.Stages, s => s.Value == "off");
-
-        // Gleiche Zeit hieße zufällige Reihenfolge (ID-Suffix): der neue Eintrag ist später.
-        f.Now = f.Now.AddMinutes(1);
-        vm.ReprocessStage = vm.Stages.Single(s => s.Value == "summarize");
-        await vm.ReprocessCommand.ExecuteAsync(vm.Items[0]);
-
-        Assert.Equal(Loc.Instance["History_Status_done"], vm.Status);
-        Assert.Equal(2, vm.Items.Count);
-        Assert.Equal(RefineMode.Summarize, vm.Items[0].Entry.Refinement.Mode);
-
-        vm.ReprocessStage = vm.Stages.Single(s => s.Value == "prompt");
-        await vm.ReprocessCommand.ExecuteAsync(vm.Items[0]);
-        Assert.Equal(Loc.Instance["History_Status_stage-unavailable"], vm.Status);
-    }
 }

@@ -74,6 +74,8 @@ public static class SettingsCatalog
         new("polish.disabledFillers", "cleanup", "G_Fillers", "Set_DisabledFillers", "Set_DisabledFillers_Desc"),
         // Ausgabe
         new("desktop.insertMode", "output", "G_Insert", "Set_InsertMode", "Set_InsertMode_Desc"),
+        new("output.alwaysCopy", "output", "G_Insert", "Set_AlwaysCopy", "Set_AlwaysCopy_Desc"),
+        new("output.pressEnter", "output", "G_Insert", "Set_PressEnter", "Set_PressEnter_Desc"),
         new("desktop.profiles", "output", "G_Profiles", "Settings_Profiles", "Profile_Hint"),
         // Tastenkürzel
         new("desktop.hotkeysEnabled", "hotkeys", "G_HotkeysMain", "Hotkey_Enabled"),
@@ -103,8 +105,6 @@ public static class SettingsCatalog
         ["desktop.output"] = "Nur ein Wert (clipboard); die Ausgabe-Art steht in desktop.insertMode",
         // Neue Schlüssel aus W2-C0: Verhalten und Bedienung bauen die Folge-Issues auf diesem Designsystem.
         // Ein Schalter ohne Wirkung wäre irreführend (W2-UI1: kein neues Verhalten außer UI).
-        ["output.alwaysCopy"] = "W2-OUT (Ausgabe: immer kopieren) – Seite „Ausgabe“",
-        ["output.pressEnter"] = "W2-OUT (Enter nur als Einstellung) – Seite „Ausgabe“",
         ["selection.hotkeyCombo"] = "W2-SEL (Markierung verarbeiten) – Seite „Tastenkürzel“",
         ["selection.floatingButton"] = "W2-SEL (schwebender Knopf) – Seite „Ausgabe“",
         ["selection.ctrlRightClick"] = "W2-SEL (Strg+Rechtsklick) – Seite „Ausgabe“",

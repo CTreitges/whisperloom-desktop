@@ -103,6 +103,11 @@ public partial class App : Application
         {
             StartWindowsInput(host, sink);
         }
+        else if (OperatingSystem.IsLinux() && host.Options.OutputFile is null)
+        {
+            // Linux: Hinweis „Kopiert – Strg+V“ als Desktop-Benachrichtigung (W2-OUT); fehlt notify-send, bleibt es beim Status.
+            host.HintPresenter = hint => _ = Output.DesktopNotify.ShowAsync(Localization.Loc.Instance[Output.OutputHints.Key(hint)]);
+        }
     }
 
     [System.Runtime.Versioning.SupportedOSPlatform("windows")]
@@ -121,6 +126,9 @@ public partial class App : Application
             RecordHotkey = async () => (await input.RecordAsync())?.ToString();
             host.InsertRecent = input.Flow.InsertRecentAsync;
             host.Reinsert = input.Flow.ReinsertAsync;
+            // Hinweise (W2-OUT): Einfügen per Tastenkürzel zeigt seinen Toast selbst, hier nur merken; Tray/CLI zeigen ihn hier.
+            sink.Inserted += outcome => host.RecordHint(Platform.Windows.TextOutput.InsertModes.Hint(outcome));
+            host.HintPresenter = hint => Dispatcher.UIThread.Post(() => input.Flow.ShowHint(hint));
         }
     }
 
@@ -158,9 +166,7 @@ public partial class App : Application
             case "history":
                 if (_historyWindow is null)
                 {
-                    var c = host.Controller;
-                    var vm = new HistoryViewModel(host.History,
-                        c.StageLocked ? null : (entry, stage) => c.ReprocessAsync(stage, entry.Id), cleared => c.NotifyHistoryChanged(cleared));
+                    var vm = new Features.History.HistoryViewModel(host.History, HistoryActionsFor(host));
                     _historyWindow = new HistoryWindow(vm);
                     _historyWindow.Closed += (_, _) => _historyWindow = null;
                     _ = vm.LoadAsync();
@@ -206,6 +212,21 @@ public partial class App : Application
                 });
                 break;
         }
+    }
+
+    /// <summary>Verlauf (W2-OUT): Kopieren mit Gegenprobe, Einfügen wie im Tray, Neu verarbeiten als Fassung im Hintergrund.</summary>
+    internal static Features.History.HistoryActions HistoryActionsFor(AppHost host)
+    {
+        var c = host.Controller;
+        return new Features.History.HistoryActions(
+            host.CopyTextAsync,
+            host.InsertRecent,
+            c.StageLocked ? null : (id, stage) => c.ReprocessVersionAsync(id, stage),
+            c.EditHistoryAsync,
+            [.. Core.Contracts.RefineModes.SettingsFor(c.Settings.Refine.PromptEnabled)
+                .Select(m => (Core.Contracts.RefineModes.Key(m), Localization.Loc.Instance["Stage_" + Core.Contracts.RefineModes.Key(m)]))],
+            entry => c.NotifyHistoryChanged(cleared: false),
+            () => c.NotifyHistoryChanged(cleared: true));
     }
 
     private SettingsViewModel CreateSettings(AppHost host) =>

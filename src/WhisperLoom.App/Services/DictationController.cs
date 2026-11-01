@@ -302,6 +302,11 @@ public sealed partial class DictationController : ObservableObject
             {
                 Fail("Error_Output", "OutputFailed");
             }
+            if (ForgetIfPrivate())
+            {
+                _log.Event("dictation", ("status", "private-field"), ("processingMs", watch.ElapsedMilliseconds));
+                return;
+            }
             await AddHistoryAsync(result);
             _log.Event(
                 "dictation",
@@ -368,6 +373,21 @@ public sealed partial class DictationController : ObservableObject
         {
             _log.Event("history", ("status", "error"));
         }
+    }
+
+    /// <summary>
+    /// Ging die Ausgabe in ein Passwortfeld (UI Automation), bleibt vom Diktat nichts: kein Verlauf, kein „erneut einfügen“
+    /// (wie Android <c>HistoryPolicy</c>, W2-OUT).
+    /// </summary>
+    private bool ForgetIfPrivate()
+    {
+        if (_output is not IPrivateAwareOutput { LastWasPrivate: true })
+        {
+            return false;
+        }
+        LastRaw = "";
+        LastResult = "";
+        return true;
     }
 
     private void Fail(string key, string errorClass)

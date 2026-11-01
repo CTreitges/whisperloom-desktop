@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:o="using:WhisperLoom.App.Platform.Windows.Overlay"
         xmlns:l="using:WhisperLoom.App.Localization"
+        xmlns:ds="using:WhisperLoom.App.Design"
         x:Class="WhisperLoom.App.Platform.Windows.Overlay.OverlayWindow"
         x:DataType="o:OverlayViewModel"
         Title="WhisperLoom Overlay"
@@ -47,22 +48,24 @@
           <TextBlock Text="{Binding ElapsedText}" FontSize="16" Foreground="{StaticResource WlOnSurfaceVariant}"
                      IsVisible="{Binding CanAct}" />
         </StackPanel>
-        <TextBlock Grid.Column="2" Text="{Binding Stage}" FontSize="14" VerticalAlignment="Center"
-                   Foreground="{StaticResource WlAccent}" />
+        <Button x:Name="StageButton" Grid.Column="2" Content="{Binding Stage}" FontSize="14" VerticalAlignment="Center"
+                Foreground="{StaticResource WlAccent}" Background="Transparent" Command="{Binding ToggleStagesCommand}"
+                IsEnabled="{Binding CanPickStage}"
+                ToolTip.Tip="{Binding [Overlay_StageTip], Source={x:Static l:Loc.Instance}}"
+                AutomationProperties.Name="{Binding [Stage_Label], Source={x:Static l:Loc.Instance}}" />
       </Grid>
       <ProgressBar Minimum="0" Maximum="1" Value="{Binding Level}" Height="4" MinHeight="4"
                    Foreground="{StaticResource WlAccent}" Background="{StaticResource WlSurfaceHigh}"
                    IsIndeterminate="{Binding State, Converter={x:Static o:OverlayWindow.IsProcessing}}" />
+      <ds:StagePicker x:Name="StagePickerView" DataContext="{Binding StagePicker}" IsVisible="{Binding $parent[Window].((o:OverlayViewModel)DataContext).IsStagePickerOpen}" />
       <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
         <Button x:Name="PauseButton" Content="{Binding PauseText}" Command="{Binding PauseResumeCommand}" IsEnabled="{Binding CanAct}" />
         <Button x:Name="DiscardButton" Content="{Binding [Overlay_Discard], Source={x:Static l:Loc.Instance}}"
                 Command="{Binding DiscardCommand}" IsEnabled="{Binding CanAct}" />
         <Button x:Name="SendButton" Classes="primary" Content="{Binding [Overlay_Send], Source={x:Static l:Loc.Instance}}"
                 Command="{Binding SendCommand}" IsEnabled="{Binding CanAct}" />
-        <Button x:Name="SendEnterButton" Classes="primary" Content="{Binding [Overlay_SendEnter], Source={x:Static l:Loc.Instance}}"
-                Command="{Binding SendEnterCommand}" IsEnabled="{Binding CanAct}" />
       </StackPanel>
-      <TextBlock Text="{Binding [Overlay_Keys], Source={x:Static l:Loc.Instance}}" FontSize="12"
+      <TextBlock Text="{Binding [Overlay_KeysHint], Source={x:Static l:Loc.Instance}}" FontSize="12"
                  Foreground="{StaticResource WlOnSurfaceVariant}" IsVisible="{Binding CanAct}" />
     </StackPanel>
   </Border>

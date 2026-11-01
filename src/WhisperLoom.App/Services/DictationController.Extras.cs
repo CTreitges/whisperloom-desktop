@@ -52,14 +52,30 @@ public sealed partial class DictationController
         {
             return Stage;
         }
-        var profile = desktop.Profiles[index];
-        if (StageLocked)
+        var choices = RefineModes.SettingsFor(Settings.Refine.PromptEnabled);
+        var next = choices[(choices.ToList().IndexOf(ProfileStage(desktop.Profiles[index])) + 1) % choices.Count];
+        return SetProfileStage(index, next.Key());
+    }
+
+    /// <summary>Stufen-Wähler im Overlay bei aktivem Profil (W2-OUT): Stufe des Profils setzen (gespeichert).</summary>
+    /// <returns>Die danach wirksame Stufe des Profils.</returns>
+    public RefineMode SetProfileStage(int index, string stage)
+    {
+        var desktop = SettingsStore.Desktop(Settings);
+        if (index < 0 || index >= desktop.Profiles.Count)
         {
-            _log.Event("stage.locked", ("profile", true));
+            return Stage;
+        }
+        var profile = desktop.Profiles[index];
+        var target = RefineModes.FromKey(stage);
+        if (StageLocked || target.Key() != stage || !RefineModes.SettingsFor(Settings.Refine.PromptEnabled).Contains(target))
+        {
+            if (StageLocked)
+            {
+                _log.Event("stage.locked", ("profile", true));
+            }
             return ProfileStage(profile);
         }
-        var choices = RefineModes.SettingsFor(Settings.Refine.PromptEnabled);
-        var target = choices[(choices.ToList().IndexOf(ProfileStage(profile)) + 1) % choices.Count];
         profile.Stage = target.Key();
         SettingsStore.SetDesktop(Settings, desktop);
         _saveSettings(Settings);

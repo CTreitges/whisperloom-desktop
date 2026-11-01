@@ -239,8 +239,7 @@ public class InsertOutputSinkTest
         await sink.WriteAsync("cli", CancellationToken.None);
         Assert.Equal(["cli"], inner.Written);
 
-        sink.Arm(42);
-        sink.SetPressEnter(true);
+        sink.Arm(42, pressEnter: true);
         await sink.WriteAsync("hotkey", CancellationToken.None);
         Assert.Equal("hotkey", rig.Keys.Target);
         Assert.Equal(1, rig.Keys.Enters);

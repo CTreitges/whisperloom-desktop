@@ -18,7 +18,7 @@ namespace WhisperLoom.App;
 /// <summary>
 /// Setzt die App zusammen und führt CLI-Befehle aus: echte <see cref="AppPipeline"/>, Verlauf als Dateien im Datenordner.
 /// </summary>
-public sealed class AppHost
+public sealed partial class AppHost
 {
     internal AppHost(
         AppOptions options,
@@ -144,7 +144,10 @@ public sealed class AppHost
     /// <summary>Windows mit Hotkeys: wie der Hotkey „erneut einfügen“ (Vordergrundfenster); null = kopieren.</summary>
     public Func<Task<string>>? Reinsert { get; set; }
 
-    /// <summary>Klick im Tray-Verlauf bzw. <c>recent-insert</c>: einfügen (Windows mit Hotkeys) bzw. in die Zwischenablage.</summary>
+    /// <summary>
+    /// Klick im Tray-Verlauf bzw. <c>recent-insert</c>: einfügen (Windows mit Hotkeys; der Text bleibt dabei auch in der
+    /// Zwischenablage, W2-OUT) bzw. in die Zwischenablage mit Hinweis „Kopiert“.
+    /// </summary>
     public Task<string> InsertRecentTextAsync(string text) => InsertRecent is { } insert ? insert(text) : CopyAsync(text);
 
     private async Task<string> RecentInsertAsync(string index)
@@ -183,13 +186,16 @@ public sealed class AppHost
     {
         var secrets = await SecretStoreFactory.CreateAsync(options.DataDir, options.SecretPrefix, ct).ConfigureAwait(false);
         IAudioRecorder recorder = options.TestAudio is null ? new PortAudioRecorder() : new WavFileRecorder(options.TestAudio);
-        IOutputSink output = options.OutputFile is null ? new ClipboardOutputSink(ProcessRunner.Instance) : new FileOutputSink(options.OutputFile);
+        IOutputSink clipboard = options.OutputFile is null ? new ClipboardOutputSink(ProcessRunner.Instance) : new FileOutputSink(options.OutputFile);
         AppHost? host = null;
+        // Ohne Einfügen (Linux, Tray/CLI): Zwischenablage + Hinweis „Kopiert – Strg+V“ (W2-OUT, OutputDecision).
+        IOutputSink output = new HintingOutputSink(clipboard, () => host?.Controller.Settings.Output ?? new OutputSettings(), hint => host?.OnHint(hint));
         if (OperatingSystem.IsWindows() && options.OutputFile is null)
         {
-            // Einfügen per Tastenkürzel; der Modus folgt den Einstellungen des fertigen Hosts.
+            // Einfügen per Tastenkürzel; Modus, Enter danach und „immer kopieren“ folgen den Einstellungen des fertigen Hosts.
             output = Platform.Windows.Input.WindowsInput.CreateSink(output, () =>
-                Platform.Windows.TextOutput.InsertModes.FromKey(host is null ? null : SettingsStore.Desktop(host.Controller.Settings).InsertMode));
+                Platform.Windows.TextOutput.InsertModes.FromKey(host is null ? null : SettingsStore.Desktop(host.Controller.Settings).InsertMode),
+                () => host?.Controller.Settings.Output ?? new OutputSettings());
         }
         var cache = new ModelCache(Path.Combine(options.DataDir, "model-cache.json"));
         LocalParts? local = null;
@@ -199,6 +205,7 @@ public sealed class AppHost
             local = new LocalParts(options, settings, desktop);
             return new AppPipeline(settings, secrets, cache, local.Stt, local.Refiner);
         }, recorder, output);
+        host.Clipboard = clipboard;
         host.Local = local;
         return host;
     }
@@ -354,6 +361,8 @@ public sealed class AppHost
             ["policy"] = PolicyStatus(c.Policy),
             ["dataDir"] = Options.DataDir,
             ["output"] = Options.OutputFile is null ? "clipboard" : "file",
+            ["lastHint"] = LastHint,
+            ["copies"] = new JsonObject { ["ok"] = CopyCount.Ok, ["failed"] = CopyCount.Failed },
             ["local"] = LocalStatus(),
             ["input"] = InputStatus?.Invoke(),
             ["recent"] = new JsonArray([.. Features.Reinsert.RecentHistory.Take(history).Select(e => (JsonNode)new JsonObject
