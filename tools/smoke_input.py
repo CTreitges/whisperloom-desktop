@@ -249,7 +249,7 @@ def paste_checks(args, work, report, smoke, fake, keys, exe) -> None:
         clipboard_checks(run, keys, exe, out, report)
         stage_check(run, keys, exe, out, report)
         smoke_focus.focus_checks(run, keys, exe, out, report)
-        smoke_focus.leading_space_check(run, keys, exe, out, report)
+        smoke_focus.leading_space_check(run, keys, exe, out, report, fake)
         smoke_focus.history_copy_check(run, report)
         smoke_focus.focus_measure(run, work / args.id, report)
     finally:

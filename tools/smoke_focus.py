@@ -77,8 +77,19 @@ def focus_checks(run, keys, exe, out: Path, report) -> None:
                  f"clip==ergebnis={clip == want} ziel={d.get('text')!r} insert={last} hinweis={((hint.get('input') or {}).get('hint') or {}).get('text')!r}")
 
 
-def leading_space_check(run, keys, exe, out: Path, report) -> None:
-    """Leerzeichen davor (Android commitDictation): direkt hinter „Wort“ diktiert → „Wort <Diktat>“."""
+def leading_space_check(run, keys, exe, out: Path, report, fake=None) -> None:
+    """Leerzeichen davor (Android commitDictation): direkt hinter „Wort“ diktiert → „Wort <Diktat>“. Das Diktat muss mit einem
+    Buchstaben beginnen (sonst gilt die Regel nicht) – die Fake-KI antwortet dafür fest mit „Hallo Welt.“."""
+    if fake is not None:
+        fake.post("/_control", {"llm_text": "Hallo Welt."})
+    try:
+        _leading_space(run, keys, exe, out, report)
+    finally:
+        if fake is not None:
+            fake.post("/_control", {"llm_text": None})
+
+
+def _leading_space(run, keys, exe, out: Path, report) -> None:
     with si.Target(exe, out, keys, ["--text", "Wort"]) as t:
         keys.combo("end")
         time.sleep(0.2)
