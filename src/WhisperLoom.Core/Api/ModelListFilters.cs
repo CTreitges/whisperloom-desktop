@@ -63,7 +63,7 @@ internal static partial class ModelListFilters
         if (provider.IsOllama) return [.. OllamaApi.ParseTags(body).Where(n => !Embed().IsMatch(n)).Select(n => new RemoteModel(n))];
         var list = Entries(body);
         if (provider.Api == ApiStyle.ElevenLabs) return ElevenLabs(list);
-        return provider.Id switch
+        return provider.Rules switch
         {
             ProviderCatalog.OpenAiId => OpenAi(stt, list, today),
             "groq" => Groq(stt, list),

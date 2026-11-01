@@ -86,12 +86,12 @@ public static partial class ModelLists
         if (provider.IsOllama) return new ModelListRequest(OllamaApi.TagsUrl(b));
         if (provider.Api == ApiStyle.ElevenLabs) return new ModelListRequest(Http.Endpoint(b, Models), ElevenLabsStt.AuthHeader);
         // Ohne limit liefert Anthropic 20 Modelle je Seite; 1000 ist das Maximum.
-        if (provider.Id == "anthropic")
+        if (provider.Rules == "anthropic")
         {
             return new ModelListRequest(Http.Endpoint(b, $"{Models}?limit=1000"), Headers: new Dictionary<string, string> { ["anthropic-version"] = AnthropicVersion });
         }
         // Ohne Filter liefert OpenRouter nur Modelle mit Text-Ausgabe.
-        if (provider.Id == "openrouter" && kind == ModelKind.Stt) return new ModelListRequest(Http.Endpoint(b, $"{Models}?output_modalities=transcription"));
+        if (provider.Rules == "openrouter" && kind == ModelKind.Stt) return new ModelListRequest(Http.Endpoint(b, $"{Models}?output_modalities=transcription"));
         return new ModelListRequest(Http.Endpoint(b, Models));
     }
 
@@ -131,7 +131,7 @@ public static partial class ModelLists
             throw new ModelListException(e);
         }
         var unique = models.DistinctBy(m => m.Id).ToList();
-        return provider.Id == "anthropic" ? unique : [.. unique.OrderBy(m => m.Id.ToLowerInvariant(), StringComparer.Ordinal)];
+        return provider.Rules == "anthropic" ? unique : [.. unique.OrderBy(m => m.Id.ToLowerInvariant(), StringComparer.Ordinal)];
     }
 
     /// <summary>
@@ -150,7 +150,7 @@ public static partial class ModelLists
             ?? (chat && NoTemperature(provider, name) ? false : null);
         var effort = server?.ReasoningEffort ?? b?.ReasoningEffort ?? (chat ? HeuristicEffort(provider, name) : null);
         var languageField = b?.LanguageField
-            ?? (!chat && provider.Id == ProviderCatalog.OpenAiId && GptTranscribe().IsMatch(name) ? "languages[]" : null);
+            ?? (!chat && provider.Rules == ProviderCatalog.OpenAiId && GptTranscribe().IsMatch(name) ? "languages[]" : null);
         if (server is null && b is null && temperature is null && effort is null && languageField is null) return null;
         return new ModelOption(id, server?.Label ?? id, server?.Note ?? "", temperature ?? true, effort, languageField ?? "language", b?.ThinkingType);
     }
@@ -162,9 +162,9 @@ public static partial class ModelLists
 
     /// <summary>OpenAI-Reasoning-Modelle lehnen temperature ab; Google rät bei Gemini 3 von temperature &lt; 1 ab.</summary>
     private static bool NoTemperature(ProviderInfo provider, string name) =>
-        OpenAiReasoning().IsMatch(name) || (provider.Id == "gemini" && Gemini3().IsMatch(name));
+        OpenAiReasoning().IsMatch(name) || (provider.Rules == "gemini" && Gemini3().IsMatch(name));
 
-    private static string? HeuristicEffort(ProviderInfo provider, string name) => provider.Id switch
+    private static string? HeuristicEffort(ProviderInfo provider, string name) => provider.Rules switch
     {
         "groq" when Qwen3().IsMatch(name) => "none",
         "groq" when GptOss().IsMatch(name) => "low",

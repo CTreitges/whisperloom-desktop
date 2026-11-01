@@ -69,6 +69,7 @@ public static class SyncImport
         {
             RemoveIgnoringCase(local, "ollamaUrl");
             RemoveIgnoringCase(local, "servers");
+            RemoveIgnoringCase(local, "textServer");
         }
         // management.* ist Gerätezustand: nie importiert.
         if (RemoveIgnoringCase(settings, ManagedPaths.ManagementSection))
@@ -202,6 +203,7 @@ public static class SyncExport
         foreach (var local in tree.Where(p => p.Key.Equals("local", StringComparison.OrdinalIgnoreCase)).Select(p => p.Value).OfType<JsonObject>())
         {
             SyncImport.RemoveIgnoringCase(local, "servers");
+            SyncImport.RemoveIgnoringCase(local, "textServer");
         }
         return tree.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
     }

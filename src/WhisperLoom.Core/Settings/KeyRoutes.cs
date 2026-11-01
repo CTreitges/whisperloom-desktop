@@ -21,7 +21,7 @@ internal static class KeyRoutes
     /// </summary>
     public static IReadOnlyList<KeyDrop> Dropped(WhisperLoomSettings before, WhisperLoomSettings after, IReadOnlyCollection<string> storedKeys)
     {
-        var stored = SecretNames.All.Where(storedKeys.Contains).ToList();
+        var stored = SecretNames.All.Where(storedKeys.Contains).Concat(storedKeys.Where(SecretNames.IsProviderKey).Order(StringComparer.Ordinal)).ToList();
         var old = Targets(before, stored);
         var neu = Targets(after, stored);
         var proxy = ManualProxy(after);
@@ -51,15 +51,26 @@ internal static class KeyRoutes
         s.SttFallback.Enabled = true;
         s.LlmFallback.Enabled = true;
         string Key(string name) => stored.Contains(name) ? Marker + name : "";
-        var keys = new AccessKeys(Key(SecretNames.Stt), Key(SecretNames.SttFallback), Key(SecretNames.Llm), Key(SecretNames.LlmFallback));
+        // Keys eigener Anbieter (W2) gehören zum Eintrag: Ziel ist dessen Adresse.
+        var providerKeys = stored.Where(SecretNames.IsProviderKey).ToDictionary(n => n, n => Marker + n, StringComparer.Ordinal);
+        var keys = new AccessKeys(Key(SecretNames.Stt), Key(SecretNames.SttFallback), Key(SecretNames.Llm), Key(SecretNames.LlmFallback), providerKeys);
         ApiAccess?[] accesses = [SettingsAccess.Stt(s, keys), SettingsAccess.Llm(s, keys), SettingsAccess.SttFallback(s, keys), SettingsAccess.LlmFallback(s, keys)];
 
-        var targets = SecretNames.All.ToDictionary(n => n, _ => new HashSet<string>(StringComparer.Ordinal));
+        var targets = SecretNames.All.Concat(providerKeys.Keys).ToDictionary(n => n, _ => new HashSet<string>(StringComparer.Ordinal));
         foreach (var a in accesses)
         {
             if (a is not null && a.ApiKey.StartsWith(Marker, StringComparison.Ordinal) && a.BaseUrl.Trim().Length > 0)
             {
                 targets[a.ApiKey[Marker.Length..]].Add(Origin(a.BaseUrl));
+            }
+        }
+        // „Zugang prüfen“ auf der Seite „Anbieter“ schickt den Key eines Eintrags an dessen Adresse, auch ungenutzt.
+        var directory = ProviderDirectory.For(s);
+        foreach (var name in providerKeys.Keys)
+        {
+            if (directory.Find(name) is { BaseUrl.Length: > 0 } entry)
+            {
+                targets[name].Add(Origin(entry.BaseUrl));
             }
         }
         // „wie Erkennung“: Das Diktat nutzt den llm-Key nicht, „Zugang prüfen“ schickt ihn aber an die Erkennung.

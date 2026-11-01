@@ -61,8 +61,9 @@ internal sealed class SyncCommands(string dataDir, ISecretStore secrets, TextWri
 
     private async Task<int> ImportAsync(string path, bool dryRun, CancellationToken ct)
     {
-        var stored = await StoredKeysAsync(secrets, ct);
-        var preview = SyncImport.Preview(_settings.Load(), SyncDocument.Parse(File.ReadAllText(path)), _policy.Load(), stored);
+        var current = _settings.Load();
+        var stored = await StoredKeysAsync(secrets, ct, current);
+        var preview = SyncImport.Preview(current, SyncDocument.Parse(File.ReadAllText(path)), _policy.Load(), stored);
         Report([.. preview.Warnings, .. preview.DroppedKeys.Select(DropWarning),
             .. preview.EnterDisabled.Select(p => $"Profil {p}: Enter danach ausgeschaltet (fremde Datei); bei Bedarf im Profil selbst einschalten"),
             .. preview.DictationTargets.Select(t => $"Diktate gehen künftig auch an {t} (Erkennung bzw. Textverbesserung); nur übernehmen, wenn du dem Server vertraust")],
@@ -98,10 +99,10 @@ internal sealed class SyncCommands(string dataDir, ISecretStore secrets, TextWri
     }
 
     /// <summary>Namen der Keys, die im Speicher liegen (für die Schutzregel des Imports).</summary>
-    internal static async Task<IReadOnlyCollection<string>> StoredKeysAsync(ISecretStore store, CancellationToken ct)
+    internal static async Task<IReadOnlyCollection<string>> StoredKeysAsync(ISecretStore store, CancellationToken ct, WhisperLoomSettings? current = null)
     {
         var stored = new List<string>();
-        foreach (var name in SecretNames.All)
+        foreach (var name in SecretNames.All.Concat((current?.Providers.Custom ?? []).Select(c => ProvidersSettings.CustomPrefix + c.Id).Where(SecretNames.IsProviderKey)))
         {
             if (!string.IsNullOrWhiteSpace(await store.GetAsync(name, ct)))
             {

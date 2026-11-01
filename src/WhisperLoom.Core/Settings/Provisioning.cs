@@ -99,7 +99,9 @@ public static class Provisioning
         }
         foreach (var id in policy.AllowedProviders ?? [])
         {
-            if (ProviderCatalog.Find(id) is null)
+            // W2: „local“ und Einträge „custom:<id>“/„local:<name>“ sind ebenfalls gültige Freigaben.
+            if (ProviderCatalog.Find(id) is null && id != "local" && !SecretNames.IsProviderKey(id) &&
+                !(id.StartsWith(LocalServerSource.LocalPrefix, StringComparison.Ordinal) && id.Length > LocalServerSource.LocalPrefix.Length))
             {
                 errors.Add($"policy.allowedProviders: Anbieter unbekannt: {id}");
             }
@@ -123,7 +125,19 @@ public static class Provisioning
             (SecretNames.Llm, s.Llm.ProviderId), // "same" passt zu keinem Anbieter: nutzt den Key der Erkennung.
             (SecretNames.LlmFallback, s.LlmFallback.ProviderId),
         };
-        foreach (var (name, key) in secrets.Where(e => !SecretNames.All.Contains(e.Key)))
+        // W2: Key eines eigenen Anbieters („custom:<id>“) gehört zum Eintrag, nicht zu einem Zugang.
+        foreach (var (name, key) in secrets.Where(e => SecretNames.IsProviderKey(e.Key)))
+        {
+            if (s.Providers.Custom.Any(c => ProvidersSettings.CustomPrefix + c.Id == name))
+            {
+                byAccess[name] = key;
+            }
+            else
+            {
+                errors.Add($"secrets.{name}: kein Eintrag in providers.custom");
+            }
+        }
+        foreach (var (name, key) in secrets.Where(e => !SecretNames.All.Contains(e.Key) && !SecretNames.IsProviderKey(e.Key)))
         {
             if (ProviderCatalog.Find(name) is null)
             {
@@ -175,7 +189,7 @@ public static class Provisioning
         }
         if (path.StartsWith("secrets.", StringComparison.Ordinal))
         {
-            return SecretNames.All.Contains(path["secrets.".Length..]);
+            return SecretNames.All.Contains(path["secrets.".Length..]) || SecretNames.IsProviderKey(path["secrets.".Length..]);
         }
         var leaves = SyncTree.Leaves(SyncImport.Tree(new WhisperLoomSettings())).Keys;
         return leaves.Any(l => l == path || l.StartsWith(path + ".", StringComparison.Ordinal));

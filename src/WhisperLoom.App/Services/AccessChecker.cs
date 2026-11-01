@@ -24,27 +24,33 @@ public interface IAccessChecker
 }
 
 /// <summary>
-/// „Zugang prüfen“: GET <c>&lt;Basis-URL&gt;/models</c> mit dem gespeicherten Key (Anthropic: <c>x-api-key</c>,
-/// ElevenLabs: <c>xi-api-key</c>, sonst Bearer). Liest den Antwort-Körper nicht; nur der Status zählt.
+/// „Zugang prüfen“: GET <c>&lt;Basis-URL&gt;/models</c> (Ollama: <c>/api/tags</c>) mit dem gespeicherten Key (Anthropic:
+/// <c>x-api-key</c>, ElevenLabs: <c>xi-api-key</c>, sonst Bearer). Liest den Antwort-Körper nicht; nur der Status zählt.
+/// W2: Einträge (<c>custom:&lt;id&gt;</c>, <c>local:&lt;name&gt;</c>) gehen immer an ihre eigene Adresse, nie an die übergebene.
 /// </summary>
 // Doku: platform.openai.com/docs/api-reference/models/list, docs.anthropic.com/en/api/models-list (abgerufen 2026-10-30).
-public sealed class HttpAccessChecker(Func<HttpClient> client) : IAccessChecker
+public sealed class HttpAccessChecker(Func<HttpClient> client, Func<ProviderDirectory>? providers = null) : IAccessChecker
 {
     public async Task<AccessResult> CheckAsync(string providerId, string baseUrl, string? key, CancellationToken ct)
     {
-        var url = string.IsNullOrWhiteSpace(baseUrl) ? ProviderChoice.Find(providerId)?.BaseUrl ?? "" : baseUrl;
-        if (url.Length == 0 || !Uri.TryCreate(url.TrimEnd('/') + "/models", UriKind.Absolute, out var uri))
+        var provider = (providers?.Invoke() ?? ProviderDirectory.Catalog).Find(providerId);
+        var url = provider is { IsEntry: true } ? provider.BaseUrl
+            : string.IsNullOrWhiteSpace(baseUrl) ? provider?.BaseUrl ?? ""
+            : baseUrl;
+        var rules = provider?.Rules ?? providerId;
+        var path = rules == ProviderCatalog.OllamaId ? "/api/tags" : "/models";
+        if (url.Length == 0 || !Uri.TryCreate(url.TrimEnd('/') + path, UriKind.Absolute, out var uri))
         {
             return new AccessResult(false, "Access_NoUrl");
         }
-        if (string.IsNullOrEmpty(key) && providerId is not ("ollama" or "custom"))
+        if (string.IsNullOrEmpty(key) && (provider?.NeedsKey ?? rules is not ("ollama" or "custom")))
         {
             return new AccessResult(false, "Access_NoKey");
         }
         using var request = new HttpRequestMessage(HttpMethod.Get, uri);
         if (!string.IsNullOrEmpty(key))
         {
-            switch (providerId)
+            switch (rules)
             {
                 case "anthropic":
                     request.Headers.Add("x-api-key", key);

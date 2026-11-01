@@ -52,7 +52,7 @@ public sealed partial class SyncViewModel(DictationController controller, ISecre
         ImportPreview preview;
         try
         {
-            var stored = await SyncCommands.StoredKeysAsync(secrets, CancellationToken.None);
+            var stored = await SyncCommands.StoredKeysAsync(secrets, CancellationToken.None, controller.Settings);
             preview = SyncImport.Preview(controller.Settings, SyncDocument.Parse(json), controller.Policy, stored);
         }
         catch (Exception e) when (e is SyncFormatException or NotSupportedException)
@@ -100,7 +100,7 @@ public sealed partial class SyncViewModel(DictationController controller, ISecre
         try
         {
             // Neu berechnen: Seit der Vorschau kann ein Key gespeichert worden sein, den der Import umlenkt.
-            var stored = await SyncCommands.StoredKeysAsync(secrets, CancellationToken.None);
+            var stored = await SyncCommands.StoredKeysAsync(secrets, CancellationToken.None, controller.Settings);
             var preview = SyncImport.Preview(controller.Settings, SyncDocument.Parse(_json), controller.Policy, stored);
             if (preview.Settings is not { } settings)
             {
