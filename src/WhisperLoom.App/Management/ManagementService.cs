@@ -36,6 +36,12 @@ public interface IManagedTarget
 
     /// <summary>Speichert Einstellungen und Richtlinie (samt Werten der festen Pfade) und wendet sie an.</summary>
     Task SaveAsync(WhisperLoomSettings settings, PolicySettings policy);
+
+    /// <summary>
+    /// Speichert nur den Zustand der Anbindung (Einstellungen); Richtlinie und festgehaltene Werte bleiben, wie sie sind
+    /// (W2-FIX N-1: sonst würden lokal geänderte Werte bei 304 zu neuen Fest-Werten).
+    /// </summary>
+    Task SaveStateAsync(WhisperLoomSettings settings);
 }
 
 /// <summary>
@@ -49,6 +55,7 @@ public sealed class ManagementService(IManagedTarget target, ISecretStore user, 
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly Func<DateTimeOffset> _now = now ?? (() => DateTimeOffset.UtcNow);
+    private readonly OwnKeyTargets _own = new(Path.GetDirectoryName(cache.FilePath)!);
 
     /// <summary>Nach jeder Änderung des Zustands (für Seite „Firma“ und Assistent).</summary>
     public event Action? Changed;
@@ -69,12 +76,19 @@ public sealed class ManagementService(IManagedTarget target, ISecretStore user, 
     /// Verbinden: Firmencode gegen Geräte-Token tauschen, Token speichern, Zustand setzen; bei sofortiger Freigabe gleich
     /// abgleichen. Fehler kommen als <see cref="ManagementException"/> bzw. <see cref="ManagementOfflineException"/>.
     /// </summary>
-    /// <exception cref="ArgumentException">Adresse oder Code ungültig (Meldung = Lokalisierungs-Schlüssel).</exception>
+    /// <exception cref="ArgumentException">Adresse oder Code ungültig bzw. schon verbunden (Meldung = Lokalisierungs-Schlüssel).</exception>
     public async Task<SyncOutcome> JoinAsync(string server, string code, string deviceName, CancellationToken ct)
     {
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
+            // W2-FIX M-3: Neu verbinden ersetzte Server, Token und Richtlinie (Fest, „Verlassen verboten“). Nur nach Widerruf
+            // oder nach „Firma verlassen“, das CanLeave beachtet.
+            var m = target.Settings.Management;
+            if (CompanySecretStore.IsManaged(m) && m.State != "revoked")
+            {
+                throw new ArgumentException("Company_AlreadyJoined");
+            }
             return await JoinCoreAsync(server, code, deviceName, ct).ConfigureAwait(false);
         }
         finally
@@ -142,6 +156,17 @@ public sealed class ManagementService(IManagedTarget target, ISecretStore user, 
             var settings = Copy(target.Settings);
             ConfigApply.Detach(settings); // Zugänge auf den Firmen-Proxy wieder als eigener Server mit Proxy-Adresse
             settings.Management = new ManagementSettings();
+            // W2-FIX H-1: ohne Verwaltung hält niemand mehr eigene Keys zurück. Verwerfen, was danach an ein neues Ziel ginge
+            // (K1, z. B. Firmen-Proxy nach Detach) oder an ein Ziel, für das der Nutzer ihn nicht gespeichert hat.
+            var stored = await StoredAsync(Provisioning.CandidateKeys(target.Settings, []), ct).ConfigureAwait(false);
+            var names = KeyRoutes.Dropped(target.Settings, settings, stored).Select(d => d.Name)
+                .Concat(stored.Where(n => SecretNames.All.Contains(n) && !_own.Allows(settings, n)
+                    && !CompanySecretStore.UserChoseTarget(target.Settings, n)));
+            foreach (var name in names.Distinct(StringComparer.Ordinal).ToList())
+            {
+                await user.DeleteAsync(name, ct).ConfigureAwait(false);
+            }
+            _own.Clear();
             cache.Clear();
             await target.SaveAsync(settings, PolicySettings.None).ConfigureAwait(false);
             LastError = null;
@@ -184,6 +209,12 @@ public sealed class ManagementService(IManagedTarget target, ISecretStore user, 
         // Erst das Token sichern: ohne es wäre das neue Gerät beim Server verwaist.
         await user.SetAsync(SecretNames.Device, result.DeviceToken, ct).ConfigureAwait(false);
         cache.Clear();
+        if (!CompanySecretStore.IsManaged(target.Settings.Management))
+        {
+            // W2-FIX K-1: Ziele der eigenen Keys vor dem Beitritt; nur dorthin gibt der CompanySecretStore sie unter Verwaltung.
+            // Nach Widerruf bleiben die alten Ziele (der Stand ist schon von der Firma geprägt).
+            _own.Snapshot(target.Settings, await StoredAsync(SecretNames.All, ct).ConfigureAwait(false));
+        }
         var settings = Copy(target.Settings);
         var m = settings.Management;
         m.ServerUrl = url;
@@ -286,11 +317,14 @@ public sealed class ManagementService(IManagedTarget target, ISecretStore user, 
         {
             settings.Management.State = "approved";
             settings.Management.LastSync = _now().ToUnixTimeMilliseconds();
-            await target.SaveAsync(settings, target.Policy).ConfigureAwait(false);
+            // W2-FIX N-1: nur den Zustand speichern; policy-fixed.json bleibt der Stand des letzten 200.
+            await target.SaveStateAsync(settings).ConfigureAwait(false);
             LastError = null;
             return SyncOutcome.NotModified;
         }
-        var plan = ConfigApply.Plan(settings, response.Body, _now().ToUnixTimeMilliseconds());
+        // W2-FIX K-1/V-1: welche eigenen Keys wirklich gespeichert sind, steht nur im rohen Nutzer-Store.
+        var stored = await StoredAsync(ConfigApply.StoredKeyCandidates(settings, response.Body), ct).ConfigureAwait(false);
+        var plan = ConfigApply.Plan(settings, response.Body, _now().ToUnixTimeMilliseconds(), stored);
         if (!plan.CanApply)
         {
             LastError = "config_invalid";
@@ -340,10 +374,14 @@ public sealed class ManagementService(IManagedTarget target, ISecretStore user, 
         return fresh;
     }
 
-    /// <summary>Gesperrt: Firmen-Zugänge aus (Keys weg, kein Token an den Proxy), Hinweis; die übrigen Werte bleiben.</summary>
+    /// <summary>
+    /// Gesperrt: Firmen-Zugänge aus (Keys weg, kein Token an den Proxy), Hinweis; die übrigen Werte bleiben. Mit den Keys geht
+    /// der ETag (W2-FIX N-4): sonst lieferte der Server nach dem Entsperren 304 und die Keys kämen nie wieder.
+    /// </summary>
     private async Task<SyncOutcome> BlockAsync(CancellationToken ct)
     {
         await DeleteCompanyKeysAsync(ct).ConfigureAwait(false);
+        cache.Clear();
         await SetStateAsync("blocked", null).ConfigureAwait(false);
         return SyncOutcome.Blocked;
     }
@@ -353,6 +391,7 @@ public sealed class ManagementService(IManagedTarget target, ISecretStore user, 
     {
         await user.DeleteAsync(SecretNames.Device, ct).ConfigureAwait(false);
         await DeleteCompanyKeysAsync(ct).ConfigureAwait(false);
+        cache.Clear();
         await SetStateAsync("revoked", null).ConfigureAwait(false);
         return SyncOutcome.Revoked;
     }
@@ -370,7 +409,27 @@ public sealed class ManagementService(IManagedTarget target, ISecretStore user, 
         {
             settings.Management.TenantName = tenantName;
         }
-        await target.SaveAsync(settings, target.Policy).ConfigureAwait(false);
+        await target.SaveStateAsync(settings).ConfigureAwait(false); // N-1: festgehaltene Werte nicht aus dem Ist-Stand
+    }
+
+    /// <summary>
+    /// N-1: Fest-Werte fehlen bzw. sind unlesbar, die Richtlinie gilt aber. Den ETag vergessen, damit der nächste Abgleich die
+    /// volle Konfiguration holt und policy-fixed.json neu schreibt (statt 304 auf dem lokal geänderten Stand).
+    /// </summary>
+    public void ForgetConfigVersion() => cache.ForgetETag();
+
+    /// <summary>Welche der Namen liegen im rohen Nutzer-Store (nicht leer)?</summary>
+    private async Task<IReadOnlyCollection<string>> StoredAsync(IEnumerable<string> names, CancellationToken ct)
+    {
+        var stored = new List<string>();
+        foreach (var name in names.Distinct(StringComparer.Ordinal))
+        {
+            if (!string.IsNullOrWhiteSpace(await user.GetAsync(name, ct).ConfigureAwait(false)))
+            {
+                stored.Add(name);
+            }
+        }
+        return stored;
     }
 
     /// <summary>Ziele der verteilten Keys aus dem letzten Abgleich (Prüfung im <see cref="CompanySecretStore"/>).</summary>

@@ -88,7 +88,15 @@ public sealed partial class KeyFieldViewModel : ObservableObject
         }
         try
         {
-            await _store.SetAsync(Name, value, CancellationToken.None);
+            if (_store is Management.CompanySecretStore company)
+            {
+                // Unter Firmen-Verwaltung gilt der Key für das Ziel, das der Nutzer gerade sieht (W2-FIX K-1).
+                await company.SetAsync(Name, value, _target(), CancellationToken.None);
+            }
+            else
+            {
+                await _store.SetAsync(Name, value, CancellationToken.None);
+            }
             IsSet = true;
             Status = Loc.Instance["Key_Saved"];
         }

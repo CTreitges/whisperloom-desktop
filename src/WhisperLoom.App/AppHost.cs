@@ -101,6 +101,18 @@ public sealed partial class AppHost
         {
             Log.Event("policy.fixed", ("restored", changed));
         }
+        if (changed == -1)
+        {
+            // W2-FIX N-1: ohne Fest-Werte keine 304 auf dem lokalen Stand; der nächste Abgleich holt alles neu.
+            if (Manager is { } management)
+            {
+                management.ForgetConfigVersion();
+            }
+            else
+            {
+                new ManagementCache(Options.DataDir).Load().ForgetETag();
+            }
+        }
         return enforced;
     }
 
@@ -250,7 +262,7 @@ public sealed partial class AppHost
         // Firmen-Zugänge (W2-ENR): Geräte-Token für den Proxy bzw. verteilte Keys statt eigener Keys, wo die Firma das Ziel festlegt.
         ISecretStore secrets = new CompanySecretStore(userSecrets, companySecrets,
             () => host?.Controller.Settings ?? new WhisperLoomSettings(), () => host?.Controller.Policy ?? PolicySettings.None,
-            () => management?.KeyTargets ?? new Dictionary<string, KeyTarget>());
+            () => management?.KeyTargets ?? new Dictionary<string, KeyTarget>(), new OwnKeyTargets(options.DataDir));
         IAudioRecorder recorder = options.TestAudio is null ? new PortAudioRecorder() : new WavFileRecorder(options.TestAudio);
         IOutputSink clipboard = options.OutputFile is null ? new ClipboardOutputSink(ProcessRunner.Instance) : new FileOutputSink(options.OutputFile);
         // Ohne Einfügen (Linux, Tray/CLI): Zwischenablage + Hinweis „Kopiert – Strg+V“ (W2-OUT, OutputDecision).

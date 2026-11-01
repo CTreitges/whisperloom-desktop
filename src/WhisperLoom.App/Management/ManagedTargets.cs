@@ -21,6 +21,13 @@ public sealed class FileManagedTarget(SettingsStore store, PolicyStore policies)
         Policy = policy;
         return Task.CompletedTask;
     }
+
+    public Task SaveStateAsync(WhisperLoomSettings settings)
+    {
+        store.Save(settings);
+        Settings = settings;
+        return Task.CompletedTask;
+    }
 }
 
 /// <summary>Ziel in der laufenden App: Richtlinie speichern und setzen, Einstellungen über den Controller anwenden.</summary>
@@ -35,6 +42,12 @@ public sealed class HostManagedTarget(DictationController controller, PolicyStor
         policies.Save(policy, settings);
         policy.Enforce(settings);
         controller.Policy = policy;
+        await controller.ApplySettingsAsync(settings);
+    });
+
+    public Task SaveStateAsync(WhisperLoomSettings settings) => onUiThread(async () =>
+    {
+        controller.Policy.Enforce(settings);
         await controller.ApplySettingsAsync(settings);
     });
 }

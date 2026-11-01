@@ -23,6 +23,7 @@
   "Cleanup_plain": "Nur Zeichensetzung",
   "Cleanup_readable": "Lesbar",
   "Company_ApprovedBy": "Freigegeben – {0} verwaltet jetzt einige Einstellungen.",
+  "Company_AlreadyJoined": "Dieses Gerät ist schon mit einer Firma verbunden. Neu verbinden geht erst nach „Firma verlassen“.",
   "Company_Code": "Firmencode",
   "Company_CodeInvalid": "Der Firmencode hat 16 Zeichen, z. B. ABCD-EFGH-JKMN-PQRS.",
   "Company_Connect": "Mit Firma verbinden",

@@ -40,7 +40,8 @@ internal sealed class SyncCommands(string dataDir, ISecretStore secrets, TextWri
     {
         var current = _settings.Load();
         var file = SyncDocument.Parse(File.ReadAllText(path));
-        var plan = Provisioning.Plan(current, file, await StoredKeysAsync(secrets, ct, current, SyncImport.ProviderKeyNames(file)));
+        var stored = await StoredKeysAsync(secrets, ct, current, SyncImport.ProviderKeyNames(file));
+        var plan = Provisioning.Plan(current, file, stored);
         Report(plan.Warnings, plan.Errors);
         if (!plan.CanApply)
         {
@@ -49,7 +50,9 @@ internal sealed class SyncCommands(string dataDir, ISecretStore secrets, TextWri
         var settings = plan.Settings!;
         var policy = plan.Policy;
         var keys = plan.Secrets;
-        if (Management.CompanySecretStore.IsManaged(current.Management) && current.Management.State != "revoked")
+        var drops = plan.DroppedKeys;
+        var managed = Management.CompanySecretStore.IsManaged(current.Management);
+        if (managed && current.Management.State != "revoked")
         {
             // Firmen-Server verwaltet das Gerät: eine lokale Datei überschreibt weder Fest noch die Richtlinie (W2-ENR).
             policy = _policy.Load();
@@ -62,16 +65,27 @@ internal sealed class SyncCommands(string dataDir, ISecretStore secrets, TextWri
             settings = guarded.Settings!;
             settings.Management = current.Management;
             keys = plan.Secrets.Where(k => !policy.IsLocked("secrets." + k.Key)).ToDictionary(k => k.Key, k => k.Value);
+            // Endstand nach den Sperren der Firma; ein gesperrter Key der Datei ersetzt den eigenen nicht.
+            drops = Provisioning.KeyDrops(current, settings, stored, keys.Keys);
         }
-        // Erst die Keys: scheitert die Ablage, bleiben Einstellungen und Richtlinie wie vorher.
+        // Erst die Keys: scheitert die Ablage, bleiben Einstellungen und Richtlinie wie vorher. Zuerst löschen (K1: Keys mit
+        // neuem Ziel, W2-LOCAL R-K1-1, W2-FIX K-1/M-2), dann schreiben, sonst löschte ein Drop den Key der Datei.
+        foreach (var drop in drops)
+        {
+            await secrets.DeleteAsync(drop.Name, ct);
+        }
         foreach (var (name, key) in keys)
         {
             await secrets.SetAsync(name, key, ct);
         }
-        // W2-LOCAL R-K1-1: Keys eigener Anbieter mit neuer Adresse bzw. ohne Eintrag gehen nirgends mehr hin.
-        foreach (var drop in plan.DroppedKeys)
+        if (managed)
         {
-            await secrets.DeleteAsync(drop.Name, ct);
+            // Unter Verwaltung gilt ein Key der Datei für das Ziel, das sie setzt (W2-FIX K-1, CompanySecretStore).
+            var own = new Management.OwnKeyTargets(dataDir);
+            foreach (var name in keys.Keys.Where(SecretNames.All.Contains))
+            {
+                own.Record(settings, name);
+            }
         }
         _settings.Save(settings);
         _policy.Save(policy, settings);
@@ -130,6 +144,11 @@ internal sealed class SyncCommands(string dataDir, ISecretStore secrets, TextWri
     internal static async Task<IReadOnlyCollection<string>> StoredKeysAsync(ISecretStore store, CancellationToken ct, WhisperLoomSettings? current = null,
         IEnumerable<string>? incoming = null)
     {
+        // W2-FIX V-1: der Firmen-Speicher hält eigene Keys zurück; gezählt wird, was wirklich gespeichert ist.
+        if (store is Management.CompanySecretStore company)
+        {
+            store = company.UserStore;
+        }
         var stored = new List<string>();
         var providerKeys = (current?.Providers.Custom ?? []).Select(c => ProvidersSettings.CustomPrefix + c.Id).Concat(incoming ?? [])
             .Where(SecretNames.IsProviderKey).Distinct(StringComparer.Ordinal);

@@ -194,7 +194,8 @@ public sealed class CompanyAccessTest
         Assert.Equal("test-key-not-real-2", r.Company.Values[SecretNames.Stt]);
         Assert.Equal("test-key-not-real-3", r.Company.Values[SecretNames.Llm]);
         Assert.Equal("test-key-not-real-2", await r.Secrets.GetAsync(SecretNames.Stt, CancellationToken.None));
-        Assert.Equal("test-key-not-real-4", r.User.Values[SecretNames.Stt]); // eigener Key unberührt
+        // W2-FIX K-1: Die Firma stellt stt von OpenAI auf groq um: der eigene Key ginge sonst (nach Verlassen) an groq.
+        Assert.False(r.User.Values.ContainsKey(SecretNames.Stt));
         Assert.True(r.Policy.IsLocked("secrets.stt"));
         Assert.False(File.ReadAllText(r.Cache.FilePath).Contains("test-key-not-real", StringComparison.Ordinal)); // Cache ohne Keys
         Assert.DoesNotContain("test-key-not-real", File.ReadAllText(r.F.Store.FilePath));
@@ -209,7 +210,7 @@ public sealed class CompanyAccessTest
         Assert.NotEmpty(r.Company.Values);
         await r.Service.LeaveAsync(CancellationToken.None);
         Assert.Empty(r.Company.Values);
-        Assert.Equal("test-key-not-real-4", await r.Secrets.GetAsync(SecretNames.Stt, CancellationToken.None)); // danach wieder der eigene
+        Assert.Null(await r.Secrets.GetAsync(SecretNames.Stt, CancellationToken.None)); // kein Key an groq ohne Eingabe des Nutzers
     }
 
     [Fact]

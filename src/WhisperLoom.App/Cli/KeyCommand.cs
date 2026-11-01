@@ -12,7 +12,7 @@ namespace WhisperLoom.App.Cli;
 internal static class KeyCommand
 {
     /// <summary>Mit der Richtlinie aus <paramref name="dataDir"/>; eine kaputte policy.json lehnt den Befehl ab (wie <c>update</c>).</summary>
-    public static Task<int> RunAsync(string action, string name, Func<string> readValue, ISecretStore store, string dataDir,
+    public static async Task<int> RunAsync(string action, string name, Func<string> readValue, ISecretStore store, string dataDir,
         TextWriter output, TextWriter errors, CancellationToken ct)
     {
         PolicySettings policy;
@@ -23,9 +23,29 @@ internal static class KeyCommand
         catch (JsonException)
         {
             errors.WriteLine("error policy.json ist unlesbar; key set|delete abgebrochen (Datei reparieren oder neu provisionieren).");
-            return Task.FromResult(1);
+            return 1;
         }
-        return RunAsync(action, name, readValue, store, policy, output, errors, ct);
+        var code = await RunAsync(action, name, readValue, store, policy, output, errors, ct);
+        if (code == 0 && action == "set" && SecretNames.All.Contains(name) && TryLoad(dataDir) is { } settings
+            && Management.CompanySecretStore.IsManaged(settings.Management))
+        {
+            // Unter Firmen-Verwaltung gilt der Key für das Ziel, das gerade eingestellt ist (W2-FIX K-1). Ohne lesbare
+            // settings.json bleibt er unter Verwaltung zurückgehalten (fail-closed).
+            new Management.OwnKeyTargets(dataDir).Record(settings, name);
+        }
+        return code;
+    }
+
+    private static Core.Contracts.Settings.WhisperLoomSettings? TryLoad(string dataDir)
+    {
+        try
+        {
+            return new SettingsStore(dataDir).Load();
+        }
+        catch (Exception e) when (e is JsonException or NotSupportedException or IOException)
+        {
+            return null;
+        }
     }
 
     /// <returns>Exit-Code: 0 ok, 1 Fehler oder gesperrt.</returns>

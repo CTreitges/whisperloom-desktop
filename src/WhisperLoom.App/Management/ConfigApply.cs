@@ -8,8 +8,8 @@ namespace WhisperLoom.App.Management;
 
 /// <summary>Ergebnis einer Server-Konfiguration: neue Werte, Richtlinie und die Firmen-Keys (nur Verteilt-Modus).</summary>
 /// <param name="CompanyKeys">Zugangsname → Key; leer im Proxy-Modus. Erscheint nie in Meldungen.</param>
-/// <param name="DroppedKeys">Eigene Keys des Nutzers, die nach der Konfiguration an ein anderes Ziel gingen (eigener Anbieter mit
-/// neuer Adresse bzw. ohne Eintrag): vor dem Übernehmen löschen (W2-LOCAL R-K1-1).</param>
+/// <param name="DroppedKeys">Eigene Keys des Nutzers, die nach der Konfiguration an ein anderes Ziel gingen (Zugang bzw. eigener
+/// Anbieter mit neuem Anbieter, Host oder manuellem Proxy, Eintrag entfernt): vor dem Übernehmen löschen (W2-LOCAL R-K1-1, W2-FIX K-1).</param>
 public sealed record ConfigPlan(WhisperLoomSettings? Settings, PolicySettings Policy, string KeyMode,
     IReadOnlyDictionary<string, string> CompanyKeys, IReadOnlyList<string> Errors, IReadOnlyList<string> Warnings)
 {
@@ -45,22 +45,18 @@ public static class ConfigApply
 {
     private static readonly string[] Sections = ["stt", "sttFallback", "llm", "llmFallback"];
 
-    public static ConfigPlan Plan(WhisperLoomSettings current, JsonObject config, long nowMs)
+    /// <param name="storedKeys">Namen der eigenen Keys im rohen Nutzer-Store (<see cref="StoredKeyCandidates"/>); null = alle
+    /// Zugänge und eigenen Anbieter gelten als gespeichert (lieber einmal zu viel löschen).</param>
+    public static ConfigPlan Plan(WhisperLoomSettings current, JsonObject config, long nowMs, IReadOnlyCollection<string>? storedKeys = null)
     {
-        var keyMode = config["keyMode"] is JsonValue k && k.TryGetValue<string>(out var mode) && mode == "distribute" ? "distribute" : "proxy";
-        var root = config["settings"] is JsonObject s ? (JsonObject)s.DeepClone() : new JsonObject { ["schemaVersion"] = 1 };
-        root.Remove(SyncDocument.SecretsSection);
-        root[SyncDocument.PolicySection] = config["policy"] is JsonObject p ? p.DeepClone() : new JsonObject();
-        if (keyMode == "distribute" && config["secrets"] is JsonObject secrets)
-        {
-            root[SyncDocument.SecretsSection] = secrets.DeepClone();
-        }
+        var keyMode = KeyMode(config);
+        var root = Root(config, keyMode);
 
         ProvisioningPlan plan;
         try
         {
-            // Ohne storedKeys gelten alle eigenen Anbieter als „Key womöglich gespeichert“: lieber einmal zu viel löschen.
-            plan = Provisioning.Plan(current, SyncDocument.Parse(root.ToJsonString()));
+            // Keine Drops hier: die zählen erst nach Attach/Detach auf dem Endstand (unten).
+            plan = Provisioning.Plan(current, SyncDocument.Parse(root.ToJsonString()), []);
         }
         catch (Exception e) when (e is SyncFormatException or NotSupportedException)
         {
@@ -118,7 +114,46 @@ public static class ConfigApply
             Locked = [.. plan.Policy.Locked.Concat(locked).Distinct(StringComparer.OrdinalIgnoreCase)],
             AllowedProviders = allowed,
         };
-        return new ConfigPlan(settings, policy, keyMode, keys, [], warnings) { DroppedKeys = plan.DroppedKeys, KeyTargets = targets, RetiredFixed = plan.RetiredFixed };
+        // W2-FIX K-1/M-1: volle K1-Regel über alle eigenen Keys (Zugänge, eigene Anbieter, manueller Proxy). Verteilte
+        // Firmen-Keys liegen in einer eigenen Ablage und ersetzen den eigenen Key gleichen Namens nicht: kein Abzug.
+        var drops = Provisioning.KeyDrops(current, settings,
+            storedKeys ?? Provisioning.CandidateKeys(current, settings.Providers.Custom.Select(c => ProvidersSettings.CustomPrefix + c.Id)), []);
+        warnings.AddRange(Provisioning.DropWarnings(drops));
+        return new ConfigPlan(settings, policy, keyMode, keys, [], warnings) { DroppedKeys = drops, KeyTargets = targets, RetiredFixed = plan.RetiredFixed };
+    }
+
+    /// <summary>
+    /// Key-Namen, die der Aufrufer im rohen Nutzer-Store nachsehen muss: Zugänge, eigene Anbieter vorher und aus der Konfiguration
+    /// (auch verwaiste Keys gleicher ID, Prüfrunde 1 K-1).
+    /// </summary>
+    public static IReadOnlyCollection<string> StoredKeyCandidates(WhisperLoomSettings current, JsonObject config)
+    {
+        IEnumerable<string> incoming;
+        try
+        {
+            incoming = SyncImport.ProviderKeyNames(SyncDocument.Parse(Root(config, KeyMode(config)).ToJsonString()));
+        }
+        catch (Exception e) when (e is SyncFormatException or NotSupportedException)
+        {
+            incoming = []; // Plan lehnt die Konfiguration dann ohnehin ab.
+        }
+        return Provisioning.CandidateKeys(current, incoming);
+    }
+
+    private static string KeyMode(JsonObject config) =>
+        config["keyMode"] is JsonValue k && k.TryGetValue<string>(out var mode) && mode == "distribute" ? "distribute" : "proxy";
+
+    /// <summary>Konfiguration als Provisioning-Datei: Einstellungen, Richtlinie und (nur Verteilt-Modus) Keys.</summary>
+    private static JsonObject Root(JsonObject config, string keyMode)
+    {
+        var root = config["settings"] is JsonObject s ? (JsonObject)s.DeepClone() : new JsonObject { ["schemaVersion"] = 1 };
+        root.Remove(SyncDocument.SecretsSection);
+        root[SyncDocument.PolicySection] = config["policy"] is JsonObject p ? p.DeepClone() : new JsonObject();
+        if (keyMode == "distribute" && config["secrets"] is JsonObject secrets)
+        {
+            root[SyncDocument.SecretsSection] = secrets.DeepClone();
+        }
+        return root;
     }
 
     /// <summary>Abschnitt der Einstellungen zu einem Zugangsnamen (<c>stt_fallback</c> → <c>sttFallback</c>).</summary>
@@ -165,8 +200,8 @@ public static class ConfigApply
 
     /// <summary>
     /// Zugänge auf den Eintrag „Firma“ wieder auf <c>custom</c> mit Proxy-Adresse (Verlassen, Wechsel auf Verteilt-Modus):
-    /// ohne Firmen-Anbindung gäbe es den Eintrag nicht mehr, die Einstellungen wären sonst ungültig. Ein Key geht dorthin
-    /// nur, wenn der Nutzer selbst einen einträgt.
+    /// ohne Firmen-Anbindung gäbe es den Eintrag nicht mehr, die Einstellungen wären sonst ungültig. Ein eigener Key, der
+    /// vorher nicht dorthin ging, verwirft der Aufrufer nach K1 (<see cref="ManagementService.LeaveAsync"/>, W2-FIX H-1).
     /// </summary>
     public static void Detach(WhisperLoomSettings s)
     {
