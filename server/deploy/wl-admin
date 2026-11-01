@@ -1,0 +1,19 @@
+#!/bin/sh
+# Admin-CLI der Demo-Instanz (W2-DEMO): lädt die Umgebung des Dienstes und ruft `python -m whisperloom_server` auf.
+# Aufruf auf dem VPS: ~/whisperloom-admin/app/server/deploy/wl-admin <befehl> …  (von Windows: ssh oracle-vps …)
+# Zusätzlich für die Live-Suite enroll (tools/smoke_enroll_remote.py):
+#   demo-fake-url | demo-fake-requests | demo-fake-reset  — Fake-Anbieter (nur Loopback, WL_DEMO_FAKE).
+set -eu
+BASE="${WL_DEMO_BASE:-$HOME/whisperloom-admin}"
+CONF="${WL_DEMO_CONF:-$HOME/.config/whisperloom-admin}"
+set -a
+. "$CONF/env"
+set +a
+case "${1:-}" in
+  demo-fake-url) echo "http://$WL_DEMO_FAKE/v1"; exit 0 ;;
+  demo-fake-requests) exec curl -sS --fail --max-time 10 "http://$WL_DEMO_FAKE/_requests" ;;
+  demo-fake-reset) exec curl -sS --fail --max-time 10 -X POST -H 'Content-Type: application/json' -d '{}' \
+    "http://$WL_DEMO_FAKE/_reset" ;;
+esac
+cd "$BASE/app/server"
+exec "$BASE/venv/bin/python" -m whisperloom_server "$@"

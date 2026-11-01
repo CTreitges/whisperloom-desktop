@@ -84,3 +84,54 @@ def test_key_set_liest_key_von_stdin(einst, capsys, monkeypatch):
     monkeypatch.setattr("sys.stdin", io.StringIO("\n"))
     assert cli.main(["key-set", "muster", "stt", "--provider", "groq"], einst) == 1  # groq braucht einen Key
     assert "kein_key" in capsys.readouterr().err
+
+
+def test_firma_loeschen_nur_mit_bestaetigung(einst, client, capsys, monkeypatch):
+    """W2-DEMO: Testfirma der Live-Suite wieder entfernen; alles der Firma weg, andere Firmen und Audit bleiben."""
+    import io
+
+    cli.main(["tenant-create", "weg", "Weg GmbH", "--owner", "weg-chef", "--show"], einst)
+    code = re.search(r"Firmencode: (\S+)", capsys.readouterr().out).group(1)
+    cli.main(["tenant-create", "bleibt", "Bleibt GmbH"], einst)
+    for slug in ("weg", "bleibt"):
+        monkeypatch.setattr("sys.stdin", io.StringIO("test-key-not-real-3\n"))
+        assert cli.main(["key-set", slug, "stt", "--provider", "groq"], einst) == 0
+    g = enroll(client, code)
+    assert cli.main(["tenant-delete", "weg"], einst) == 1
+    assert "--confirm" in capsys.readouterr().err
+    assert cli.main(["tenant-delete", "weg", "--confirm", "bleibt"], einst) == 1
+    assert sql(einst, "SELECT COUNT(*) FROM firma WHERE slug = 'weg'")[0][0] == 1
+    assert cli.main(["tenant-delete", "weg", "--confirm", "weg"], einst) == 0
+    assert [r[0] for r in sql(einst, "SELECT slug FROM firma")] == ["bleibt"]
+    assert sql(einst, "SELECT COUNT(*) FROM geraet WHERE id = ?", (g["deviceId"],))[0][0] == 0
+    assert sql(einst, "SELECT COUNT(*) FROM admin WHERE benutzer = 'weg-chef'")[0][0] == 0
+    assert sql(einst, "SELECT COUNT(*) FROM schluessel")[0][0] == 1  # nur der Key von „bleibt“
+    assert sql(einst, "SELECT COUNT(*) FROM firmencode")[0][0] == 1
+    assert sql(einst, "SELECT ziel FROM audit WHERE aktion = 'firma_geloescht'")[0][0].startswith("weg t_")
+    assert client.post("/api/v1/enroll", json={"code": code, "platform": "x"}).status_code == 404
+    assert cli.main(["tenant-delete", "weg", "--confirm", "weg"], einst) == 1  # schon gelöscht
+
+
+def test_admin_mit_passwort_von_stdin(einst, client, capsys, monkeypatch):
+    """W2-DEMO: Startpasswort per stdin statt Einladung (Deploy-Skript); Regel wie im Portal, nie in der Ausgabe."""
+    import io
+
+    from .conftest import passwort_login
+
+    pw = "test-passwort-nicht-echt-9"
+    monkeypatch.setattr("sys.stdin", io.StringIO(pw + "\n"))
+    assert cli.main(["instance-admin-create", "root", "--password-stdin"], einst) == 0
+    aus = capsys.readouterr().out
+    assert "Passwort gesetzt" in aus and pw not in aus and "/einladung/" not in aus
+    assert sql(einst, "SELECT COUNT(*) FROM einladung")[0][0] == 0
+    r = passwort_login(client, "root", pw)
+    assert r.status_code == 303 and r.headers["location"] == "/login/totp-einrichten"
+
+    cli.main(["tenant-create", "muster", "Muster GmbH"], einst)
+    monkeypatch.setattr("sys.stdin", io.StringIO(pw + "\n"))
+    assert cli.main(["admin-create", "muster", "chef", "--password-stdin"], einst) == 0
+    assert "Passwort gesetzt" in capsys.readouterr().out
+    monkeypatch.setattr("sys.stdin", io.StringIO("kurz\n"))
+    assert cli.main(["admin-create", "muster", "chef2", "--password-stdin"], einst) == 1
+    assert "pw_kurz" in capsys.readouterr().err
+    assert sql(einst, "SELECT COUNT(*) FROM admin WHERE benutzer = 'chef2'")[0][0] == 0

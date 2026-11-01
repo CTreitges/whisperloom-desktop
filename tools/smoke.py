@@ -13,7 +13,7 @@ Suites:
   offline-stt, offline-refine-ollama, raw-plus-rules. Die Vorbereitung lädt Modell, Begleitprozess und jfk.wav einmal.
 - enroll: Firmen-Anbindung (W2-ENR, tools/smoke_enroll.py) gegen den Server aus server/ (--server-local, freier Port) mit
   tools/fake_api.py hinter dem Proxy — join-pending, approve-sync, fixed-values, proxy-dictation, blocked-notice, logs-clean.
-  Ohne echte Eingabe; Ausgabe-Senke --output-file.
+  Ohne echte Eingabe; Ausgabe-Senke --output-file. Live statt lokal: --server <URL> --admin-cli "<Befehl>" (W2-DEMO).
 - provision: IT-Provisioning (tools/smoke_provision.py) — provision-import, policy-lock, export-no-secrets.
   Eigener Datenordner, Key-Präfix WhisperLoom-Test-<ID>: (wird gelöscht), keine Eingabe, keine Zwischenablage.
 - ui: echte Pipeline gegen tools/fake_api.py, Ausgabe in die echte Zwischenablage — clipboard-real, unter Windows
@@ -332,6 +332,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--server-local", action="store_true", help="--suite enroll: Server aus server/ lokal starten")
     parser.add_argument("--server-python", help="--suite enroll: Python der Server-venv (sonst server/.venv)")
     parser.add_argument("--server-dir", help="--suite enroll: anderer server/-Ordner (z. B. Worktree eines Server-Branches)")
+    parser.add_argument("--server", help="--suite enroll: laufende Instanz statt --server-local (z. B. die Demo auf dem VPS)")
+    parser.add_argument("--admin-cli", help="--suite enroll mit --server: Befehl für `python -m whisperloom_server` dort, "
+                                            "z. B. \"ssh oracle-vps whisperloom-admin/app/server/deploy/wl-admin\"")
     args = parser.parse_args(argv)
     args.app = str(Path(args.app).resolve())
     work = args.work_dir or default_work_dir(args.platform)
