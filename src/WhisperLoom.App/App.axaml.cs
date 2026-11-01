@@ -143,7 +143,7 @@ public partial class App : Application
             case "history":
                 if (_historyWindow is null)
                 {
-                    var vm = new HistoryViewModel(host.History);
+                    var vm = new HistoryViewModel(host.History, (entry, stage) => host.Controller.ReprocessAsync(stage, entry.Id));
                     _historyWindow = new HistoryWindow(vm);
                     _historyWindow.Closed += (_, _) => _historyWindow = null;
                     _ = vm.LoadAsync();
