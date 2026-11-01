@@ -34,7 +34,7 @@ Richtlinie), Modell `src/WhisperLoom.Core/Contracts/Settings/WhisperLoomSettings
   Textverbesserung und eingeschaltete Fallbacks. Die Antwort eines Textmodells wird eingefügt bzw. getippt.
 - **Gerätebezogene Ziele** übernimmt ein Import nie: `stt.vocabularyFile` und `local.ollamaUrl` (Adresse der lokalen
   Textverbesserung). Ein Export enthält `stt.vocabularyFile` nicht.
-- **W2, gerätebezogen:** `offline.customModels` (Dateipfade) und `local.servers` (Ziele für Diktattext) übernimmt kein
+- **W2, gerätebezogen:** `offline.customModels` (Dateipfade), `local.servers` (Ziele für Diktattext) und `local.textServer` übernimmt kein
   Import, kein Export enthält sie; nur das Provisioning setzt sie.
 - **W2, `management`** (Firmen-Anbindung, Gerätezustand) übernimmt kein Import (Warnung „management … ignoriert“), kein
   Export enthält ihn, auch nicht in anderer Schreibweise (`Management`).
@@ -79,6 +79,7 @@ Richtlinie), Modell `src/WhisperLoom.Core/Contracts/Settings/WhisperLoomSettings
 | `selection.floatingButton` (W2) | bool | `false` | schwebender Knopf an der Markierung |
 | `selection.ctrlRightClick` (W2) | bool | `false` | Strg+Rechtsklick auf die Markierung |
 | `providers.custom` (W2) | Liste | `[]` | eigene Anbieter, siehe unten |
+| `*.providerId` (W2-LOCAL) | Text | | zusätzlich `"custom:<id>"` (eigener Anbieter) und `"local:<name>"` (Eintrag aus `local.servers` dieses Geräts); ohne passenden Eintrag bzw. ohne passende Fähigkeit ein Fehler |
 | `management.*` (W2) | | | Firmen-Anbindung, siehe unten; nie exportiert, nie importiert |
 
 ### Eigene Anbieter (`providers.custom`, W2)
@@ -92,8 +93,13 @@ Richtlinie), Modell `src/WhisperLoom.Core/Contracts/Settings/WhisperLoomSettings
 | `models` | Liste | `[]` | angebotene Modell-IDs; leer = Liste vom Server |
 | `keyOptional` | bool | `false` | Zugang ohne Key erlaubt |
 
-Keys der eigenen Anbieter liegen wie alle Keys im Secret-Store. Verdrahtung in Erkennung, Text, `KeyRoutes` und
-`allowedProviders` ist W2-LOCAL; bis dahin prüft der Validator nur Form und Verweis.
+Keys der eigenen Anbieter liegen wie alle Keys im Secret-Store, aber **beim Eintrag**: Name = Anbieter-ID
+`custom:<id>` (Windows `WhisperLoom:custom:<id>`). Ein Zugang mit `custom:<id>` nutzt immer Adresse und Key des
+Eintrags, nie `*.baseUrl` oder den Key des Zugangs, und erbt keinen Key (W2-LOCAL). Lokale Server (`local:<name>`)
+bekommen nie einen Key. Import: Ändert die Datei die Adresse eines Eintrags auf einen anderen Host, wird sein
+gespeicherter Key wie bei K1 gelöscht (Warnung in der Vorschau). Provisioning: `secrets."custom:<id>"` speichert den
+Key des Eintrags. `allowedProviders`: `"custom"` gibt alle eigenen Anbieter frei, `"local"` alle lokalen Server,
+einzelne Einträge auch direkt (`"custom:<id>"`, `"local:<name>"`).
 
 ### Firmen-Anbindung (`management`, W2)
 
@@ -118,7 +124,7 @@ in `secrets` einer Datei (Fehler).
 | Abschnitt | Gehört | Andere App |
 |---|---|---|
 | `desktop` | Desktop: `uiLanguage` (`""`/`de`/`en`), `output`, `microphone` (gerätebezogen), `stageFontSize`, `proxyMode` (`system`/`off`/`manual`), `proxyUrl` (ein manueller Proxy bekommt nie die Windows-Anmeldung NTLM/Kerberos, nur der System-Proxy); Windows: `hotkeysEnabled`, `hotkeyHold`, `hotkeyToggle`, `hotkeyStage`, `hotkeyReinsert` (`Ctrl+Alt+Shift+V`), `hotkeyRewrite` (`Ctrl+Alt+Shift+R`), `insertMode` (`paste`/`type`/`clipboard`; `type` in Konsolen und Editoren mit Terminal tippt Zeilenumbrüche als Leerzeichen, sonst führte Umschalt+Enter die Zeile aus), `profiles` (App-Profile, siehe unten) | Android liest ihn nicht, speichert ihn beim Import und gibt ihn beim Export unverändert zurück |
-| `local` | Desktop (`LocalSettings`): `ollamaModel`, `ollamaUrl` (gerätebezogen), `backend` (`auto`/`cpu`), `idleMinutes`; W2: `textEngine` (`ollama` Standard, `bundled`, `server`), `bundledModel` (ID, `""` = Empfehlung), `servers` (Liste `{name, kind: stt\|text, baseUrl, model}`, gerätebezogen) | Android liest ihn nicht |
+| `local` | Desktop (`LocalSettings`): `ollamaModel`, `ollamaUrl` (gerätebezogen), `backend` (`auto`/`cpu`), `idleMinutes`; W2: `textEngine` (`ollama` Standard, `bundled`, `server`), `bundledModel` (ID, `""` = Empfehlung), `servers` (Liste `{name, kind: stt\|text, baseUrl, model}`, gerätebezogen), W2-LOCAL: `textServer` (Name des Text-Servers bei `textEngine = "server"`, `""` = erster; gerätebezogen) | Android liest ihn nicht |
 | `android` | Android-eigene Felder (Inhalt bestimmt die Android-App) | Desktop liest ihn nicht, zeigt ihn nicht in der Vorschau, prüft ihn nicht und gibt ihn unverändert weiter |
 
 ### App-Profile (`desktop.profiles`, Windows)
