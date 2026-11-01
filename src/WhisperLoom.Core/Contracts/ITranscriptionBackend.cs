@@ -10,7 +10,7 @@ public interface ITranscriptionBackend
     string Label { get; }
 
     /// <param name="audio">Mono PCM16, 16 kHz.</param>
-    /// <param name="language">ISO-Code ("de", "en", …) oder "auto".</param>
+    /// <param name="language">ISO-Code ("de", "en", …), "auto" oder "de+en" (<see cref="Settings.WhisperLoomSettings.LanguageDeEn"/>).</param>
     /// <exception cref="ApiNotConfiguredException">Zugang unvollständig, ohne Anfrage.</exception>
     /// <exception cref="ApiHttpException">Fehlerstatus des Servers.</exception>
     /// <exception cref="ApiNetworkException">Server nicht erreicht oder Zeitlimit (auch ein HttpClient-Timeout).</exception>

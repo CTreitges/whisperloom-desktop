@@ -41,7 +41,7 @@ public static class WhisperServerClient
         }
     }
 
-    /// <param name="language">ISO-Code oder "auto" (dann meldet der Server die erkannte Sprache).</param>
+    /// <param name="language">ISO-Code, "auto" oder "de+en" (beide: der Server erkennt selbst und meldet die Sprache).</param>
     /// <param name="prompt">Kontext-Wörter als Anfangs-Prompt; "" = keiner.</param>
     /// <exception cref="ApiNetworkException">Server nicht erreicht oder Zeitlimit.</exception>
     /// <exception cref="ApiHttpException">Fehlerstatus des Servers.</exception>
