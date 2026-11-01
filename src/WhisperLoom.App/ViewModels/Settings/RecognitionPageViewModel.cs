@@ -6,8 +6,9 @@ using WhisperLoom.Core.Api;
 namespace WhisperLoom.App.ViewModels.Settings;
 
 /// <summary>
-/// Seite „Erkennung“: online und lokal auf einer Seite (Art, Sprache, Online-Anbieter, lokales Modell), Kontext-Wörter,
-/// Ersatzanbieter. Modelle als Auswahl aus providers.json mit „Eigenes Modell …“.
+/// Seite „Erkennung“: online und lokal auf einer Seite (Art, Sprache, Anbieter inkl. eigener Anbieter und lokaler Server,
+/// lokales Modell inkl. eigener Whisper-Dateien), Kontext-Wörter, Ersatzanbieter. Modelle als Auswahl aus Katalog,
+/// Serverliste („Vom Server laden“) und „Eigenes Modell …“. Downloads stehen auf der Seite „Lokale Modelle“.
 /// </summary>
 public sealed class RecognitionPageViewModel : SettingsPageViewModel
 {
@@ -16,8 +17,10 @@ public sealed class RecognitionPageViewModel : SettingsPageViewModel
 
     public RecognitionPageViewModel(SettingsViewModel session) : base("recognition", "Recognition", "Red", session)
     {
-        SttModel = Picker(SttOptions(session.SttProvider.Value), () => session.SttModel, v => session.SttModel = v);
-        SttFallbackModel = Picker(SttOptions(session.SttFallbackProvider.Value), () => session.SttFallbackModel, v => session.SttFallbackModel = v);
+        SttModelPicker = new ModelPickerViewModel(() => SttOptions("stt", session.SttProvider.Value), () => session.SttModel, v => session.SttModel = v,
+            ct => session.LoadServerModelsAsync("stt", ModelKind.Stt, ct));
+        SttFallbackModelPicker = new ModelPickerViewModel(() => SttOptions("sttFallback", session.SttFallbackProvider.Value), () => session.SttFallbackModel,
+            v => session.SttFallbackModel = v, ct => session.LoadServerModelsAsync("sttFallback", ModelKind.Stt, ct));
         AdvancedOpen = NeedsUrl(session.SttProvider.Value);
         FallbackAdvancedOpen = NeedsUrl(session.SttFallbackProvider.Value);
         session.PropertyChanged += OnSessionChanged;
@@ -25,9 +28,13 @@ public sealed class RecognitionPageViewModel : SettingsPageViewModel
 
     public LocalViewModel Local => Session.Local;
 
-    public CustomChoiceViewModel SttModel { get; }
+    public ModelPickerViewModel SttModelPicker { get; }
 
-    public CustomChoiceViewModel SttFallbackModel { get; }
+    public ModelPickerViewModel SttFallbackModelPicker { get; }
+
+    public CustomChoiceViewModel SttModel => SttModelPicker.Choice;
+
+    public CustomChoiceViewModel SttFallbackModel => SttFallbackModelPicker.Choice;
 
     /// <summary>„Erweitert“ offen, wenn der Anbieter eine eigene Adresse braucht (Eigener Server, Ollama).</summary>
     public bool AdvancedOpen { get; set; }
@@ -58,17 +65,17 @@ public sealed class RecognitionPageViewModel : SettingsPageViewModel
     {
         if (e.PropertyName == nameof(SettingsViewModel.SttProvider))
         {
-            SttModel.SetOptions(SttOptions(Session.SttProvider.Value));
+            SttModelPicker.Refresh();
         }
         else if (e.PropertyName == nameof(SettingsViewModel.SttFallbackProvider))
         {
-            SttFallbackModel.SetOptions(SttOptions(Session.SttFallbackProvider.Value));
+            SttFallbackModelPicker.Refresh();
         }
     }
 
-    private static IEnumerable<Choice> SttOptions(string providerId)
+    private IEnumerable<Choice> SttOptions(string slot, string providerId)
     {
-        var models = ProviderCatalog.ById(providerId).SttModels ?? [];
-        return ModelChoices(models, Recommended(models));
+        var models = Session.Providers.ById(providerId).SttModels ?? [];
+        return ModelPickerViewModel.Combine(Recommended(models), models, Session.CachedServerModels(slot, ModelKind.Stt));
     }
 }

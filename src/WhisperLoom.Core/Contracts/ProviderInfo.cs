@@ -34,6 +34,12 @@ public sealed record ModelOption(
 /// <param name="SttPathOverride">Kompletter Transkriptions-Endpunkt, wenn nicht <c>baseUrl + /audio/transcriptions</c>.</param>
 /// <param name="SttMaxBytes">Dokumentiertes Upload-Limit; null = unbekannt.</param>
 /// <param name="RewriteLlmModel">Empfehlung für Verschönern/Zusammenfassen/Prompt; "" = wie Glätten.</param>
+/// <param name="Family">
+/// W2 (additiv): nur bei Einträgen außerhalb des Katalogs (eigene Anbieter <c>custom:&lt;id&gt;</c>, lokale Server
+/// <c>local:&lt;name&gt;</c>): Katalog-ID, deren Regeln gelten (<c>custom</c>, <c>anthropic</c>, <c>ollama</c>,
+/// <c>elevenlabs</c>). Gesetzt heißt außerdem: feste Adresse und Fähigkeit über die Modell-Listen (null = kann es nicht).
+/// "" = Katalog-Eintrag, Regeln nach <see cref="Id"/>.
+/// </param>
 public sealed record ProviderInfo(
     string Id,
     string Name,
@@ -50,4 +56,5 @@ public sealed record ProviderInfo(
     int? SttMaxBytes = null,
     ApiStyle Api = ApiStyle.OpenAi,
     string Notes = "",
-    string RewriteLlmModel = "");
+    string RewriteLlmModel = "",
+    string Family = "");

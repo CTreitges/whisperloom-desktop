@@ -39,7 +39,8 @@ internal sealed class SyncCommands(string dataDir, ISecretStore secrets, TextWri
     private async Task<int> ProvisionAsync(string path, CancellationToken ct)
     {
         var current = _settings.Load();
-        var plan = Provisioning.Plan(current, SyncDocument.Parse(File.ReadAllText(path)));
+        var file = SyncDocument.Parse(File.ReadAllText(path));
+        var plan = Provisioning.Plan(current, file, await StoredKeysAsync(secrets, ct, current, SyncImport.ProviderKeyNames(file)));
         Report(plan.Warnings, plan.Errors);
         if (!plan.CanApply)
         {
@@ -67,6 +68,11 @@ internal sealed class SyncCommands(string dataDir, ISecretStore secrets, TextWri
         {
             await secrets.SetAsync(name, key, ct);
         }
+        // W2-LOCAL R-K1-1: Keys eigener Anbieter mit neuer Adresse bzw. ohne Eintrag gehen nirgends mehr hin.
+        foreach (var drop in plan.DroppedKeys)
+        {
+            await secrets.DeleteAsync(drop.Name, ct);
+        }
         _settings.Save(settings);
         _policy.Save(policy, settings);
         foreach (var line in plan.Summary())
@@ -79,8 +85,10 @@ internal sealed class SyncCommands(string dataDir, ISecretStore secrets, TextWri
 
     private async Task<int> ImportAsync(string path, bool dryRun, CancellationToken ct)
     {
-        var stored = await StoredKeysAsync(secrets, ct);
-        var preview = SyncImport.Preview(_settings.Load(), SyncDocument.Parse(File.ReadAllText(path)), _policy.Load(), stored);
+        var current = _settings.Load();
+        var file = SyncDocument.Parse(File.ReadAllText(path));
+        var stored = await StoredKeysAsync(secrets, ct, current, SyncImport.ProviderKeyNames(file));
+        var preview = SyncImport.Preview(current, file, _policy.Load(), stored);
         Report([.. preview.Warnings, .. preview.DroppedKeys.Select(DropWarning),
             .. preview.EnterDisabled.Select(p => $"Profil {p}: Enter danach ausgeschaltet (fremde Datei); bei Bedarf im Profil selbst einschalten"),
             .. preview.DictationTargets.Select(t => $"Diktate gehen künftig auch an {t} (Erkennung bzw. Textverbesserung); nur übernehmen, wenn du dem Server vertraust")],
@@ -116,10 +124,16 @@ internal sealed class SyncCommands(string dataDir, ISecretStore secrets, TextWri
     }
 
     /// <summary>Namen der Keys, die im Speicher liegen (für die Schutzregel des Imports).</summary>
-    internal static async Task<IReadOnlyCollection<string>> StoredKeysAsync(ISecretStore store, CancellationToken ct)
+    /// <param name="current">Aktuelle Einstellungen: Keys ihrer eigenen Anbieter zählen mit.</param>
+    /// <param name="incoming">Key-Namen eigener Anbieter aus der Datei (<see cref="SyncImport.ProviderKeyNames"/>): auch
+    /// verwaiste Keys zählen, sonst ginge ein Key an einen neuen Eintrag gleicher ID (Prüfrunde 1 K-1).</param>
+    internal static async Task<IReadOnlyCollection<string>> StoredKeysAsync(ISecretStore store, CancellationToken ct, WhisperLoomSettings? current = null,
+        IEnumerable<string>? incoming = null)
     {
         var stored = new List<string>();
-        foreach (var name in SecretNames.All)
+        var providerKeys = (current?.Providers.Custom ?? []).Select(c => ProvidersSettings.CustomPrefix + c.Id).Concat(incoming ?? [])
+            .Where(SecretNames.IsProviderKey).Distinct(StringComparer.Ordinal);
+        foreach (var name in SecretNames.All.Concat(providerKeys))
         {
             if (!string.IsNullOrWhiteSpace(await store.GetAsync(name, ct)))
             {
@@ -137,7 +151,9 @@ internal sealed class SyncCommands(string dataDir, ISecretStore secrets, TextWri
         }
     }
 
-    private static string DropWarning(KeyDrop d) => $"Key {d.Name} wird gelöscht: der Import würde ihn an {d.Target} schicken; nur neu eingeben, wenn du {d.Target} vertraust";
+    private static string DropWarning(KeyDrop d) => d.EntryRemoved
+        ? $"Key von {d.Name} wird gelöscht (Eintrag entfernt)"
+        : $"Key {d.Name} wird gelöscht: der Import würde ihn an {d.Target} schicken; nur neu eingeben, wenn du {d.Target} vertraust";
 
     private void Report(IReadOnlyList<string> warnings, IReadOnlyList<string> errorList)
     {

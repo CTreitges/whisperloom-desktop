@@ -57,13 +57,16 @@ internal static partial class ModelListFilters
     [GeneratedRegex("embed", RegexOptions.IgnoreCase)]
     private static partial Regex Embed();
 
+    /// <summary>Klingt die ID nach einem Erkennungsmodell (whisper, transcribe, parakeet …)? Für gemischte Listen eigener Anbieter.</summary>
+    public static bool LooksLikeStt(string id) => SttName().IsMatch(id) && !SttNameNot().IsMatch(id);
+
     public static List<RemoteModel> Select(ProviderInfo provider, bool stt, string body, DateOnly today)
     {
         // Einbettungs-Modelle (nomic-embed-text …) können keinen Text verbessern.
         if (provider.IsOllama) return [.. OllamaApi.ParseTags(body).Where(n => !Embed().IsMatch(n)).Select(n => new RemoteModel(n))];
         var list = Entries(body);
         if (provider.Api == ApiStyle.ElevenLabs) return ElevenLabs(list);
-        return provider.Id switch
+        return provider.Rules switch
         {
             ProviderCatalog.OpenAiId => OpenAi(stt, list, today),
             "groq" => Groq(stt, list),

@@ -57,7 +57,7 @@ public sealed class DictationPipeline(
     {
         ArgumentNullException.ThrowIfNull(request);
         var s = settings();
-        var keys = await SettingsAccess.KeysAsync(secrets, ct).ConfigureAwait(false);
+        var keys = await SettingsAccess.KeysAsync(secrets, ct, s).ConfigureAwait(false);
         await RequireConfiguredAsync(s, keys, ct).ConfigureAwait(false);
         var backend = Backend(s, keys);
         var result = await backend.TranscribeAsync(Trim(request.Audio), request.Language, ct).ConfigureAwait(false);
@@ -82,7 +82,7 @@ public sealed class DictationPipeline(
         ArgumentNullException.ThrowIfNull(raw);
         ArgumentNullException.ThrowIfNull(refinement);
         var s = settings();
-        var keys = await SettingsAccess.KeysAsync(secrets, ct).ConfigureAwait(false);
+        var keys = await SettingsAccess.KeysAsync(secrets, ct, s).ConfigureAwait(false);
         return await RefineCoreAsync(s, keys, raw, language, refinement, false, null, null, ct).ConfigureAwait(false);
     }
 
@@ -98,7 +98,7 @@ public sealed class DictationPipeline(
         var s = settings();
         var refinement = SettingsAccess.RefinementFor(s, RefineWay.Share);
         if (refinement.Mode == RefineMode.Off) return new SharedRefine.Result(RefineMode.Off, null, null);
-        var keys = await SettingsAccess.KeysAsync(secrets, ct).ConfigureAwait(false);
+        var keys = await SettingsAccess.KeysAsync(secrets, ct, s).ConfigureAwait(false);
         var plan = await PlanAsync(s, keys, refinement.Mode, SettingsAccess.EngineOf(s) != Engine.Offline, ct).ConfigureAwait(false);
         if (plan.Route is RefineRoute.Raw raw)
         {
@@ -128,7 +128,7 @@ public sealed class DictationPipeline(
     {
         var s = settings();
         if (SettingsAccess.EngineOf(s) != Engine.Offline) return false;
-        var keys = await SettingsAccess.KeysAsync(secrets, ct).ConfigureAwait(false);
+        var keys = await SettingsAccess.KeysAsync(secrets, ct, s).ConfigureAwait(false);
         var stage = mode ?? SettingsAccess.RefinementFor(s, RefineWay.Dictation).Mode;
         return (await PlanAsync(s, keys, stage, false, ct).ConfigureAwait(false)).Route is RefineRoute.Local;
     }
@@ -137,7 +137,7 @@ public sealed class DictationPipeline(
     public async Task<bool> IsConfiguredAsync(CancellationToken ct)
     {
         var s = settings();
-        var keys = await SettingsAccess.KeysAsync(secrets, ct).ConfigureAwait(false);
+        var keys = await SettingsAccess.KeysAsync(secrets, ct, s).ConfigureAwait(false);
         return SettingsAccess.EngineOf(s) switch
         {
             Engine.Online => SttComplete(SettingsAccess.Stt(s, keys, _cache)),
@@ -150,13 +150,16 @@ public sealed class DictationPipeline(
     public async Task<RefinePlan> PlanAsync(RefineMode mode, bool networkProven, CancellationToken ct)
     {
         var s = settings();
-        var keys = await SettingsAccess.KeysAsync(secrets, ct).ConfigureAwait(false);
+        var keys = await SettingsAccess.KeysAsync(secrets, ct, s).ConfigureAwait(false);
         return await PlanAsync(s, keys, mode, networkProven, ct).ConfigureAwait(false);
     }
 
     /// <summary>Womit erkannt wird (ohne Prüfung, ob der Zugang vollständig ist).</summary>
     public async Task<ITranscriptionBackend> BackendAsync(CancellationToken ct) =>
-        Backend(settings(), await SettingsAccess.KeysAsync(secrets, ct).ConfigureAwait(false));
+        await BackendCoreAsync(settings(), ct).ConfigureAwait(false);
+
+    private async Task<ITranscriptionBackend> BackendCoreAsync(WhisperLoomSettings s, CancellationToken ct) =>
+        Backend(s, await SettingsAccess.KeysAsync(secrets, ct, s).ConfigureAwait(false));
 
     /// <summary>Bei "auto" die vom Erkenner gemeldete Sprache — sonst bleibt "auto".</summary>
     public static string EffectiveLanguage(string configured, string? detected) =>

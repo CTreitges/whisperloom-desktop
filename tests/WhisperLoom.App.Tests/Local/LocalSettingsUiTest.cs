@@ -32,10 +32,13 @@ public sealed class LocalSettingsUiTest
             var texts = UiTest.TextsOf(window).ToList();
             Assert.Contains("Online-Anbieter", texts); // online und lokal auf einer Seite
             Assert.Contains("Lokal auf diesem PC", texts);
+            Assert.Contains("noch nicht gestartet", texts);
+            // W2-LOCAL: Downloads stehen auf der Seite „Lokale Modelle“ (Wahl bleibt auf „Erkennung“).
+            Settings.SettingsUi.Show(window, "localmodels");
+            texts = [.. UiTest.TextsOf(window)];
             Assert.Contains("Modelle der lokalen Erkennung", texts);
             Assert.Contains(texts, t => t.StartsWith("Small (190 MB)", StringComparison.Ordinal));
             Assert.Contains(texts, t => t.StartsWith("Large v3 Turbo", StringComparison.Ordinal));
-            Assert.Contains("noch nicht gestartet", texts);
             Settings.SettingsUi.Show(window, "text"); // Ollama gehört zur Textverbesserung
             Assert.Contains("Ollama-Modell", UiTest.TextsOf(window));
             window.Close();

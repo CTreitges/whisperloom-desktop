@@ -21,7 +21,9 @@ internal sealed record CliRequest(string? Verb, IReadOnlyList<string> Args, AppO
 /// <param name="SecretPrefix">Präfix der Key-Ablage, Standard <c>WhisperLoom:</c>; Tests nutzen <c>WhisperLoom-Test-&lt;id&gt;:</c>.</param>
 /// <param name="Hotkeys">Schalter <c>--hotkeys</c>: globale Tastenkürzel (Windows) auch im Testbetrieb. Ohne ihn sind sie mit
 /// <c>--test-audio</c> bzw. <c>--output-file</c> aus, damit Smokes nie Tasten des Nutzers abfangen.</param>
-internal sealed record AppOptions(string DataDir, string? TestAudio = null, string? OutputFile = null, string SecretPrefix = AppOptions.DefaultSecretPrefix, bool Hotkeys = false)
+/// <param name="TestTextModel">W2-LOCAL, nur Tests und Smokes: GGUF-Datei für das mitgelieferte Textmodell statt des Katalog-Modells.</param>
+internal sealed record AppOptions(string DataDir, string? TestAudio = null, string? OutputFile = null, string SecretPrefix = AppOptions.DefaultSecretPrefix, bool Hotkeys = false,
+    string? TestTextModel = null)
 {
     /// <summary>Globale Tastenkürzel installieren: im Normalbetrieb immer, im Testbetrieb nur mit <c>--hotkeys</c>.</summary>
     public bool HotkeysActive => Hotkeys || (TestAudio is null && OutputFile is null);
@@ -56,7 +58,7 @@ internal static class CommandLine
         "        [provision <datei>|import <datei> [--dry-run]|export <datei>]\n" +
         "        [reprocess <stufe> [<id>]|reinsert|recent-insert <n>]\n" +
         "        [join --server <url> --code <code> [--device-name <name>]|sync|whisperloom://join?server=<url>&code=<code>]\n" +
-        "        [--data-dir <pfad>] [--test-audio <wav>] [--output-file <pfad>] [--secret-prefix <präfix>] [--hotkeys]\n" +
+        "        [--data-dir <pfad>] [--test-audio <wav>] [--output-file <pfad>] [--secret-prefix <präfix>] [--hotkeys] [--test-text-model <gguf>]\n" +
         "        WhisperLoom bench --model <tiny|base|small|large-v3-turbo> --seconds <n> [--backend auto|cpu]\n" +
         "        WhisperLoom --version | update [--feed <ordner|url>]";
 
@@ -72,7 +74,7 @@ internal static class CommandLine
 
     public static CliRequest Parse(IReadOnlyList<string> args)
     {
-        string? dataDir = null, testAudio = null, outputFile = null, prefix = null, feed = null;
+        string? dataDir = null, testAudio = null, outputFile = null, prefix = null, feed = null, testTextModel = null;
         var json = false;
         var hotkeys = false;
         var dryRun = false;
@@ -100,6 +102,7 @@ internal static class CommandLine
                 case "--data-dir": dataDir = Value(args, ref i, a); break;
                 case "--test-audio": testAudio = Value(args, ref i, a); break;
                 case "--output-file": outputFile = Value(args, ref i, a); break;
+                case "--test-text-model": testTextModel = Value(args, ref i, a); break;
                 case "--secret-prefix": prefix = Value(args, ref i, a); break;
                 case "--json": json = true; break;
                 case "--hotkeys": hotkeys = true; break;
@@ -125,7 +128,8 @@ internal static class CommandLine
             testAudio is null ? null : Path.GetFullPath(testAudio),
             outputFile is null ? null : Path.GetFullPath(outputFile),
             prefix ?? AppOptions.DefaultSecretPrefix,
-            hotkeys);
+            hotkeys,
+            testTextModel is null ? null : Path.GetFullPath(testTextModel));
 
         if (version)
         {

@@ -143,10 +143,11 @@ public sealed partial class SettingsViewModel
     /// <summary>Auswahlen und Unterseiten in die Kopie schreiben; Ergebnis ist eine eigenständige Kopie.</summary>
     private WhisperLoomSettings BuildResult()
     {
-        _s.Stt.ProviderId = SttProvider.Value;
-        _s.SttFallback.ProviderId = SttFallbackProvider.Value;
-        _s.Llm.ProviderId = LlmProvider.Value;
-        _s.LlmFallback.ProviderId = LlmFallbackProvider.Value;
+        // Während RefreshProviders kann die Auswahl kurz null sein: dann gilt der Stand der Kopie.
+        _s.Stt.ProviderId = SttProvider?.Value ?? _s.Stt.ProviderId;
+        _s.SttFallback.ProviderId = SttFallbackProvider?.Value ?? _s.SttFallback.ProviderId;
+        _s.Llm.ProviderId = LlmProvider?.Value ?? _s.Llm.ProviderId;
+        _s.LlmFallback.ProviderId = LlmFallbackProvider?.Value ?? _s.LlmFallback.ProviderId;
         _s.Language = Language.Value;
         _s.Refine.Stage = Stage.Value;
         _s.History.Size = HistorySize;

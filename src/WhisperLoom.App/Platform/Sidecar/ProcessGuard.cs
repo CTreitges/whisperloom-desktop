@@ -9,7 +9,7 @@ namespace WhisperLoom.App.Platform.Sidecar;
 /// <item>Windows: Job-Objekt mit <c>JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE</c>; stirbt die App, schließt das System den
 /// Handle und beendet den Job samt Begleitprozess.</item>
 /// <item>Linux: ein Wächter (<c>/bin/sh</c>) prüft jede Sekunde, ob die App noch lebt, und beendet sonst genau die
-/// gemerkte PID (nur wenn sie noch <c>whisper-server</c> heißt).</item>
+/// gemerkte PID (nur wenn sie noch so heißt wie beim Start: <c>whisper-server</c> bzw. <c>llama-server</c>).</item>
 /// </list>
 /// </summary>
 // Doku: https://learn.microsoft.com/windows/win32/api/winnt/ns-winnt-jobobject_basic_limit_information (abgerufen 2026-10-31),
@@ -27,7 +27,8 @@ internal sealed class ProcessGuard : IDisposable
     }
 
     /// <summary>Bindet <paramref name="child"/> an die Lebenszeit dieses Prozesses.</summary>
-    public static ProcessGuard Attach(Process child)
+    /// <param name="name">Prozessname (<c>/proc/&lt;pid&gt;/comm</c>), den der Linux-Wächter vor dem Beenden prüft.</param>
+    public static ProcessGuard Attach(Process child, string name = "whisper-server")
     {
         var guard = new ProcessGuard();
         if (OperatingSystem.IsWindows())
@@ -42,20 +43,20 @@ internal sealed class ProcessGuard : IDisposable
         }
         else
         {
-            guard._watcher = StartWatcher(Environment.ProcessId, child.Id);
+            guard._watcher = StartWatcher(Environment.ProcessId, child.Id, name);
         }
         return guard;
     }
 
-    /// <summary>Wächter-Skript: $1 = App-PID, $2 = Begleitprozess-PID.</summary>
+    /// <summary>Wächter-Skript: $1 = App-PID, $2 = Begleitprozess-PID, $3 = sein Prozessname.</summary>
     internal const string WatchScript =
         "while kill -0 \"$1\" 2>/dev/null && kill -0 \"$2\" 2>/dev/null; do sleep 1; done; " +
-        "if ! kill -0 \"$1\" 2>/dev/null && [ \"$(cat /proc/$2/comm 2>/dev/null)\" = whisper-server ]; then kill \"$2\"; fi";
+        "if ! kill -0 \"$1\" 2>/dev/null && [ \"$(cat /proc/$2/comm 2>/dev/null)\" = \"$3\" ]; then kill \"$2\"; fi";
 
-    private static Process StartWatcher(int appPid, int childPid)
+    private static Process StartWatcher(int appPid, int childPid, string name)
     {
         var psi = new ProcessStartInfo("/bin/sh") { UseShellExecute = false, RedirectStandardInput = false };
-        foreach (var a in new[] { "-c", WatchScript, "whisperloom-watch", appPid.ToString(), childPid.ToString() }) psi.ArgumentList.Add(a);
+        foreach (var a in new[] { "-c", WatchScript, "whisperloom-watch", appPid.ToString(), childPid.ToString(), name }) psi.ArgumentList.Add(a);
         try
         {
             return Process.Start(psi) ?? throw new InvalidOperationException("Wächter startet nicht");
