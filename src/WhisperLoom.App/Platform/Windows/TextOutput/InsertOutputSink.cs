@@ -18,6 +18,7 @@ public sealed class InsertOutputSink(IOutputSink inner, TextInserter inserter, F
     private InsertMode? _mode;
     private bool _keepCopy;
     private bool _trailingSpace;
+    private bool _leadingSpace;
 
     public string Kind => inner.Kind;
 
@@ -43,8 +44,11 @@ public sealed class InsertOutputSink(IOutputSink inner, TextInserter inserter, F
     /// <param name="mode">Ausgabemodus des App-Profils; null = Einstellung.</param>
     /// <param name="keepCopy">Text auf jeden Fall auch in der Zwischenablage lassen (Tray-Verlauf); sonst <c>output.alwaysCopy</c>.</param>
     /// <param name="trailingSpace">Leerzeichen anhängen (<c>polish.trailingSpace</c>, nur Diktate, wie Android).</param>
-    public void Arm(IntPtr target, bool? pressEnter = null, InsertMode? mode = null, bool keepCopy = false, bool trailingSpace = false)
+    /// <param name="leadingSpace">Leerzeichen davor, wenn direkt an ein Wort angefügt wird (nur Diktate, wie Android).</param>
+    public void Arm(IntPtr target, bool? pressEnter = null, InsertMode? mode = null, bool keepCopy = false, bool trailingSpace = false,
+        bool leadingSpace = false)
     {
+        _leadingSpace = leadingSpace;
         _keepCopy = keepCopy;
         _trailingSpace = trailingSpace;
         _target = target;
@@ -70,7 +74,7 @@ public sealed class InsertOutputSink(IOutputSink inner, TextInserter inserter, F
         _armed = false;
         var settings = output?.Invoke();
         var outcome = await inserter.InsertAsync(
-            _target, Core.Output.OutputDecision.WithTrailingSpace(text, _trailingSpace), _mode ?? mode(), EffectivePressEnter(_pressEnter, settings), ct, _keepCopy || (settings?.AlwaysCopy ?? false)).ConfigureAwait(false);
+            _target, Core.Output.OutputDecision.WithTrailingSpace(text, _trailingSpace), _mode ?? mode(), EffectivePressEnter(_pressEnter, settings), ct, _keepCopy || (settings?.AlwaysCopy ?? false), _leadingSpace).ConfigureAwait(false);
         LastOutcome = outcome;
         LastWasPrivate = outcome == InsertOutcome.PasswordField;
         Inserted?.Invoke(outcome);

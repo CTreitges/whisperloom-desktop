@@ -112,6 +112,14 @@ public static class OutputDecision
     public static string WithTrailingSpace(string text, bool trailingSpace) =>
         trailingSpace && text.Length > 0 && !char.IsWhiteSpace(text[^1]) ? text + " " : text;
 
+    /// <summary>
+    /// Leerzeichen davor, wenn direkt an ein Wort angefügt wird (Port von <c>WhisperLoomInputMethodService.kt:945-952</c>): das
+    /// Zeichen vor der Schreibmarke ist kein Leerraum und das Diktat beginnt mit Buchstabe oder Ziffer.
+    /// </summary>
+    /// <param name="before">Zeichen vor der Schreibmarke; null = Feldanfang oder nicht lesbar (dann nichts).</param>
+    public static string WithLeadingSpace(string text, char? before) =>
+        before is { } prev && !char.IsWhiteSpace(prev) && text.Length > 0 && char.IsLetterOrDigit(text[0]) ? " " + text : text;
+
     /// <summary>Alle Zeilen der Tabelle (Doku und Tests).</summary>
     public static IEnumerable<(FocusKind Focus, InsertAttempt Attempt, bool AlwaysCopy, bool Browser, OutputPlan Plan)> Table() =>
         from focus in Enum.GetValues<FocusKind>()

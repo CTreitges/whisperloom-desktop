@@ -56,7 +56,8 @@ public sealed class WindowsInput : IDisposable
     /// innere Senke.
     /// </summary>
     public static InsertOutputSink CreateSink(Output.IOutputSink inner, Func<InsertMode> mode, Func<Core.Contracts.Settings.OutputSettings>? output = null) =>
-        new(inner, new TextInserter(new Win32TextClipboard(), new Win32KeySender(), new Win32Windows(), focus: new FocusProbe(new UiaFocusSource(), fallback: new MsaaFocusSource())), mode, output);
+        new(inner, new TextInserter(new Win32TextClipboard(), new Win32KeySender(), new Win32Windows(), focus: new FocusProbe(new UiaFocusSource(), fallback: new MsaaFocusSource()),
+            caret: new CaretContext(new UiaCaretSource())), mode, output);
 
     /// <summary>Startet Hook und Ablauf; null, wenn Windows den Hook verweigert (Log-Eintrag).</summary>
     public static WindowsInput? Start(DictationController controller, InsertOutputSink sink, AppLog log)

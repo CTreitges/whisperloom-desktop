@@ -7,7 +7,7 @@ wiederhergestellt. Prozesse nur über die eigene PID.
 
 Prüfungen: hold-insert, start-menu-suppressed, toggle-second-press, no-focus-steal, toggle-enter, ctrl-enter-no-enter,
 backspace-discard, pause, clipboard-restore, clipboard-history-excluded, stage-toast, type-mode; W2-OUT (smoke_focus.py):
-focus-textfield, focus-password, focus-button, history-copy-20, focus-measure.
+focus-textfield, focus-password, focus-button, leading-space, history-copy-20, focus-measure.
 """
 from __future__ import annotations
 
@@ -249,6 +249,7 @@ def paste_checks(args, work, report, smoke, fake, keys, exe) -> None:
         clipboard_checks(run, keys, exe, out, report)
         stage_check(run, keys, exe, out, report)
         smoke_focus.focus_checks(run, keys, exe, out, report)
+        smoke_focus.leading_space_check(run, keys, exe, out, report)
         smoke_focus.history_copy_check(run, report)
         smoke_focus.focus_measure(run, work / args.id, report)
     finally:

@@ -58,7 +58,7 @@ public sealed partial class InputFlow
         Overlay.CanRetry = false;
         Overlay.ErrorKey = null;
         Overlay.State = OverlayState.Processing;
-        _sink.Arm(_target, null, null, trailingSpace: _controller.Settings.Polish.TrailingSpace);
+        _sink.Arm(_target, null, null, trailingSpace: _controller.Settings.Polish.TrailingSpace, leadingSpace: true);
         var result = await _controller.RetryAsync();
         _sink.Disarm();
         if (result == "error")

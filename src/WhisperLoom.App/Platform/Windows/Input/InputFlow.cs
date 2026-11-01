@@ -214,7 +214,7 @@ public sealed partial class InputFlow
         var match = mode == Mode.Rewrite ? null : ProfileFor(target);
         _controller.ActiveProfile = match;
         _sink.Arm(target, mode == Mode.Rewrite ? false : match?.Profile.PressEnter, InsertModeOf(match),
-            trailingSpace: mode != Mode.Rewrite && _controller.Settings.Polish.TrailingSpace);
+            trailingSpace: mode != Mode.Rewrite && _controller.Settings.Polish.TrailingSpace, leadingSpace: mode != Mode.Rewrite);
         var started = _controller.Start();
         if (started != "recording")
         {

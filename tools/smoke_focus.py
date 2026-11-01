@@ -5,6 +5,7 @@
 - focus-button: TestTarget-Knopf mit Fokus → Zwischenablage enthält den Text, Hinweis erschienen
 - ctrl-enter-no-enter: Strg+Enter im Overlay sendet nicht (kein Einfügen, kein Enter von der App)
 - history-copy-20: 20× „Kopieren“ aus dem Verlauf (CLI history-copy = Weg des Verlaufsfensters) → Zwischenablage gleich Erwartung
+- leading-space: TestTarget mit Text „Wort“, Schreibmarke ans Ende → Diktat wird mit Leerzeichen davor angefügt (UIA TextPattern)
 - focus-measure: Fokus-Klasse (nur lesen) an Notepad und Edge/Chrome (Textarea, Passwort, Knopf, Seite ohne Feld) – Messung für
   den Fall „unbekannt“; Ergebnis steht im Bericht, die Prüfung scheitert nur, wenn die Abfrage selbst scheitert.
 
@@ -74,6 +75,18 @@ def focus_checks(run, keys, exe, out: Path, report) -> None:
     report.check("focus-button", bool(want) and clip == want and d.get("text") == "" and last == "NoTextField" and bool(hint)
                  and s.get("lastHint") in ("copied", "none"),
                  f"clip==ergebnis={clip == want} ziel={d.get('text')!r} insert={last} hinweis={((hint.get('input') or {}).get('hint') or {}).get('text')!r}")
+
+
+def leading_space_check(run, keys, exe, out: Path, report) -> None:
+    """Leerzeichen davor (Android commitDictation): direkt hinter „Wort“ diktiert → „Wort <Diktat>“."""
+    with si.Target(exe, out, keys, ["--text", "Wort"]) as t:
+        keys.combo("end")
+        time.sleep(0.2)
+        hold(keys)
+        s = si.idle(run)
+        want = "Wort " + (s.get("lastResult") or "")
+        d = si.wait_for(lambda: (lambda x: x if x.get("text") == want else None)(t.read()), 5) or t.read()
+    report.check("leading-space", bool(s.get("lastResult")) and d.get("text") == want, f"ziel={d.get('text')!r:.50} erwartet={want!r:.50}")
 
 
 def ctrl_enter_check(run, keys, exe, out: Path, report) -> None:

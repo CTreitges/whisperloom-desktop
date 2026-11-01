@@ -112,6 +112,20 @@ public class OutputDecisionTest
     public void LeerzeichenDanachWieAndroid(string text, bool on, string expected) =>
         Assert.Equal(expected, OutputDecision.WithTrailingSpace(text, on));
 
+    [Theory]
+    [InlineData("Hallo", 'x', " Hallo")] // direkt an ein Wort
+    [InlineData("Hallo", '.', " Hallo")] // nach Satzzeichen ohne Leerzeichen
+    [InlineData("Hallo", ' ', "Hallo")] // schon Leerraum
+    [InlineData("Hallo", '\n', "Hallo")]
+    [InlineData(", und", 'x', ", und")] // Diktat beginnt mit Satzzeichen
+    [InlineData("42 Stück", '7', " 42 Stück")]
+    [InlineData("", 'x', "")]
+    public void LeerzeichenDavorWieAndroid(string text, char before, string expected) =>
+        Assert.Equal(expected, OutputDecision.WithLeadingSpace(text, before));
+
+    [Fact]
+    public void LeerzeichenDavorOhneKontextNichts() => Assert.Equal("Hallo", OutputDecision.WithLeadingSpace("Hallo", null));
+
     [Fact]
     public void LinuxOhneEinfuegenLandetInDerZwischenablageMitHinweis()
     {

@@ -12,8 +12,8 @@ import threading
 import time
 
 VK = {"ctrl": 0xA2, "alt": 0xA4, "shift": 0xA0, "win": 0x5B, "space": 0x20, "enter": 0x0D, "back": 0x08,
-      "a": 0x41, "r": 0x52, "v": 0x56}
-EXTENDED = {0x5B}
+      "a": 0x41, "r": 0x52, "v": 0x56, "end": 0x23}
+EXTENDED = {0x5B, 0x23}
 CF_UNICODETEXT = 13
 START_MENU_PROCESSES = ("startmenuexperiencehost.exe", "searchhost.exe", "searchapp.exe", "shellexperiencehost.exe")
 

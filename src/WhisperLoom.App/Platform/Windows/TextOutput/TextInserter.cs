@@ -97,7 +97,8 @@ public sealed class TextInserter(
     IWindowAdapter windows,
     TimeSpan? pasteDelay = null,
     IFocusProbe? focus = null,
-    Func<TimeSpan, Task>? copyDelay = null)
+    Func<TimeSpan, Task>? copyDelay = null,
+    CaretContext? caret = null)
 {
     /// <summary>Zeit, die das Ziel zum Lesen der Zwischenablage bekommt, bevor Enter bzw. die Wiederherstellung folgt.</summary>
     public static readonly TimeSpan DefaultPasteDelay = TimeSpan.FromMilliseconds(400);
@@ -112,9 +113,11 @@ public sealed class TextInserter(
     public FocusKind? LastFocus { get; private set; }
 
     /// <param name="alwaysCopy"><c>output.alwaysCopy</c>: nach erfolgreichem Einfügen auch in der Zwischenablage lassen.</param>
+    /// <param name="leadingSpace">Diktat: Leerzeichen davor, wenn direkt an ein Wort angefügt wird (Zeichen vor der Schreibmarke
+    /// per UIA TextPattern; ohne Auskunft keins).</param>
     /// <exception cref="IOException">Zwischenablage belegt.</exception>
     public async Task<InsertOutcome> InsertAsync(
-        IntPtr target, string text, InsertMode mode, bool pressEnter, CancellationToken ct, bool alwaysCopy = false)
+        IntPtr target, string text, InsertMode mode, bool pressEnter, CancellationToken ct, bool alwaysCopy = false, bool leadingSpace = false)
     {
         LastReport = null;
         LastFocus = null;
@@ -159,6 +162,10 @@ public sealed class TextInserter(
         if (!OutputDecision.ShouldInsert(kind, canInsert: true))
         {
             return await FallbackAsync(text, InsertOutcome.NoTextField);
+        }
+        if (leadingSpace && caret is not null)
+        {
+            text = OutputDecision.WithLeadingSpace(text, await caret.CharBeforeAsync(ct).ConfigureAwait(false));
         }
         // Unbekannter Fokus (UIA meldet nichts Brauchbares) oder „immer kopieren“: der Text bleibt danach in der Zwischenablage.
         // Im Browser („Vorsichtig im Browser“, Entscheidung Christof): unbekannter Fokus → alte Zwischenablage zurück.
