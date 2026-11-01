@@ -46,7 +46,7 @@ Richtlinie), Modell `src/WhisperLoom.Core/Contracts/Settings/WhisperLoomSettings
 | Pfad | Typ | Standard | Bedeutung |
 |---|---|---|---|
 | `schemaVersion` | Zahl | `1` | Schema |
-| `language` | Text | `"de"` | Erkennungssprache: `"auto"` oder ISO-Code (2–3 Kleinbuchstaben) |
+| `language` | Text | `"de"` | Erkennungssprache: `"auto"`, ISO-Code (2–3 Kleinbuchstaben) oder `"de+en"` (Deutsch + Englisch, CTR-273/W2-PFIX: gpt-transcribe bekommt `languages[]=de` und `=en`, alle anderen Erkenner erkennen selbst; wirksam ist die erkannte Sprache, sonst Deutsch) |
 | `engine` | Text/null | `null` | `"online"` oder `"offline"`; null = noch nicht gewählt |
 | `stt.providerId` | Text | `"openai"` | Anbieter der Erkennung (ID aus `providers.json`, mit Erkennung) |
 | `stt.baseUrl` | Text | `""` | `""` = Basis-URL des Anbieters, sonst `https://…`; `http://` nur bei Anbietern, die es erlauben (eigener Server, Ollama), und nur zu privaten Adressen (LAN, VPN, Tailscale) |

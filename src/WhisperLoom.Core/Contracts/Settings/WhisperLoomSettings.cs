@@ -16,7 +16,13 @@ public sealed class WhisperLoomSettings
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 
-    /// <summary>Erkennungssprache: "auto" oder ISO-Code. Android-Standard: Deutsch.</summary>
+    /// <summary>
+    /// Sprache „Deutsch + Englisch“ (CTR-273, additiv): gpt-transcribe bekommt beide Codes als <c>languages[]</c>, alle
+    /// anderen Erkenner erkennen selbst (wie "auto"). Wirksam ist die erkannte Sprache, sonst Deutsch.
+    /// </summary>
+    public const string LanguageDeEn = "de+en";
+
+    /// <summary>Erkennungssprache: "auto", ISO-Code oder <see cref="LanguageDeEn"/>. Android-Standard: Deutsch.</summary>
     public string Language { get; set; } = "de";
 
     /// <summary>"online" | "offline"; null = noch nicht gewählt (Einrichtung zeigen).</summary>

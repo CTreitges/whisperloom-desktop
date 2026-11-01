@@ -66,7 +66,8 @@ public static class ProviderCatalog
         SttMaxBytes: (int?)o["sttMaxBytes"],
         Api: Style((string?)o["api"] ?? "OPENAI"),
         Notes: (string?)o["notes"] ?? "",
-        RewriteLlmModel: (string?)o["rewriteLlmModel"] ?? "");
+        RewriteLlmModel: (string?)o["rewriteLlmModel"] ?? "",
+        SttBiasField: (string?)o["sttBiasField"]);
 
     private static List<ModelOption> Models(JsonNode? node) =>
         node?.AsArray().Select(n => n!.AsObject()).Select(m => new ModelOption(
@@ -76,7 +77,8 @@ public static class ProviderCatalog
             TemperatureSupported: (bool?)m["temperatureSupported"] ?? true,
             ReasoningEffort: (string?)m["reasoningEffort"],
             LanguageField: (string?)m["languageField"] ?? "language",
-            ThinkingType: (string?)m["thinkingType"])).ToList() ?? [];
+            ThinkingType: (string?)m["thinkingType"],
+            KeywordsField: (string?)m["keywordsField"])).ToList() ?? [];
 
     private static ApiStyle Style(string name) => name switch
     {

@@ -35,3 +35,13 @@ Schlüssel: `<id>.<feld>`, `<id>.<sttModels|llmModels>[<modell>].<feld>`, `<id>.
 
 | Unterschied | Begründung |
 |---|---|
+
+## Funktionen
+
+Bewusst nicht portierte Android-Funktionen ohne eigenes Prüfskript (Test-Fälle dazu: `docs/test-mapping-*.md`).
+
+| Android | Begründung |
+|---|---|
+| CTR-273 „Sprache je Widget“ (`WidgetProfile.language`, `TranscriptionEngine.transcribe(language = …)`, Profil-Editor; Tests `WidgetProfileTest.dieSpracheUeberstehtDenRoundtrip`, `WidgetProfileTest.eineSpracheAusJsonNullIstWieDieApp`, `VoiceTaskPipelineFactoryTest.dieSpracheDesWidgetsGehtAnDieErkennungSonstDieDerApp`, `VoiceTaskPipelineFactoryTest.widgetMitAutoLaesstDieSpracheWeg`, `TranscriptionEngineTest.eigeneSpracheGewinntGegenDieDerApp`) | Der Desktop hat keine Widgets (Sprach-Command/Claude-Code-Widget sind Android-Startbildschirm-Funktionen). Die Sprache kommt je Diktat über `DictationRequest.Language` an die Pipeline, ein Override ist damit schon im Vertrag; App-Profile (W2/P5b) haben eine eigene Stufe, aber keine eigene Sprache — nicht Gegenstand von W2-PFIX. |
+| CTR-273 Wörterbuch-Hinweis „Geht als Wortliste an Mistral …“ (`DictionaryScreen`, Test `MainFlowTest.kontextFeldNenntBeiMistralDieWortliste`/`kontextFeldSagtBeiOpenRouterDassNichtsMitgeschicktWird`) | Die Desktop-Seite „Erkennung“ zeigt unter „Kontext-Wörter“ keine anbieterabhängigen Hinweise (auch nicht für ElevenLabs/OpenRouter); es gibt also keinen Text, der anzupassen wäre. Die Mistral-Notiz im Katalog (`providers.json`) nennt die Wortliste. |
+| CTR-273 Hilfe-Zeile `help_s5_mixed` (Offline + „Deutsch + Englisch“) | Hilfe-Views/Assets gehören W2-HELP (PR #26); der Offline-Hinweis steht direkt unter der Sprachauswahl (`Language_deEnOffline`). |

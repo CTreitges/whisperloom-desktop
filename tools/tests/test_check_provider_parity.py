@@ -114,6 +114,23 @@ class CheckProviderParityTest(unittest.TestCase):
         self.assertIn("openai.llmModels[gpt-6-luna].temperatureSupported", out)
         self.assertTrue(out.strip().endswith("PROVIDER-PARITY FAIL errors=1"))
 
+    def test_vokabular_felder_werden_verglichen(self) -> None:
+        # CTR-273: keywordsField (ModelOption) und sttBiasField (Provider) gehören zum Vergleich.
+        kotlin = self.android / check_provider_parity.KOTLIN_PATH
+        text = KOTLIN.replace('languageField = "languages[]"),', 'languageField = "languages[]", keywordsField = "keywords[]"),')
+        text = text.replace('            needsKey = false,\n', '            needsKey = false,\n            sttBiasField = "context_bias[]",\n')
+        kotlin.write_text(text, encoding="utf-8")
+        code, out = self.run_check()
+        self.assertEqual(1, code)
+        self.assertIn("openai.sttModels[gpt-transcribe].keywordsField", out)
+        self.assertIn("ollama.sttBiasField", out)
+        data = json.loads(json.dumps(JSON))
+        data["providers"][0]["sttModels"][0]["keywordsField"] = "keywords[]"
+        data["providers"][1]["sttBiasField"] = "context_bias[]"
+        self.write_json(data)
+        code, out = self.run_check()
+        self.assertEqual(0, code, out)
+
     def test_standardmodell_und_reihenfolge_fallen_auf(self) -> None:
         data = json.loads(json.dumps(JSON))
         data["providers"][0]["llmModels"].reverse()

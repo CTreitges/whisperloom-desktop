@@ -413,4 +413,15 @@ public class ModelListsTest
         Assert.Equal("none", ModelLists.OptionFor(P("groq"), ModelKind.Llm, "qwen3-32b", null)!.ReasoningEffort);
         Assert.Null(ModelLists.OptionFor(P("openai"), ModelKind.Llm, "irgendwas", null));
     }
+
+    /// <summary>Port aus <c>ModelFlagsTest.kt</c> (CTR-273): keywords[] erbt der Snapshot von gpt-transcribe, der von 4o-mini nicht.</summary>
+    [Fact]
+    public void KeywordsFeldFuerGptTranscribeSnapshotsUndNeueVarianten()
+    {
+        Assert.Equal("keywords[]", ModelLists.OptionFor(P("openai"), ModelKind.Stt, "gpt-transcribe-2026-08-01", null)!.KeywordsField);
+        Assert.Null(ModelLists.OptionFor(P("openai"), ModelKind.Stt, "gpt-4o-mini-transcribe-2025-12-15", null)!.KeywordsField);
+        var neu = ModelLists.OptionFor(P("openai"), ModelKind.Stt, "gpt-5-transcribe", null)!;
+        Assert.Equal(("languages[]", "keywords[]"), (neu.LanguageField, neu.KeywordsField));
+        Assert.Null(ModelLists.OptionFor(P("openrouter"), ModelKind.Stt, "openai/gpt-5-transcribe", null));
+    }
 }

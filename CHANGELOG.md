@@ -6,6 +6,13 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Language „German + English“** (`de+en`, Android CTR-273): GPT Transcribe gets both languages (`languages[]`), all
+  other services and the local model detect the language themselves; the detected language counts, otherwise German.
+  Hint below the language choice, a separate one for the local model.
+- **Vocabulary as word lists**: GPT Transcribe additionally gets `keywords[]` (terms with `<`, `>` or line breaks are
+  dropped), Mistral gets `context_bias[]` (up to 100 terms, multi-word terms joined with `_`); free text is no keyword.
+- With *Automatic*, the language detected by GPT Transcribe (`languages[0].code`, ISO 639-3 mapped to 639-1) now picks
+  filler words and the refinement prompt; before, „auto“ stayed in effect.
 - **Setup wizard** on first start: language, microphone with level test, recognition (cloud with key and
   *Check access*, or local with model download), stage, shortcut test (Windows) or desktop-shortcut guide (Linux),
   autostart, done. Skippable; run it again from the tray (*Setup …*) or with `WhisperLoom setup`. Steps locked by an

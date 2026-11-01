@@ -123,6 +123,17 @@ public class ProviderCatalogTest
         Assert.Null(ProviderCatalog.OpenAi.SttPathOverride);
     }
 
+    /// <summary>CTR-273 (F5/F6): Vokabular-Wortlisten nur dort, wo die Anbieter-Doku sie nennt.</summary>
+    [Fact]
+    public void VokabularFelderNurBeiGptTranscribeUndMistral()
+    {
+        var keywords = ProviderCatalog.Providers.SelectMany(p => (p.SttModels ?? []).Where(m => m.KeywordsField is not null).Select(m => $"{p.Id}/{m.Id}"));
+        Assert.Equal(["openai/gpt-transcribe"], keywords);
+        Assert.Equal("keywords[]", ProviderCatalog.OpenAi.SttModel("gpt-transcribe")!.KeywordsField);
+        Assert.Equal(["mistral"], ProviderCatalog.Providers.Where(p => p.SttBiasField is not null).Select(p => p.Id));
+        Assert.Equal("context_bias[]", P("mistral").SttBiasField);
+    }
+
     [Fact]
     public void AnzeigeReihenfolgeDerDropdowns()
     {

@@ -10,7 +10,7 @@ in den C#-Klassen unter „Desktop:“. `AudioConvert` und `AudioUtils` haben au
 | TextPolisherTest | WhisperLoom.Core.Tests.Text.TextPolisherTest | portiert | |
 | PolishPlanTest | WhisperLoom.Core.Tests.Text.PolishPlanTest | portiert | |
 | ParagrapherTest | WhisperLoom.Core.Tests.Text.ParagrapherTest | portiert | |
-| VocabularyTest | WhisperLoom.Core.Tests.Text.VocabularyTest | portiert | |
+| VocabularyTest | WhisperLoom.Core.Tests.Text.VocabularyTest | portiert | CTR-273: gemeinsamer Begriffsfilter `Vocabulary.Terms`. |
 | api/RefinePromptTest | WhisperLoom.Core.Tests.Prompts.RefinePromptTest | portiert | |
 | AudioChunksTest | WhisperLoom.Core.Tests.Audio.AudioChunksTest | portiert | |
 | WavEncoderTest | WhisperLoom.Core.Tests.Audio.WavEncoderTest | portiert | |

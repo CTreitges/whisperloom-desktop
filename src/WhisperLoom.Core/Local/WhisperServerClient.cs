@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Text.Json.Nodes;
 using WhisperLoom.Core.Api;
 using WhisperLoom.Core.Contracts;
+using WhisperLoom.Core.Contracts.Settings;
 
 namespace WhisperLoom.Core.Local;
 
@@ -89,7 +90,7 @@ public static class WhisperServerClient
             { wav, "file", "audio.wav" },
             { new StringContent("verbose_json"), "response_format" },
             { new StringContent("0.0"), "temperature" },
-            { new StringContent(string.IsNullOrWhiteSpace(language) ? "auto" : language), "language" },
+            { new StringContent(WhisperLanguage(language)), "language" },
             { new StringContent((accurate ? BeamSize : 1).ToString(CultureInfo.InvariantCulture)), "beam_size" },
             { new StringContent(samples.Length > WindowSamples ? "false" : "true"), "no_timestamps" },
         };
@@ -97,14 +98,21 @@ public static class WhisperServerClient
         return form;
     }
 
-    /// <summary>Text (getrimmt) und bei "auto" die erkannte Sprache aus der verbose_json-Antwort.</summary>
+    /// <summary>
+    /// whisper.cpp kennt nur einen Code je Lauf: leer und „Deutsch + Englisch“ erkennt es selbst ("auto", CTR-273;
+    /// Port von <c>OfflineBackend.whisperLanguage</c>).
+    /// </summary>
+    public static string WhisperLanguage(string language) =>
+        string.IsNullOrWhiteSpace(language) || language == WhisperLoomSettings.LanguageDeEn ? "auto" : language;
+
+    /// <summary>Text (getrimmt) und bei "auto" (auch „Deutsch + Englisch“) die erkannte Sprache aus der verbose_json-Antwort.</summary>
     public static TranscriptResult Parse(string body, string language)
     {
         var json = JsonNode.Parse(body) as JsonObject ?? throw new ApiHttpException(200, "Lokaler Erkennungsdienst: unerwartete Antwort");
         if (json["error"] is JsonValue error) throw new ApiHttpException(500, $"Lokaler Erkennungsdienst: {error}");
         var text = json["text"] is JsonValue t && t.TryGetValue<string>(out var s) ? s.Trim() : "";
         string? detected = null;
-        if (language == "auto" && json["language"] is JsonValue l && l.TryGetValue<string>(out var lang) && !string.IsNullOrWhiteSpace(lang))
+        if (WhisperLanguage(language) == "auto" && json["language"] is JsonValue l && l.TryGetValue<string>(out var lang) && !string.IsNullOrWhiteSpace(lang))
         {
             detected = lang.Length > 2 ? Iso(lang) : lang;
         }

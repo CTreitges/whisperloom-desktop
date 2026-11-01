@@ -161,9 +161,16 @@ public sealed class DictationPipeline(
     private async Task<ITranscriptionBackend> BackendCoreAsync(WhisperLoomSettings s, CancellationToken ct) =>
         Backend(s, await SettingsAccess.KeysAsync(secrets, ct, s).ConfigureAwait(false));
 
-    /// <summary>Bei "auto" die vom Erkenner gemeldete Sprache — sonst bleibt "auto".</summary>
-    public static string EffectiveLanguage(string configured, string? detected) =>
-        configured == "auto" && !string.IsNullOrWhiteSpace(detected) ? detected : configured;
+    /// <summary>
+    /// Bei "auto" die vom Erkenner gemeldete Sprache — sonst bleibt "auto". Bei „Deutsch + Englisch“ ebenso, ohne gemeldete
+    /// Sprache aber Deutsch: Füllwörter und Prompt der Textverbesserung kennen nur einen Code (CTR-273).
+    /// </summary>
+    public static string EffectiveLanguage(string configured, string? detected)
+    {
+        if (configured != "auto" && configured != WhisperLoomSettings.LanguageDeEn) return configured;
+        if (!string.IsNullOrWhiteSpace(detected)) return detected;
+        return configured == WhisperLoomSettings.LanguageDeEn ? "de" : configured;
+    }
 
     /// <summary>Nur zur Info: der erste Anbieter ist gescheitert, der Fallback hat erkannt.</summary>
     public static string SttFallbackMessage(string label) => $"Spracherkennung fehlgeschlagen — mit Fallback {label} erkannt";

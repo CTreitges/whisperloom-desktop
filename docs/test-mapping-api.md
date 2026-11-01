@@ -1,6 +1,6 @@
 # Test-Mapping: Core-API und Pipeline (WLD-P1b)
 
-Zuordnung Kotlin-Testklasse (Android `main` 8e1caeb, `app/src/test*`) → C#-Testklasse, geprüft mit `tools/test_parity.py`.
+Zuordnung Kotlin-Testklasse (Android `main` 8e1caeb, nachgezogen auf c54344e/CTR-273 in W2-PFIX, `app/src/test*`) → C#-Testklasse, geprüft mit `tools/test_parity.py`.
 `portiert` verlangt mindestens so viele aktive C#-Fälle wie Kotlin-`@Test` (Fälle mit `Skip` zählen nicht).
 Die Spalte „Begründung“ nennt bei portierten Klassen die Abbildung auf den Desktop.
 
@@ -10,7 +10,8 @@ Die Spalte „Begründung“ nennt bei portierten Klassen die Abbildung auf den 
 | api/TextCleanupTest | WhisperLoom.Core.Tests.Api.TextCleanupTest | portiert | Füllsilben als feste Liste; ein Fall mit der echten Liste (`TextPolisher.builtinFillers`). |
 | api/PromptCleanupTest | WhisperLoom.Core.Tests.Api.PromptCleanupTest | portiert | |
 | ChatPayloadTest | WhisperLoom.Core.Tests.Api.ChatPayloadTest | portiert | Keys als `test-key-not-real-<n>`. |
-| TranscriptionRequestTest | WhisperLoom.Core.Tests.Api.TranscriptionRequestTest | portiert | |
+| TranscriptionRequestTest | WhisperLoom.Core.Tests.Api.TranscriptionRequestTest | portiert | CTR-273: `keywords[]`, `context_bias[]`, „Deutsch + Englisch“ (`de+en`). |
+| api/TranscriptionResponseTest | WhisperLoom.Core.Tests.Api.TranscriptionResponseTest | portiert | CTR-273: erkannte Sprache aus `languages[0].code` (`TranscriptionRequest.DetectedLanguage`); `org.json` → `System.Text.Json.Nodes`. |
 | ElevenLabsSttTest | WhisperLoom.Core.Tests.Api.ElevenLabsSttTest | portiert | Kappung über `Vocabulary.prompt` und der ElevenLabs-Teil (angeschnittenes Stück fällt weg) je als eigener Fall. |
 | ProviderCatalogTest | WhisperLoom.Core.Tests.Api.ProviderCatalogTest | portiert | Katalog aus `providers.json`; `Prefs.DEFAULT_*` → Standard-Anbieter der Einstellungen. |
 | AccessResolverTest | WhisperLoom.Core.Tests.Api.AccessResolverTest | portiert | |
@@ -18,7 +19,7 @@ Die Spalte „Begründung“ nennt bei portierten Klassen die Abbildung auf den 
 | RefinePipelineTest | WhisperLoom.Core.Tests.Pipeline.RefinePipelineTest | portiert | Prefs → `WhisperLoomSettings`, Robolectric-Netz → `NetworkCheck`, LiteRT-Fake → `ILocalRefiner`-Fake, Vorwärmen → `ShouldWarmUpLocalAsync`. Meist geprüft: Rohtext geht mit vollen Regeln an den Polisher; „Also hallo welt“ mit echten Regeln (`RealText`). |
 | FallbackPipelineTest | WhisperLoom.Core.Tests.Pipeline.FallbackPipelineTest | portiert | Wie RefinePipelineTest; Kotlin-`suppressed` → `FallbackBackend.Suppressed`. |
 | FallbackBackendTest | WhisperLoom.Core.Tests.Pipeline.FallbackBackendTest | portiert | Thread-Interrupt → abgebrochener `CancellationToken`. |
-| TranscriptionEngineTest | WhisperLoom.Core.Tests.Pipeline.TranscriptionEngineTest | portiert | Offline-Modelldatei → `ILocalStt.IsReadyAsync`; Prompt-Texte über einen Fake-Builder (welche Stufe/Absätze/Füllwörter verlangt werden), die Kotlin-Texte mit echtem Builder und Regeln (`RealText`, `CoreText`); Vokabular-Datei → `CoreText.VocabularyPrompt`. |
+| TranscriptionEngineTest | WhisperLoom.Core.Tests.Pipeline.TranscriptionEngineTest | portiert | Offline-Modelldatei → `ILocalStt.IsReadyAsync`; Prompt-Texte über einen Fake-Builder (welche Stufe/Absätze/Füllwörter verlangt werden), die Kotlin-Texte mit echtem Builder und Regeln (`RealText`, `CoreText`); Vokabular-Datei → `CoreText.VocabularyPrompt`. CTR-273: `OfflineBackend.whisperLanguage` → `WhisperServerClient.WhisperLanguage`; `eigeneSpracheGewinntGegenDieDerApp` (Sprache je Widget) ist ausgenommen, siehe `docs/parity-exceptions.md` § Funktionen. |
 | StageModelTest | WhisperLoom.Core.Tests.Pipeline.StageModelTest | portiert | |
 | TextRefinerRetryTest | WhisperLoom.Core.Tests.Api.TextRefinerRetryTest | portiert | „Zugang prüfen“ (AccessTest) → `TextRefiner` mit `ModelCache.RememberNoTemperature`. |
 | TemperatureMemoTest | WhisperLoom.Core.Tests.Pipeline.TemperatureMemoTest | portiert | Zusätzlich: Merkliste übersteht einen Neustart (Datei, ohne Key). |

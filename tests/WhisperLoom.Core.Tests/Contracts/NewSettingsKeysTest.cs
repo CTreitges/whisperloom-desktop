@@ -77,6 +77,20 @@ public class NewSettingsKeysTest
         Assert.Contains(SyncValidator.Validate(s), e => e.StartsWith(path, StringComparison.Ordinal));
     }
 
+    /// <summary>CTR-273 (additiv): Sprache „Deutsch + Englisch“ ist gültig und übersteht die Rundreise; anderes mit + nicht.</summary>
+    [Fact]
+    public void Language_de_en_is_valid_and_round_trips()
+    {
+        var s = SettingsJson.Deserialize("""{"language":"de+en"}""");
+        Assert.Equal(WhisperLoomSettings.LanguageDeEn, s.Language);
+        Assert.DoesNotContain(SyncValidator.Validate(s), e => e.StartsWith("language", StringComparison.Ordinal));
+        Assert.Equal("de+en", SettingsJson.Deserialize(SettingsJson.Serialize(s)).Language);
+        foreach (var bad in new[] { "de+fr", "DE+EN", "de+", "deutsch" })
+        {
+            Assert.Contains(SyncValidator.Validate(SettingsJson.Deserialize($$"""{"language":"{{bad}}"}""")), e => e.StartsWith("language", StringComparison.Ordinal));
+        }
+    }
+
     [Fact]
     public void Custom_provider_can_be_referenced_by_matching_access()
     {

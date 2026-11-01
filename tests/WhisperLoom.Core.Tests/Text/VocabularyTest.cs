@@ -8,6 +8,40 @@ namespace WhisperLoom.Core.Tests.Text;
 /// <summary>Port von <c>VocabularyTest.kt</c>: Liste, Datei-Parser und der gekappte Prompt für den Erkenner.</summary>
 public class VocabularyTest
 {
+    // --- Terms: gemeinsamer Filter für keyterms, keywords[], context_bias (CTR-273) ------
+
+    [Fact]
+    public void TermsTrenntAmKommaUndVerwirftLeeresUndSatzstuecke()
+    {
+        Assert.Equal(["Anna", "Bernd"], Vocabulary.Terms(" Anna ,, Bernd, Bitte so schreiben.", 10));
+        Assert.Empty(Vocabulary.Terms("", 10));
+    }
+
+    [Fact]
+    public void TermsVerwirftDasAngeschnitteneStueck()
+    {
+        var p = Vocabulary.Prompt([new string('x', 900)]);
+        Assert.EndsWith(Vocabulary.CutMark, p.Text, StringComparison.Ordinal);
+        Assert.Empty(Vocabulary.Terms(p.Text, 10));
+    }
+
+    [Fact]
+    public void TermsKapptVonVornUndEntferntDoppelte()
+    {
+        // Die eigenen Begriffe stehen hinten (Vocabulary.Prompt) — sie bleiben bei der Kappung.
+        Assert.Equal(["b", "c"], Vocabulary.Terms("a, b, c", 2));
+        Assert.Equal(["a", "b"], Vocabulary.Terms("a, b, a", 5));
+    }
+
+    [Fact]
+    public void TermsPrueftDenBegriffUndWandeltDannUm()
+    {
+        // accept sieht den Begriff, wie er im Vokabular steht (mit Leerzeichen), transform kommt danach.
+        var output = Vocabulary.Terms("Claude Code, a<b, Chris", 10, transform: t => t.Replace(' ', '_'),
+            accept: t => !t.Contains('<', StringComparison.Ordinal) && t.Split(' ').Length <= 2);
+        Assert.Equal(["Claude_Code", "Chris"], output);
+    }
+
     [Fact]
     public void FreitextAusAlterVersionBleibtEinEintragUndKommtUnveraendertAn()
     {

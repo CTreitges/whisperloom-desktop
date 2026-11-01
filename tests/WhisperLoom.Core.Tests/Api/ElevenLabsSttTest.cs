@@ -44,6 +44,11 @@ public class ElevenLabsSttTest
         Assert.DoesNotContain("language_code", Names(ElevenLabsStt.Fields(Stt(), " ", "")));
     }
 
+    /// <summary>„Deutsch + Englisch“: ElevenLabs kennt nur einen Code und erkennt selbst (CTR-273, F3).</summary>
+    [Fact]
+    public void DeutschUndEnglischLaesstDieSpracheWeg() =>
+        Assert.Equal(["model_id", "tag_audio_events", "timestamps_granularity", "file_format"], Names(ElevenLabsStt.Fields(Stt(), "de+en", "")));
+
     [Fact]
     public void OhneVokabularKeinKeytermsUndNieLoggingOderPrompt()
     {

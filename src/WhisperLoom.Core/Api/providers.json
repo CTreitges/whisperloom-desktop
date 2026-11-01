@@ -8,7 +8,7 @@
       "keyUrl": "https://platform.openai.com/api-keys",
       "sttMaxBytes": 26214400,
       "sttModels": [
-        { "id": "gpt-transcribe", "label": "GPT Transcribe (empfohlen)", "note": "$0.0045/min. Nutzt languages[] statt language, kennt keywords[] + prompt.", "languageField": "languages[]" },
+        { "id": "gpt-transcribe", "label": "GPT Transcribe (empfohlen)", "note": "$0.0045/min. Nutzt languages[] statt language (bei Deutsch + Englisch beide). Vokabular als prompt und keywords[].", "languageField": "languages[]", "keywordsField": "keywords[]" },
         { "id": "gpt-4o-transcribe", "label": "GPT-4o Transcribe (Auslauf 02/2027)", "note": "$0.006/min, nur response_format=json, Shutdown 2027-02-26." },
         { "id": "gpt-4o-mini-transcribe", "label": "GPT-4o mini Transcribe (Auslauf 02/2027)", "note": "$0.003/min, nur json, Shutdown 2027-02-26." },
         { "id": "whisper-1", "label": "Whisper v2 (Legacy, Auslauf 02/2027)", "note": "$0.006/min, prompt max 224 Token." }
@@ -51,8 +51,9 @@
       "keyUrl": "https://console.mistral.ai/api-keys",
       "sttSendsPrompt": false,
       "sttSendsResponseFormat": false,
+      "sttBiasField": "context_bias[]",
       "sttModels": [
-        { "id": "voxtral-mini-latest", "label": "Voxtral Mini Transcribe 2", "note": "$0.003/min. 13 Sprachen inkl. Deutsch, bis 3 h. prompt/response_format nicht dokumentiert -> nicht senden." }
+        { "id": "voxtral-mini-latest", "label": "Voxtral Mini Transcribe 2", "note": "$0.003/min. 13 Sprachen inkl. Deutsch, bis 3 h. prompt/response_format nicht dokumentiert -> nicht senden. Vokabular als context_bias (bis 100 Wörter, für Deutsch experimentell)." }
       ],
       "llmModels": [
         { "id": "mistral-small-latest", "label": "Mistral Small 4", "note": "$0.15/$0.60 je 1M. Denkt ab Werk nicht nach. Empfohlen zum Glätten." },
@@ -72,7 +73,7 @@
         { "id": "scribe_v2", "label": "Scribe v2", "note": "$0.22/h, 90+ Sprachen." },
         { "id": "scribe_v2_medical", "label": "Scribe v2 Medical", "note": "$0.22/h. Für medizinische Diktate." }
       ],
-      "notes": "Eigenes Protokoll (xi-api-key, model_id), nur Erkennung. Vokabular geht als keyterms (ca. +20 % Kosten)."
+      "notes": "Eigenes Protokoll (xi-api-key, model_id), nur Erkennung. Vokabular geht als keyterms (ca. +20 % Kosten). Ohne Geräusch-Marken, Wort-Zeiten und Füllwort-Filter: der Rohtext bleibt wortgetreu."
     },
     {
       "id": "together",

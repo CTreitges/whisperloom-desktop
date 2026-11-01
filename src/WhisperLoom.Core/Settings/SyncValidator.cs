@@ -19,9 +19,10 @@ public static class SyncValidator
     public static IReadOnlyList<string> Validate(WhisperLoomSettings s)
     {
         var errors = new List<string>();
-        if (s.Language != "auto" && !(s.Language.Length is 2 or 3 && s.Language.All(char.IsAsciiLetterLower)))
+        if (s.Language is not ("auto" or WhisperLoomSettings.LanguageDeEn) &&
+            !(s.Language.Length is 2 or 3 && s.Language.All(char.IsAsciiLetterLower)))
         {
-            errors.Add("language: \"auto\" oder ISO-Code (z. B. \"de\")");
+            errors.Add("language: \"auto\", \"de+en\" oder ISO-Code (z. B. \"de\")");
         }
         if (s.Engine is not null && !Engines.Contains(s.Engine))
         {
