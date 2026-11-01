@@ -1,9 +1,11 @@
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using Avalonia;
+using Velopack;
 using WhisperLoom.App.Cli;
 using WhisperLoom.App.Instance;
 using WhisperLoom.App.Secrets;
+using WhisperLoom.App.Updates;
 
 namespace WhisperLoom.App;
 
@@ -17,6 +19,11 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        // Velopack zuerst: Installer- und Update-Hooks (--veloapp-*) erledigt es selbst und beendet den Prozess.
+        // Kein Auto-Anwenden beim Start: ein Update wird nur nach Bestätigung bzw. per "update" installiert.
+        // Doku: docs.velopack.io/getting-started/csharp, docs.velopack.io/integrating/hooks (abgerufen 2026-11-01).
+        VelopackApp.Build().SetAutoApplyOnStartup(false).Run();
+
         CliRequest request;
         try
         {
@@ -41,6 +48,8 @@ internal static class Program
             {
                 "bench" => RunBench(request),
                 "key" => RunKeyCommand(request),
+                "version" => RunVersion(),
+                "update" => RunUpdate(request),
                 _ => RunSyncCommand(request, endpoint),
             };
         }
@@ -157,6 +166,30 @@ internal static class Program
             Console.Error.WriteLine($"bench: {e.GetType().Name}: {e.Message}");
             return 1;
         }
+    }
+
+    private static int RunVersion()
+    {
+        Console.WriteLine($"WhisperLoom {AppVersion.Current}");
+        return 0;
+    }
+
+    /// <summary><c>update [--feed &lt;ordner|url&gt;]</c>: prüft, lädt und installiert ohne Neustart.</summary>
+    private static int RunUpdate(CliRequest request)
+    {
+        var log = new Services.AppLog(request.Options.DataDir);
+        Core.Settings.PolicySettings policy;
+        try
+        {
+            policy = new Services.PolicyStore(request.Options.DataDir).Load();
+        }
+        catch (Exception e) when (e is JsonException or IOException)
+        {
+            Console.Error.WriteLine($"update: policy.json unlesbar ({e.GetType().Name}).");
+            return 1;
+        }
+        var client = new VelopackUpdateClient(request.Args.Count > 0 ? request.Args[0] : null, []);
+        return UpdateCommand.RunAsync(client, policy, log, Console.Out, Console.Error, CancellationToken.None).GetAwaiter().GetResult();
     }
 
     /// <summary>

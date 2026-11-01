@@ -199,5 +199,9 @@
   "Tray_RecentEmpty": "None yet",
   "Tray_Settings": "Settings",
   "Tray_Stage": "Stage view",
-  "Ui_System": "Same as system"
+  "Ui_System": "Same as system",
+  "Update_Available": "WhisperLoom {0} is available. Install now and restart?",
+  "Update_Install": "Install and restart",
+  "Update_Later": "Later",
+  "Update_Title": "WhisperLoom update"
 }

@@ -6,6 +6,8 @@
     <RootNamespace>WhisperLoom.App</RootNamespace>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <ApplicationIcon>Assets/whisperloom.ico</ApplicationIcon>
+    <!-- Entwicklungsstand; Pakete setzen die Version beim Publish (build/pack.py: -p:Version=<x.y.z>). -->
+    <Version>0.1.0</Version>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia" />
@@ -13,6 +15,7 @@
     <PackageReference Include="Avalonia.Themes.Fluent" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
     <PackageReference Include="PortAudioSharp2" />
+    <PackageReference Include="Velopack" />
   </ItemGroup>
   <ItemGroup>
     <AvaloniaResource Include="Assets/**" />
