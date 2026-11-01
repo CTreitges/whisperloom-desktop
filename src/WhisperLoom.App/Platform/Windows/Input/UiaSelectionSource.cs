@@ -17,6 +17,9 @@ internal sealed class UiaSelectionSource : ISelectionTextSource
 {
     private const int TextPatternId = 10014;
 
+    // Doku: learn.microsoft.com/windows/win32/winauto/uiauto-automation-element-propids (UIA_IsPasswordPropertyId, abgerufen 2026-11-01).
+    private const int IsPasswordPropertyId = 30019;
+
     /// <summary>Obergrenze je Bereich; mehr verarbeitet niemand am Stück, und der Speicher bleibt begrenzt.</summary>
     public const int MaxChars = 200_000;
 
@@ -31,6 +34,12 @@ internal sealed class UiaSelectionSource : ISelectionTextSource
                 return null;
             }
             com.Add(element);
+            // W2-FIX V-3: Passwortfeld vor jedem Lesen ausschließen, auch wenn die Fokus-Prüfung davor „unbekannt“ meldete
+            // (eigenes Passwort-Control mit TextPattern). Der Leser bricht dann ab, ohne Strg+C.
+            if (element.GetCurrentPropertyValue(IsPasswordPropertyId, out var password) == 0 && password is true)
+            {
+                return new UiaSelection(HasTextPattern: false, "", IsPassword: true);
+            }
             if (element.GetCurrentPattern(TextPatternId, out var pattern) != 0 || pattern is not IUIAutomationTextPattern text)
             {
                 return new UiaSelection(HasTextPattern: false, "");
@@ -108,7 +117,8 @@ internal sealed class UiaSelectionSource : ISelectionTextSource
 
         void BuildUpdatedCache();
 
-        void GetCurrentPropertyValue();
+        [PreserveSig]
+        int GetCurrentPropertyValue(int propertyId, [MarshalAs(UnmanagedType.Struct)] out object? value);
 
         void GetCurrentPropertyValueEx();
 

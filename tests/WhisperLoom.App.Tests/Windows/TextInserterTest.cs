@@ -33,14 +33,78 @@ public class TextInserterTest
     }
 
     [Fact]
-    public async Task Report_flags_a_different_foreground_window()
+    public async Task N5_different_foreground_window_before_sending_goes_to_the_clipboard()
     {
-        // Activate meldet Erfolg, beim Senden ist aber ein anderes Fenster vorn (Wettlauf mit dem Nutzer).
+        // Activate meldet Erfolg, beim Senden ist aber ein anderes Fenster vorn (Wettlauf mit dem Nutzer, W2-FIX N-5).
         _rig.Windows.Alive.Add(7);
-        var inserter = new TextInserter(_rig.Clipboard, _rig.Keys, new SwitchingWindows(_rig.Windows, 7), TimeSpan.Zero);
-        await inserter.InsertAsync(42, "x", InsertMode.Paste, false, CancellationToken.None);
-        Assert.False(inserter.LastReport!.SameTarget);
-        Assert.Equal("proc-7", inserter.LastReport.Process);
+        var inserter = new TextInserter(_rig.Clipboard, _rig.Keys, new SwitchingWindows(_rig.Windows, 7), TimeSpan.Zero, copyDelay: _ => Task.CompletedTask);
+        Assert.Equal(InsertOutcome.NotForeground, await inserter.InsertAsync(42, "x", InsertMode.Paste, false, CancellationToken.None));
+        Assert.Equal(InsertOutcome.NotForeground, await inserter.InsertAsync(42, "y", InsertMode.Type, false, CancellationToken.None));
+        Assert.DoesNotContain("ctrl-v", _rig.Steps);
+        Assert.DoesNotContain("type", _rig.Steps);
+        Assert.Null(inserter.LastReport);
+        Assert.Equal("y", _rig.Clipboard.Text);
+    }
+
+    [Fact]
+    public async Task N5_window_switch_during_the_focus_check_is_caught_before_ctrl_v()
+    {
+        _rig.Windows.Alive.Add(7);
+        _rig.Focus.OnProbe = () => _rig.Windows.Current = 7; // Nutzer klickt während der UIA-Abfrage woanders hin
+        Assert.Equal(InsertOutcome.NotForeground, await _rig.Inserter.InsertAsync(42, "x", InsertMode.Paste, false, CancellationToken.None));
+        Assert.DoesNotContain("ctrl-v", _rig.Steps);
+        Assert.Equal("x", _rig.Clipboard.Text);
+    }
+
+    [Fact]
+    public async Task M4_guard_never_activates_and_needs_the_same_window()
+    {
+        _rig.Windows.Alive.Add(7);
+        _rig.Windows.Current = 7; // Nutzer ist inzwischen in einem anderen Programm
+        Assert.Equal(InsertOutcome.NotForeground,
+            await _rig.Inserter.InsertAsync(42, "x", InsertMode.Paste, false, CancellationToken.None, guard: new InsertGuard("el-1")));
+        Assert.DoesNotContain("activate", _rig.Steps);
+        Assert.DoesNotContain("ctrl-v", _rig.Steps);
+        Assert.Equal("x", _rig.Clipboard.Text);
+    }
+
+    [Fact]
+    public async Task M4_guard_needs_the_same_focused_element()
+    {
+        _rig.Focus.Element = "el-2"; // gleiches Fenster, anderer Chat-Entwurf
+        Assert.Equal(InsertOutcome.NotForeground,
+            await _rig.Inserter.InsertAsync(42, "x", InsertMode.Paste, false, CancellationToken.None, guard: new InsertGuard("el-1")));
+        Assert.DoesNotContain("ctrl-v", _rig.Steps);
+
+        _rig.Focus.Element = null; // Element nicht mehr bestimmbar: lieber Zwischenablage
+        Assert.Equal(InsertOutcome.NotForeground,
+            await _rig.Inserter.InsertAsync(42, "x", InsertMode.Paste, false, CancellationToken.None, guard: new InsertGuard("el-1")));
+
+        _rig.Focus.Element = "el-1";
+        Assert.Equal(InsertOutcome.Pasted,
+            await _rig.Inserter.InsertAsync(42, "x", InsertMode.Paste, false, CancellationToken.None, guard: new InsertGuard("el-1")));
+        Assert.DoesNotContain("activate", _rig.Steps);
+        Assert.Equal("x", _rig.Keys.Target);
+    }
+
+    [Fact]
+    public async Task M4_guard_without_known_element_checks_only_the_window()
+    {
+        _rig.Focus.Element = "el-9";
+        Assert.Equal(InsertOutcome.Pasted,
+            await _rig.Inserter.InsertAsync(42, "x", InsertMode.Paste, false, CancellationToken.None, guard: new InsertGuard(null)));
+        Assert.DoesNotContain("activate", _rig.Steps);
+    }
+
+    [Fact]
+    public async Task M4_element_switch_during_the_check_is_caught_before_sending()
+    {
+        // Erste Element-Abfrage stimmt, während der Fokus-Prüfung wechselt der Nutzer den Entwurf.
+        _rig.Focus.Element = "el-1";
+        _rig.Focus.OnProbe = () => _rig.Focus.Element = "el-2";
+        Assert.Equal(InsertOutcome.NotForeground,
+            await _rig.Inserter.InsertAsync(42, "x", InsertMode.Paste, false, CancellationToken.None, guard: new InsertGuard("el-1")));
+        Assert.DoesNotContain("ctrl-v", _rig.Steps);
     }
 
     [Fact]

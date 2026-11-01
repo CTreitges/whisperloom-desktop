@@ -19,6 +19,7 @@ public sealed class InsertOutputSink(IOutputSink inner, TextInserter inserter, F
     private bool _keepCopy;
     private bool _trailingSpace;
     private bool _leadingSpace;
+    private InsertGuard? _guard;
 
     public string Kind => inner.Kind;
 
@@ -45,9 +46,11 @@ public sealed class InsertOutputSink(IOutputSink inner, TextInserter inserter, F
     /// <param name="keepCopy">Text auf jeden Fall auch in der Zwischenablage lassen (Tray-Verlauf); sonst <c>output.alwaysCopy</c>.</param>
     /// <param name="trailingSpace">Leerzeichen anhängen (<c>polish.trailingSpace</c>, nur Diktate, wie Android).</param>
     /// <param name="leadingSpace">Leerzeichen davor, wenn direkt an ein Wort angefügt wird (nur Diktate, wie Android).</param>
+    /// <param name="guard">Markierung ersetzen: nur ins unveränderte Ziel, ohne es zu holen (W2-FIX M-4).</param>
     public void Arm(IntPtr target, bool? pressEnter = null, InsertMode? mode = null, bool keepCopy = false, bool trailingSpace = false,
-        bool leadingSpace = false)
+        bool leadingSpace = false, InsertGuard? guard = null)
     {
+        _guard = guard;
         _leadingSpace = leadingSpace;
         _keepCopy = keepCopy;
         _trailingSpace = trailingSpace;
@@ -74,7 +77,7 @@ public sealed class InsertOutputSink(IOutputSink inner, TextInserter inserter, F
         _armed = false;
         var settings = output?.Invoke();
         var outcome = await inserter.InsertAsync(
-            _target, Core.Output.OutputDecision.WithTrailingSpace(text, _trailingSpace), _mode ?? mode(), EffectivePressEnter(_pressEnter, settings), ct, _keepCopy || (settings?.AlwaysCopy ?? false), _leadingSpace).ConfigureAwait(false);
+            _target, Core.Output.OutputDecision.WithTrailingSpace(text, _trailingSpace), _mode ?? mode(), EffectivePressEnter(_pressEnter, settings), ct, _keepCopy || (settings?.AlwaysCopy ?? false), _leadingSpace, _guard).ConfigureAwait(false);
         LastOutcome = outcome;
         LastWasPrivate = outcome == InsertOutcome.PasswordField;
         Inserted?.Invoke(outcome);

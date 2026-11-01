@@ -7,7 +7,8 @@ namespace WhisperLoom.App.Platform.Windows.Input;
 /// <param name="ValueAvailable">ValuePattern vorhanden.</param>
 /// <param name="ValueReadOnly">ValuePattern meldet „nur lesen“.</param>
 /// <param name="ProcessId">Prozess des Elements (0 = unbekannt).</param>
-public sealed record FocusInfo(int ControlType, bool IsPassword, bool ValueAvailable, bool ValueReadOnly, int ProcessId = 0);
+/// <param name="ElementId">UIA-RuntimeId des Elements als Text (W2-FIX M-4: gleiches Element?); null = unbekannt.</param>
+public sealed record FocusInfo(int ControlType, bool IsPassword, bool ValueAvailable, bool ValueReadOnly, int ProcessId = 0, string? ElementId = null);
 
 /// <summary>Quelle des fokussierten Elements. Windows: <see cref="UiaFocusSource"/>; Tests: Fake.</summary>
 public interface IFocusSource
@@ -20,6 +21,9 @@ public interface IFocusSource
 public interface IFocusProbe
 {
     Task<FocusKind> ProbeAsync(CancellationToken ct);
+
+    /// <summary>Kennung des fokussierten Elements (UIA-RuntimeId), nie Inhalt; null = unbekannt (W2-FIX M-4).</summary>
+    Task<string?> FocusedElementAsync(CancellationToken ct) => Task.FromResult<string?>(null);
 }
 
 /// <summary>Linux und Tests ohne Fokus-Abfrage: immer unbekannt.</summary>
@@ -64,6 +68,19 @@ public sealed class FocusProbe(IFocusSource source, TimeSpan? timeout = null, IF
         var kind = Classify(info);
         Last = (kind, info?.ControlType ?? 0);
         return kind;
+    }
+
+    /// <summary>RuntimeId des fokussierten Elements (nur UIA, MSAA kennt keine); Zeitgrenze oder Fehler = null.</summary>
+    public async Task<string?> FocusedElementAsync(CancellationToken ct)
+    {
+        try
+        {
+            return await Task.Run(() => Query(source)?.ElementId, ct).WaitAsync(Timeout, ct).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            return null;
+        }
     }
 
     /// <summary>MSAA-Rolle/Zustand → UIA-Begriffe für <see cref="FocusProbe.Classify"/>.</summary>
