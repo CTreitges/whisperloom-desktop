@@ -20,6 +20,13 @@ public sealed record ProvisioningPlan(
 {
     public bool CanApply => Settings is not null && Errors.Count == 0;
 
+    /// <summary>
+    /// Keys eigener Anbieter (<c>custom:&lt;id&gt;</c>), die der Aufrufer vor dem Speichern löscht: Die Datei ändert den Host
+    /// des Eintrags oder entfernt ihn und liefert keinen neuen Key dafür (W2-LOCAL Prüfrunde 2 R-K1-1). Nicht gespeicherte
+    /// Namen zu löschen schadet nicht.
+    /// </summary>
+    public IReadOnlyList<KeyDrop> DroppedKeys { get; init; } = [];
+
     /// <summary>Kurzbericht ohne Werte: geänderte Pfade, gesetzte Zugänge, Sperren.</summary>
     public IEnumerable<string> Summary()
     {
@@ -30,6 +37,10 @@ public sealed record ProvisioningPlan(
         foreach (var name in Secrets.Keys.Order(StringComparer.Ordinal))
         {
             yield return $"key {name}";
+        }
+        foreach (var drop in DroppedKeys)
+        {
+            yield return $"key-drop {drop.Name}";
         }
         foreach (var path in Policy.Locked)
         {
@@ -62,7 +73,9 @@ public sealed record ProvisioningPlan(
 /// </summary>
 public static class Provisioning
 {
-    public static ProvisioningPlan Plan(WhisperLoomSettings current, SyncDocument file)
+    /// <param name="storedKeys">Gespeicherte Key-Namen (für genaue Warnungen); null = alle Einträge vorher und nachher als
+    /// möglicherweise gespeichert ansehen (z. B. Server-Konfiguration ohne Zugriff auf die Ablage).</param>
+    public static ProvisioningPlan Plan(WhisperLoomSettings current, SyncDocument file, IReadOnlyCollection<string>? storedKeys = null)
     {
         var errors = new List<string>();
         var warnings = new List<string>();
@@ -99,7 +112,9 @@ public static class Provisioning
         }
         foreach (var id in policy.AllowedProviders ?? [])
         {
-            if (ProviderCatalog.Find(id) is null)
+            // W2: „local“ und Einträge „custom:<id>“/„local:<name>“ sind ebenfalls gültige Freigaben.
+            if (ProviderCatalog.Find(id) is null && id != "local" && !SecretNames.IsProviderKey(id) &&
+                !(id.StartsWith(LocalServerSource.LocalPrefix, StringComparison.Ordinal) && id.Length > LocalServerSource.LocalPrefix.Length))
             {
                 errors.Add($"policy.allowedProviders: Anbieter unbekannt: {id}");
             }
@@ -110,7 +125,24 @@ public static class Provisioning
         {
             policy = policy with { Locked = [.. policy.Locked, .. secrets.Keys.Order(StringComparer.Ordinal).Select(n => "secrets." + n)] };
         }
-        return new ProvisioningPlan(errors.Count == 0 ? preview.Settings : null, secrets, policy, preview.Changes, errors, warnings);
+        var drops = preview.Settings is null ? [] : ProviderKeyDrops(current, preview.Settings, file, secrets, storedKeys);
+        warnings.AddRange(drops.Select(d => d.EntryRemoved
+            ? $"secrets.{d.Name}: Eintrag entfernt, gespeicherter Key wird gelöscht"
+            : $"secrets.{d.Name}: Adresse geändert ({d.Target}), gespeicherter Key wird gelöscht"));
+        return new ProvisioningPlan(errors.Count == 0 ? preview.Settings : null, secrets, policy, preview.Changes, errors, warnings) { DroppedKeys = drops };
+    }
+
+    /// <summary>
+    /// Wie beim Import (<see cref="KeyRoutes.Dropped"/>), aber nur für Keys eigener Anbieter: Host-Wechsel oder entfernter
+    /// Eintrag → Key löschen, außer die Datei liefert ihn selbst (<c>secrets."custom:&lt;id&gt;"</c>).
+    /// </summary>
+    private static List<KeyDrop> ProviderKeyDrops(
+        WhisperLoomSettings current, WhisperLoomSettings after, SyncDocument file, IReadOnlyDictionary<string, string> secrets, IReadOnlyCollection<string>? storedKeys)
+    {
+        var candidates = storedKeys?.Where(SecretNames.IsProviderKey).ToList()
+            ?? [.. current.Providers.Custom.Select(c => ProvidersSettings.CustomPrefix + c.Id).Concat(SyncImport.ProviderKeyNames(file))
+                .Where(SecretNames.IsProviderKey).Distinct(StringComparer.Ordinal)];
+        return [.. KeyRoutes.Dropped(current, after, candidates).Where(d => SecretNames.IsProviderKey(d.Name) && !secrets.ContainsKey(d.Name))];
     }
 
     private static Dictionary<string, string> MapSecrets(WhisperLoomSettings s, IReadOnlyDictionary<string, string> secrets, List<string> errors, List<string> warnings)
@@ -123,7 +155,19 @@ public static class Provisioning
             (SecretNames.Llm, s.Llm.ProviderId), // "same" passt zu keinem Anbieter: nutzt den Key der Erkennung.
             (SecretNames.LlmFallback, s.LlmFallback.ProviderId),
         };
-        foreach (var (name, key) in secrets.Where(e => !SecretNames.All.Contains(e.Key)))
+        // W2: Key eines eigenen Anbieters („custom:<id>“) gehört zum Eintrag, nicht zu einem Zugang.
+        foreach (var (name, key) in secrets.Where(e => SecretNames.IsProviderKey(e.Key)))
+        {
+            if (s.Providers.Custom.Any(c => ProvidersSettings.CustomPrefix + c.Id == name))
+            {
+                byAccess[name] = key;
+            }
+            else
+            {
+                errors.Add($"secrets.{name}: kein Eintrag in providers.custom");
+            }
+        }
+        foreach (var (name, key) in secrets.Where(e => !SecretNames.All.Contains(e.Key) && !SecretNames.IsProviderKey(e.Key)))
         {
             if (ProviderCatalog.Find(name) is null)
             {
@@ -175,7 +219,7 @@ public static class Provisioning
         }
         if (path.StartsWith("secrets.", StringComparison.Ordinal))
         {
-            return SecretNames.All.Contains(path["secrets.".Length..]);
+            return SecretNames.All.Contains(path["secrets.".Length..]) || SecretNames.IsProviderKey(path["secrets.".Length..]);
         }
         var leaves = SyncTree.Leaves(SyncImport.Tree(new WhisperLoomSettings())).Keys;
         return leaves.Any(l => l == path || l.StartsWith(path + ".", StringComparison.Ordinal));

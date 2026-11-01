@@ -141,6 +141,11 @@ public sealed partial class KeyFieldViewModel : ObservableObject
             Status = Loc.Instance["Access_Policy"];
             return;
         }
+        // W2: Ein Eintrag (custom:/local:) bekommt nur seinen eigenen Key, nie den Key eines Zugangs.
+        if (providerId.Contains(':', StringComparison.Ordinal) && Name != SecretNames.ForProvider(providerId))
+        {
+            key = null;
+        }
         var result = await _checker.CheckAsync(providerId, baseUrl, key, CancellationToken.None);
         Status = result.StatusCode is { } code
             ? $"{Loc.Instance[result.MessageKey]} (HTTP {code})"

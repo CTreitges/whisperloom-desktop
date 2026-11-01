@@ -8,8 +8,9 @@ using WhisperLoom.Core.Pipeline;
 namespace WhisperLoom.App.Platform.Sidecar;
 
 /// <summary>
-/// Die lokalen Teile einer App-Instanz: Erkennung über den Begleitprozess und Textverbesserung über Ollama, dazu die
-/// HTTP-Clients (Downloads mit Proxy der Einstellungen, Ollama ohne Proxy auf 127.0.0.1).
+/// Die lokalen Teile einer App-Instanz: Erkennung über den Begleitprozess und Textverbesserung nach <c>local.textEngine</c>
+/// (Ollama, mitgeliefertes Modell, lokaler Server; <see cref="Text"/>), dazu die HTTP-Clients (Downloads mit Proxy der
+/// Einstellungen, Ollama und lokale Server ohne Proxy).
 /// </summary>
 public sealed class LocalParts : IAsyncDisposable
 {
@@ -22,13 +23,27 @@ public sealed class LocalParts : IAsyncDisposable
         _download = DownloadClient(desktop);
         _ollamaHttp = Http.CreateClient(new HttpProxyOptions(ProxyMode.None));
         Stt = new LocalStt(Bench.LocalDir(options), settings, _download, CoreText.VocabularyPrompt);
-        Refiner = new OllamaLocalRefiner(_ollamaHttp, () => LocalSettings.Of(settings()).OllamaModel, CoreText.Prompts, TextCleanup.For(CoreText.Polisher),
+        var cleanup = TextCleanup.For(CoreText.Polisher);
+        Refiner = new OllamaLocalRefiner(_ollamaHttp, () => LocalSettings.Of(settings()).OllamaModel, CoreText.Prompts, cleanup,
             () => LocalSettings.Of(settings()).OllamaUrl);
+        Bundled = new BundledTextEngine(Bench.LocalDir(options), settings, CoreText.Prompts, cleanup, _download, options.TestTextModel);
+        Server = new LocalServerRefiner(_ollamaHttp, () => LocalTextEngine.TextServer(LocalSettings.Of(settings())), CoreText.Prompts, cleanup);
+        Text = new LocalTextEngine(Refiner, Bundled, Server, settings);
     }
 
     public LocalStt Stt { get; }
 
+    /// <summary>Ollama (<c>local.textEngine = "ollama"</c>).</summary>
     public OllamaLocalRefiner Refiner { get; }
+
+    /// <summary>Mitgeliefertes Textmodell (<c>"bundled"</c>).</summary>
+    public BundledTextEngine Bundled { get; }
+
+    /// <summary>Lokaler OpenAI-kompatibler Text-Server (<c>"server"</c>).</summary>
+    public LocalServerRefiner Server { get; }
+
+    /// <summary>Die lokale Textverbesserung nach <c>local.textEngine</c> (für die Pipeline).</summary>
+    public LocalTextEngine Text { get; }
 
     /// <summary>Client für Downloads (Hugging Face, GitHub-Release): folgt Weiterleitungen, Proxy der Einstellungen.</summary>
     public HttpClient Download => _download;
@@ -51,6 +66,7 @@ public sealed class LocalParts : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         await Stt.DisposeAsync().ConfigureAwait(false);
+        await Bundled.DisposeAsync().ConfigureAwait(false);
         _download.Dispose();
         _ollamaHttp.Dispose();
     }

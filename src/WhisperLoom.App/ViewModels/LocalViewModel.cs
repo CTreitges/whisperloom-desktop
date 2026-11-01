@@ -19,6 +19,11 @@ public sealed partial class LocalModelViewModel(OfflineModel model, LocalParts? 
 
     public bool Installed => parts?.Stt.Models.IsInstalled(Model) == true;
 
+    /// <summary>Screenreader-Namen: sichtbares Verb zuerst, dann der Eintrag (WCAG 2.5.3).</summary>
+    public string DownloadName => Loc.Instance.Format("A11y_ItemAction", Loc.Instance["Local_Download"], Model.Label);
+
+    public string DeleteName => Loc.Instance.Format("A11y_ItemAction", Loc.Instance["Local_Delete"], Model.Label);
+
     [ObservableProperty] private string _status = "";
 
     /// <summary>Lädt das Modell (Range-Fortsetzung, SHA256) und, falls nötig, den Begleitprozess.</summary>
@@ -113,19 +118,21 @@ public sealed partial class LocalViewModel : ObservableObject
         Backends = [new Choice("auto", loc["Local_BackendAuto"]), new Choice("cpu", loc["Local_BackendCpu"])];
         Rules = [.. new[] { "local", "online_local", "skip" }.Select(r => new Choice(r, loc["Local_Rule_" + r]))];
         Models = [.. ModelCatalog.Models.Select(m => new LocalModelViewModel(m, parts))];
-        ModelChoices = [.. ModelCatalog.Models.Select(m => new Choice(m.Id, m.Label))];
+        FillModelChoices();
         _engine = Pick(Engines, settings.Engine ?? "online");
         _backend = Pick(Backends, _local.Backend);
         _rule = Pick(Rules, settings.Offline.Refine);
-        _selectedModel = Pick(ModelChoices, ModelCatalog.ById(settings.Offline.Model).Id);
+        // Eigene Datei bleibt gewählt (custom:<name>); unbekannte Katalog-ID gilt als Small.
+        _selectedModel = ModelChoices.FirstOrDefault(c => c.Value == settings.Offline.Model) ?? Pick(ModelChoices, ModelCatalog.ById(settings.Offline.Model).Id);
         _ollamaModel = _local.OllamaModel;
         if (_ollamaModel.Length > 0) OllamaModels.Add(_ollamaModel);
+        InitEntries();
     }
 
     public IReadOnlyList<Choice> Engines { get; }
     public IReadOnlyList<Choice> Backends { get; }
     public IReadOnlyList<Choice> Rules { get; }
-    public IReadOnlyList<Choice> ModelChoices { get; }
+    public System.Collections.ObjectModel.ObservableCollection<Choice> ModelChoices { get; } = [];
     public IReadOnlyList<LocalModelViewModel> Models { get; }
     public ObservableCollection<string> OllamaModels { get; } = [];
 
@@ -205,10 +212,11 @@ public sealed partial class LocalViewModel : ObservableObject
     public void Apply()
     {
         _s.Engine = Engine.Value;
-        _s.Offline.Model = SelectedModel.Value;
+        _s.Offline.Model = SelectedModel?.Value ?? _s.Offline.Model;
         _s.Offline.Refine = Rule.Value;
         _local.Backend = Backend.Value;
         _local.OllamaModel = (OllamaModel ?? "").Trim();
+        ApplyEntries();
         LocalSettings.Set(_s, _local);
     }
 

@@ -5,7 +5,9 @@ using WhisperLoom.Core.Contracts.Settings;
 namespace WhisperLoom.Core.Pipeline;
 
 /// <summary>Die vier Keys eines Auftrags aus dem <see cref="ISecretStore"/>; "" = keiner. <see cref="ToString"/> ohne Werte.</summary>
-public sealed record AccessKeys(string Stt = "", string SttFallback = "", string Llm = "", string LlmFallback = "")
+/// <param name="Providers">W2: Keys der eigenen Anbieter, Name = Anbieter-ID (<see cref="SecretNames.ForProvider"/>); null = keine.</param>
+public sealed record AccessKeys(string Stt = "", string SttFallback = "", string Llm = "", string LlmFallback = "",
+    IReadOnlyDictionary<string, string>? Providers = null)
 {
     public override string ToString() => "AccessKeys(…)";
 }
@@ -51,31 +53,49 @@ public static class SettingsAccess
     public static string LlmModelFor(WhisperLoomSettings s, RefineMode? mode) =>
         mode?.ModelStage() is { } stage ? s.Llm.StageModels.GetValueOrDefault(stage.Key()) ?? "" : "";
 
+    /// <summary>Katalog, eigene Anbieter und lokale Server dieser Einstellungen mit den Keys der Einträge.</summary>
+    public static ProviderDirectory Providers(WhisperLoomSettings s, AccessKeys keys) =>
+        ProviderDirectory.For(s).WithKeys(keys.Providers ?? new Dictionary<string, string>());
+
     public static ApiAccess Stt(WhisperLoomSettings s, AccessKeys keys, IServerModelLookup? lookup = null) =>
-        AccessResolver.ResolveStt(s.Stt.ProviderId, s.Stt.BaseUrl, keys.Stt, s.Stt.Model, s.Stt.ReadTimeoutSec, lookup);
+        AccessResolver.ResolveStt(s.Stt.ProviderId, s.Stt.BaseUrl, keys.Stt, s.Stt.Model, s.Stt.ReadTimeoutSec, lookup, Providers(s, keys));
 
     /// <summary>Zugang der Textverbesserung; mit <paramref name="mode"/> gilt das Modell dieser Stufe.</summary>
     public static ApiAccess Llm(WhisperLoomSettings s, AccessKeys keys, IServerModelLookup? lookup = null, RefineMode? mode = null) =>
         AccessResolver.ResolveLlm(Stt(s, keys, lookup), s.Llm.ProviderId, s.Llm.BaseUrl, keys.Llm, s.Llm.Model, lookup,
-            sttOffline: EngineOf(s) == Engine.Offline, stageModel: LlmModelFor(s, mode), stage: mode);
+            sttOffline: EngineOf(s) == Engine.Offline, stageModel: LlmModelFor(s, mode), stage: mode, providers: Providers(s, keys));
 
     /// <summary>Fallback der Erkennung; null = Schalter aus. Bereit: <see cref="SetupState.SttFallbackReady"/>.</summary>
     public static ApiAccess? SttFallback(WhisperLoomSettings s, AccessKeys keys, IServerModelLookup? lookup = null) =>
         !s.SttFallback.Enabled
             ? null
             : AccessResolver.ResolveSttFallback(Stt(s, keys, lookup), s.SttFallback.ProviderId, s.SttFallback.BaseUrl, keys.SttFallback,
-                s.SttFallback.Model, lookup);
+                s.SttFallback.Model, lookup, Providers(s, keys));
 
     /// <summary>Fallback der Textverbesserung für die Stufe von <paramref name="mode"/>; null = Schalter aus.</summary>
     public static ApiAccess? LlmFallback(WhisperLoomSettings s, AccessKeys keys, IServerModelLookup? lookup = null, RefineMode? mode = null) =>
         !s.LlmFallback.Enabled
             ? null
             : AccessResolver.ResolveLlmFallback(Stt(s, keys, lookup), Llm(s, keys, lookup, mode), s.LlmFallback.ProviderId,
-                s.LlmFallback.BaseUrl, keys.LlmFallback, s.LlmFallback.Model, lookup, EngineOf(s) == Engine.Offline, mode);
+                s.LlmFallback.BaseUrl, keys.LlmFallback, s.LlmFallback.Model, lookup, EngineOf(s) == Engine.Offline, mode, Providers(s, keys));
 
-    public static async Task<AccessKeys> KeysAsync(ISecretStore secrets, CancellationToken ct) => new(
-        await secrets.GetAsync(SecretNames.Stt, ct).ConfigureAwait(false) ?? "",
-        await secrets.GetAsync(SecretNames.SttFallback, ct).ConfigureAwait(false) ?? "",
-        await secrets.GetAsync(SecretNames.Llm, ct).ConfigureAwait(false) ?? "",
-        await secrets.GetAsync(SecretNames.LlmFallback, ct).ConfigureAwait(false) ?? "");
+    /// <summary>Die vier Zugangs-Keys; mit <paramref name="settings"/> auch die Keys der eigenen Anbieter.</summary>
+    public static async Task<AccessKeys> KeysAsync(ISecretStore secrets, CancellationToken ct, WhisperLoomSettings? settings = null)
+    {
+        var providers = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var entry in settings?.Providers.Custom ?? [])
+        {
+            var name = SecretNames.ForProvider(ProvidersSettings.CustomPrefix + entry.Id);
+            if (SecretNames.IsProviderKey(name) && await secrets.GetAsync(name, ct).ConfigureAwait(false) is { Length: > 0 } key)
+            {
+                providers[name] = key;
+            }
+        }
+        return new(
+            await secrets.GetAsync(SecretNames.Stt, ct).ConfigureAwait(false) ?? "",
+            await secrets.GetAsync(SecretNames.SttFallback, ct).ConfigureAwait(false) ?? "",
+            await secrets.GetAsync(SecretNames.Llm, ct).ConfigureAwait(false) ?? "",
+            await secrets.GetAsync(SecretNames.LlmFallback, ct).ConfigureAwait(false) ?? "",
+            providers);
+    }
 }

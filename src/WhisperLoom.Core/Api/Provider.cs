@@ -7,18 +7,28 @@ public static class ProviderExtensions
 {
     extension(ProviderInfo p)
     {
-        public bool IsCustom => p.Id == ProviderCatalog.CustomId;
+        /// <summary>Katalog-ID, deren Regeln gelten (Modell-Listen, Heuristiken): <see cref="ProviderInfo.Family"/> bzw. die ID.</summary>
+        public string Rules => string.IsNullOrEmpty(p.Family) ? p.Id : p.Family;
+
+        /// <summary>Eintrag außerhalb des Katalogs (eigener Anbieter, lokaler Server): Adresse fest, Fähigkeit über die Listen.</summary>
+        public bool IsEntry => !string.IsNullOrEmpty(p.Family);
+
+        /// <summary>OpenAI-kompatibler eigener Server (Katalog „custom“ oder ein Eintrag mit diesen Regeln).</summary>
+        public bool IsCustom => p.Rules == ProviderCatalog.CustomId;
 
         public bool IsOllama => p.Api == ApiStyle.Ollama;
 
         /// <summary>Der Nutzer trägt die Server-Adresse selbst ein (eigener Server, Ollama im Heimnetz).</summary>
-        public bool NeedsUrl => string.IsNullOrWhiteSpace(p.BaseUrl);
+        public bool NeedsUrl => string.IsNullOrWhiteSpace(p.BaseUrl) && !p.IsEntry;
 
-        /// <summary>Taugt für die Erkennung (eigener Server: Modell-ID frei). Ollama kann kein Audio.</summary>
-        public bool HasStt => p.IsCustom || p.SttModels is { Count: > 0 };
+        /// <summary>
+        /// Taugt für die Erkennung (eigener Server: Modell-ID frei). Ollama kann kein Audio. Einträge: Liste vorhanden
+        /// (auch leer = Modelle vom Server).
+        /// </summary>
+        public bool HasStt => p.IsEntry ? p.SttModels is not null : p.IsCustom || p.SttModels is { Count: > 0 };
 
         /// <summary>Taugt für die Textverbesserung. Ollama-Modelle kommen vom Server selbst (/api/tags).</summary>
-        public bool HasLlm => p.IsCustom || p.IsOllama || p.LlmModels is { Count: > 0 };
+        public bool HasLlm => p.IsEntry ? p.LlmModels is not null : p.IsCustom || p.IsOllama || p.LlmModels is { Count: > 0 };
 
         /// <summary>Erstes Modell der Liste = Empfehlung; "" beim eigenen Server.</summary>
         public string DefaultSttModel => p.SttModels is { Count: > 0 } m ? m[0].Id : "";

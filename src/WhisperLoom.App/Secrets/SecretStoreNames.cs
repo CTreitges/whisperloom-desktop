@@ -7,7 +7,7 @@ internal static class SecretStoreNames
 {
     public static void Check(string name)
     {
-        if (!SecretNames.All.Contains(name) && name != SecretNames.Device)
+        if (!SecretNames.All.Contains(name) && name != SecretNames.Device && !SecretNames.IsProviderKey(name))
         {
             throw new ArgumentException($"Unbekannter Key-Name: {name}", nameof(name));
         }
