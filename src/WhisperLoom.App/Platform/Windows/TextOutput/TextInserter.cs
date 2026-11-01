@@ -124,6 +124,16 @@ public sealed class TextInserter(
         }
         if (mode == InsertMode.ClipboardOnly)
         {
+            // „Nie Passwort“ gilt auch hier (Prüfung W2-OUT B2): ist das Ziel noch vorn, Fokus prüfen – ohne es zu aktivieren.
+            if (target != IntPtr.Zero && windows.Foreground() == target)
+            {
+                var focused = await (focus ?? UnknownFocusProbe.Instance).ProbeAsync(ct).ConfigureAwait(false);
+                LastFocus = focused;
+                if (focused == FocusKind.Password)
+                {
+                    return InsertOutcome.PasswordField;
+                }
+            }
             await CopyAsync(text);
             return InsertOutcome.ClipboardOnly;
         }

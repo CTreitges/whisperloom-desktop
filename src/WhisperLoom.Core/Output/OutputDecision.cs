@@ -70,9 +70,10 @@ public static class OutputDecision
 
     /// <summary>
     /// Browser-Prozesse (ohne „.exe“, Vergleich ohne Groß-/Kleinschreibung). Sie melden ihren Webinhalt per UI Automation nur als
-    /// „Pane“ – ein Web-Passwortfeld ist dort nicht von einem Textfeld zu unterscheiden (Messung W2-OUT).
+    /// „Pane“ – ein Web-Passwortfeld ist dort nicht von einem Textfeld zu unterscheiden (Messung W2-OUT). Dazu
+    /// <c>msedgewebview2</c>: eingebettete Webinhalte (WebView2-Apps wie das neue Teams) melden sich genauso (Prüfung W2-OUT B3).
     /// </summary>
-    public static readonly IReadOnlyList<string> BrowserProcesses = ["chrome", "msedge", "firefox", "brave", "opera", "vivaldi"];
+    public static readonly IReadOnlyList<string> BrowserProcesses = ["chrome", "msedge", "firefox", "brave", "opera", "vivaldi", "msedgewebview2"];
 
     /// <summary>Ist der Prozess (z. B. "MSEDGE.EXE", "chrome") ein Browser aus <see cref="BrowserProcesses"/>?</summary>
     public static bool IsBrowser(string? process)

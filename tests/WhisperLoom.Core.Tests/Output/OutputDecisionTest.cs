@@ -83,6 +83,7 @@ public class OutputDecisionTest
     [InlineData("brave", true)]
     [InlineData("opera", true)]
     [InlineData("vivaldi.exe", true)]
+    [InlineData("msedgewebview2.exe", true)] // WebView2-Apps (neues Teams)
     [InlineData("notepad", false)]
     [InlineData("WINWORD.EXE", false)]
     [InlineData("", false)]
