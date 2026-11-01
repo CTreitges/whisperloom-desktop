@@ -9,6 +9,15 @@ from .fehler import FEHLER
 from .log import ereignis
 
 MAX_BODY = 64 * 1024
+# Proxy (docs/server-api.md §3.7): Audio bis 25 MiB plus Multipart-Rahmen, Text bis 1 MiB.
+GRENZEN = {
+    "/api/v1/proxy/audio/transcriptions": 25 * 1024 * 1024 + 64 * 1024,
+    "/api/v1/proxy/chat/completions": 1024 * 1024,
+}
+
+
+def grenze(pfad: str) -> int:
+    return GRENZEN.get(pfad, MAX_BODY)
 
 CSP = (
     "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; "
@@ -28,7 +37,7 @@ HEADER = [
 
 
 class SicherheitsMiddleware:
-    """Liest den Body vorab (höchstens MAX_BODY, auch ohne Content-Length) und ergänzt die Header jeder Antwort."""
+    """Liest den Body vorab (höchstens [grenze] je Pfad, auch ohne Content-Length) und ergänzt die Header jeder Antwort."""
 
     def __init__(self, app):
         self.app = app
@@ -39,7 +48,8 @@ class SicherheitsMiddleware:
             return
 
         laenge = dict(scope.get("headers", [])).get(b"content-length")
-        if laenge is not None and (not laenge.isdigit() or int(laenge) > MAX_BODY):
+        hoechstens = grenze(scope["path"])
+        if laenge is not None and (not laenge.isdigit() or int(laenge) > hoechstens):
             await self._zu_gross(scope, send)
             return
 
@@ -51,7 +61,7 @@ class SicherheitsMiddleware:
                 return  # Client hat abgebrochen
             teile.append(nachricht.get("body", b""))
             gelesen += len(teile[-1])
-            if gelesen > MAX_BODY:
+            if gelesen > hoechstens:
                 await self._zu_gross(scope, send)
                 return
             if not nachricht.get("more_body", False):

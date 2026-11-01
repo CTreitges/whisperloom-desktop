@@ -29,10 +29,11 @@ FIRMA_COOKIE = "wl_firma"
 PASSWORT_ARTEN = ("password", "password_totp")
 _LOKAL_ORIGIN = re.compile(r"^https?://(127\.0\.0\.1|localhost|\[::1\])(:\d{1,5})?$")
 
-# Navigation der Firmen-Seiten (W2-SRV2 hängt „Nutzung“ und „Budget“ an).
+# Navigation der Firmen-Seiten („Nutzung“ und „Budget“ seit W2-SRV2).
 NAVIGATION: list[tuple[str, str]] = [
     ("/", "uebersicht"), ("/geraete", "geraete"), ("/gruppen", "gruppen"), ("/richtlinie", "richtlinie"),
-    ("/schluessel", "schluessel"), ("/admins", "admins"), ("/firma", "firma"),
+    ("/schluessel", "schluessel"), ("/nutzung", "nutzung"), ("/budget", "budget"), ("/admins", "admins"),
+    ("/firma", "firma"),
 ]
 
 

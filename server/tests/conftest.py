@@ -4,14 +4,18 @@ Basis: whisperloom-android feat/simple-portal server/simple-whisper/tests/confte
 Alle Keys, Codes, Passwörter und TOTP-Geheimnisse hier sind Fake-Werte.
 """
 
+import importlib.util
+import io
+import ipaddress
 import re
+import wave
 from pathlib import Path
 
 import pytest
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
-from whisperloom_server import auth, cli, db, firmen, konten, krypto, totp
+from whisperloom_server import auth, cli, db, firmen, konten, krypto, schluessel, totp
 from whisperloom_server.app import create_app
 from whisperloom_server.config import Einstellungen, lade_master
 from whisperloom_server.krypto import Krypto
@@ -167,3 +171,80 @@ def alle_routen(routen) -> list[APIRoute]:
         elif getattr(r, "original_router", None) is not None:
             gefunden += alle_routen(r.original_router.routes)
     return gefunden
+
+
+# --- Proxy (W2-SRV2): Fake-Anbieter auf 127.0.0.1, Instanz mit Freigabe für Loopback (WL_UPSTREAM_ALLOW) ---
+
+_FAKE = Path(__file__).resolve().parents[1] / "tools" / "fake_upstream.py"
+_spec = importlib.util.spec_from_file_location("fake_upstream", _FAKE)
+fake_upstream = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(fake_upstream)
+FakeUpstream = fake_upstream.FakeUpstream
+FAKE_KEY_2 = "test-key-not-real-2"
+LOOPBACK = (ipaddress.ip_network("127.0.0.0/8"),)
+
+
+def wav(sekunden: float = 1.0, rate: int = 16_000) -> bytes:
+    puffer = io.BytesIO()
+    with wave.open(puffer, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(rate)
+        w.writeframes(b"\x00\x00" * int(sekunden * rate))
+    return puffer.getvalue()
+
+
+@pytest.fixture
+def pein(tmp_path: Path, uhr: Uhr) -> Einstellungen:
+    return neue_einst(tmp_path, uhr, upstream_erlaubt=LOOPBACK)
+
+
+@pytest.fixture
+def papp(pein):
+    return create_app(pein)
+
+
+@pytest.fixture
+def pclient(papp):
+    with TestClient(papp, base_url=BASIS) as c:
+        yield c
+
+
+@pytest.fixture
+def fake():
+    s = FakeUpstream(FAKE_KEY, "haupt").starten()
+    yield s
+    s.stoppen()
+
+
+@pytest.fixture
+def fake2():
+    s = FakeUpstream(FAKE_KEY_2, "ersatz").starten()
+    yield s
+    s.stoppen()
+
+
+def zugang(einst: Einstellungen, firma_id: str, name: str, anbieter: str, basis_url: str, key: str = FAKE_KEY,
+           modell: str = "") -> None:
+    con = db.verbinden(einst.db_pfad)
+    try:
+        schluessel.speichern(con, kry(einst), firma_id, name, anbieter, basis_url, key, 0, modell=modell)
+    finally:
+        con.close()
+
+
+def proxy_geraet(client: TestClient, einst: Einstellungen, slug: str = "muster", **firma) -> tuple[dict, dict]:
+    f = neue_firma(einst, slug, **{"key_modus": "proxy", **firma})
+    return f, freies_geraet(client, einst, f["code"])
+
+
+def stt(client: TestClient, token: str, daten: bytes | None = None, **felder):
+    werte = {"model": "whisper-x", "language": "de", "response_format": "json", **felder}
+    return client.post("/api/v1/proxy/audio/transcriptions", headers=bearer(token),
+                       files={"file": ("audio.wav", wav() if daten is None else daten, "audio/wav")}, data=werte)
+
+
+def chat(client: TestClient, token: str, text: str = "hallo welt", **extra):
+    body = {"model": "text-x", "messages": [{"role": "system", "content": "Glätte den Text."},
+                                            {"role": "user", "content": text}], "temperature": 0, **extra}
+    return client.post("/api/v1/proxy/chat/completions", headers=bearer(token), json=body)

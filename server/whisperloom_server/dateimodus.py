@@ -99,11 +99,13 @@ def _firma(con: sqlite3.Connection, kry: Krypto, t: dict, jetzt: int) -> str:
     _gruppen(con, kry, fid, t.get("groups") or [], wo, jetzt)
     con.execute("DELETE FROM schluessel WHERE firma_id = ?", (fid,))
     for name_, k in (t.get("keys") or {}).items():
-        if not isinstance(k, dict) or set(k) - {"provider", "baseUrl", "key"}:
-            raise DateiFehler(f"{wo}.keys.{name_}: {{provider, baseUrl, key}} erwartet")
+        if not isinstance(k, dict) or set(k) - {"provider", "baseUrl", "key", "model"}:
+            raise DateiFehler(f"{wo}.keys.{name_}: {{provider, baseUrl, key, model}} erwartet")
         try:
+            # key darf bei eigenen Servern (custom, ollama) fehlen; model legt das Modell des Proxys fest (W2-SRV2).
+            key = _env(k["key"], f"{wo}.keys.{name_}") if "key" in k else ""
             schluessel.speichern(con, kry, fid, str(name_), str(k.get("provider", name_)), str(k.get("baseUrl", "")),
-                                 _env(k.get("key"), f"{wo}.keys.{name_}"), jetzt)
+                                 key, jetzt, modell=str(k.get("model", "")))
         except schluessel.SchluesselFehler as ex:
             raise DateiFehler(f"{wo}.keys.{name_}: {ex}") from ex
     return fid
