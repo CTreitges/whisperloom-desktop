@@ -24,18 +24,21 @@ import re
 import sys
 import threading
 import urllib.error
+from collections import deque
 import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 DEFAULT_STT_TEXT = "This is a fake transcript."
+MAX_RECORDED = 500
 FAKE_HOST_SUFFIX = ".invalid"
 
 
 class State:
     def __init__(self) -> None:
         self.lock = threading.Lock()
-        self.requests: list[dict] = []
+        # Ringpuffer: als Dauerdienst (Demo-Instanz) wächst die Aufzeichnung sonst ohne Grenze.
+        self.requests: deque[dict] = deque(maxlen=MAX_RECORDED)
         self.fail: dict[str, dict] = {}
         self.stt_text = DEFAULT_STT_TEXT
         self.llm_text: str | None = None

@@ -26,6 +26,10 @@ class TemplateTest(unittest.TestCase):
         port = re.search(r"--host 127\.0\.0\.1 --port (\d+)", unit).group(1)
         self.assertIn(f"reverse_proxy 127.0.0.1:{port}", caddy)
         self.assertIn("import subsite", caddy)
+        # Caddy rechnet MB dezimal: Limit muss über der App-Grenze für Audio liegen (25 MiB + 64 KiB).
+        size = re.search(r"max_size (\d+)MiB", caddy)
+        self.assertIsNotNone(size, "max_size in MiB angeben")
+        self.assertGreaterEqual(int(size.group(1)) * 1024 * 1024, 25 * 1024 * 1024 + 64 * 1024)
         env = env_values()
         self.assertEqual("password_totp", env["WL_AUTH_MODES"])
         self.assertTrue(env["WL_BASE_URL"].startswith("https://whisperloom-admin."))
@@ -78,6 +82,98 @@ class WlAdminTest(unittest.TestCase):
     def test_arguments_and_env_reach_the_cli(self):
         r = self.run_wrapper("tenant-create", "s", "Smoke GmbH", "--show")
         self.assertEqual("password_totp|-m|whisperloom_server|tenant-create|s|Smoke GmbH|--show|", r.stdout, r.stderr)
+
+
+PY3_STUB = """#!/bin/sh
+case "$*" in
+  "-m venv "*) mkdir -p "$3/bin"; cp "$STUBS/venv-python" "$3/bin/python"; chmod 755 "$3/bin/python" ;;
+  *secrets*) echo "pw$(od -An -N6 -tx1 /dev/urandom | tr -d ' \\n')" ;;
+  *urandom*) echo 0000000000000000000000000000000000000000000000000000000000000000 ;;
+esac
+"""
+# Fake der Server-CLI: merkt sich Firmen, Admins (mit Passwort) und Keys in $HOME/state.
+VENV_STUB = """#!/bin/sh
+S="$HOME/state"; touch "$S"
+[ "$1" = "-m" ] && [ "$2" = "pip" ] && exit 0
+shift 2
+case "$1" in
+  init) echo bereit ;;
+  tenant-list) grep -q '^tenant demo$' "$S" && printf 'demo\\taktiv\\t0 Geräte\\tDemo GmbH\\n' || echo "(keine)" ;;
+  tenant-create) echo "tenant $2" >> "$S" ;;
+  key-set) read -r k; echo "key $2 $3" >> "$S"; echo ok ;;
+  instance-admin-create|admin-create)
+    [ "$1" = admin-create ] && u=$3 || u=$2
+    read -r pw
+    grep -q "^admin $u " "$S" && { echo "fehler: h.benutzer_vergeben" >&2; exit 1; }
+    [ "${FAIL_ON:-}" = "$u" ] && { echo "fehler: abbruch" >&2; exit 1; }
+    echo "admin $u $pw" >> "$S"; echo "Admin: $u" ;;
+esac
+"""
+
+
+@unittest.skipUnless(SH, "kein sh")
+class SetupDemoTest(unittest.TestCase):
+    """setup-demo.sh mit Stubs für python3, venv und systemctl: wiederholbar, Passwörter nur in der Datei."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.home = Path(self.tmp.name)
+        stubs = self.home / "stubs"
+        stubs.mkdir()
+        for name, text in (("python3", PY3_STUB), ("venv-python", VENV_STUB),
+                           ("systemctl", '#!/bin/sh\necho "systemctl $*" >> "$HOME/systemctl.log"\n'
+                                         '[ "$2" = is-active ] && echo active\nexit 0\n')):
+            (stubs / name).write_text(text, encoding="utf-8", newline="\n")
+            (stubs / name).chmod(0o755)
+        server = self.home / "whisperloom-admin" / "app" / "server"
+        shutil.copytree(DEPLOY, server / "deploy")
+        (server / "requirements.txt").write_text("", encoding="utf-8")
+        self.env = {**os.environ, "HOME": self.home.as_posix(), "STUBS": stubs.as_posix(),
+                    "PATH": stubs.as_posix() + os.pathsep + os.environ["PATH"]}
+        self.env.pop("WL_DEMO_BASE", None)
+        self.env.pop("WL_DEMO_CONF", None)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def setup(self, **env) -> subprocess.CompletedProcess:
+        script = (self.home / "whisperloom-admin" / "app" / "server" / "deploy" / "setup-demo.sh").as_posix()
+        return subprocess.run([SH, script], capture_output=True, text=True, env={**self.env, **env}, timeout=60)
+
+    def state(self) -> list[str]:
+        return (self.home / "state").read_text(encoding="utf-8").splitlines()
+
+    def initial(self) -> str:
+        return (self.home / ".config" / "whisperloom-admin" / "admin-initial.txt").read_text(encoding="utf-8")
+
+    def test_first_run_creates_everything_and_keeps_passwords_off_stdout(self):
+        r = self.setup()
+        self.assertEqual(0, r.returncode, r.stderr)
+        admins = {line.split()[1]: line.split()[2] for line in self.state() if line.startswith("admin ")}
+        self.assertEqual({"admin", "demo"}, set(admins))
+        for pw in admins.values():
+            self.assertIn(f" / {pw}", self.initial())
+            self.assertNotIn(pw, r.stdout + r.stderr)
+        self.assertEqual(["key demo stt", "key demo llm"], [s for s in self.state() if s.startswith("key ")])
+        env_text = (self.home / ".config" / "whisperloom-admin" / "env").read_text(encoding="utf-8")
+        # Git-Bash zeigt HOME als /tmp/… statt C:/…: nur prüfen, dass der Platzhalter ersetzt ist.
+        self.assertRegex(env_text, rf"\nWL_DATA_DIR=/\S*{re.escape(self.home.name)}/whisperloom-admin/data\n")
+        self.assertNotIn("@HOME@", env_text)
+        self.assertIn("enable --now whisperloom-admin-fake whisperloom-admin",
+                      (self.home / "systemctl.log").read_text(encoding="utf-8"))
+
+    def test_rerun_after_abort_uses_the_same_passwords_and_keeps_keys(self):
+        r = self.setup(FAIL_ON="demo")
+        self.assertNotEqual(0, r.returncode)
+        first = self.initial()
+        r = self.setup()
+        self.assertEqual(0, r.returncode, r.stderr)
+        self.assertEqual(first, self.initial())
+        admins = [line for line in self.state() if line.startswith("admin ")]
+        self.assertEqual(2, len(admins))
+        for line in admins:
+            self.assertIn(f" / {line.split()[2]}", first)
+        self.assertEqual(2, len([s for s in self.state() if s.startswith("key ")]), "Keys nicht erneut gesetzt")
 
 
 if __name__ == "__main__":

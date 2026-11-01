@@ -1,7 +1,7 @@
 """Suite enroll gegen eine laufende Instanz (W2-DEMO): --server <URL> --admin-cli "<Befehl>".
 
 --admin-cli ist der Befehl, der auf dem Server `python -m whisperloom_server` mit der Umgebung des Dienstes aufruft, für
-die Demo `ssh oracle-vps whisperloom-admin/bin/wl-admin` (server/deploy/wl-admin). Ist das erste Wort `ssh`, gehen die
+die Demo `ssh oracle-vps whisperloom-admin/app/server/deploy/wl-admin` (server/deploy/wl-admin). Ist das erste Wort `ssh`, gehen die
 Argumente shell-sicher als ein String an die entfernte Shell; sonst als einzelne Argumente. Der Wrapper der Demo kennt
 zusätzlich demo-fake-url, demo-fake-requests und demo-fake-reset für den Fake-Anbieter, der dort nur auf Loopback lauscht.
 
@@ -68,8 +68,9 @@ class RemoteServer(se.LocalServer):
                                                   se.NoRedirect)
 
     def cli(self, *args: str, stdin: str | None = None) -> str:
-        r = subprocess.run(admin_command(self.admin_cli, args), input=stdin.encode() if stdin is not None else None,
-                           capture_output=True, timeout=90)
+        # Ohne Eingabe stdin schließen: ssh liest sonst das Terminal des Aufrufers mit.
+        feed = {"input": stdin.encode()} if stdin is not None else {"stdin": subprocess.DEVNULL}
+        r = subprocess.run(admin_command(self.admin_cli, args), capture_output=True, timeout=90, **feed)
         if r.returncode != 0:
             raise RuntimeError(f"Admin-CLI {args[0]}: rc={r.returncode} {r.stderr.decode('utf-8', 'replace').strip()[:200]}")
         return r.stdout.decode("utf-8")

@@ -85,7 +85,8 @@ def ausfuehren(a: argparse.Namespace, einst: Einstellungen) -> str:
             if a.confirm != a.slug:
                 raise CliFehler("zum Löschen --confirm <slug> angeben")
             con.execute("DELETE FROM firma WHERE id = ?", (f["id"],))
-            firmen.protokoll(con, None, "cli", "firma_geloescht", f["id"], jetzt)
+            # Slug mit ins Audit: nach dem Löschen ist die ID allein nicht mehr zuzuordnen.
+            firmen.protokoll(con, None, "cli", "firma_geloescht", f"{a.slug} {f['id']}", jetzt)
             return "gelöscht"
         if a.befehl == "tenant-create":
             fid, code = firmen.anlegen(con, kry, a.slug, a.name, jetzt)

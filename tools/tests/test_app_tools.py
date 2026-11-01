@@ -160,6 +160,13 @@ class FakeApiHostTest(unittest.TestCase):
                 s.shutdown()
                 s.server_close()
 
+    def test_recording_is_bounded_for_long_running_demo(self):
+        state = fake_api.State()
+        for i in range(fake_api.MAX_RECORDED + 10):
+            state.record({"path": f"/{i}"})
+        self.assertEqual(fake_api.MAX_RECORDED, len(state.requests))
+        self.assertEqual("/10", state.requests[0]["path"])
+
     def test_network_addresses_are_rejected(self):
         for host in ("0.0.0.0", "::", "10.0.0.5", "fake-api.example"):
             with self.assertRaises(argparse.ArgumentTypeError, msg=host):

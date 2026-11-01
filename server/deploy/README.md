@@ -27,10 +27,13 @@ Zugangsdaten: `~/.config/whisperloom-admin/admin-initial.txt` (600). TOTP richte
 
 - Anmeldeart `password_totp`, Cookies `Secure`/`__Host-` über `WL_BASE_URL=https://…`, Header setzt die App.
 - `WL_TRUSTED_PROXIES=127.0.0.1/32`: nur Caddy liefert `X-Forwarded-For` (Rate-Limits je Client).
-- `WL_UPSTREAM_ALLOW=127.0.0.2/32`: Der Proxy darf von den internen Adressen nur den Fake erreichen. Auf `127.0.0.1`
-  lauschen andere Dienste (u. a. die Caddy-Admin-API); eine Freigabe für `127.0.0.1/32` würde sie für jeden
-  Firmen-Admin erreichbar machen. Dienste, die auf allen Adressen lauschen (`0.0.0.0`), sind auch über `127.0.0.2`
-  erreichbar; vor dem Freigeben `ss -tlnp` prüfen.
+- `WL_UPSTREAM_ALLOW=127.0.0.2/32`: Der Proxy darf von den internen Adressen nur `127.0.0.2` erreichen, wo der Fake
+  lauscht. Auf `127.0.0.1` lauschen andere Dienste (u. a. die Caddy-Admin-API); eine Freigabe für `127.0.0.1/32` würde
+  sie für jeden Firmen-Admin erreichbar machen.
+- **Grenze:** Die Freigabe gilt je IP für **alle Ports**, und über `#` bzw. `?` in der Basis-URL ist der Pfad frei
+  wählbar. Jeder Dienst, der auf allen Adressen lauscht (`0.0.0.0`/`*`, z. B. Dev-Server), ist damit für Firmen-Admins
+  per POST erreichbar. Vor Firmen-Admins, denen man nicht voll vertraut: solche Dienste auf `127.0.0.1` binden (`ss -tlnp`)
+  oder die Demo ohne Fake und ohne `WL_UPSTREAM_ALLOW` betreiben.
 - Hauptschlüssel außerhalb des Datenordners (`WL_MASTER_KEY_FILE`), ein Backup von `data/` enthält ihn nicht.
 
 ## Live-Smoke

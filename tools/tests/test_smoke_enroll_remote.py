@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import os
 import shlex
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -80,6 +81,27 @@ class RemoteFakeTest(unittest.TestCase):
         server.cli.return_value = "http://10.0.0.5:8100/v1"
         with self.assertRaises(RuntimeError):
             remote.RemoteFake(server).__enter__()
+
+
+class RemoteServerCliTest(unittest.TestCase):
+    def test_stdin_is_closed_without_input_and_fed_with_input(self):
+        live = remote.RemoteServer("https://wl.example", "ssh host wl", "T")
+        done = subprocess.CompletedProcess([], 0, b"ok", b"")
+        with mock.patch.object(remote.subprocess, "run", return_value=done) as run:
+            live.cli("tenant-list")
+            self.assertIs(subprocess.DEVNULL, run.call_args.kwargs["stdin"])
+            self.assertNotIn("input", run.call_args.kwargs)
+            live.cli("key-set", "s", "stt", stdin="test-key-not-real-1\n")
+            self.assertEqual(b"test-key-not-real-1\n", run.call_args.kwargs["input"])
+
+    def test_test_tenant_is_deleted_even_after_a_failure(self):
+        live = remote.RemoteServer("https://wl.example", "ssh host wl", "T")
+        with mock.patch.object(live, "cli") as cli, mock.patch.object(live, "request", return_value=(200, b"")):
+            with self.assertRaises(RuntimeError), live:
+                live.created = True
+                raise RuntimeError("Prüfung abgebrochen")
+        cli.assert_called_once_with("tenant-delete", live.slug, "--confirm", live.slug)
+        self.assertFalse(live.created)
 
 
 class RunArgsTest(unittest.TestCase):

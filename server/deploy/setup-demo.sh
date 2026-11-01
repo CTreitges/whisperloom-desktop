@@ -33,18 +33,32 @@ if ! "$WL" tenant-list | awk -F'\t' '$1 == "demo" { f = 1 } END { exit !f }'; th
   echo "test-key-not-real-2" | "$WL" key-set demo llm --provider custom --base-url "http://$(sed -n 's/^WL_DEMO_FAKE=//p' "$CONF/env")/v1" --model fake-llm
 fi
 
+# Zugangsdatei zuerst schreiben, dann anlegen: Bricht ein Lauf dazwischen ab, nimmt der nächste dieselben Passwörter,
+# und schon angelegte Admins bleiben stehen (auch mit inzwischen geändertem Passwort).
 if [ ! -s "$CONF/admin-initial.txt" ]; then
   PW_INSTANZ=$(python3 -c 'import secrets; print(secrets.token_urlsafe(18))')
   PW_DEMO=$(python3 -c 'import secrets; print(secrets.token_urlsafe(18))')
-  echo "$PW_INSTANZ" | "$WL" instance-admin-create admin --password-stdin >/dev/null
-  echo "$PW_DEMO" | "$WL" admin-create demo demo --password-stdin >/dev/null
   {
     echo "Portal: https://whisperloom-admin.ctreitges.de/login (zweiter Faktor TOTP wird beim ersten Login eingerichtet)"
     echo "Instanz-Admin: admin / $PW_INSTANZ"
     echo "Demo GmbH (owner): demo / $PW_DEMO"
   } > "$CONF/admin-initial.txt"
-  chmod 600 "$CONF/admin-initial.txt"
 fi
+chmod 600 "$CONF/admin-initial.txt"
+
+passwort() { sed -n "s|^$1: [^ ]* / ||p" "$CONF/admin-initial.txt"; }
+admin_anlegen() {
+  pw=$1
+  shift
+  if ! out=$(echo "$pw" | "$WL" "$@" --password-stdin 2>&1); then
+    case "$out" in
+      *benutzer_vergeben*) ;;
+      *) echo "$out" >&2; exit 1 ;;
+    esac
+  fi
+}
+admin_anlegen "$(passwort Instanz-Admin)" instance-admin-create admin
+admin_anlegen "$(passwort 'Demo GmbH (owner)')" admin-create demo demo
 
 install -m 644 "$DEPLOY/whisperloom-admin.service" "$DEPLOY/whisperloom-admin-fake.service" "$UNITS/"
 systemctl --user daemon-reload

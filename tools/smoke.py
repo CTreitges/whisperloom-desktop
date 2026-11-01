@@ -334,7 +334,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--server-dir", help="--suite enroll: anderer server/-Ordner (z. B. Worktree eines Server-Branches)")
     parser.add_argument("--server", help="--suite enroll: laufende Instanz statt --server-local (z. B. die Demo auf dem VPS)")
     parser.add_argument("--admin-cli", help="--suite enroll mit --server: Befehl für `python -m whisperloom_server` dort, "
-                                            "z. B. \"ssh oracle-vps whisperloom-admin/bin/wl-admin\"")
+                                            "z. B. \"ssh oracle-vps whisperloom-admin/app/server/deploy/wl-admin\"")
     args = parser.parse_args(argv)
     args.app = str(Path(args.app).resolve())
     work = args.work_dir or default_work_dir(args.platform)
