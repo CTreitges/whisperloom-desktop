@@ -64,6 +64,74 @@ public class FocusDecisionTest
         release.Set();
     }
 
+    // --- MSAA-Rückfall (Browser melden per UIA nur „Pane“, gemessen W2-OUT) ------------------
+
+    [Fact]
+    public async Task BrowserPaneFragtMsaaUndErkenntDasPasswortfeld()
+    {
+        var msaa = 0;
+        var probe = new FocusProbe(
+            new FakeSource(() => new FocusInfo(50033, false, false, false)),
+            fallback: new FakeSource(() =>
+            {
+                msaa++;
+                return FocusProbe.FromMsaa(0x2A, 0x20000000);
+            }));
+        Assert.Equal(FocusKind.Password, await probe.ProbeAsync(CancellationToken.None));
+        Assert.Equal(1, msaa);
+    }
+
+    [Fact]
+    public async Task SichereUiaAntwortBrauchtKeinMsaa()
+    {
+        var msaa = 0;
+        var probe = new FocusProbe(new FakeSource(() => new FocusInfo(50004, false, true, false)), fallback: new FakeSource(() =>
+        {
+            msaa++;
+            return null;
+        }));
+        Assert.Equal(FocusKind.Editable, await probe.ProbeAsync(CancellationToken.None));
+        Assert.Equal(0, msaa);
+    }
+
+    [Fact]
+    public async Task MsaaOhneAuskunftBleibtUnbekannt()
+    {
+        var probe = new FocusProbe(new FakeSource(() => new FocusInfo(50033, false, false, false)),
+            fallback: new FakeSource(() => throw new System.Runtime.InteropServices.COMException("MSAA")));
+        Assert.Equal(FocusKind.Unknown, await probe.ProbeAsync(CancellationToken.None));
+    }
+
+    [Theory]
+    [InlineData(0x2A, 0, FocusKind.Editable)] // ROLE_SYSTEM_TEXT
+    [InlineData(0x2A, 0x40, FocusKind.NotEditable)] // schreibgeschützt
+    [InlineData(0x2A, 0x20000000, FocusKind.Password)] // STATE_SYSTEM_PROTECTED
+    [InlineData(0x2B, 0, FocusKind.NotEditable)] // Push-Button
+    [InlineData(0x22, 0, FocusKind.NotEditable)] // ListItem
+    [InlineData(0x0F, 0, FocusKind.Unknown)] // Dokument (Seite ohne Feld)
+    [InlineData(0x0F, 0x20000000, FocusKind.Password)] // geschützt, egal welche Rolle
+    public void MsaaRolleUndZustand(int role, int state, FocusKind expected) =>
+        Assert.Equal(expected, FocusProbe.Classify(FocusProbe.FromMsaa(role, state)));
+
+    [Fact]
+    public void EchteMsaaAbfrageWirftNicht()
+    {
+        // Nur lesen: prüft die IAccessible-Deklaration am echten oleacc (Vordergrundfenster des Testlaufs).
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Skip("nur Windows");
+            return;
+        }
+        try
+        {
+            _ = new MsaaFocusSource().Focused();
+        }
+        catch (System.Runtime.InteropServices.COMException)
+        {
+            // Manche Fenster verweigern MSAA; die Probe fängt das ab.
+        }
+    }
+
     [Fact]
     public void EchteUiaAbfrageLiefertEinGueltigesErgebnis()
     {

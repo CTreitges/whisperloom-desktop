@@ -99,6 +99,10 @@ public partial class App : Application
     /// <summary>Windows: globale Tastenkürzel, Overlay und Einfügen (Phase 3); im Testbetrieb nur mit <c>--hotkeys</c>.</summary>
     private void StartHotkeys(AppHost host)
     {
+        if (OperatingSystem.IsWindows())
+        {
+            host.ProbeFocus = ProbeFocusAsync;
+        }
         if (OperatingSystem.IsWindows() && host.Options.HotkeysActive && host.Output is Platform.Windows.TextOutput.InsertOutputSink sink)
         {
             StartWindowsInput(host, sink);
@@ -108,6 +112,14 @@ public partial class App : Application
             // Linux: Hinweis „Kopiert – Strg+V“ als Desktop-Benachrichtigung (W2-OUT); fehlt notify-send, bleibt es beim Status.
             host.HintPresenter = hint => _ = Output.DesktopNotify.ShowAsync(Localization.Loc.Instance[Output.OutputHints.Key(hint)]);
         }
+    }
+
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private static async Task<string> ProbeFocusAsync()
+    {
+        var probe = new Platform.Windows.Input.FocusProbe(new Platform.Windows.Input.UiaFocusSource(), fallback: new Platform.Windows.Input.MsaaFocusSource());
+        var kind = await probe.ProbeAsync(CancellationToken.None);
+        return $"{kind} {probe.Last?.ControlType ?? 0}";
     }
 
     [System.Runtime.Versioning.SupportedOSPlatform("windows")]

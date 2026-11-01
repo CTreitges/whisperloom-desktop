@@ -129,6 +129,10 @@ public sealed partial class InputFlow
                 {
                     Toast(_controller.LastErrorKey ?? "Overlay_Error");
                 }
+                else
+                {
+                    HintIfRawOnly();
+                }
                 break;
             case HotkeyAction.HoldCancel when _mode == Mode.Hold:
                 _mode = Mode.None;
@@ -183,6 +187,7 @@ public sealed partial class InputFlow
         status["overlayStage"] = Overlay.Stage;
         status["profile"] = _controller.ActiveProfile is { } m ? AppProfiles.DisplayName(m.Profile) : null;
         status["lastInsert"] = _sink.LastOutcome?.ToString();
+        status["lastFocus"] = _sink.LastFocus?.ToString();
         status["lastInsertWindow"] = _sink.LastReport is { } r
             ? new JsonObject
             {
@@ -203,7 +208,8 @@ public sealed partial class InputFlow
         // Sonst Enter aus dem Profil (An/Aus) bzw. bei Erben (null) aus output.pressEnter (W2-OUT).
         var match = mode == Mode.Rewrite ? null : ProfileFor(target);
         _controller.ActiveProfile = match;
-        _sink.Arm(target, mode == Mode.Rewrite ? false : match?.Profile.PressEnter, InsertModeOf(match));
+        _sink.Arm(target, mode == Mode.Rewrite ? false : match?.Profile.PressEnter, InsertModeOf(match),
+            trailingSpace: mode != Mode.Rewrite && _controller.Settings.Polish.TrailingSpace);
         var started = _controller.Start();
         if (started != "recording")
         {
@@ -255,6 +261,22 @@ public sealed partial class InputFlow
             return;
         }
         _ui.HideOverlay();
+        if (!rewrite)
+        {
+            HintIfRawOnly();
+        }
+    }
+
+    /// <summary>
+    /// KI gescheitert, Rohtext eingefügt (Android: Rohtext mit Hinweis, W2-OUT): Hinweis, sofern kein anderer wichtiger ist
+    /// (Kopiert, Passwortfeld).
+    /// </summary>
+    private void HintIfRawOnly()
+    {
+        if (_controller.LastRefined?.Skipped is not null && _sink.LastOutcome is { } outcome && outcome.Hint() == Core.Output.OutputHint.None)
+        {
+            Toast("Output_Hint_RawOnly");
+        }
     }
 
     private void Discard()

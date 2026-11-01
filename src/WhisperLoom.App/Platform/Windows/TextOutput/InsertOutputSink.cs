@@ -17,6 +17,7 @@ public sealed class InsertOutputSink(IOutputSink inner, TextInserter inserter, F
     private bool _armed;
     private InsertMode? _mode;
     private bool _keepCopy;
+    private bool _trailingSpace;
 
     public string Kind => inner.Kind;
 
@@ -41,9 +42,11 @@ public sealed class InsertOutputSink(IOutputSink inner, TextInserter inserter, F
     /// <param name="pressEnter">Enter danach: null = Erben (<c>output.pressEnter</c>), sonst Wert des App-Profils.</param>
     /// <param name="mode">Ausgabemodus des App-Profils; null = Einstellung.</param>
     /// <param name="keepCopy">Text auf jeden Fall auch in der Zwischenablage lassen (Tray-Verlauf); sonst <c>output.alwaysCopy</c>.</param>
-    public void Arm(IntPtr target, bool? pressEnter = null, InsertMode? mode = null, bool keepCopy = false)
+    /// <param name="trailingSpace">Leerzeichen anhängen (<c>polish.trailingSpace</c>, nur Diktate, wie Android).</param>
+    public void Arm(IntPtr target, bool? pressEnter = null, InsertMode? mode = null, bool keepCopy = false, bool trailingSpace = false)
     {
         _keepCopy = keepCopy;
+        _trailingSpace = trailingSpace;
         _target = target;
         LastTarget = target;
         _pressEnter = pressEnter;
@@ -67,7 +70,7 @@ public sealed class InsertOutputSink(IOutputSink inner, TextInserter inserter, F
         _armed = false;
         var settings = output?.Invoke();
         var outcome = await inserter.InsertAsync(
-            _target, text, _mode ?? mode(), EffectivePressEnter(_pressEnter, settings), ct, _keepCopy || (settings?.AlwaysCopy ?? false)).ConfigureAwait(false);
+            _target, Core.Output.OutputDecision.WithTrailingSpace(text, _trailingSpace), _mode ?? mode(), EffectivePressEnter(_pressEnter, settings), ct, _keepCopy || (settings?.AlwaysCopy ?? false)).ConfigureAwait(false);
         LastOutcome = outcome;
         LastWasPrivate = outcome == InsertOutcome.PasswordField;
         Inserted?.Invoke(outcome);

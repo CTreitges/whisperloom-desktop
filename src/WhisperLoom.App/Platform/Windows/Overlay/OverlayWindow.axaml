@@ -48,7 +48,7 @@
           <TextBlock Text="{Binding ElapsedText}" FontSize="16" Foreground="{StaticResource WlOnSurfaceVariant}"
                      IsVisible="{Binding CanAct}" />
         </StackPanel>
-        <Button x:Name="StageButton" Grid.Column="2" Content="{Binding Stage}" FontSize="14" VerticalAlignment="Center"
+        <Button x:Name="StageButton" Grid.Column="2" Content="{Binding Stage, StringFormat='{}{0} ▾'}" FontSize="14" VerticalAlignment="Center"
                 Foreground="{StaticResource WlAccent}" Background="Transparent" Command="{Binding ToggleStagesCommand}"
                 IsEnabled="{Binding CanPickStage}"
                 ToolTip.Tip="{Binding [Overlay_StageTip], Source={x:Static l:Loc.Instance}}"

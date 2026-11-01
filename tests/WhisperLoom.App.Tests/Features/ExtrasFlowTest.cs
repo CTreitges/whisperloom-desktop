@@ -52,7 +52,7 @@ public sealed class ExtrasFlowTest : IDisposable
 
     public ExtrasFlowTest()
     {
-        var settings = new WhisperLoomSettings { Refine = new RefineSettings { Stage = "off", PromptEnabled = true } };
+        var settings = new WhisperLoomSettings { Refine = new RefineSettings { Stage = "off", PromptEnabled = true }, Polish = new PolishSettings { TrailingSpace = false } };
         var desktop = SettingsStore.Desktop(settings);
         desktop.Profiles.Add(new AppProfile { Name = "Terminal", Process = "WindowsTerminal.exe", Stage = "prompt", PressEnter = true });
         SettingsStore.SetDesktop(settings, desktop);

@@ -64,6 +64,15 @@ public class OutputDecisionTest
         Assert.Equal(expected, OutputDecision.ShouldInsert(focus, canInsert));
     }
 
+    [Theory]
+    [InlineData("Hallo.", true, "Hallo. ")]
+    [InlineData("Hallo.", false, "Hallo.")]
+    [InlineData("Hallo. ", true, "Hallo. ")]
+    [InlineData("Zeile\n", true, "Zeile\n")]
+    [InlineData("", true, "")]
+    public void LeerzeichenDanachWieAndroid(string text, bool on, string expected) =>
+        Assert.Equal(expected, OutputDecision.WithTrailingSpace(text, on));
+
     [Fact]
     public void LinuxOhneEinfuegenLandetInDerZwischenablageMitHinweis()
     {

@@ -7,6 +7,7 @@ namespace WhisperLoom.TestTarget;
 /// <c>{"text", "enter", "backspace", "hwnd", "ready", "focused"}</c> nach <c>--out &lt;datei&gt;</c>. Enter (ohne Umschalt) fügt keinen
 /// Umbruch ein, sondern zählt nur — wie ein Chat, der abschickt. Beendet sich nach <c>--seconds</c> (Standard 120) selbst.
 /// <c>--text &lt;starttext&gt;</c> steht beim Start im Feld und ist ganz markiert (Umschreiben der Markierung, WLD-P5b).
+/// <c>--mode password</c>: das Feld ist ein Passwortfeld; <c>--mode button</c>: ein Knopf hat den Fokus, kein Textfeld (W2-OUT).
 /// </summary>
 internal static class Program
 {
@@ -21,7 +22,7 @@ internal static class Program
         }
         var seconds = int.TryParse(Arg(args, "--seconds"), out var s) ? s : 120;
         ApplicationConfiguration.Initialize();
-        Application.Run(new TargetForm(outPath, TimeSpan.FromSeconds(seconds), Arg(args, "--text") ?? ""));
+        Application.Run(new TargetForm(outPath, TimeSpan.FromSeconds(seconds), Arg(args, "--text") ?? "", Arg(args, "--mode") ?? "text"));
         return 0;
     }
 
@@ -35,19 +36,32 @@ internal static class Program
 internal sealed class TargetForm : Form
 {
     private readonly string _outPath;
-    private readonly TextBox _box = new() { Multiline = true, AcceptsReturn = true, Dock = DockStyle.Fill, Font = new Font("Segoe UI", 14) };
+    private readonly TextBox _box;
+    private readonly Button _button = new() { Text = "OK", Dock = DockStyle.Fill };
+    private readonly string _mode;
     private int _enter;
     private int _backspace;
     private bool _ready;
 
-    public TargetForm(string outPath, TimeSpan lifetime, string initialText = "")
+    public TargetForm(string outPath, TimeSpan lifetime, string initialText = "", string mode = "text")
     {
         _outPath = outPath;
+        _mode = mode;
+        // Passwortfeld: einzeilig mit Ersatzzeichen (ES_PASSWORD, UIA IsPassword). Knopf-Modus: Knopf füllt das Fenster
+        // (ein Klick in die Mitte des Smokes trifft den Knopf), das Feld bleibt oben einzeilig.
+        _box = mode != "text"
+            ? new TextBox { UseSystemPasswordChar = mode == "password", Dock = DockStyle.Top, Font = new Font("Segoe UI", 14) }
+            : new TextBox { Multiline = true, AcceptsReturn = true, Dock = DockStyle.Fill, Font = new Font("Segoe UI", 14) };
         Text = "WhisperLoom TestTarget";
         StartPosition = FormStartPosition.CenterScreen;
         Size = new Size(640, 320);
         TopMost = true;
         Controls.Add(_box);
+        if (mode == "button")
+        {
+            Controls.Add(_button);
+            _button.GotFocus += (_, _) => Save();
+        }
         _box.KeyDown += OnKeyDown;
         _box.TextChanged += (_, _) => Save();
         _box.GotFocus += (_, _) => Save();
@@ -60,7 +74,14 @@ internal sealed class TargetForm : Form
         {
             _box.Text = initialText;
             _box.SelectAll();
-            _box.Focus();
+            if (_mode == "button")
+            {
+                _button.Focus();
+            }
+            else
+            {
+                _box.Focus();
+            }
             _ready = true;
             Save();
         };
@@ -103,7 +124,7 @@ internal sealed class TargetForm : Form
         {
             return;
         }
-        var focused = _box.Focused && ContainsFocus;
+        var focused = (_mode == "button" ? _button.Focused : _box.Focused) && ContainsFocus;
         var json = JsonSerializer.Serialize(new { text = _box.Text, enter = _enter, backspace = _backspace, hwnd = Handle.ToInt64(), ready = true, focused });
         var tmp = _outPath + ".tmp";
         File.WriteAllText(tmp, json);

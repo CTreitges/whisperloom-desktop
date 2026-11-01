@@ -23,7 +23,7 @@ public sealed class InputFlowTest : IDisposable
     public InputFlowTest()
     {
         // Keine Sprachumschaltung hier: Loc ist global, die UI-Tests schalten sie auf dem UI-Thread.
-        var settings = new WhisperLoomSettings { Refine = new RefineSettings { Stage = "off" } };
+        var settings = new WhisperLoomSettings { Refine = new RefineSettings { Stage = "off" }, Polish = new PolishSettings { TrailingSpace = false } };
         Sink = new InsertOutputSink(_inner, _rig.Inserter, () => InsertMode.Paste, () => _f!.Controller.Settings.Output);
         _f = new ControllerFixture(settings, Sink);
         _f.Pipeline.RawText = "Hallo Welt";

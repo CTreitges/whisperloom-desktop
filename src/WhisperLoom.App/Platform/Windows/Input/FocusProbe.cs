@@ -33,10 +33,11 @@ public sealed class UnknownFocusProbe : IFocusProbe
 /// <summary>
 /// Fokus-Klasse aus UI Automation. Eine Abfrage darf das Einfügen nicht aufhalten: sie läuft auf einem Pool-Thread (MTA, wie
 /// von UIA für Clients empfohlen) mit <see cref="Timeout"/>; Zeitgrenze, COM-Fehler oder kein Element = unbekannt.
+/// Bleibt UIA bei „unbekannt“, fragt <paramref name="fallback"/> (MSAA; Browser-Inhalte, Passwortfelder im Web).
 /// </summary>
 // Doku: learn.microsoft.com/windows/win32/winauto/uiauto-threading (Clients nicht auf dem UI-Thread) und
 // learn.microsoft.com/windows/win32/winauto/uiauto-controltype-ids (abgerufen 2026-11-01).
-public sealed class FocusProbe(IFocusSource source, TimeSpan? timeout = null) : IFocusProbe
+public sealed class FocusProbe(IFocusSource source, TimeSpan? timeout = null, IFocusSource? fallback = null) : IFocusProbe
 {
     public static readonly TimeSpan DefaultTimeout = TimeSpan.FromMilliseconds(600);
 
@@ -50,7 +51,11 @@ public sealed class FocusProbe(IFocusSource source, TimeSpan? timeout = null) : 
         FocusInfo? info;
         try
         {
-            info = await Task.Run(source.Focused, ct).WaitAsync(Timeout, ct).ConfigureAwait(false);
+            info = await Task.Run(() =>
+            {
+                var primary = Query(source);
+                return Classify(primary) == FocusKind.Unknown && fallback is not null ? Query(fallback) ?? primary : primary;
+            }, ct).WaitAsync(Timeout, ct).ConfigureAwait(false);
         }
         catch (Exception e) when (e is TimeoutException or System.Runtime.InteropServices.COMException or InvalidCastException
                                       or UnauthorizedAccessException or InvalidOperationException)
@@ -60,6 +65,35 @@ public sealed class FocusProbe(IFocusSource source, TimeSpan? timeout = null) : 
         var kind = Classify(info);
         Last = (kind, info?.ControlType ?? 0);
         return kind;
+    }
+
+    /// <summary>MSAA-Rolle/Zustand → UIA-Begriffe für <see cref="FocusProbe.Classify"/>.</summary>
+    public static FocusInfo? FromMsaa(int role, int state)
+    {
+        var password = (state & 0x20000000) != 0;
+        var readOnly = (state & 0x40) != 0;
+        return role switch
+        {
+            0x2A => new FocusInfo(50004, password, true, readOnly), // ROLE_SYSTEM_TEXT → Edit
+            0x2B or 0x2C or 0x2D or 0x39 => new FocusInfo(50000, password, false, false), // Push-/Check-/Radio-/Menu-Button
+            0x22 or 0x21 or 0x23 or 0x24 => new FocusInfo(50007, password, false, false), // ListItem, List, Outline
+            _ when password => new FocusInfo(50004, true, true, false),
+            _ => null,
+        };
+    }
+
+    /// <summary>Eine Quelle fragen; COM-Fehler einer Quelle = keine Auskunft (die andere darf noch antworten).</summary>
+    private static FocusInfo? Query(IFocusSource s)
+    {
+        try
+        {
+            return s.Focused();
+        }
+        catch (Exception e) when (e is System.Runtime.InteropServices.COMException or InvalidCastException or UnauthorizedAccessException
+                                      or InvalidOperationException or ArgumentException)
+        {
+            return null;
+        }
     }
 
     // UIA_*ControlTypeId (uiautomationclient.h).

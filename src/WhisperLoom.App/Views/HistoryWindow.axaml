@@ -19,6 +19,15 @@
                  PlaceholderText="{Binding [History_Search], Source={x:Static l:Loc.Instance}}"
                  AutomationProperties.Name="{Binding [History_Search], Source={x:Static l:Loc.Instance}}" />
         <StackPanel DockPanel.Dock="Bottom" Spacing="6" Margin="0,10,0,0">
+          <Border Background="{DynamicResource Loom.Surface}" CornerRadius="8" Padding="10,6" IsVisible="{Binding Status.Length}">
+            <DockPanel>
+              <Button x:Name="UndoButton" DockPanel.Dock="Right" Classes="link" Content="{Binding [History_Undo], Source={x:Static l:Loc.Instance}}"
+                      Command="{Binding UndoCommand}" IsVisible="{Binding CanUndo}"
+                      ToolTip.Tip="{Binding [History_KeyUndo], Source={x:Static l:Loc.Instance}}" />
+              <TextBlock x:Name="StatusText" Text="{Binding Status}" Foreground="{DynamicResource Loom.Text}" VerticalAlignment="Center"
+                         TextWrapping="Wrap" />
+            </DockPanel>
+          </Border>
           <Button x:Name="ClearButton" Content="{Binding [History_Clear], Source={x:Static l:Loc.Instance}}" Command="{Binding AskClearCommand}"
                   IsVisible="{Binding !ClearPending}" IsEnabled="{Binding !IsEmpty}" />
           <StackPanel IsVisible="{Binding ClearPending}" Spacing="6">
@@ -46,7 +55,8 @@
                   <TextBlock Text="{Binding Preview}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"
                              Foreground="{DynamicResource Loom.Text}" />
                   <StackPanel Orientation="Horizontal" Spacing="6">
-                    <Border Background="{DynamicResource Loom.SurfaceHigh}" CornerRadius="4" Padding="6,1">
+                    <Border Background="{DynamicResource Loom.SurfaceHigh}" BorderBrush="{DynamicResource Loom.Separator}" BorderThickness="1"
+                            CornerRadius="4" Padding="6,1">
                       <TextBlock Text="{Binding StageLabel}" FontSize="11" Foreground="{DynamicResource Loom.Text}" />
                     </Border>
                     <TextBlock Text="{Binding Meta}" FontSize="11" Foreground="{DynamicResource Loom.TextSecondary}" VerticalAlignment="Center" />
@@ -65,7 +75,7 @@
       <ContentControl.ContentTemplate>
         <DataTemplate x:DataType="h:HistoryDetailViewModel">
           <DockPanel>
-            <StackPanel DockPanel.Dock="Top" Spacing="10">
+            <StackPanel DockPanel.Dock="Top" Spacing="10" Margin="0,0,0,14">
               <TextBlock Text="{Binding Header}" FontSize="22" FontWeight="SemiBold" Foreground="{DynamicResource Loom.Text}" />
               <ItemsControl x:Name="Chips" ItemsSource="{Binding Chips}">
                 <ItemsControl.ItemsPanel>
@@ -113,7 +123,7 @@
 
     <Border Grid.Column="1" Grid.Row="1" BorderBrush="{DynamicResource Loom.Separator}" BorderThickness="0,1,0,0" Padding="24,10">
       <DockPanel>
-        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
           <Button x:Name="DeleteButton" Content="{Binding [Action_Delete], Source={x:Static l:Loc.Instance}}" Command="{Binding DeleteSelectedCommand}"
                   IsEnabled="{Binding HasSelection}" ToolTip.Tip="{Binding [History_KeyDelete], Source={x:Static l:Loc.Instance}}" />
           <Button x:Name="EditButton" Content="{Binding [History_Edit], Source={x:Static l:Loc.Instance}}" Command="{Binding EditSelectedCommand}"
@@ -125,11 +135,6 @@
                   IsEnabled="{Binding HasSelection}" ToolTip.Tip="{Binding [History_KeyCopy], Source={x:Static l:Loc.Instance}}" />
           <Button x:Name="InsertButton" Classes="accent" Content="{Binding [History_Insert], Source={x:Static l:Loc.Instance}}" Command="{Binding InsertSelectedCommand}"
                   IsEnabled="{Binding HasSelection}" ToolTip.Tip="{Binding [History_KeyInsert], Source={x:Static l:Loc.Instance}}" />
-        </StackPanel>
-        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-          <TextBlock x:Name="StatusText" Text="{Binding Status}" Foreground="{DynamicResource Loom.TextSecondary}" VerticalAlignment="Center" />
-          <Button x:Name="UndoButton" Content="{Binding [History_Undo], Source={x:Static l:Loc.Instance}}" Command="{Binding UndoCommand}"
-                  IsVisible="{Binding CanUndo}" ToolTip.Tip="{Binding [History_KeyUndo], Source={x:Static l:Loc.Instance}}" />
         </StackPanel>
       </DockPanel>
     </Border>

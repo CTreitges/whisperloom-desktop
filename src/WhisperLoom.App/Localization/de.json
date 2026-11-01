@@ -175,6 +175,7 @@
   "Model_SameAsAccess": "Wie KI-Zugang",
   "Output_Hint_Copied": "Kopiert – Strg+V",
   "Output_Hint_Password": "Passwortfeld – nicht eingefügt",
+  "Output_Hint_RawOnly": "Ohne KI eingefügt – Textverbesserung nicht erreichbar",
   "Output_LinuxHint": "Unter Linux liegt das Ergebnis jedes Diktats in der Zwischenablage. Einfügen mit Strg+V.",
   "Output_clipboard": "Zwischenablage",
   "Overlay_Discard": "Verwerfen",

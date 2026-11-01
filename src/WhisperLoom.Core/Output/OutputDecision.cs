@@ -82,6 +82,13 @@ public static class OutputDecision
         return new OutputPlan(OutputAction.ClipboardWithHint, Copy: true, OutputHint.Copied, History: true);
     }
 
+    /// <summary>
+    /// Leerzeichen nach dem Diktat (<c>polish.trailingSpace</c>, Port von <c>WhisperLoomInputMethodService.commitDictation</c>):
+    /// angehängt, wenn eingeschaltet und der Text nicht schon auf Leerraum endet. Leer bleibt leer.
+    /// </summary>
+    public static string WithTrailingSpace(string text, bool trailingSpace) =>
+        trailingSpace && text.Length > 0 && !char.IsWhiteSpace(text[^1]) ? text + " " : text;
+
     /// <summary>Alle Zeilen der Tabelle (Doku und Tests).</summary>
     public static IEnumerable<(FocusKind Focus, InsertAttempt Attempt, bool AlwaysCopy, OutputPlan Plan)> Table() =>
         from focus in Enum.GetValues<FocusKind>()

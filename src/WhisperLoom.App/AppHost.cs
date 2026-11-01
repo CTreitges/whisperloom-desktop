@@ -270,6 +270,13 @@ public sealed partial class AppHost
                 message = await RecentInsertAsync(args.Count > 0 ? args[0] : "0");
                 ok = message != "no-entry";
                 break;
+            case "focus-probe":
+                message = ProbeFocus is { } probe ? await probe() : "Unknown 0";
+                break;
+            case "history-copy":
+                message = await HistoryCopyAsync(args.Count > 0 ? args[0] : "0");
+                ok = message == "copied";
+                break;
             case "show": ShowWindow?.Invoke("stage"); message = "shown"; break;
             case "setup": ShowWindow?.Invoke("setup"); message = "shown"; break;
             case "quit": ShowWindow?.Invoke("quit"); message = "quitting"; break;

@@ -23,7 +23,7 @@ public sealed class CopyOutputTest : IDisposable
     public CopyOutputTest()
     {
         _sink = new InsertOutputSink(_inner, _rig.Inserter, () => InsertMode.Paste, () => _f!.Controller.Settings.Output);
-        _f = new ControllerFixture(new WhisperLoomSettings { Refine = new RefineSettings { Stage = "off" } }, _sink);
+        _f = new ControllerFixture(new WhisperLoomSettings { Refine = new RefineSettings { Stage = "off" }, Polish = new PolishSettings { TrailingSpace = false } }, _sink);
         _f.Pipeline.RawText = "Hallo Welt";
         _flow = new InputFlow(_f.Controller, _sink, new FakePresenter(), () => _rig.Windows.Current, _ => { });
     }

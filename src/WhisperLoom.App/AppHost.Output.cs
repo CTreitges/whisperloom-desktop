@@ -12,6 +12,12 @@ public sealed partial class AppHost
     /// <summary>Zeigt einen Hinweis (Windows: Toast über die Eingabe-Fenster, Linux: notify-send); null = nur merken.</summary>
     public Action<OutputHint>? HintPresenter { get; set; }
 
+    /// <summary>
+    /// <c>focus-probe</c>: Fokus-Klasse und UIA-Control-Type des Elements mit Tastaturfokus (Windows, nur lesen; Messung der
+    /// Fälle „unbekannt“ an Notepad und Browsern). null = immer „Unknown 0“ (Linux).
+    /// </summary>
+    public Func<Task<string>>? ProbeFocus { get; set; }
+
     /// <summary>Letzter Hinweis für <c>status --json</c>: "none", "copied", "password".</summary>
     public string LastHint { get; private set; } = OutputHints.Name(OutputHint.None);
 
@@ -30,6 +36,26 @@ public sealed partial class AppHost
 
     /// <summary>Nur merken: den Toast zeigt schon die Windows-Eingabe (Einfügen per Tastenkürzel).</summary>
     internal void RecordHint(OutputHint hint) => LastHint = OutputHints.Name(hint);
+
+    /// <summary><c>history-copy &lt;n&gt;</c>: der n-te Eintrag (0 = neuester) wie „Kopieren“ im Verlaufsfenster (Smoke).</summary>
+    /// <returns>"copied", "error" oder "no-entry".</returns>
+    private async Task<string> HistoryCopyAsync(string index)
+    {
+        IReadOnlyList<Core.Contracts.HistoryEntry> entries;
+        try
+        {
+            entries = await Controller.HistoryIfEnabledAsync();
+        }
+        catch (IOException)
+        {
+            return "no-entry";
+        }
+        if (!int.TryParse(index, out var n) || n < 0 || n >= entries.Count)
+        {
+            return "no-entry";
+        }
+        return await CopyTextAsync(entries[n].Text) ? "copied" : "error";
+    }
 
     /// <summary>
     /// „Kopieren“ aus Verlauf bzw. Tray: Text verlässlich in die Zwischenablage (Wiederholungen und Gegenprobe stecken in der

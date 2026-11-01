@@ -175,6 +175,7 @@
   "Model_SameAsAccess": "Same as AI access",
   "Output_Hint_Copied": "Copied – Ctrl+V",
   "Output_Hint_Password": "Password field – not inserted",
+  "Output_Hint_RawOnly": "Inserted without AI – text improvement not reachable",
   "Output_LinuxHint": "On Linux the result of every dictation is on the clipboard. Paste with Ctrl+V.",
   "Output_clipboard": "Clipboard",
   "Overlay_Discard": "Discard",
