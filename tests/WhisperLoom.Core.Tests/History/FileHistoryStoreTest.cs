@@ -74,6 +74,32 @@ public sealed class FileHistoryStoreTest : IDisposable
     }
 
     [Fact]
+    public async Task QuelleMarkierungRundreise()
+    {
+        // W2-SEL: Einträge aus „Markierung verarbeiten“ tragen source = "selection" (Android: bubble/keyboard).
+        var recorded = Entry() with { Source = "selection" };
+        await Record(recorded);
+
+        var entry = Assert.Single(await store.ListAsync(Ct));
+        Assert.Equal("selection", entry.Source);
+        Assert.Equal(recorded, entry);
+        Assert.Contains("\"source\":\"selection\"", await File.ReadAllTextAsync(Assert.Single(System.IO.Directory.GetFiles(Dir, "*.json")), Ct));
+    }
+
+    [Fact]
+    public async Task AlteDateiOhneSourceLaedtUnveraendertUndDiktatSchreibtKeineQuelle()
+    {
+        await Record();
+        var file = Assert.Single(System.IO.Directory.GetFiles(Dir, "*.json"));
+        var json = await File.ReadAllTextAsync(file, Ct);
+        Assert.DoesNotContain("source", json); // null wird nicht geschrieben
+
+        var entry = Assert.Single(await store.ListAsync(Ct));
+        Assert.Null(entry.Source);
+        Assert.Equal("Komme morgen später.", entry.Text);
+    }
+
+    [Fact]
     public async Task GlaettenSpeichertDieBereinigungMit()
     {
         await Record(Entry(refinement: new Refinement(RefineMode.Polish, SmartFillers: true)));

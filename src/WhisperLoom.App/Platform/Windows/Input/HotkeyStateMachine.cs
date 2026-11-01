@@ -9,7 +9,15 @@ public enum HotkeyAction
     Toggle,
     Stage,
     Reinsert,
-    Rewrite,
+
+    /// <summary>Markierung verarbeiten (W2-SEL); während einer Aufnahme der Anweisung sendet der zweite Druck.</summary>
+    Selection,
+
+    /// <summary>Taste für den Stufen-Wähler am Cursor (<see cref="HookDecision.PickerKey"/>).</summary>
+    PickerKey,
+
+    /// <summary>Andere Taste, während Wähler oder schwebender Knopf sichtbar sind: schließen (die Taste läuft durch).</summary>
+    Dismiss,
     OverlaySend,
     OverlayDiscard,
     Recorded,
@@ -23,7 +31,9 @@ public readonly record struct KeyInput(int Vk, bool Down, bool Own = false);
 /// Antwort auf ein Ereignis. <see cref="Swallow"/>: Ereignis nicht weiterreichen. <see cref="ReplayWinUpMasked"/>:
 /// das (geschluckte) Loslassen von Win als eigene Eingabe nachspielen, davor die Maskentaste — so öffnet sich kein Startmenü.
 /// </summary>
-public sealed record HookDecision(bool Swallow, HotkeyAction Action = HotkeyAction.None, bool ReplayWinUpMasked = false, Hotkey? Recorded = null)
+/// <param name="PickerKey">Bei <see cref="HotkeyAction.PickerKey"/>: die Taste mit Modifiern (z. B. Umschalt+Tab).</param>
+public sealed record HookDecision(bool Swallow, HotkeyAction Action = HotkeyAction.None, bool ReplayWinUpMasked = false, Hotkey? Recorded = null,
+    Hotkey? PickerKey = null)
 {
     public static readonly HookDecision Pass = new(false);
 }
@@ -59,8 +69,17 @@ public sealed class HotkeyStateMachine
     /// <summary>Letztes Diktat erneut einfügen (WLD-P5b).</summary>
     public Hotkey? Reinsert { get; set; }
 
-    /// <summary>Markierung umschreiben; zweiter Druck sendet die Anweisung (WLD-P5b).</summary>
-    public Hotkey? Rewrite { get; set; }
+    /// <summary>Markierung verarbeiten (W2-SEL); zweiter Druck sendet eine gesprochene Anweisung.</summary>
+    public Hotkey? Selection { get; set; }
+
+    /// <summary>
+    /// Stufen-Wähler am Cursor offen (W2-SEL): ↑/↓, Tab/Umschalt+Tab, 1–9 (auch Ziffernblock), Enter und Esc gehören dem Wähler
+    /// (geschluckt, <see cref="HotkeyAction.PickerKey"/>); jede andere Taste schließt ihn und läuft durch.
+    /// </summary>
+    public bool PickerKeysActive { get; set; }
+
+    /// <summary>Schwebender Knopf sichtbar (W2-SEL): jede Taste lässt ihn verschwinden (<see cref="HotkeyAction.Dismiss"/>, läuft durch).</summary>
+    public bool DismissOnKey { get; set; }
 
     /// <summary>Overlay offen und in Aufnahme/Pause: Enter, Strg+Enter und Rücktaste gehören dem Overlay.</summary>
     public bool OverlayKeysActive { get; set; }
@@ -149,6 +168,12 @@ public sealed class HotkeyStateMachine
             }
             return HookDecision.Pass;
         }
+        if (PickerKeysActive && !repeat && IsPickerKey(vk, mods))
+        {
+            // Gehaltene Wiederholungen schluckt _swallowed oben; eine schon vor dem Öffnen gedrückte Taste bleibt der App.
+            _swallowed.Add(vk);
+            return new HookDecision(true, HotkeyAction.PickerKey, PickerKey: new Hotkey(mods, vk));
+        }
         if (repeat)
         {
             return HookDecision.Pass;
@@ -162,7 +187,7 @@ public sealed class HotkeyStateMachine
         var action = Match(vk, mods);
         if (action == HotkeyAction.None)
         {
-            return HookDecision.Pass;
+            return PickerKeysActive || DismissOnKey ? new HookDecision(false, HotkeyAction.Dismiss) : HookDecision.Pass;
         }
         _swallowed.Add(vk);
         if (action == HotkeyAction.HoldStart)
@@ -204,12 +229,26 @@ public sealed class HotkeyStateMachine
         {
             return HotkeyAction.Reinsert;
         }
-        if (Rewrite is not null && Rewrite.Key == vk && Rewrite.Modifiers == mods)
+        if (Selection is not null && Selection.Key == vk && Selection.Modifiers == mods)
         {
-            return HotkeyAction.Rewrite;
+            return HotkeyAction.Selection;
         }
         return HotkeyAction.None;
     }
+
+    /// <summary>
+    /// Wähler-Taste: Strg darf noch gehalten sein (Strg+Rechtsklick), Umschalt nur bei Tab (Umschalt+Tab); Umschalt+Ziffer ist ein
+    /// Zeichen für die App, Alt/Win gehören zu anderen Kürzeln.
+    /// </summary>
+    private static bool IsPickerKey(int vk, HotkeyModifiers mods)
+    {
+        var rest = mods & ~HotkeyModifiers.Ctrl;
+        return PickerKeys.Contains(vk) && (rest == HotkeyModifiers.None || (vk == 0x09 && rest == HotkeyModifiers.Shift));
+    }
+
+    /// <summary>Tasten des Stufen-Wählers: Tab, Enter, Esc, ↑, ↓, 1–9 und Ziffernblock 1–9.</summary>
+    private static readonly HashSet<int> PickerKeys =
+        [0x09, Hotkey.VkReturn, Hotkey.VkEscape, 0x26, 0x28, .. Enumerable.Range('1', 9), .. Enumerable.Range(0x61, 9)];
 
     private HookDecision OnUp(int vk)
     {

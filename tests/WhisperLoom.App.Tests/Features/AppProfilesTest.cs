@@ -96,6 +96,6 @@ public sealed class AppProfilesTest
         Assert.Equal(("Claude", "WindowsTerminal.exe", "Claude", "prompt", "type", true, true),
             (back.Name, back.Process, back.TitlePattern, back.Stage, back.InsertMode, back.PressEnter, back.Enabled));
         Assert.Equal("Ctrl+Alt+Shift+V", SettingsStore.Desktop(settings).HotkeyReinsert);
-        Assert.Equal("Ctrl+Alt+Shift+R", SettingsStore.Desktop(settings).HotkeyRewrite);
+        Assert.Equal("Ctrl+Alt+Shift+S", settings.Selection.HotkeyCombo); // W2-SEL: Umschreiben ging in „Markierung verarbeiten“ auf
     }
 }

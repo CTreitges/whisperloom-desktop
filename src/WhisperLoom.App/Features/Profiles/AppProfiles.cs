@@ -34,6 +34,13 @@ public sealed class AppProfile
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public bool? PressEnter { get; set; }
 
+    /// <summary>
+    /// Schwebender Knopf an einer Markierung in diesem Programm (W2-SEL): null = wie eingestellt (<c>selection.floatingButton</c>),
+    /// false = hier nie. Fehlt = null (ältere Dateien unverändert).
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public bool? FloatingButton { get; set; }
+
     public bool Enabled { get; set; } = true;
 }
 
@@ -71,6 +78,7 @@ public static class AppProfiles
             Stage = p.Stage ?? "",
             InsertMode = p.InsertMode ?? "",
             PressEnter = p.PressEnter,
+            FloatingButton = p.FloatingButton,
             Enabled = p.Enabled,
         }),
     ];

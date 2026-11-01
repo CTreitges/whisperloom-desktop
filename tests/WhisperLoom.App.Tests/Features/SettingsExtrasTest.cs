@@ -32,14 +32,14 @@ public sealed class SettingsExtrasTest
         vm.Profiles.Rows[0].InsertMode = vm.Profiles.InsertModes.Single(c => c.Value == "type");
         vm.Profiles.Rows[0].PressEnter = true;
         vm.Profiles.Rows[1].RemoveCommand.Execute(null);
-        vm.Hotkeys.Rewrite.Value = "Ctrl+Alt+Shift+U";
+        vm.Hotkeys.Selection.Value = "Ctrl+Alt+Shift+U";
 
         await vm.Save();
 
         var saved = SettingsStore.Desktop(f.Store.Load());
         var profile = Assert.Single(saved.Profiles);
         Assert.Equal(("WindowsTerminal.exe", "prompt", "type", true), (profile.Process, profile.Stage, profile.InsertMode, profile.PressEnter));
-        Assert.Equal("Ctrl+Alt+Shift+U", saved.HotkeyRewrite);
+        Assert.Equal("Ctrl+Alt+Shift+U", f.Store.Load().Selection.HotkeyCombo);
         Assert.Equal("Ctrl+Alt+Shift+V", saved.HotkeyReinsert);
     }
 

@@ -40,7 +40,8 @@ public sealed record Hotkey(HotkeyModifiers Modifiers, int Key)
     public static readonly Hotkey DefaultToggle = new(HotkeyModifiers.Ctrl, VkSpace);
     public static readonly Hotkey DefaultStage = new(HotkeyModifiers.Ctrl | HotkeyModifiers.Alt, VkSpace);
     public static readonly Hotkey DefaultReinsert = new(HotkeyModifiers.Ctrl | HotkeyModifiers.Alt | HotkeyModifiers.Shift, 'V');
-    public static readonly Hotkey DefaultRewrite = new(HotkeyModifiers.Ctrl | HotkeyModifiers.Alt | HotkeyModifiers.Shift, 'R');
+    /// <summary>Markierung verarbeiten (W2-SEL, <c>selection.hotkeyCombo</c>); ersetzt das frühere Umschreiben mit Strg+Alt+Umschalt+R.</summary>
+    public static readonly Hotkey DefaultSelection = new(HotkeyModifiers.Ctrl | HotkeyModifiers.Alt | HotkeyModifiers.Shift, 'S');
 
     private static readonly (HotkeyModifiers Flag, string Name)[] ModifierNames =
         [(HotkeyModifiers.Ctrl, "Ctrl"), (HotkeyModifiers.Alt, "Alt"), (HotkeyModifiers.Shift, "Shift"), (HotkeyModifiers.Win, "Win")];

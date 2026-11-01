@@ -1,0 +1,21 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:l="using:WhisperLoom.App.Localization"
+        x:Class="WhisperLoom.App.Features.Selection.SelectionButtonWindow"
+        Title="WhisperLoom"
+        SizeToContent="WidthAndHeight"
+        Background="Transparent" TransparencyLevelHint="Transparent">
+  <!-- Schwebender Knopf neben einer Maus-Markierung (W2-SEL): klein, kurz sichtbar, fokusfrei. -->
+  <Border Margin="6" CornerRadius="14" BoxShadow="0 2 10 0 #55000000">
+  <Button x:Name="ActionButton" Focusable="False" CornerRadius="14" Padding="10,4" MinHeight="28"
+          Background="{DynamicResource Loom.Surface}" Foreground="{DynamicResource Loom.Text}"
+          BorderBrush="{DynamicResource Loom.Separator}" BorderThickness="1"
+          ToolTip.Tip="{Binding [Selection_ButtonTip], Source={x:Static l:Loc.Instance}}"
+          AutomationProperties.Name="{Binding [Selection_ButtonTip], Source={x:Static l:Loc.Instance}}">
+    <StackPanel Orientation="Horizontal" Spacing="6">
+      <TextBlock Text="✦" Foreground="{DynamicResource Loom.Accent}" VerticalAlignment="Center" FontSize="13" />
+      <TextBlock Text="{Binding [Selection_Button], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" FontSize="13" />
+    </StackPanel>
+  </Button>
+  </Border>
+</Window>

@@ -150,6 +150,13 @@ internal sealed class Win32Windows : IWindowAdapter
         return GetClassNameW(info.Focus, name, name.Capacity) > 0 ? name.ToString() : "";
     }
 
+    // Doku: learn.microsoft.com/windows/win32/api/winuser/nf-winuser-getclassnamew (abgerufen 2026-11-01).
+    public string WindowClass(IntPtr window)
+    {
+        var name = new System.Text.StringBuilder(256);
+        return window != IntPtr.Zero && GetClassNameW(window, name, name.Capacity) > 0 ? name.ToString() : "";
+    }
+
     [StructLayout(LayoutKind.Sequential)]
     private struct GuiThreadInfo
     {

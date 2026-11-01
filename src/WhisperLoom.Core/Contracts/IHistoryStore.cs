@@ -6,6 +6,8 @@ namespace WhisperLoom.Core.Contracts;
 /// <param name="Skipped">Warum ohne KI, obwohl eine Stufe gewählt war.</param>
 /// <param name="Versions">Fassungen je Verarbeitung (W2-OUT, wie Android <c>HistoryEntry.versions</c>); null = nur die damalige
 /// Fassung (<see cref="Text"/>), so wie ältere Dateien. <see cref="Raw"/> ist der Ursprung und wird nie überschrieben.</param>
+/// <param name="Source">Woher der Eintrag stammt (W2-SEL, wie Android <c>HistoryEntry.source</c>): null = Diktat,
+/// <see cref="SourceSelection"/> = „Markierung verarbeiten“ (Raw = die Markierung).</param>
 public sealed record HistoryEntry(
     string Id,
     DateTimeOffset CreatedAt,
@@ -17,12 +19,16 @@ public sealed record HistoryEntry(
     string SttLabel,
     string? Model = null,
     string? Skipped = null,
-    IReadOnlyList<HistoryVersion>? Versions = null)
+    IReadOnlyList<HistoryVersion>? Versions = null,
+    string? Source = null)
 {
+    /// <summary>Wert von <see cref="Source"/> für Einträge aus „Markierung verarbeiten“.</summary>
+    public const string SourceSelection = "selection";
+
     /// <summary>Ohne Text: ein Log darf nie ein Diktat zeigen.</summary>
     public override string ToString() =>
         $"HistoryEntry(id={Id}, language={Language}, durationMs={DurationMs}, raw={Raw.Length} Zeichen, " +
-        $"text={Text.Length} Zeichen, refinement={Refinement}, sttLabel={SttLabel}, model={Model}, versions={Versions?.Count ?? 0})";
+        $"text={Text.Length} Zeichen, refinement={Refinement}, sttLabel={SttLabel}, model={Model}, versions={Versions?.Count ?? 0}, source={Source})";
 }
 
 /// <summary>Eine Fassung eines Verlaufseintrags (W2-OUT; Android <c>HistoryVersion</c>).</summary>

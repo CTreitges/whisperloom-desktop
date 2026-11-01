@@ -19,6 +19,7 @@ public sealed class TrayMenu
     private readonly Func<HistoryEntry, Task>? _onRecent;
     private readonly NativeMenuItem _toggle;
     private readonly NativeMenuItem _retry;
+    private readonly NativeMenuItem _selection;
     private readonly NativeMenuItem _stage;
     private readonly NativeMenuItem _recent;
     private readonly NativeMenuItem _show;
@@ -30,13 +31,15 @@ public sealed class TrayMenu
 
     /// <param name="open">Fenster-Aktion: "stage", "history", "settings", "setup", "quit".</param>
     /// <param name="onRecent">Klick auf einen der letzten Einträge: einfügen bzw. kopieren.</param>
-    public TrayMenu(DictationController controller, Action<string> open, Func<HistoryEntry, Task>? onRecent = null)
+    /// <param name="onSelection">„Markierung verarbeiten …“ (W2-SEL); null = Eintrag fehlt.</param>
+    public TrayMenu(DictationController controller, Action<string> open, Func<HistoryEntry, Task>? onRecent = null, Func<Task>? onSelection = null)
     {
         _controller = controller;
         _onRecent = onRecent;
         _toggle = new NativeMenuItem { Command = new AsyncRelayCommand(() => controller.ToggleAsync()) };
         // „Erneut senden“ nach einem wiederholbaren Fehler (W2-OUT): nur sichtbar, solange Audio im Speicher liegt.
         _retry = new NativeMenuItem { Command = new AsyncRelayCommand(() => controller.RetryAsync()) };
+        _selection = new NativeMenuItem { Command = new AsyncRelayCommand(() => onSelection?.Invoke() ?? Task.CompletedTask) };
         _stage = new NativeMenuItem { Menu = new NativeMenu() };
         _recent = new NativeMenuItem { Menu = new NativeMenu() };
         _show = new NativeMenuItem { Command = new RelayCommand(() => open("stage")) };
@@ -48,13 +51,17 @@ public sealed class TrayMenu
         foreach (var item in new NativeMenuItemBase[]
         {
             _toggle, new NativeMenuItemSeparator(),
-            _stage, _recent, new NativeMenuItemSeparator(),
+            _stage, _recent, _selection, new NativeMenuItemSeparator(),
             _show, _history, new NativeMenuItemSeparator(),
             _settings, _setup, new NativeMenuItemSeparator(),
             _quit,
         })
         {
             Menu.Items.Add(item);
+        }
+        if (onSelection is null)
+        {
+            Menu.Items.Remove(_selection);
         }
         controller.PropertyChanged += (_, _) => Refresh();
         controller.HistoryChanged += () => _ = ReloadRecentAsync();
@@ -105,6 +112,7 @@ public sealed class TrayMenu
         _stage.Header = $"{loc["Stage_Label"]}: {loc["Stage_" + _controller.Stage.Key()]}";
         _show.Header = loc["Tray_Stage"];
         _history.Header = loc["Tray_History"];
+        _selection.Header = loc["Tray_Selection"];
         _settings.Header = loc["Tray_Settings"];
         _setup.Header = loc["Tray_Setup"];
         _quit.Header = loc["Tray_Quit"];

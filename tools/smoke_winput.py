@@ -12,8 +12,9 @@ import threading
 import time
 
 VK = {"ctrl": 0xA2, "alt": 0xA4, "shift": 0xA0, "win": 0x5B, "space": 0x20, "enter": 0x0D, "back": 0x08,
-      "a": 0x41, "r": 0x52, "v": 0x56, "end": 0x23}
-EXTENDED = {0x5B, 0x23}
+      "a": 0x41, "r": 0x52, "s": 0x53, "v": 0x56, "end": 0x23, "down": 0x28, "up": 0x26, "tab": 0x09, "esc": 0x1B,
+      **{str(n): 0x30 + n for n in range(1, 10)}}
+EXTENDED = {0x5B, 0x23, 0x28, 0x26}
 CF_UNICODETEXT = 13
 START_MENU_PROCESSES = ("startmenuexperiencehost.exe", "searchhost.exe", "searchapp.exe", "shellexperiencehost.exe")
 
@@ -90,6 +91,40 @@ class Keyboard:
         for vk in reversed(list(self.held)):
             self._send(self._key(vk, True))
         self.held.clear()
+
+    def _mouse(self, x: int, y: int, allowed, *buttons: int) -> None:
+        """Bewegt die Maus nach (x, y) und sendet die Knopf-Flags; Wurzelfenster unter dem Punkt muss allowed(hwnd) erfüllen."""
+        root = root_window_at(x, y)
+        if not allowed(root):
+            raise NotForeground(f"Klickziel ({x},{y}) gehört {process_name(root) or hex(root)} — kein Klick")
+        u = self.user32
+        left, top = u.GetSystemMetrics(76), u.GetSystemMetrics(77)
+        width, height = u.GetSystemMetrics(78), u.GetSystemMetrics(79)
+        nx = int((x - left) * 65535 / max(width - 1, 1))
+        ny = int((y - top) * 65535 / max(height - 1, 1))
+        move = 0x0001 | 0x8000 | 0x4000  # MOVE | ABSOLUTE | VIRTUALDESK
+        mk = lambda flags: self.INPUT(0, self.INPUT._fields_[1][1](mi=self.MOUSEINPUT(nx, ny, 0, flags, 0, 0)))  # noqa: E731
+        self._send(mk(move))
+        time.sleep(0.05)
+        if buttons:
+            if not allowed(root_window_at(x, y)):
+                raise NotForeground(f"Klickziel ({x},{y}) hat gewechselt — kein Klick")
+            for b in buttons:
+                self._send(mk(move | b))
+                time.sleep(0.03)
+        time.sleep(0.1)
+
+    def right_click(self, x: int, y: int, allowed) -> None:
+        """Rechtsklick (W2-SEL: mit gehaltenem Strg aus down("ctrl"))."""
+        self._mouse(x, y, allowed, 0x0008, 0x0010)
+
+    def drag(self, x1: int, y1: int, x2: int, y2: int, allowed) -> None:
+        """Ziehen mit gedrückter linker Taste von (x1, y1) nach (x2, y2) – markiert Text wie ein Mensch."""
+        self._mouse(x1, y1, allowed, 0x0002)
+        steps = 6
+        for i in range(1, steps + 1):
+            self._mouse(x1 + (x2 - x1) * i // steps, y1 + (y2 - y1) * i // steps, allowed)
+        self._mouse(x2, y2, allowed, 0x0004)
 
     def click(self, x: int, y: int, allowed) -> None:
         """Linksklick an Bildschirm-Pixeln (Prozess ist Per-Monitor-DPI-aware). Sicherung: das Wurzelfenster unter dem Punkt

@@ -233,6 +233,28 @@ public class FocusDecisionTest
     }
 
     [Fact]
+    public async Task UnbekannterFokusInElectronAppStelltDieAlteZwischenablageWiederHer()
+    {
+        // Electron (Slack, Discord, VS Code) wie Browser behandeln (Christof 2026-11-01): Fensterklasse Chrome_WidgetWin_1.
+        _rig.Focus.Kind = FocusKind.Unknown;
+        _rig.Windows.Processes[42] = "slack";
+        _rig.Windows.Classes[42] = "Chrome_WidgetWin_1";
+        Assert.Equal(InsertOutcome.Pasted, await Insert());
+        Assert.Equal("Hallo Welt", _rig.Keys.Target);
+        Assert.Equal("alt", _rig.Clipboard.Text);
+    }
+
+    [Fact]
+    public async Task InElectronAppGewinntImmerKopieren()
+    {
+        _rig.Focus.Kind = FocusKind.Unknown;
+        _rig.Windows.Processes[42] = "Code";
+        _rig.Windows.Classes[42] = "Chrome_WidgetWin_1";
+        Assert.Equal(InsertOutcome.Pasted, await Insert(alwaysCopy: true));
+        Assert.Equal("Hallo Welt", _rig.Clipboard.Text);
+    }
+
+    [Fact]
     public async Task UnbekannterFokusAusserhalbDesBrowsersBehaeltDieKopie()
     {
         _rig.Focus.Kind = FocusKind.Unknown;

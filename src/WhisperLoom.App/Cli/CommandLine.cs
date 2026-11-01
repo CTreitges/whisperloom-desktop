@@ -57,6 +57,7 @@ internal static class CommandLine
         "Aufruf: WhisperLoom [toggle|start|stop|cancel|pause|resume|stage next|stage <name>|status [--json]|show|setup|quit|key set <name>|key delete <name>]\n" +
         "        [provision <datei>|import <datei> [--dry-run]|export <datei>]\n" +
         "        [reprocess <stufe> [<id>]|reinsert|recent-insert <n>|history-copy <n>|focus-probe|retry]\n" +
+        "        [process-selection [--stage <stufe>]]\n" +
         "        [join --server <url> --code <code> [--device-name <name>]|sync|whisperloom://join?server=<url>&code=<code>]\n" +
         "        [--data-dir <pfad>] [--test-audio <wav>] [--output-file <pfad>] [--secret-prefix <präfix>] [--hotkeys] [--test-text-model <gguf>]\n" +
         "        WhisperLoom bench --model <tiny|base|small|large-v3-turbo> --seconds <n> [--backend auto|cpu]\n" +
@@ -64,7 +65,8 @@ internal static class CommandLine
 
     private static readonly HashSet<string> Verbs =
         ["toggle", "start", "stop", "cancel", "pause", "resume", "stage", "status", "show", "setup", "key", "quit", "bench", "provision", "import", "export",
-         "reprocess", "reinsert", "recent-insert", "history-copy", "focus-probe", "retry", "update", "join", "sync"];
+         "reprocess", "reinsert", "recent-insert", "history-copy", "focus-probe", "retry", "update", "join", "sync",
+         "process-selection"];
 
     /// <summary>Schalter des Verbs <c>bench</c>; sie landen samt Wert in <see cref="CliRequest.Args"/>.</summary>
     private static readonly HashSet<string> BenchSwitches = ["--model", "--seconds", "--backend"];
@@ -74,7 +76,7 @@ internal static class CommandLine
 
     public static CliRequest Parse(IReadOnlyList<string> args)
     {
-        string? dataDir = null, testAudio = null, outputFile = null, prefix = null, feed = null, testTextModel = null;
+        string? dataDir = null, testAudio = null, outputFile = null, prefix = null, feed = null, testTextModel = null, stage = null;
         var json = false;
         var hotkeys = false;
         var dryRun = false;
@@ -109,6 +111,7 @@ internal static class CommandLine
                 case "--dry-run": dryRun = true; break;
                 case "--version": version = true; break;
                 case "--feed": feed = Value(args, ref i, a); break;
+                case "--stage": stage = Value(args, ref i, a); break;
                 default:
                     if (a.StartsWith("--", StringComparison.Ordinal))
                     {
@@ -138,6 +141,10 @@ internal static class CommandLine
         if (feed is not null && positional is not ["update", ..])
         {
             throw new UsageException("--feed gilt nur für update.");
+        }
+        if (stage is not null && positional is not ["process-selection", ..])
+        {
+            throw new UsageException("--stage gilt nur für process-selection.");
         }
         if (joinArgs.Count > 0 && positional is not ["join", ..])
         {
@@ -202,6 +209,11 @@ internal static class CommandLine
         if (verb == "join")
         {
             return new CliRequest(verb, JoinArgs(rest, joinArgs), options, json);
+        }
+        if (verb == "process-selection")
+        {
+            // Markierung verarbeiten (W2-SEL): ohne --stage Stufen-Wähler, sonst sofort mit dieser Stufe.
+            return new CliRequest(verb, stage is null ? [] : [stage], options, json);
         }
         if (dryRun && verb != "import")
         {

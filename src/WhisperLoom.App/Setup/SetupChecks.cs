@@ -118,7 +118,7 @@ public sealed partial class HotkeyCheck(HotkeysViewModel hotkeys, Func<Task<stri
                 Status = Loc.Instance["Setup_HotkeyNone"];
                 return;
             }
-            var match = new[] { _hotkeys.Hold, _hotkeys.Toggle, _hotkeys.Stage, _hotkeys.Reinsert, _hotkeys.Rewrite }.FirstOrDefault(r => Hotkey.Parse(r.Value) == pressed);
+            var match = new[] { _hotkeys.Hold, _hotkeys.Toggle, _hotkeys.Stage, _hotkeys.Reinsert, _hotkeys.Selection }.FirstOrDefault(r => Hotkey.Parse(r.Value) == pressed);
             Recognized = match is not null;
             Status = match is null
                 ? Loc.Instance.Format("Setup_HotkeyOther", pressed.ToString())

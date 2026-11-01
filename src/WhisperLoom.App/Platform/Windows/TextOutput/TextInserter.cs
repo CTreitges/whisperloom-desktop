@@ -168,8 +168,9 @@ public sealed class TextInserter(
             text = OutputDecision.WithLeadingSpace(text, await caret.CharBeforeAsync(ct).ConfigureAwait(false));
         }
         // Unbekannter Fokus (UIA meldet nichts Brauchbares) oder „immer kopieren“: der Text bleibt danach in der Zwischenablage.
-        // Im Browser („Vorsichtig im Browser“, Entscheidung Christof): unbekannter Fokus → alte Zwischenablage zurück.
-        var keep = OutputDecision.Decide(kind, InsertAttempt.Inserted, alwaysCopy, OutputDecision.IsBrowser(windows.ProcessName(target))).Copy;
+        // Im Browser und in Electron-Apps („Vorsichtig im Browser“, Entscheidung Christof): unbekannter Fokus → alte Zwischenablage zurück.
+        var cautious = OutputDecision.IsCautious(windows.ProcessName(target), windows.WindowClass(target));
+        var keep = OutputDecision.Decide(kind, InsertAttempt.Inserted, alwaysCopy, cautious).Copy;
         if (mode == InsertMode.Type)
         {
             LastReport = Describe(target);

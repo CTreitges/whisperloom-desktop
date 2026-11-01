@@ -91,6 +91,19 @@ public class OutputDecisionTest
     public void BrowserErkennungAmProzessnamen(string? process, bool expected) =>
         Assert.Equal(expected, OutputDecision.IsBrowser(process));
 
+    /// <summary>Electron-Apps (Slack, Discord, VS Code …): Fensterklasse Chrome_WidgetWin_1, eigener Prozessname (Christof 2026-11-01).</summary>
+    [Theory]
+    [InlineData("slack", "Chrome_WidgetWin_1", true)]
+    [InlineData("Code.exe", "Chrome_WidgetWin_1", true)]
+    [InlineData("Discord", "chrome_widgetwin_1", true)]
+    [InlineData("chrome", "", true)] // Browser bleibt Browser, auch ohne Klasse
+    [InlineData("notepad", "Notepad", false)]
+    [InlineData("WINWORD", "OpusApp", false)]
+    [InlineData("slack", "", false)] // Klasse unbekannt: kein Raten am Prozessnamen
+    [InlineData(null, null, false)]
+    public void VorsichtigBeiBrowsernUndElectronFenstern(string? process, string? windowClass, bool expected) =>
+        Assert.Equal(expected, OutputDecision.IsCautious(process, windowClass));
+
     [Theory]
     [InlineData(Editable, true, true)]
     [InlineData(Unknown, true, true)]

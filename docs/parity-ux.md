@@ -7,8 +7,8 @@ Zwischenablage, mit Hinweis. Quelle Android: `whisperloom-android` (main). Statu
 ## Ausgabe-Entscheidung
 
 Core, OS-frei: `src/WhisperLoom.Core/Output/OutputDecision.cs`. Eingaben: Fokus-Klasse des Ziels (Windows: UI Automation,
-Rückfall MSAA; Linux: immer unbekannt), Ergebnis des Einfügens, `output.alwaysCopy` und ob das Ziel ein Browser ist
-(`OutputDecision.BrowserProcesses`: chrome, msedge, firefox, brave, opera, vivaldi; Prozessname ohne Groß-/Kleinschreibung). Eingefügt wird nur in ein
+Rückfall MSAA; Linux: immer unbekannt), Ergebnis des Einfügens, `output.alwaysCopy` und ob das Ziel „vorsichtig“ zu behandeln ist
+(`OutputDecision.IsCautious`: Browser aus `OutputDecision.BrowserProcesses` – chrome, msedge, firefox, brave, opera, vivaldi, msedgewebview2; Prozessname ohne Groß-/Kleinschreibung – oder Electron-App, erkannt an der Fensterklasse `Chrome_WidgetWin_1`). Eingefügt wird nur in ein
 Eingabefeld oder bei unbekanntem Fokus (`OutputDecision.ShouldInsert`); bei Passwortfeld und „kein Eingabefeld“ wird es gar
 nicht versucht (Spalte „Einfügen“ = nicht versucht). Jede Zeile hat einen xUnit-Fall (`OutputDecisionTest.JedeZeileDerTabelle`).
 
@@ -20,9 +20,9 @@ nicht versucht (Spalte „Einfügen“ = nicht versucht). Jede Zeile hat einen x
 | Passwortfeld | egal | egal | nichts | unverändert | „Passwortfeld – nicht eingefügt“ | **nein** |
 | kein Eingabefeld | nicht versucht / gescheitert | egal | Zwischenablage | Text | „Kopiert – Strg+V“ | ja |
 | kein Eingabefeld | eingefügt¹ | aus / an | einfügen | alte / Text | – | ja |
-| unbekannt (kein Browser) | eingefügt | egal | einfügen | **Text bleibt** | – | ja |
-| unbekannt, **Browser** | eingefügt | aus | einfügen | **alte wiederhergestellt** | – | ja |
-| unbekannt, **Browser** | eingefügt | an | einfügen | Text bleibt (Wahl des Nutzers gewinnt) | – | ja |
+| unbekannt (kein Browser, kein Electron) | eingefügt | egal | einfügen | **Text bleibt** | – | ja |
+| unbekannt, **Browser oder Electron** | eingefügt | aus | einfügen | **alte wiederhergestellt** | – | ja |
+| unbekannt, **Browser oder Electron** | eingefügt | an | einfügen | Text bleibt (Wahl des Nutzers gewinnt) | – | ja |
 | unbekannt | gescheitert / nicht versucht (Linux) | egal | Zwischenablage | Text | „Kopiert – Strg+V“ | ja |
 
 ¹ kommt im Ablauf nicht vor (ohne Eingabefeld wird nicht eingefügt), der Vollständigkeit halber in der Tabelle und im Test.
@@ -58,6 +58,13 @@ wiederhergestellt – der Text bleibt **nicht** in der Zwischenablage; der Eintr
 Apps bleibt „unbekannt“ wie oben (Text bleibt in der Zwischenablage). `output.alwaysCopy = an` gewinnt immer. Tests:
 `OutputDecisionTest.BrowserZeilen`, `ImBrowserAendertSichNurUnbekanntEingefuegtOhneAlwaysCopy`, `BrowserErkennungAmProzessnamen`,
 `FocusDecisionTest.UnbekannterFokusImBrowser…`, `ImBrowserGewinntImmerKopieren`, `UnbekannterFokusAusserhalbDesBrowsers…`.
+
+**Erweitert (Christof, 2026-11-01, umgesetzt in W2-SEL): Electron-Apps wie Browser.** Slack, Discord, VS Code und andere
+Electron-Apps haben eigene Prozessnamen, melden ihren Inhalt aber ebenso nur als „Pane“. Erkannt werden sie an der Klasse
+des Zielfensters `Chrome_WidgetWin_1` (`IWindowAdapter.WindowClass`); ohne lesbare Klasse wird nicht am Prozessnamen geraten.
+Gleiches Verhalten wie im Browser: einfügen, alte Zwischenablage zurück, Verlauf ja, `alwaysCopy` gewinnt. Tests:
+`OutputDecisionTest.VorsichtigBeiBrowsernUndElectronFenstern`, `FocusDecisionTest.UnbekannterFokusInElectronApp…`,
+`InElectronAppGewinntImmerKopieren`.
 Einschränkung der Messung: ob `autofocus` in einer `data:`-Seite im neuen Fenster wirklich das Feld fokussiert, ist nicht belegt.
 
 ## Android-Punkte
@@ -103,7 +110,7 @@ Einschränkung der Messung: ob `autofocus` in einer `data:`-Seite im neuen Fenst
 | Stufen-Wähler (Klick, ↑/↓, Tab/Umschalt+Tab, 1–9, Enter, Esc) – Verlauf, Overlay, wiederverwendbar für W2-SEL | `StagePickerTest` (8), `OverlayStageTest`, `HistoryWindowTest.Stufen_waehler_per_Tastatur_im_Verlauf` |
 | Verlauf komplett per Tastatur, Volltextsuche (auch Ursprung und Fassungen) | `HistoryWindowTest` (12) |
 | Modus „nur Zwischenablage“ respektiert Passwortfelder (Ziel noch vorn → Fokus prüfen, nie kopieren, kein Verlauf) | `PruefRunde1Test.B2_*` (3) |
-| WebView2-Apps (`msedgewebview2`, z. B. neues Teams) gelten als Browser („Vorsichtig im Browser“). Electron-Apps (eigener Prozessname je App) melden ebenfalls „Pane“ und fallen unter „unbekannt, kein Browser“ (Text bleibt in der Zwischenablage) – siehe Fund | `PruefRunde1Test.B3_WebView2_App_gilt_als_Browser`, `OutputDecisionTest.BrowserErkennungAmProzessnamen` |
+| WebView2-Apps (`msedgewebview2`, z. B. neues Teams) gelten als Browser („Vorsichtig im Browser“). Electron-Apps (eigener Prozessname je App, Fensterklasse `Chrome_WidgetWin_1`) ebenso (W2-SEL, Entscheidung Christof 2026-11-01) | `PruefRunde1Test.B3_WebView2_App_gilt_als_Browser`, `OutputDecisionTest.BrowserErkennungAmProzessnamen`, `OutputDecisionTest.VorsichtigBeiBrowsernUndElectronFenstern`, `FocusDecisionTest.UnbekannterFokusInElectronApp…` |
 | Linux: gleiche Entscheidung (Fokus unbekannt, kein Einfügen) → Zwischenablage + Hinweis per `notify-send` | `CopyOutputTest.Ohne_Einfuegen_…`, Smoke `output-hint` (Suite full, beide Plattformen) |
 
 ## Warum Kopieren bei Christof unzuverlässig war (Ursachen)

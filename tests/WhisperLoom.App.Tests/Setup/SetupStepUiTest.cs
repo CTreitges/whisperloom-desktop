@@ -79,10 +79,10 @@ public sealed class SetupStepUiTest
     }
 
     [AvaloniaFact]
-    public async Task Hotkey_Test_kennt_auch_Erneut_einfuegen_und_Umschreiben()
+    public async Task Hotkey_Test_kennt_auch_Erneut_einfuegen_und_Markierung()
     {
         Loc.Instance.SetLanguage("de");
-        var answers = new Queue<string?>(["Ctrl+Alt+Shift+V", "Ctrl+Alt+Shift+R"]);
+        var answers = new Queue<string?>(["Ctrl+Alt+Shift+V", "Ctrl+Alt+Shift+S"]);
         using var s = new SetupFixture(recordHotkey: () => Task.FromResult(answers.Dequeue()));
 
         await s.Vm.Hotkey.TestCommand.ExecuteAsync(null);
@@ -91,7 +91,7 @@ public sealed class SetupStepUiTest
 
         await s.Vm.Hotkey.TestCommand.ExecuteAsync(null);
         Assert.True(s.Vm.Hotkey.Recognized);
-        Assert.Equal(Loc.Instance.Format("Setup_HotkeyOk", Loc.Instance["Hotkey_Rewrite"], "Ctrl+Alt+Shift+R"), s.Vm.Hotkey.Status);
+        Assert.Equal(Loc.Instance.Format("Setup_HotkeyOk", Loc.Instance["Hotkey_Selection"], "Ctrl+Alt+Shift+S"), s.Vm.Hotkey.Status);
     }
 
     [AvaloniaFact]

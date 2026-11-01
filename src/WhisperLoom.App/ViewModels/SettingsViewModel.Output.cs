@@ -17,6 +17,12 @@ public sealed partial class SettingsViewModel
 
     public bool PressEnter { get => _s.Output.PressEnter; set => SetPlain(() => _s.Output.PressEnter = value); }
 
+    /// <summary>Schwebender Knopf an einer Maus-Markierung (W2-SEL, <c>selection.floatingButton</c>).</summary>
+    public bool FloatingButton { get => _s.Selection.FloatingButton; set => SetPlain(() => _s.Selection.FloatingButton = value); }
+
+    /// <summary>Strg+Rechtsklick auf eine Markierung (W2-SEL, <c>selection.ctrlRightClick</c>).</summary>
+    public bool CtrlRightClick { get => _s.Selection.CtrlRightClick; set => SetPlain(() => _s.Selection.CtrlRightClick = value); }
+
     /// <summary>Auswahl der Größe im Fenster; ein kleinerer Wert mit zu vielen Einträgen fragt erst nach.</summary>
     public int HistorySizeChoice
     {
