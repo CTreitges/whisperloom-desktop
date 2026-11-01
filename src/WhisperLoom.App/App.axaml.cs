@@ -28,6 +28,7 @@ public partial class App : Application
     private HistoryWindow? _historyWindow;
     private SettingsWindow? _settingsWindow;
     private SetupWindow? _setupWindow;
+    private Views.Help.HelpWindow? _helpWindow;
     private IDisposable? _input;
     private Platform.Windows.Input.InputFlow? _flow;
     private readonly CancellationTokenSource _updates = new();
@@ -49,6 +50,9 @@ public partial class App : Application
     {
         _host = await AppHost.CreateAsync(options, f => Dispatcher.UIThread.InvokeAsync(f), CancellationToken.None);
         _host.ShowWindow = Open;
+        // Hilfe (W2-HELP): „?“ der Einstellungen, Assistent, Tray und F1 in jedem Fenster.
+        Views.Help.HelpLauncher.Handler = OpenHelp;
+        Views.Help.HelpLauncher.Install();
         _host.Log.Event("app.start", ("pid", Environment.ProcessId), ("secretStore", _host.Secrets.Kind.Replace(' ', '-')));
 
         _server = new IpcServer(new InstanceEndpoint(options.DataDir), (request, _) =>
@@ -228,7 +232,7 @@ public partial class App : Application
     /// <summary>Rekorder für die Einstellungen (nur mit laufendem Hook).</summary>
     internal Func<Task<string?>>? RecordHotkey { get; private set; }
 
-    /// <summary>"stage", "history", "settings", "setup" oder "quit".</summary>
+    /// <summary>"stage", "history", "settings", "setup", "help" oder "quit".</summary>
     private void Open(string what)
     {
         var host = _host;
@@ -294,6 +298,9 @@ public partial class App : Application
                 }
                 Activate(_setupWindow);
                 break;
+            case "help":
+                OpenHelp(Views.Help.HelpCatalog.Overview);
+                break;
             case "quit":
                 // Erst die IPC-Antwort rausgehen lassen, dann beenden.
                 Dispatcher.UIThread.Post(async () =>
@@ -347,6 +354,18 @@ public partial class App : Application
         {
             return [];
         }
+    }
+
+    /// <summary>Hilfe-Fenster öffnen bzw. nach vorn holen, beim Abschnitt <paramref name="topic"/>.</summary>
+    private void OpenHelp(string topic)
+    {
+        if (_helpWindow is null)
+        {
+            _helpWindow = new Views.Help.HelpWindow(new Views.Help.HelpViewModel());
+            _helpWindow.Closed += (_, _) => _helpWindow = null;
+        }
+        Activate(_helpWindow);
+        _helpWindow.ShowTopic(topic);
     }
 
     private static void Activate(Window window)

@@ -1,2 +1,4 @@
 tests/fixtures/*.json text eol=lf
 server/deploy/* text eol=lf
+src/WhisperLoom.App/Assets/Help/illustrations/*.svg text eol=lf
+src/WhisperLoom.App/Assets/Help/*.json text eol=lf

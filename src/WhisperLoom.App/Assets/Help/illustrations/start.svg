@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240" viewBox="0 0 320 240">
+  <path d="M18,0 h284 a18,18 0 0 1 18,18 v204 a18,18 0 0 1 -18,18 h-284 a18,18 0 0 1 -18,-18 v-204 a18,18 0 0 1 18,-18 z" fill="#E4E8EE" data-fill="SurfaceHigh"/>
+  <path d="M66,28 h188 a10,10 0 0 1 10,10 v164 a10,10 0 0 1 -10,10 h-188 a10,10 0 0 1 -10,-10 v-164 a10,10 0 0 1 10,-10 z" fill="#FFFFFF" data-fill="Surface" stroke="#B8C0CC" data-stroke="Separator" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M57,50 h206" fill="none" stroke="#B8C0CC" data-stroke="Separator" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M233,37 h0 a3,3 0 0 1 3,3 v0 a3,3 0 0 1 -3,3 h0 a3,3 0 0 1 -3,-3 v0 a3,3 0 0 1 3,-3 z" fill="#E4E8EE" data-fill="Sidebar"/>
+  <path d="M245,37 h0 a3,3 0 0 1 3,3 v0 a3,3 0 0 1 -3,3 h0 a3,3 0 0 1 -3,-3 v0 a3,3 0 0 1 3,-3 z" fill="#E4E8EE" data-fill="Sidebar"/>
+  <path d="M75,74 a13,13 0 1 0 26,0 a13,13 0 1 0 -26,0 z" fill="#0F5B50" data-fill="Accent"/>
+  <path d="M82,74 L87,79 L95,69" fill="none" stroke="#FFFFFF" data-stroke="OnAccent" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M114.5,66 h115 a2.5,2.5 0 0 1 2.5,2.5 v0 a2.5,2.5 0 0 1 -2.5,2.5 h-115 a2.5,2.5 0 0 1 -2.5,-2.5 v0 a2.5,2.5 0 0 1 2.5,-2.5 z" fill="#B8C0CC" data-fill="Separator"/>
+  <path d="M114.5,78 h79 a2.5,2.5 0 0 1 2.5,2.5 v0 a2.5,2.5 0 0 1 -2.5,2.5 h-79 a2.5,2.5 0 0 1 -2.5,-2.5 v0 a2.5,2.5 0 0 1 2.5,-2.5 z" fill="#B8C0CC" data-fill="Separator"/>
+  <path d="M75,118 a13,13 0 1 0 26,0 a13,13 0 1 0 -26,0 z" fill="#0F5B50" data-fill="Accent"/>
+  <path d="M82,118 L87,123 L95,113" fill="none" stroke="#FFFFFF" data-stroke="OnAccent" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M114.5,110 h115 a2.5,2.5 0 0 1 2.5,2.5 v0 a2.5,2.5 0 0 1 -2.5,2.5 h-115 a2.5,2.5 0 0 1 -2.5,-2.5 v0 a2.5,2.5 0 0 1 2.5,-2.5 z" fill="#B8C0CC" data-fill="Separator"/>
+  <path d="M114.5,122 h79 a2.5,2.5 0 0 1 2.5,2.5 v0 a2.5,2.5 0 0 1 -2.5,2.5 h-79 a2.5,2.5 0 0 1 -2.5,-2.5 v0 a2.5,2.5 0 0 1 2.5,-2.5 z" fill="#B8C0CC" data-fill="Separator"/>
+  <path d="M75,162 a13,13 0 1 0 26,0 a13,13 0 1 0 -26,0 z" fill="#FFFFFF" data-fill="Surface" stroke="#0F5B50" data-stroke="Accent" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M114.5,154 h115 a2.5,2.5 0 0 1 2.5,2.5 v0 a2.5,2.5 0 0 1 -2.5,2.5 h-115 a2.5,2.5 0 0 1 -2.5,-2.5 v0 a2.5,2.5 0 0 1 2.5,-2.5 z" fill="#B8C0CC" data-fill="Separator"/>
+  <path d="M114.5,166 h79 a2.5,2.5 0 0 1 2.5,2.5 v0 a2.5,2.5 0 0 1 -2.5,2.5 h-79 a2.5,2.5 0 0 1 -2.5,-2.5 v0 a2.5,2.5 0 0 1 2.5,-2.5 z" fill="#B8C0CC" data-fill="Separator"/>
+  <path d="M228,196 a22,22 0 1 0 44,0 a22,22 0 1 0 -44,0 z" fill="#0F5B50" data-fill="Accent"/>
+  <path d="M12,2A3,3 0 0,1 15,5V11A3,3 0 0,1 12,14A3,3 0 0,1 9,11V5A3,3 0 0,1 12,2M19,11C19,14.53 16.39,17.44 13,17.93V21H11V17.93C7.61,17.44 5,14.53 5,11H7A5,5 0 0,0 12,16A5,5 0 0,0 17,11H19Z" fill="#FFFFFF" data-fill="OnAccent" transform="translate(237.35 183.35) scale(1.05)"/>
+</svg>

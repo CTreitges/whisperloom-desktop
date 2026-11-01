@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240" viewBox="0 0 320 240">
+  <path d="M18,0 h284 a18,18 0 0 1 18,18 v204 a18,18 0 0 1 -18,18 h-284 a18,18 0 0 1 -18,-18 v-204 a18,18 0 0 1 18,-18 z" fill="#E4E8EE" data-fill="SurfaceHigh"/>
+  <path d="M30,24 h180 a10,10 0 0 1 10,10 v130 a10,10 0 0 1 -10,10 h-180 a10,10 0 0 1 -10,-10 v-130 a10,10 0 0 1 10,-10 z" fill="#FFFFFF" data-fill="Surface" stroke="#B8C0CC" data-stroke="Separator" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M21,46 h198" fill="none" stroke="#B8C0CC" data-stroke="Separator" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M189,33 h0 a3,3 0 0 1 3,3 v0 a3,3 0 0 1 -3,3 h0 a3,3 0 0 1 -3,-3 v0 a3,3 0 0 1 3,-3 z" fill="#E4E8EE" data-fill="Sidebar"/>
+  <path d="M201,33 h0 a3,3 0 0 1 3,3 v0 a3,3 0 0 1 -3,3 h0 a3,3 0 0 1 -3,-3 v0 a3,3 0 0 1 3,-3 z" fill="#E4E8EE" data-fill="Sidebar"/>
+  <path d="M38.5,58 h145 a2.5,2.5 0 0 1 2.5,2.5 v0 a2.5,2.5 0 0 1 -2.5,2.5 h-145 a2.5,2.5 0 0 1 -2.5,-2.5 v0 a2.5,2.5 0 0 1 2.5,-2.5 z" fill="#B8C0CC" data-fill="Separator"/>
+  <path d="M38.5,72 h125 a2.5,2.5 0 0 1 2.5,2.5 v0 a2.5,2.5 0 0 1 -2.5,2.5 h-125 a2.5,2.5 0 0 1 -2.5,-2.5 v0 a2.5,2.5 0 0 1 2.5,-2.5 z" fill="#B8C0CC" data-fill="Separator"/>
+  <path d="M36,82 h142 a4,4 0 0 1 4,4 v10 a4,4 0 0 1 -4,4 h-142 a4,4 0 0 1 -4,-4 v-10 a4,4 0 0 1 4,-4 z" fill="#B4F2E6" data-fill="Selection"/>
+  <path d="M38.5,88 h135 a2.5,2.5 0 0 1 2.5,2.5 v0 a2.5,2.5 0 0 1 -2.5,2.5 h-135 a2.5,2.5 0 0 1 -2.5,-2.5 v0 a2.5,2.5 0 0 1 2.5,-2.5 z" fill="#00382F" data-fill="OnSelection"/>
+  <path d="M38.5,112 h155 a2.5,2.5 0 0 1 2.5,2.5 v0 a2.5,2.5 0 0 1 -2.5,2.5 h-155 a2.5,2.5 0 0 1 -2.5,-2.5 v0 a2.5,2.5 0 0 1 2.5,-2.5 z" fill="#B8C0CC" data-fill="Separator"/>
+  <path d="M38.5,126 h115 a2.5,2.5 0 0 1 2.5,2.5 v0 a2.5,2.5 0 0 1 -2.5,2.5 h-115 a2.5,2.5 0 0 1 -2.5,-2.5 v0 a2.5,2.5 0 0 1 2.5,-2.5 z" fill="#B8C0CC" data-fill="Separator"/>
+  <path d="M38.5,140 h85 a2.5,2.5 0 0 1 2.5,2.5 v0 a2.5,2.5 0 0 1 -2.5,2.5 h-85 a2.5,2.5 0 0 1 -2.5,-2.5 v0 a2.5,2.5 0 0 1 2.5,-2.5 z" fill="#B8C0CC" data-fill="Separator"/>
+  <path d="M185,91 a13,13 0 1 0 26,0 a13,13 0 1 0 -26,0 z" fill="#0F5B50" data-fill="Accent"/>
+  <path d="M12,2L14.5,9.5L22,12L14.5,14.5L12,22L9.5,14.5L2,12L9.5,9.5Z" fill="#FFFFFF" data-fill="OnAccent" transform="translate(190.53 83.53) scale(0.62)"/>
+  <path d="M180,112 h108 a10,10 0 0 1 10,10 v84 a10,10 0 0 1 -10,10 h-108 a10,10 0 0 1 -10,-10 v-84 a10,10 0 0 1 10,-10 z" fill="#FFFFFF" data-fill="Surface" stroke="#B8C0CC" data-stroke="Separator" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M187,126 h4 a3,3 0 0 1 3,3 v4 a3,3 0 0 1 -3,3 h-4 a3,3 0 0 1 -3,-3 v-4 a3,3 0 0 1 3,-3 z" fill="#0F5B50" data-fill="Accent"/>
+  <path d="M204.5,129 h55 a2.5,2.5 0 0 1 2.5,2.5 v0 a2.5,2.5 0 0 1 -2.5,2.5 h-55 a2.5,2.5 0 0 1 -2.5,-2.5 v0 a2.5,2.5 0 0 1 2.5,-2.5 z" fill="#B8C0CC" data-fill="Separator"/>
+  <path d="M182,142 h104 a6,6 0 0 1 6,6 v8 a6,6 0 0 1 -6,6 h-104 a6,6 0 0 1 -6,-6 v-8 a6,6 0 0 1 6,-6 z" fill="#B4F2E6" data-fill="Selection"/>
+  <path d="M187,148 h4 a3,3 0 0 1 3,3 v4 a3,3 0 0 1 -3,3 h-4 a3,3 0 0 1 -3,-3 v-4 a3,3 0 0 1 3,-3 z" fill="#0F5B50" data-fill="Accent"/>
+  <path d="M204.5,151 h49 a2.5,2.5 0 0 1 2.5,2.5 v0 a2.5,2.5 0 0 1 -2.5,2.5 h-49 a2.5,2.5 0 0 1 -2.5,-2.5 v0 a2.5,2.5 0 0 1 2.5,-2.5 z" fill="#00382F" data-fill="OnSelection"/>
+  <path d="M187,170 h4 a3,3 0 0 1 3,3 v4 a3,3 0 0 1 -3,3 h-4 a3,3 0 0 1 -3,-3 v-4 a3,3 0 0 1 3,-3 z" fill="#0F5B50" data-fill="Accent"/>
+  <path d="M204.5,173 h43 a2.5,2.5 0 0 1 2.5,2.5 v0 a2.5,2.5 0 0 1 -2.5,2.5 h-43 a2.5,2.5 0 0 1 -2.5,-2.5 v0 a2.5,2.5 0 0 1 2.5,-2.5 z" fill="#B8C0CC" data-fill="Separator"/>
+  <path d="M187,192 h4 a3,3 0 0 1 3,3 v4 a3,3 0 0 1 -3,3 h-4 a3,3 0 0 1 -3,-3 v-4 a3,3 0 0 1 3,-3 z" fill="#0F5B50" data-fill="Accent"/>
+  <path d="M204.5,195 h37 a2.5,2.5 0 0 1 2.5,2.5 v0 a2.5,2.5 0 0 1 -2.5,2.5 h-37 a2.5,2.5 0 0 1 -2.5,-2.5 v0 a2.5,2.5 0 0 1 2.5,-2.5 z" fill="#B8C0CC" data-fill="Separator"/>
+</svg>

@@ -179,10 +179,10 @@ public class UiTest
         var tray = new TrayMenu(f.Controller, opened.Add);
         var headers = tray.Menu.Items.OfType<NativeMenuItem>().Where(i => i is not NativeMenuItemSeparator).Select(i => i.Header).ToList();
         // HIG (W2-UI1): Hauptaktion oben, kurze Labels, „…“ bei Fenstern mit Eingaben, „App beenden“ zuletzt.
-        Assert.Equal(["Aufnahme starten", "Stufe: Aus", "Letzte Diktate", "Bühne", "Verlauf", "Einstellungen …", "Einrichtung …", "WhisperLoom beenden"], headers);
-        // Gruppen durch Trenner: Hauptaktion | Stufe, Letzte | Fenster | Einstellungen, Einrichtung | Beenden.
+        Assert.Equal(["Aufnahme starten", "Stufe: Aus", "Letzte Diktate", "Bühne", "Verlauf", "Einstellungen …", "Einrichtung …", "Hilfe", "WhisperLoom beenden"], headers);
+        // Gruppen durch Trenner: Hauptaktion | Stufe, Letzte | Fenster | Einstellungen, Einrichtung, Hilfe (W2-HELP) | Beenden.
         var shape = tray.Menu.Items.Select(i => i is NativeMenuItemSeparator ? "|" : "x");
-        Assert.Equal("x|xx|xx|xx|x", string.Concat(shape));
+        Assert.Equal("x|xx|xx|xxx|x", string.Concat(shape));
         var stages = tray.Menu.Items.OfType<NativeMenuItem>().Where(i => i is not NativeMenuItemSeparator).ElementAt(1).Menu!.Items.OfType<NativeMenuItem>().Select(i => i.Header);
         Assert.Equal(["Aus", "Glätten", "Verschönern", "Zusammenfassen"], stages);
 
@@ -190,7 +190,7 @@ public class UiTest
         {
             item.Command!.Execute(null);
         }
-        Assert.Equal(["stage", "history", "settings", "setup", "quit"], opened);
+        Assert.Equal(["stage", "history", "settings", "setup", "help", "quit"], opened);
 
         f.Controller.Start();
         Assert.Equal("Aufnahme beenden", tray.Menu.Items.OfType<NativeMenuItem>().First().Header);

@@ -1,9 +1,13 @@
 using System.ComponentModel;
+using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.LogicalTree;
+using CommunityToolkit.Mvvm.Input;
 using WhisperLoom.App.Localization;
+using WhisperLoom.App.ViewModels.Settings;
+using WhisperLoom.App.Views.Help;
 using WhisperLoom.Core.Contracts.Settings;
 
 namespace WhisperLoom.App.Design;
@@ -95,10 +99,28 @@ public class SettingsPage : ContentControl
         AvaloniaProperty.RegisterDirect<SettingsPage, string>(nameof(ManagedText), p => p.ManagedText);
     public static readonly DirectProperty<SettingsPage, bool> HasManagedRowsProperty =
         AvaloniaProperty.RegisterDirect<SettingsPage, bool>(nameof(HasManagedRows), p => p.HasManagedRows);
+    public static readonly DirectProperty<SettingsPage, ICommand> HelpCommandProperty =
+        AvaloniaProperty.RegisterDirect<SettingsPage, ICommand>(nameof(HelpCommand), p => p.HelpCommand);
+    public static readonly DirectProperty<SettingsPage, string> HelpTipProperty =
+        AvaloniaProperty.RegisterDirect<SettingsPage, string>(nameof(HelpTip), p => p.HelpTip);
+    public static readonly DirectProperty<SettingsPage, string> HelpNameProperty =
+        AvaloniaProperty.RegisterDirect<SettingsPage, string>(nameof(HelpName), p => p.HelpName);
 
     private string _title = "";
     private string _managedText = "";
     private bool _hasManagedRows;
+    private string _helpTip = "";
+    private string _helpName = "";
+
+    /// <summary>W2-HELP: Der „?“-Knopf öffnet den Hilfe-Abschnitt dieser Seite (DataContext = ViewModel der Seite).</summary>
+    public SettingsPage() => HelpCommand = new RelayCommand(() => HelpLauncher.OpenForPage(DataContext as SettingsPageViewModel));
+
+    public ICommand HelpCommand { get; }
+
+    public string HelpTip { get => _helpTip; private set => SetAndRaise(HelpTipProperty, ref _helpTip, value); }
+
+    /// <summary>Accessible Name des „?“-Knopfs: „Hilfe zu „Seite““.</summary>
+    public string HelpName { get => _helpName; private set => SetAndRaise(HelpNameProperty, ref _helpName, value); }
 
     public string? TitleKey { get => GetValue(TitleKeyProperty); set => SetValue(TitleKeyProperty, value); }
 
@@ -136,6 +158,8 @@ public class SettingsPage : ContentControl
     private void Refresh()
     {
         Title = TitleKey is { } key ? Loc.Instance[key] : "";
+        HelpTip = Loc.Instance["Help_PageButton_Tip"];
+        HelpName = Loc.Instance.Format("Help_PageButton_Name", Title);
         var source = Managed.GetContext(this)?.Source;
         HasManagedRows = source?.ManagerName is not null && ManagedRows.Of(this).Any(r => ManagedRows.StateOf(this, r) == ManagedState.Fixed);
         ManagedText = source?.ManagerName is { } name ? Loc.Instance.Format("Managed_Note", name) : "";

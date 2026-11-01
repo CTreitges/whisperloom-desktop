@@ -1,0 +1,20 @@
+{
+  "screens": [
+    { "name": "setup", "section": "start", "scene": "setup", "markers": ["name:ProgressText", "name:UsagePersonal", "name:UsageCompany", "name:SkipButton"] },
+    { "name": "stage", "section": "dictation", "scene": "stage", "markers": ["name:ToggleButton", "name:StageButton", "name:RawText", "name:ResultText"] },
+    { "name": "text", "section": "stages", "scene": "settings:text", "markers": ["path:refine.stage", "path:refine.promptEnabled", "path:llm.providerId"] },
+    { "name": "hotkeys", "section": "hotkeys", "scene": "settings:hotkeys", "markers": ["path:desktop.hotkeyHold", "path:desktop.hotkeyToggle", "path:desktop.hotkeyStage", "path:desktop.hotkeyReinsert"], "height": 760 },
+    { "name": "selection", "section": "selection", "scene": "picker", "markers": ["name:Selected", "name:Picker"] },
+    { "name": "selectionsettings", "section": "selection", "scene": "settings:hotkeys:selection", "markers": ["path:selection.hotkeyCombo", "path:selection.floatingButton", "path:selection.ctrlRightClick"], "height": 900 },
+    { "name": "history", "section": "history", "scene": "history", "markers": ["name:SearchBox", "name:Entries", "name:CopyButton@top", "name:ReprocessButton@top"] },
+    { "name": "output", "section": "output", "scene": "settings:output", "markers": ["path:desktop.insertMode", "path:output.alwaysCopy", "path:output.pressEnter", "path:desktop.profiles"], "height": 760 },
+    { "name": "recognition", "section": "recognition", "scene": "settings:recognition", "markers": ["path:engine", "path:stt.providerId", "path:secrets.stt", "path:stt.model"] },
+    { "name": "providers", "section": "providers", "scene": "settings:providers", "markers": ["name:AddProviderButton"] },
+    { "name": "localmodels", "section": "providers", "scene": "settings:localmodels", "markers": ["name:AddFileButton", "name:TextModelList", "name:AddServerButton"], "height": 900 },
+    { "name": "company", "section": "company", "scene": "settings:company", "markers": ["name:JoinServerBox", "name:JoinCodeBox", "name:JoinNowButton"] },
+    { "name": "network", "section": "network", "scene": "settings:network", "markers": ["path:desktop.proxyMode", "path:desktop.proxyUrl"], "height": 420 },
+    { "name": "privacy", "section": "privacy", "scene": "settings:privacy", "markers": ["path:history.enabled", "path:history.size", "name:SecretStoreKindText"], "height": 520 },
+    { "name": "trouble", "section": "trouble", "scene": "stage:error", "markers": ["text:Error_Network"] },
+    { "name": "managed", "section": "it", "scene": "settings:recognition:managed", "markers": ["name:PART_Managed", "path:stt.model"] }
+  ]
+}

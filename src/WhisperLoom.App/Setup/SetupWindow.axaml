@@ -96,6 +96,9 @@
         <TextBlock x:Name="StatusText" Classes="error" Text="{Binding Status}"
                    IsVisible="{Binding Status, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
         <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+          <!-- W2-HELP: Hilfe zum aktuellen Schritt (auch F1). -->
+          <Button x:Name="HelpButton" Grid.Column="1" Classes="link" Margin="12,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center"
+                  Content="{Binding [Setup_Help], Source={x:Static l:Loc.Instance}}" Click="OnHelp" />
           <Button x:Name="SkipButton" Grid.Column="0" Content="{Binding [Setup_Skip], Source={x:Static l:Loc.Instance}}" Command="{Binding SkipCommand}" IsVisible="{Binding !IsLast}" />
           <Button x:Name="BackButton" Grid.Column="2" Margin="0,0,8,0" Content="{Binding [Setup_Back], Source={x:Static l:Loc.Instance}}" Command="{Binding BackCommand}" />
           <Button x:Name="NextButton" Grid.Column="3" Classes="accent" Content="{Binding [Setup_Next], Source={x:Static l:Loc.Instance}}" Command="{Binding NextCommand}" IsVisible="{Binding !IsLast}" IsDefault="True" />
