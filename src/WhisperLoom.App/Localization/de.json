@@ -79,7 +79,7 @@
   "Company_WaitingDetail": "{0} muss dieses Gerät im Portal freigeben (Geräte-ID {1}). Danach geht es von selbst weiter.",
   "Custom_Placeholder": "Name eingeben, Enter übernimmt",
   "Error_Audio": "Kein Mikrofon nutzbar",
-  "Error_Budget": "Monatslimit der Firma erreicht",
+  "Error_Budget": "Firmenbudget für diesen Monat erreicht – bitte IT fragen",
   "Error_Http": "Erkennung: Server meldet einen Fehler",
   "Error_Local": "Lokale Erkennung nicht bereit",
   "Error_Network": "Erkennung: Server nicht erreichbar",

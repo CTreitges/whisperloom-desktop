@@ -79,7 +79,7 @@
   "Company_WaitingDetail": "{0} needs to approve this device in the portal (device ID {1}). It continues on its own afterwards.",
   "Custom_Placeholder": "Type a name, Enter applies",
   "Error_Audio": "No usable microphone",
-  "Error_Budget": "Company monthly limit reached",
+  "Error_Budget": "Company budget for this month reached – please ask your IT team",
   "Error_Http": "Recognition: server reported an error",
   "Error_Local": "Local recognition not ready",
   "Error_Network": "Recognition: server not reachable",

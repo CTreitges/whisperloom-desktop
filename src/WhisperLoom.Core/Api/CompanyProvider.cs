@@ -53,7 +53,7 @@ public static class CompanyProvider
             && proxy.AbsolutePath.TrimEnd('/') == access.AbsolutePath.TrimEnd('/');
     }
 
-    /// <summary>Fehlerklasse <c>budget</c>: der Proxy meldet <c>403 budget_exhausted</c> (Text „Monatslimit der Firma erreicht“).</summary>
+    /// <summary>Fehlerklasse <c>budget</c>: der Proxy meldet <c>403 budget_exhausted</c> (Text „Firmenbudget für diesen Monat erreicht – bitte IT fragen“; kein Ersatz-Anbieter).</summary>
     public static bool IsBudgetError(Exception e) =>
         e is ApiHttpException { StatusCode: 403 } h && h.Message.Contains(BudgetError, StringComparison.Ordinal);
 }

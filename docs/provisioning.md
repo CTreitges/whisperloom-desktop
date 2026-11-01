@@ -135,7 +135,7 @@ gleicht beim Start, alle 15 Minuten und auf „Jetzt abgleichen“ ab. Drei Wege
 Was danach gilt:
 
 - **Proxy-Modus** (Standard): Keys bleiben auf dem Server; Erkennung und Text laufen über `<server>/api/v1/proxy`, die
-  App authentifiziert sich mit dem Geräte-Token. Ein aufgebrauchtes Budget zeigt „Monatslimit der Firma erreicht“.
+  App authentifiziert sich mit dem Geräte-Token. Ein aufgebrauchtes Budget lehnt das Diktat ab, ohne Ersatz-Anbieter: „Firmenbudget für diesen Monat erreicht – bitte IT fragen“.
 - **Verteilt-Modus**: Die Keys der Firma landen im Credential Manager unter `WhisperLoom:company:<zugang>`, getrennt
   von eigenen Keys des Nutzers; Sperre und „Firma verlassen“ löschen sie.
 - **Offline** gilt die letzte Konfiguration weiter, Fest bleibt Fest. **Gesperrt** (Portal) schaltet die
@@ -253,7 +253,7 @@ start, every 15 minutes and on “Sync now”. Three ways, none needs admin righ
    start** connects and discards the code.
 
 Afterwards: in **proxy mode** (default) keys stay on the server and the app authenticates against
-`<server>/api/v1/proxy` with the device token; an exhausted budget shows “Company monthly limit reached”. In
+`<server>/api/v1/proxy` with the device token; an exhausted budget rejects the dictation without any fallback provider: “Company budget for this month reached – please ask your IT team”. In
 **distribute mode** company keys go to Credential Manager as `WhisperLoom:company:<access>`, separate from the user's
 own keys, and are deleted when the device is blocked or leaves. **Offline**, the last configuration stays in effect
 and fixed stays fixed. **Blocked** turns company access off with a notice; the user's own settings stay. A later

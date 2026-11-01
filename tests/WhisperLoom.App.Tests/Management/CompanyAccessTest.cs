@@ -119,6 +119,43 @@ public sealed class CompanyAccessTest
     }
 
     [Fact]
+    public async Task Budget_erschoepft_in_der_Textverbesserung_kein_Ersatz_Anbieter()
+    {
+        // hinweise-srv2.md 8 (Christof): Budget erreicht = klar ablehnen, kein Fallback-Versuch.
+        await using var proxy = new FakeServer();
+        proxy.Map("/api/v1/proxy/chat/completions", _ =>
+            new FakeResponse(403, """{"error":"budget_exhausted","message":"Budget der Firma aufgebraucht"}"""));
+        await using var other = new FakeServer();
+        var fallbackCalls = 0;
+        other.Map("/v1/chat/completions", _ =>
+        {
+            fallbackCalls++;
+            return new FakeResponse(200, """{"choices":[{"message":{"role":"assistant","content":"Ersatz"}}]}""");
+        });
+        using var r = new ManagementRig();
+        r.Server.AutoApprove = true;
+        await r.JoinAsync();
+        r.Settings.Management.ServerUrl = proxy.Base;
+        r.Settings.Engine = "online";
+        r.Settings.Llm.Model = "llama-3.3-70b";
+        r.Settings.LlmFallback.Enabled = true;
+        r.Settings.LlmFallback.ProviderId = "custom";
+        r.Settings.LlmFallback.BaseUrl = other.Url("/v1");
+        r.Settings.LlmFallback.Model = "fake-llm";
+        using var pipeline = new AppPipeline(() => r.Settings, r.Secrets, new ModelCache(Path.Combine(r.F.DataDir, "mc.json")));
+        try
+        {
+            var refined = await pipeline.RefineAsync("hallo welt", "de", new Refinement(RefineMode.Polish), CancellationToken.None);
+            Assert.NotEqual("Ersatz", refined.Text);
+        }
+        catch (Exception e)
+        {
+            Assert.True(CompanyProvider.IsBudgetError(e) || CompanyProvider.IsBudgetError(e.InnerException!), e.GetType().Name);
+        }
+        Assert.Equal(0, fallbackCalls);
+    }
+
+    [Fact]
     public async Task Server_Konfig_mit_eigenem_Anbieter_neuer_Adresse_loescht_den_Nutzer_Key()
     {
         // W2-LOCAL R-K1-1 / Hinweis 6: Ein Key eines eigenen Anbieters ginge sonst an die Adresse, die die Firma setzt.
@@ -210,8 +247,8 @@ public sealed class CompanyAccessTest
         Assert.Equal("budget", controller.LastErrorClass);
         Assert.Equal("Error_Budget", controller.LastErrorKey);
         // Tabelle direkt: die Sprache von Loc.Instance teilen sich parallel laufende Tests.
-        Assert.Equal("Monatslimit der Firma erreicht", Localization.Loc.LoadTable("de")[controller.LastErrorKey!]);
-        Assert.Equal("Company monthly limit reached", Localization.Loc.LoadTable("en")[controller.LastErrorKey!]);
+        Assert.Equal("Firmenbudget für diesen Monat erreicht – bitte IT fragen", Localization.Loc.LoadTable("de")[controller.LastErrorKey!]);
+        Assert.Equal("Company budget for this month reached – please ask your IT team", Localization.Loc.LoadTable("en")[controller.LastErrorKey!]);
 
         pipeline.Error = ApiErrors.Http(403, "forbidden");
         controller.Start();
