@@ -1,282 +1,94 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:WhisperLoom.App.ViewModels"
-        xmlns:v="using:WhisperLoom.App.Views"
+        xmlns:vm="using:WhisperLoom.App.ViewModels.Settings"
+        xmlns:vs="using:WhisperLoom.App.Views.Settings"
+        xmlns:ds="using:WhisperLoom.App.Design"
         xmlns:l="using:WhisperLoom.App.Localization"
-        xmlns:p="using:WhisperLoom.App.Features.Profiles"
         x:Class="WhisperLoom.App.Views.SettingsWindow"
-        x:DataType="vm:SettingsViewModel"
+        x:DataType="vm:SettingsShellViewModel"
+        Classes="loom"
         Title="{Binding [Settings_Title], Source={x:Static l:Loc.Instance}}"
         Icon="/Assets/whisperloom.ico"
-        Width="900" Height="680"
-        Background="{StaticResource WlBackground}">
-  <Window.Styles>
-    <Style Selector="TextBlock.h">
-      <Setter Property="FontSize" Value="16" />
-      <Setter Property="FontWeight" Value="SemiBold" />
-      <Setter Property="Foreground" Value="{StaticResource WlAccent}" />
-      <Setter Property="Margin" Value="0,12,0,4" />
-    </Style>
-    <Style Selector="TextBlock.f">
-      <Setter Property="Foreground" Value="{StaticResource WlOnSurfaceVariant}" />
-      <Setter Property="Margin" Value="0,6,0,2" />
-    </Style>
-    <Style Selector="ComboBox, TextBox">
-      <Setter Property="MinWidth" Value="320" />
-      <Setter Property="HorizontalAlignment" Value="Left" />
-    </Style>
-  </Window.Styles>
+        Width="920" Height="660" MinWidth="720" MinHeight="480">
+  <!--
+    Hülle nach HIG „Settings“/„Sidebars“: links Suche + Seitenleiste (Pfeiltasten), rechts die Seite. Kein Speichern-Knopf –
+    jede Änderung gilt sofort. Esc schließt (bzw. leert zuerst die Suche), Strg+F springt in die Suche.
+  -->
+  <Window.DataTemplates>
+    <DataTemplate DataType="vm:GeneralPageViewModel"><vs:GeneralPage /></DataTemplate>
+    <DataTemplate DataType="vm:RecognitionPageViewModel"><vs:RecognitionPage /></DataTemplate>
+    <DataTemplate DataType="vm:TextPageViewModel"><vs:TextPage /></DataTemplate>
+    <DataTemplate DataType="vm:CleanupPageViewModel"><vs:CleanupPage /></DataTemplate>
+    <DataTemplate DataType="vm:OutputPageViewModel"><vs:OutputPage /></DataTemplate>
+    <DataTemplate DataType="vm:HotkeysPageViewModel"><vs:HotkeysPage /></DataTemplate>
+    <DataTemplate DataType="vm:PrivacyPageViewModel"><vs:PrivacyPage /></DataTemplate>
+    <DataTemplate DataType="vm:NetworkPageViewModel"><vs:NetworkPage /></DataTemplate>
+  </Window.DataTemplates>
 
-  <DockPanel Margin="16">
-    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="12" Margin="0,12,0,0">
-      <Button x:Name="SaveButton" Content="{Binding [Action_Save], Source={x:Static l:Loc.Instance}}" Command="{Binding SaveCommand}" />
-      <Button Content="{Binding [Action_Close], Source={x:Static l:Loc.Instance}}" Click="OnClose" />
-      <TextBlock Text="{Binding SaveStatus}" VerticalAlignment="Center" Foreground="{StaticResource WlAccent}" />
-    </StackPanel>
+  <Grid ColumnDefinitions="232,*" ds:Managed.Context="{Binding Managed}">
+    <Border Grid.Column="0" Background="{DynamicResource Loom.Sidebar}" BorderBrush="{DynamicResource Loom.Separator}" BorderThickness="0,0,1,0">
+      <DockPanel>
+        <TextBox x:Name="SearchBox" DockPanel.Dock="Top" Margin="12,14,12,6" Text="{Binding SearchText}"
+                 PlaceholderText="{Binding [Search_Placeholder], Source={x:Static l:Loc.Instance}}"
+                 AutomationProperties.Name="{Binding [Search_Name], Source={x:Static l:Loc.Instance}}">
+          <TextBox.InnerLeftContent>
+            <PathIcon Data="{DynamicResource Loom.Icon.Search}" Width="14" Height="14" Margin="8,0,0,0" Foreground="{DynamicResource Loom.TextSecondary}" />
+          </TextBox.InnerLeftContent>
+        </TextBox>
 
-    <TextBlock x:Name="PolicyHint" DockPanel.Dock="Top" IsVisible="{Binding HasPolicy}" TextWrapping="Wrap" Margin="0,0,0,8"
-               Foreground="{StaticResource WlAccent}" Text="{Binding [Policy_Hint], Source={x:Static l:Loc.Instance}}" />
-
-    <TabControl>
-      <!-- Erkennung -->
-      <TabItem x:Name="TabRecognition" Header="{Binding [Settings_Recognition], Source={x:Static l:Loc.Instance}}">
-        <ScrollViewer>
-          <StackPanel Margin="4">
-            <TextBlock Classes="f" Text="{Binding [Settings_Provider], Source={x:Static l:Loc.Instance}}" />
-            <ComboBox IsEnabled="{Binding Editable[stt.providerId]}" ItemsSource="{Binding SttProviders}" SelectedItem="{Binding SttProvider}" />
-            <TextBlock Classes="f" Text="{Binding [Settings_ApiKey], Source={x:Static l:Loc.Instance}}" />
-            <v:KeyFieldView x:Name="SttKeyView" DataContext="{Binding SttKey}" />
-            <TextBlock Classes="f" Text="{Binding [Settings_BaseUrl], Source={x:Static l:Loc.Instance}}" />
-            <TextBox IsEnabled="{Binding Editable[stt.baseUrl]}" Text="{Binding SttBaseUrl}" />
-            <TextBlock Classes="f" Text="{Binding [Settings_Model], Source={x:Static l:Loc.Instance}}" />
-            <TextBox IsEnabled="{Binding Editable[stt.model]}" Text="{Binding SttModel}" />
-            <TextBlock Classes="f" Text="{Binding [Language_Label], Source={x:Static l:Loc.Instance}}" />
-            <ComboBox IsEnabled="{Binding Editable[language]}" ItemsSource="{Binding Languages}" SelectedItem="{Binding Language}" />
-            <TextBlock Classes="h" Text="{Binding [Settings_Fallback], Source={x:Static l:Loc.Instance}}" />
-            <CheckBox IsEnabled="{Binding Editable[sttFallback.enabled]}" IsChecked="{Binding SttFallbackEnabled}" Content="{Binding [Settings_FallbackEnabled], Source={x:Static l:Loc.Instance}}" />
-            <ComboBox IsEnabled="{Binding Editable[sttFallback.providerId]}" ItemsSource="{Binding SttProviders}" SelectedItem="{Binding SttFallbackProvider}" />
-            <v:KeyFieldView x:Name="SttFallbackKeyView" DataContext="{Binding SttFallbackKey}" />
-            <TextBlock Classes="f" Text="{Binding [Settings_Model], Source={x:Static l:Loc.Instance}}" />
-            <TextBox IsEnabled="{Binding Editable[sttFallback.model]}" Text="{Binding SttFallbackModel}" />
-          </StackPanel>
-        </ScrollViewer>
-      </TabItem>
-
-      <!-- Text -->
-      <TabItem x:Name="TabText" Header="{Binding [Settings_Text], Source={x:Static l:Loc.Instance}}">
-        <ScrollViewer>
-          <StackPanel Margin="4">
-            <TextBlock Classes="f" Text="{Binding [Stage_Label], Source={x:Static l:Loc.Instance}}" />
-            <ComboBox IsEnabled="{Binding Editable[refine.stage]}" ItemsSource="{Binding Stages}" SelectedItem="{Binding Stage}" />
-            <CheckBox IsEnabled="{Binding Editable[refine.promptEnabled]}" IsChecked="{Binding PromptEnabled}" Content="{Binding [Settings_PromptEnabled], Source={x:Static l:Loc.Instance}}" />
-            <TextBlock Classes="h" Text="{Binding [Settings_LlmAccess], Source={x:Static l:Loc.Instance}}" />
-            <ComboBox IsEnabled="{Binding Editable[llm.providerId]}" ItemsSource="{Binding LlmProviders}" SelectedItem="{Binding LlmProvider}" />
-            <v:KeyFieldView x:Name="LlmKeyView" DataContext="{Binding LlmKey}" />
-            <TextBlock Classes="f" Text="{Binding [Settings_BaseUrl], Source={x:Static l:Loc.Instance}}" />
-            <TextBox IsEnabled="{Binding Editable[llm.baseUrl]}" Text="{Binding LlmBaseUrl}" />
-            <TextBlock Classes="f" Text="{Binding [Settings_Model], Source={x:Static l:Loc.Instance}}" />
-            <TextBox IsEnabled="{Binding Editable[llm.model]}" Text="{Binding LlmModel}" />
-            <TextBlock Classes="h" Text="{Binding [Settings_StageModels], Source={x:Static l:Loc.Instance}}" />
-            <TextBlock Classes="f" Text="{Binding [Stage_polish], Source={x:Static l:Loc.Instance}}" />
-            <TextBox IsEnabled="{Binding Editable[llm.stageModels.polish]}" Text="{Binding ModelPolish}" />
-            <TextBlock Classes="f" Text="{Binding [Stage_beautify], Source={x:Static l:Loc.Instance}}" />
-            <TextBox IsEnabled="{Binding Editable[llm.stageModels.beautify]}" Text="{Binding ModelBeautify}" />
-            <TextBlock Classes="f" Text="{Binding [Stage_summarize], Source={x:Static l:Loc.Instance}}" />
-            <TextBox IsEnabled="{Binding Editable[llm.stageModels.summarize]}" Text="{Binding ModelSummarize}" />
-            <TextBlock Classes="f" Text="{Binding [Stage_prompt], Source={x:Static l:Loc.Instance}}" />
-            <TextBox IsEnabled="{Binding Editable[llm.stageModels.prompt]}" Text="{Binding ModelPrompt}" />
-            <TextBlock Classes="h" Text="{Binding [Settings_Fallback], Source={x:Static l:Loc.Instance}}" />
-            <CheckBox IsEnabled="{Binding Editable[llmFallback.enabled]}" IsChecked="{Binding LlmFallbackEnabled}" Content="{Binding [Settings_FallbackEnabled], Source={x:Static l:Loc.Instance}}" />
-            <ComboBox IsEnabled="{Binding Editable[llmFallback.providerId]}" ItemsSource="{Binding LlmFallbackProviders}" SelectedItem="{Binding LlmFallbackProvider}" />
-            <v:KeyFieldView x:Name="LlmFallbackKeyView" DataContext="{Binding LlmFallbackKey}" />
-            <TextBlock Classes="f" Text="{Binding [Settings_Model], Source={x:Static l:Loc.Instance}}" />
-            <TextBox IsEnabled="{Binding Editable[llmFallback.model]}" Text="{Binding LlmFallbackModel}" />
-          </StackPanel>
-        </ScrollViewer>
-      </TabItem>
-
-      <!-- Lokal (WLD-P4b) -->
-      <TabItem x:Name="TabLocal" Header="{Binding [Settings_Local], Source={x:Static l:Loc.Instance}}">
-        <v:LocalSettingsView DataContext="{Binding Local}" />
-      </TabItem>
-
-      <!-- Kontext-Wörter -->
-      <TabItem x:Name="TabVocabulary" Header="{Binding [Settings_Vocabulary], Source={x:Static l:Loc.Instance}}">
-        <StackPanel Margin="4">
-          <TextBlock Classes="f" Text="{Binding [Settings_VocabularyHint], Source={x:Static l:Loc.Instance}}" />
-          <TextBox IsEnabled="{Binding Editable[stt.vocabulary]}" Text="{Binding Vocabulary}" AcceptsReturn="True" Height="260" MinWidth="560" TextWrapping="Wrap" />
-          <TextBlock Classes="f" Text="{Binding [Settings_VocabularyFile], Source={x:Static l:Loc.Instance}}" />
-          <TextBox IsEnabled="{Binding Editable[stt.vocabularyFile]}" Text="{Binding VocabularyFile}" MinWidth="560" />
-        </StackPanel>
-      </TabItem>
-
-      <!-- Netzwerk -->
-      <TabItem x:Name="TabNetwork" Header="{Binding [Settings_Network], Source={x:Static l:Loc.Instance}}">
-        <StackPanel Margin="4">
-          <TextBlock Classes="f" Text="{Binding [Settings_Proxy], Source={x:Static l:Loc.Instance}}" />
-          <ComboBox IsEnabled="{Binding Editable[desktop.proxyMode]}" ItemsSource="{Binding ProxyModes}" SelectedItem="{Binding ProxyMode}" />
-          <TextBlock Classes="f" Text="{Binding [Settings_ProxyUrl], Source={x:Static l:Loc.Instance}}" />
-          <TextBox IsEnabled="{Binding Editable[desktop.proxyUrl]}" Text="{Binding ProxyUrl}" PlaceholderText="http://proxy:3128" />
-        </StackPanel>
-      </TabItem>
-
-      <!-- Datenschutz -->
-      <TabItem x:Name="TabPrivacy" Header="{Binding [Settings_Privacy], Source={x:Static l:Loc.Instance}}">
-        <StackPanel Margin="4">
-          <CheckBox IsEnabled="{Binding Editable[history.enabled]}" IsChecked="{Binding HistoryEnabled}" Content="{Binding [Settings_HistoryEnabled], Source={x:Static l:Loc.Instance}}" />
-          <TextBlock Classes="f" Text="{Binding [Settings_HistorySize], Source={x:Static l:Loc.Instance}}" />
-          <ComboBox IsEnabled="{Binding Editable[history.size]}" ItemsSource="{Binding HistorySizes}" SelectedItem="{Binding HistorySize}" />
-          <TextBlock Classes="f" TextWrapping="Wrap" Text="{Binding [Settings_PrivacyNote], Source={x:Static l:Loc.Instance}}" />
-          <TextBlock Classes="h" Text="{Binding [Settings_KeyStore], Source={x:Static l:Loc.Instance}}" />
-          <TextBlock x:Name="SecretStoreKindText" Text="{Binding SecretStoreKind}" />
-          <TextBlock x:Name="SecretFileHint" IsVisible="{Binding SecretStoreIsFile}" TextWrapping="Wrap"
-                     Foreground="{StaticResource WlError}" Text="{Binding [Settings_KeyFileHint], Source={x:Static l:Loc.Instance}}" />
-        </StackPanel>
-      </TabItem>
-
-      <!-- Ausgabe und Oberfläche -->
-      <TabItem x:Name="TabOutput" Header="{Binding [Settings_Output], Source={x:Static l:Loc.Instance}}">
-        <StackPanel Margin="4">
-          <TextBlock Classes="f" Text="{Binding [Settings_Output], Source={x:Static l:Loc.Instance}}" />
-          <ComboBox IsEnabled="{Binding Editable[desktop.output]}" ItemsSource="{Binding Outputs}" SelectedItem="{Binding Output}" />
-          <TextBlock Classes="f" Text="{Binding [Settings_InsertMode], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding Hotkeys.Available}" />
-          <ComboBox x:Name="InsertModeBox" ItemsSource="{Binding InsertModes}" SelectedItem="{Binding InsertMode}" IsVisible="{Binding Hotkeys.Available}" />
-          <TextBlock Classes="f" Text="{Binding [Settings_Microphone], Source={x:Static l:Loc.Instance}}" />
-          <ComboBox IsEnabled="{Binding Editable[desktop.microphone]}" ItemsSource="{Binding Microphones}" SelectedItem="{Binding Microphone}" />
-          <TextBlock Classes="f" Text="{Binding [Settings_UiLanguage], Source={x:Static l:Loc.Instance}}" />
-          <ComboBox IsEnabled="{Binding Editable[desktop.uiLanguage]}" x:Name="UiLanguageBox" ItemsSource="{Binding UiLanguages}" SelectedItem="{Binding UiLanguage}" />
-        </StackPanel>
-      </TabItem>
-
-      <!-- Tastenkürzel (nur Windows, Phase 3) -->
-      <TabItem x:Name="TabHotkeys" Header="{Binding [Settings_Hotkeys], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding Hotkeys.Available}">
-        <StackPanel Margin="4">
-          <CheckBox x:Name="HotkeysEnabledBox" IsChecked="{Binding Hotkeys.Enabled}" Content="{Binding [Hotkey_Enabled], Source={x:Static l:Loc.Instance}}" />
-          <StackPanel x:Name="HotkeyHold" DataContext="{Binding Hotkeys.Hold}" x:DataType="vm:HotkeyRowViewModel" Margin="0,8,0,0">
-            <TextBlock Classes="f" Text="{Binding Label}" />
-            <StackPanel Orientation="Horizontal" Spacing="8">
-              <Border Background="{StaticResource WlSurfaceHigh}" CornerRadius="4" Padding="10,4" MinWidth="180">
-                <TextBlock Text="{Binding Value}" FontWeight="SemiBold" />
-              </Border>
-              <Button Content="{Binding [Hotkey_Record], Source={x:Static l:Loc.Instance}}" Command="{Binding RecordCommand}"
-                      IsVisible="{Binding CanRecord}" IsEnabled="{Binding !IsRecording}" />
-              <TextBlock Text="{Binding [Hotkey_Recording], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding IsRecording}"
-                         VerticalAlignment="Center" Foreground="{StaticResource WlAccent}" />
-            </StackPanel>
-            <TextBlock Text="{Binding Warnings}" TextWrapping="Wrap" Foreground="{StaticResource WlError}" FontSize="12" Margin="0,4,0,0" />
-          </StackPanel>
-          <StackPanel x:Name="HotkeyToggle" DataContext="{Binding Hotkeys.Toggle}" x:DataType="vm:HotkeyRowViewModel" Margin="0,8,0,0">
-            <TextBlock Classes="f" Text="{Binding Label}" />
-            <StackPanel Orientation="Horizontal" Spacing="8">
-              <Border Background="{StaticResource WlSurfaceHigh}" CornerRadius="4" Padding="10,4" MinWidth="180">
-                <TextBlock Text="{Binding Value}" FontWeight="SemiBold" />
-              </Border>
-              <Button Content="{Binding [Hotkey_Record], Source={x:Static l:Loc.Instance}}" Command="{Binding RecordCommand}"
-                      IsVisible="{Binding CanRecord}" IsEnabled="{Binding !IsRecording}" />
-              <TextBlock Text="{Binding [Hotkey_Recording], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding IsRecording}"
-                         VerticalAlignment="Center" Foreground="{StaticResource WlAccent}" />
-            </StackPanel>
-            <TextBlock Text="{Binding Warnings}" TextWrapping="Wrap" Foreground="{StaticResource WlError}" FontSize="12" Margin="0,4,0,0" />
-          </StackPanel>
-          <StackPanel x:Name="HotkeyStage" DataContext="{Binding Hotkeys.Stage}" x:DataType="vm:HotkeyRowViewModel" Margin="0,8,0,0">
-            <TextBlock Classes="f" Text="{Binding Label}" />
-            <StackPanel Orientation="Horizontal" Spacing="8">
-              <Border Background="{StaticResource WlSurfaceHigh}" CornerRadius="4" Padding="10,4" MinWidth="180">
-                <TextBlock Text="{Binding Value}" FontWeight="SemiBold" />
-              </Border>
-              <Button Content="{Binding [Hotkey_Record], Source={x:Static l:Loc.Instance}}" Command="{Binding RecordCommand}"
-                      IsVisible="{Binding CanRecord}" IsEnabled="{Binding !IsRecording}" />
-              <TextBlock Text="{Binding [Hotkey_Recording], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding IsRecording}"
-                         VerticalAlignment="Center" Foreground="{StaticResource WlAccent}" />
-            </StackPanel>
-            <TextBlock Text="{Binding Warnings}" TextWrapping="Wrap" Foreground="{StaticResource WlError}" FontSize="12" Margin="0,4,0,0" />
-          </StackPanel>
-          <StackPanel x:Name="HotkeyReinsert" DataContext="{Binding Hotkeys.Reinsert}" x:DataType="vm:HotkeyRowViewModel" Margin="0,8,0,0">
-            <TextBlock Classes="f" Text="{Binding Label}" />
-            <StackPanel Orientation="Horizontal" Spacing="8">
-              <Border Background="{StaticResource WlSurfaceHigh}" CornerRadius="4" Padding="10,4" MinWidth="180">
-                <TextBlock Text="{Binding Value}" FontWeight="SemiBold" />
-              </Border>
-              <Button Content="{Binding [Hotkey_Record], Source={x:Static l:Loc.Instance}}" Command="{Binding RecordCommand}"
-                      IsVisible="{Binding CanRecord}" IsEnabled="{Binding !IsRecording}" />
-              <TextBlock Text="{Binding [Hotkey_Recording], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding IsRecording}"
-                         VerticalAlignment="Center" Foreground="{StaticResource WlAccent}" />
-            </StackPanel>
-            <TextBlock Text="{Binding Warnings}" TextWrapping="Wrap" Foreground="{StaticResource WlError}" FontSize="12" Margin="0,4,0,0" />
-          </StackPanel>
-          <StackPanel x:Name="HotkeyRewrite" DataContext="{Binding Hotkeys.Rewrite}" x:DataType="vm:HotkeyRowViewModel" Margin="0,8,0,0">
-            <TextBlock Classes="f" Text="{Binding Label}" />
-            <StackPanel Orientation="Horizontal" Spacing="8">
-              <Border Background="{StaticResource WlSurfaceHigh}" CornerRadius="4" Padding="10,4" MinWidth="180">
-                <TextBlock Text="{Binding Value}" FontWeight="SemiBold" />
-              </Border>
-              <Button Content="{Binding [Hotkey_Record], Source={x:Static l:Loc.Instance}}" Command="{Binding RecordCommand}"
-                      IsVisible="{Binding CanRecord}" IsEnabled="{Binding !IsRecording}" />
-              <TextBlock Text="{Binding [Hotkey_Recording], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding IsRecording}"
-                         VerticalAlignment="Center" Foreground="{StaticResource WlAccent}" />
-            </StackPanel>
-            <TextBlock Text="{Binding Warnings}" TextWrapping="Wrap" Foreground="{StaticResource WlError}" FontSize="12" Margin="0,4,0,0" />
-          </StackPanel>
-        </StackPanel>
-      </TabItem>
-
-      <!-- App-Profile (nur Windows, WLD-P5b) -->
-      <TabItem x:Name="TabProfiles" Header="{Binding [Settings_Profiles], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding Profiles.Available}">
-        <ScrollViewer>
-        <StackPanel Margin="4" Spacing="8">
-          <TextBlock Text="{Binding [Profile_Hint], Source={x:Static l:Loc.Instance}}" TextWrapping="Wrap" Foreground="{StaticResource WlOnSurfaceVariant}" />
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <Button x:Name="ProfileAddButton" Content="{Binding [Profile_Add], Source={x:Static l:Loc.Instance}}" Command="{Binding Profiles.AddCommand}" />
-            <Button x:Name="ProfileSuggestionsButton" Content="{Binding [Profile_Suggestions], Source={x:Static l:Loc.Instance}}" Command="{Binding Profiles.AddSuggestionsCommand}" />
-          </StackPanel>
-          <ItemsControl x:Name="ProfileList" ItemsSource="{Binding Profiles.Rows}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="p:ProfileRowViewModel">
-                <Border Background="{StaticResource WlSurfaceHigh}" CornerRadius="6" Padding="10" Margin="0,4">
-                  <StackPanel Spacing="4">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                      <TextBox Text="{Binding Process}" PlaceholderText="{Binding [Profile_Process], Source={x:Static l:Loc.Instance}}" MinWidth="220" />
-                      <TextBox Text="{Binding Name}" PlaceholderText="{Binding [Profile_Name], Source={x:Static l:Loc.Instance}}" MinWidth="140" />
-                      <TextBox Text="{Binding TitlePattern}" PlaceholderText="{Binding [Profile_Title], Source={x:Static l:Loc.Instance}}" MinWidth="220" />
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                      <TextBlock Text="{Binding [Profile_Stage], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
-                      <ComboBox ItemsSource="{Binding Owner.Stages}" SelectedItem="{Binding Stage}" MinWidth="160" />
-                      <TextBlock Text="{Binding [Profile_InsertMode], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
-                      <ComboBox ItemsSource="{Binding Owner.InsertModes}" SelectedItem="{Binding InsertMode}" MinWidth="200" />
-                      <CheckBox IsChecked="{Binding PressEnter}" Content="{Binding [Profile_PressEnter], Source={x:Static l:Loc.Instance}}" />
-                      <CheckBox IsChecked="{Binding Enabled}" Content="{Binding [Profile_Enabled], Source={x:Static l:Loc.Instance}}" />
-                      <Button Content="{Binding [Profile_Remove], Source={x:Static l:Loc.Instance}}" Command="{Binding RemoveCommand}" />
-                    </StackPanel>
-                    <TextBlock Text="{Binding TitleWarning}" Foreground="{StaticResource WlError}" FontSize="12" IsVisible="{Binding TitleWarning.Length}" />
-                  </StackPanel>
-                </Border>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-        </StackPanel>
-        </ScrollViewer>
-      </TabItem>
-
-      <!-- Import/Export (Format v1, docs/settings-format.md) -->
-      <TabItem x:Name="TabSync" Header="{Binding [Settings_Sync], Source={x:Static l:Loc.Instance}}">
-        <DockPanel Margin="4" DataContext="{Binding Sync}" x:DataType="vm:SyncViewModel">
-          <TextBlock DockPanel.Dock="Top" Classes="f" TextWrapping="Wrap" Text="{Binding [Sync_Hint], Source={x:Static l:Loc.Instance}}" />
-          <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="12" Margin="0,8,0,0">
-            <Button x:Name="ExportButton" Content="{Binding [Sync_Export], Source={x:Static l:Loc.Instance}}" Click="OnExport" />
-            <Button x:Name="ImportButton" Content="{Binding [Sync_Import], Source={x:Static l:Loc.Instance}}" Click="OnImport" />
-            <Button x:Name="ApplyImportButton" Content="{Binding [Sync_Apply], Source={x:Static l:Loc.Instance}}" Command="{Binding ApplyCommand}" />
-          </StackPanel>
-          <TextBlock x:Name="SyncStatus" DockPanel.Dock="Top" Text="{Binding Status}" TextWrapping="Wrap" Margin="0,8" />
-          <ListBox x:Name="SyncChanges" ItemsSource="{Binding Changes}">
+        <Panel>
+          <ListBox x:Name="PageList" Classes="sidebar" ItemsSource="{Binding Pages}" SelectedItem="{Binding SelectedPage}"
+                   IsVisible="{Binding !IsSearching}" AutomationProperties.Name="{Binding [Sidebar_Name], Source={x:Static l:Loc.Instance}}">
+            <ListBox.Styles>
+              <Style Selector="ListBoxItem" x:DataType="vm:SettingsPageViewModel">
+                <Setter Property="AutomationProperties.Name" Value="{Binding Title}" />
+              </Style>
+            </ListBox.Styles>
             <ListBox.ItemTemplate>
-              <DataTemplate x:DataType="vm:ChangeRow">
-                <TextBlock Text="{Binding Text}" FontFamily="monospace" TextWrapping="Wrap" />
+              <DataTemplate x:DataType="vm:SettingsPageViewModel">
+                <StackPanel>
+                  <TextBlock Classes="section" Text="{Binding SectionTitle}" IsVisible="{Binding SectionTitle, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                  <Border Classes="sideItem">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                      <Border Classes="tile" Background="{Binding Tile, Converter={x:Static ds:ResourceKeyConverter.Instance}}">
+                        <PathIcon Data="{Binding Icon, Converter={x:Static ds:ResourceKeyConverter.Instance}}" />
+                      </Border>
+                      <TextBlock Text="{Binding Title}" VerticalAlignment="Center" Foreground="{DynamicResource Loom.Text}" />
+                    </StackPanel>
+                  </Border>
+                </StackPanel>
               </DataTemplate>
             </ListBox.ItemTemplate>
           </ListBox>
-        </DockPanel>
-      </TabItem>
-    </TabControl>
-  </DockPanel>
+
+          <DockPanel IsVisible="{Binding IsSearching}">
+            <TextBlock DockPanel.Dock="Top" x:Name="NoResults" Classes="section" TextWrapping="Wrap"
+                       Text="{Binding [Search_None], Source={x:Static l:Loc.Instance}}"
+                       IsVisible="{Binding !Results.Count}" />
+            <ListBox x:Name="ResultList" Classes="sidebar" ItemsSource="{Binding Results}"
+                     AutomationProperties.Name="{Binding [Search_Results], Source={x:Static l:Loc.Instance}}">
+              <ListBox.Styles>
+                <Style Selector="ListBoxItem" x:DataType="vm:SearchResult">
+                  <Setter Property="AutomationProperties.Name" Value="{Binding Title}" />
+                </Style>
+              </ListBox.Styles>
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:SearchResult">
+                  <Border Classes="sideItem">
+                    <StackPanel Spacing="1">
+                      <TextBlock Text="{Binding Title}" Foreground="{DynamicResource Loom.Text}" TextWrapping="Wrap" />
+                      <TextBlock Text="{Binding Location}" FontSize="{DynamicResource Loom.Font.Caption}"
+                                 Foreground="{DynamicResource Loom.TextSecondary}" TextWrapping="Wrap" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </DockPanel>
+        </Panel>
+      </DockPanel>
+    </Border>
+
+    <ContentControl x:Name="PageHost" Grid.Column="1" Content="{Binding SelectedPage}" />
+  </Grid>
 </Window>

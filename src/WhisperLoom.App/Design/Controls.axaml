@@ -1,0 +1,127 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:ds="using:WhisperLoom.App.Design">
+  <!--
+    Vorlagen der Bausteine (docs/design-system.md). Farben nur über DynamicResource Loom.*, damit hell/dunkel live wechselt.
+    Doku: docs.avaloniaui.net/docs/basics/user-interface/styling/control-themes (abgerufen 2026-11-01).
+  -->
+
+  <!-- Seite: Titel, Verwaltet-Zeile, Gruppen; rollt selbst. -->
+  <ControlTheme x:Key="{x:Type ds:SettingsPage}" TargetType="ds:SettingsPage">
+    <Setter Property="Template">
+      <ControlTemplate>
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Margin="28,20,28,28" Spacing="{DynamicResource Loom.Space.L}" MaxWidth="760" HorizontalAlignment="Stretch">
+            <TextBlock Text="{TemplateBinding Title}" FontSize="{DynamicResource Loom.Font.PageTitle}" FontWeight="SemiBold"
+                       Foreground="{DynamicResource Loom.Text}" />
+            <ds:HintRow Name="PART_Managed" Kind="Managed" Text="{TemplateBinding ManagedText}" IsVisible="{TemplateBinding HasManagedRows}" />
+            <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" />
+          </StackPanel>
+        </ScrollViewer>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+
+  <!-- Gruppe: Überschrift, Fläche, Fußtext. -->
+  <ControlTheme x:Key="{x:Type ds:SettingsGroup}" TargetType="ds:SettingsGroup">
+    <Setter Property="Template">
+      <ControlTemplate>
+        <StackPanel Spacing="6" IsVisible="{TemplateBinding IsShown}">
+          <TextBlock Text="{TemplateBinding Header}" FontSize="{DynamicResource Loom.Font.GroupTitle}" FontWeight="SemiBold"
+                     Foreground="{DynamicResource Loom.TextSecondary}" Margin="4,0,0,0" />
+          <Border Background="{DynamicResource Loom.Surface}" CornerRadius="{DynamicResource Loom.Radius.Group}"
+                  BorderBrush="{DynamicResource Loom.Separator}" BorderThickness="1" ClipToBounds="True">
+            <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" />
+          </Border>
+          <TextBlock Name="PART_Footer" Text="{TemplateBinding Footer}" TextWrapping="Wrap" IsVisible="False"
+                     FontSize="{DynamicResource Loom.Font.Caption}" Foreground="{DynamicResource Loom.TextSecondary}" Margin="4,0,0,0" />
+        </StackPanel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:footer /template/ TextBlock#PART_Footer">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+  </ControlTheme>
+
+  <!-- Zeile: Text links, Steuerelement rechts (bzw. darunter bei :stacked), Fehler darunter. -->
+  <ControlTheme x:Key="{x:Type ds:SettingRow}" TargetType="ds:SettingRow">
+    <Setter Property="HorizontalContentAlignment" Value="Right" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <StackPanel IsVisible="{TemplateBinding IsShown}">
+          <Border Name="PART_Separator" Height="1" Background="{DynamicResource Loom.Separator}" Margin="14,0,0,0" />
+          <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" Margin="14,10,14,10">
+            <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="{TemplateBinding Title}" FontSize="{DynamicResource Loom.Font.Body}" Foreground="{DynamicResource Loom.Text}"
+                           TextWrapping="Wrap" VerticalAlignment="Center" />
+                <Border Name="PART_Badge" IsVisible="False" Background="{DynamicResource Loom.Managed}" CornerRadius="4" Padding="6,1">
+                  <TextBlock Text="{TemplateBinding BadgeText}" FontSize="{DynamicResource Loom.Font.Caption}" Foreground="{DynamicResource Loom.OnManaged}" />
+                </Border>
+              </StackPanel>
+              <TextBlock Name="PART_Description" Text="{TemplateBinding Description}" IsVisible="False" TextWrapping="Wrap"
+                         FontSize="{DynamicResource Loom.Font.Caption}" Foreground="{DynamicResource Loom.TextSecondary}" />
+              <Button Name="PART_Reset" Classes="link" IsVisible="False" Content="{TemplateBinding ResetText}" Command="{TemplateBinding ResetCommand}" />
+            </StackPanel>
+            <ContentPresenter Name="PART_ContentPresenter" Grid.Column="1" Content="{TemplateBinding Content}"
+                              VerticalAlignment="Center" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" />
+            <TextBlock Name="PART_Error" Grid.Row="2" Grid.ColumnSpan="2" Text="{TemplateBinding Error}" IsVisible="False" TextWrapping="Wrap"
+                       Margin="0,6,0,0" FontSize="{DynamicResource Loom.Font.Caption}" Foreground="{DynamicResource Loom.Error}" />
+          </Grid>
+        </StackPanel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:nth-child(1) /template/ Border#PART_Separator">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="^:described /template/ TextBlock#PART_Description">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="^:default /template/ Border#PART_Badge">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="^:overridden /template/ Button#PART_Reset">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="^:error /template/ TextBlock#PART_Error">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="^:stacked /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Grid.Row" Value="1" />
+      <Setter Property="Grid.Column" Value="0" />
+      <Setter Property="Grid.ColumnSpan" Value="2" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="Margin" Value="0,8,0,0" />
+    </Style>
+  </ControlTheme>
+
+  <!-- Hinweis- bzw. Verwaltet-Zeile. -->
+  <ControlTheme x:Key="{x:Type ds:HintRow}" TargetType="ds:HintRow">
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="PART_Box" CornerRadius="{DynamicResource Loom.Radius.Control}" Padding="12,8" Background="{DynamicResource Loom.SurfaceHigh}">
+          <Grid ColumnDefinitions="Auto,*">
+            <PathIcon Name="PART_Icon" Width="16" Height="16" Margin="0,1,10,0" VerticalAlignment="Top"
+                      Data="{DynamicResource Loom.Icon.Info}" Foreground="{DynamicResource Loom.TextSecondary}" />
+            <TextBlock Name="PART_Text" Grid.Column="1" Text="{TemplateBinding ShownText}" TextWrapping="Wrap"
+                       FontSize="{DynamicResource Loom.Font.Caption}" Foreground="{DynamicResource Loom.Text}" />
+          </Grid>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:warning /template/ PathIcon#PART_Icon">
+      <Setter Property="Data" Value="{DynamicResource Loom.Icon.Warning}" />
+      <Setter Property="Foreground" Value="{DynamicResource Loom.Error}" />
+    </Style>
+    <Style Selector="^:managed /template/ Border#PART_Box">
+      <Setter Property="Background" Value="{DynamicResource Loom.Managed}" />
+    </Style>
+    <Style Selector="^:managed /template/ PathIcon#PART_Icon">
+      <Setter Property="Data" Value="{DynamicResource Loom.Icon.Managed}" />
+      <Setter Property="Foreground" Value="{DynamicResource Loom.OnManaged}" />
+    </Style>
+    <Style Selector="^:managed /template/ TextBlock#PART_Text">
+      <Setter Property="Foreground" Value="{DynamicResource Loom.OnManaged}" />
+    </Style>
+  </ControlTheme>
+</ResourceDictionary>

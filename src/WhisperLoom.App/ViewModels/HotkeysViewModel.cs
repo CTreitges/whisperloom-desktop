@@ -12,13 +12,17 @@ public sealed partial class HotkeyRowViewModel : ObservableObject
     private readonly HotkeysViewModel _owner;
     private readonly Func<Task<string?>>? _record;
 
-    internal HotkeyRowViewModel(HotkeysViewModel owner, string labelKey, string value, Func<Task<string?>>? record)
+    internal HotkeyRowViewModel(HotkeysViewModel owner, string path, string labelKey, string value, Func<Task<string?>>? record)
     {
         _owner = owner;
+        Path = path;
         LabelKey = labelKey;
         _value = value;
         _record = record;
     }
+
+    /// <summary>Settings-Pfad, z. B. <c>desktop.hotkeyHold</c>.</summary>
+    public string Path { get; }
 
     public string LabelKey { get; }
 
@@ -38,7 +42,7 @@ public sealed partial class HotkeyRowViewModel : ObservableObject
 
     internal void Refresh() => OnPropertyChanged(nameof(Warnings));
 
-    partial void OnValueChanged(string value) => _owner.Changed();
+    partial void OnValueChanged(string value) => _owner.RowChanged();
 
     [RelayCommand]
     private async Task Record()
@@ -74,11 +78,11 @@ public sealed partial class HotkeysViewModel : ObservableObject
     public HotkeysViewModel(DesktopSettings desktop, Func<Task<string?>>? record)
     {
         _desktop = desktop;
-        Hold = new HotkeyRowViewModel(this, "Hotkey_Hold", desktop.HotkeyHold, record);
-        Toggle = new HotkeyRowViewModel(this, "Hotkey_Toggle", desktop.HotkeyToggle, record);
-        Stage = new HotkeyRowViewModel(this, "Hotkey_Stage", desktop.HotkeyStage, record);
-        Reinsert = new HotkeyRowViewModel(this, "Hotkey_Reinsert", desktop.HotkeyReinsert, record);
-        Rewrite = new HotkeyRowViewModel(this, "Hotkey_Rewrite", desktop.HotkeyRewrite, record);
+        Hold = new HotkeyRowViewModel(this, "desktop.hotkeyHold", "Hotkey_Hold", desktop.HotkeyHold, record);
+        Toggle = new HotkeyRowViewModel(this, "desktop.hotkeyToggle", "Hotkey_Toggle", desktop.HotkeyToggle, record);
+        Stage = new HotkeyRowViewModel(this, "desktop.hotkeyStage", "Hotkey_Stage", desktop.HotkeyStage, record);
+        Reinsert = new HotkeyRowViewModel(this, "desktop.hotkeyReinsert", "Hotkey_Reinsert", desktop.HotkeyReinsert, record);
+        Rewrite = new HotkeyRowViewModel(this, "desktop.hotkeyRewrite", "Hotkey_Rewrite", desktop.HotkeyRewrite, record);
     }
 
     /// <summary>Seite nur unter Windows; unter Linux steuern Kürzel der Desktop-Umgebung die CLI.</summary>
@@ -87,8 +91,22 @@ public sealed partial class HotkeysViewModel : ObservableObject
     public bool Enabled
     {
         get => _desktop.HotkeysEnabled;
-        set => _desktop.HotkeysEnabled = value;
+        set
+        {
+            if (_desktop.HotkeysEnabled != value)
+            {
+                _desktop.HotkeysEnabled = value;
+                OnPropertyChanged();
+                Changed?.Invoke();
+            }
+        }
     }
+
+    /// <summary>Nach jeder Änderung (Einstellungsfenster speichert sofort).</summary>
+    public Action? Changed { get; init; }
+
+    /// <summary>Alle Aktionen in fester Reihenfolge; die Seite nutzt ein Template je Aktion.</summary>
+    public IReadOnlyList<HotkeyRowViewModel> All => Rows;
 
     public HotkeyRowViewModel Hold { get; }
 
@@ -114,12 +132,13 @@ public sealed partial class HotkeysViewModel : ObservableObject
         _desktop.HotkeyRewrite = Rewrite.Value;
     }
 
-    internal void Changed()
+    internal void RowChanged()
     {
         foreach (var row in Rows)
         {
             row.Refresh();
         }
+        Changed?.Invoke();
     }
 
     internal string WarningsFor(HotkeyRowViewModel row)

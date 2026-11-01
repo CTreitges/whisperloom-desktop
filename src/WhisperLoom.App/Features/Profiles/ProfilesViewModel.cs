@@ -21,7 +21,7 @@ public sealed partial class ProfileRowViewModel : ObservableObject
         _titlePattern = profile.TitlePattern;
         _stage = Pick(owner.Stages, profile.Stage);
         _insertMode = Pick(owner.InsertModes, profile.InsertMode);
-        _pressEnter = profile.PressEnter ?? false; // Dreifach-Wahl Erben/An/Aus kommt mit der neuen Oberfläche (W2)
+        _pressEnter = profile.PressEnter; // null = Erben (W2-C0)
         _enabled = profile.Enabled;
     }
 
@@ -44,13 +44,31 @@ public sealed partial class ProfileRowViewModel : ObservableObject
     private Choice _insertMode;
 
     [ObservableProperty]
-    private bool _pressEnter;
+    [NotifyPropertyChangedFor(nameof(Enter))]
+    private bool? _pressEnter;
 
     [ObservableProperty]
     private bool _enabled;
 
     /// <summary>Hinweis bei ungültigem Regex; leer = gültig.</summary>
     public string TitleWarning => AppProfiles.IsValidPattern(TitlePattern) ? "" : "⚠ " + Loc.Instance["Profile_InvalidTitle"];
+
+    /// <summary>Jede Änderung einer Zeile meldet die Liste (Einstellungsfenster speichert sofort).</summary>
+    protected override void OnPropertyChanged(System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        base.OnPropertyChanged(e);
+        if (e.PropertyName != nameof(TitleWarning))
+        {
+            _owner.Changed?.Invoke();
+        }
+    }
+
+    /// <summary>„Enter danach“ als Auswahl Wie Standard / An / Aus (Erben = null, wird nicht geschrieben).</summary>
+    public Choice Enter
+    {
+        get => _owner.EnterChoices[PressEnter switch { null => 0, true => 1, false => 2 }];
+        set => PressEnter = value.Value switch { "on" => true, "off" => false, _ => null };
+    }
 
     public AppProfile ToProfile() => new()
     {
@@ -83,11 +101,16 @@ public sealed class ProfilesViewModel
         _desktop = desktop;
         var loc = Loc.Instance;
         Stages = [new Choice("", loc["Profile_Default"]), .. RefineModes.SettingsFor(true).Select(m => new Choice(m.Key(), loc["Stage_" + m.Key()]))];
+        EnterChoices = [new Choice("", loc["Profile_Default"]), new Choice("on", loc["Profile_EnterOn"]), new Choice("off", loc["Profile_EnterOff"])];
         InsertModes = [new Choice("", loc["Profile_Default"]), .. new[] { "paste", "type", "clipboard" }.Select(m => new Choice(m, loc["Insert_" + m]))];
         Rows = [.. desktop.Profiles.Select(p => new ProfileRowViewModel(this, p))];
         AddCommand = new RelayCommand(() => Rows.Add(new ProfileRowViewModel(this, new AppProfile())));
         AddSuggestionsCommand = new RelayCommand(AddSuggestions);
+        Rows.CollectionChanged += (_, _) => Changed?.Invoke();
     }
+
+    /// <summary>Nach jeder Änderung (Einstellungsfenster speichert sofort).</summary>
+    public Action? Changed { get; init; }
 
     public bool Available => OperatingSystem.IsWindows();
 
@@ -95,15 +118,27 @@ public sealed class ProfilesViewModel
 
     public IReadOnlyList<Choice> InsertModes { get; }
 
+    /// <summary>Enter danach: Wie Standard (erbt output.pressEnter), An, Aus.</summary>
+    public IReadOnlyList<Choice> EnterChoices { get; }
+
     public ObservableCollection<ProfileRowViewModel> Rows { get; }
 
     public IRelayCommand AddCommand { get; }
 
     public IRelayCommand AddSuggestionsCommand { get; }
 
-    /// <summary>Übernimmt die Zeilen (ohne leere) in die Desktop-Einstellungen (vor dem Speichern).</summary>
-    public void Apply() =>
+    /// <summary>
+    /// Übernimmt die Zeilen (ohne leere) in die Desktop-Einstellungen (vor dem Speichern). Solange eine Zeile einen
+    /// ungültigen Fenstertitel hat, bleibt die gespeicherte Liste unverändert (Fehler steht an der Zeile).
+    /// </summary>
+    public void Apply()
+    {
+        if (Rows.Any(r => r.TitleWarning.Length > 0))
+        {
+            return;
+        }
         _desktop.Profiles = [.. Rows.Select(r => r.ToProfile()).Where(p => p.Process.Length > 0)];
+    }
 
     /// <summary>Fügt die Vorschläge hinzu, die es (nach Prozess) noch nicht gibt.</summary>
     private void AddSuggestions()

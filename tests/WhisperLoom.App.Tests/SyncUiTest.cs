@@ -1,6 +1,9 @@
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.LogicalTree;
+using Avalonia.VisualTree;
+using WhisperLoom.App.Design;
+using WhisperLoom.App.Tests.Settings;
 using Avalonia.Threading;
 using WhisperLoom.App.Localization;
 using WhisperLoom.App.ViewModels;
@@ -11,65 +14,67 @@ using WhisperLoom.Core.Settings;
 
 namespace WhisperLoom.App.Tests;
 
-/// <summary>Einstellungsfenster mit Richtlinie (gesperrte Felder ausgegraut) und der Abschnitt Import/Export.</summary>
+/// <summary>Einstellungsfenster mit Richtlinie (feste Felder ausgeblendet, W2-UI1) und der Abschnitt Import/Export.</summary>
 public class SyncUiTest
 {
     private static (SettingsWindow Window, SettingsViewModel Vm) Open(ControllerFixture f)
     {
-        var vm = new SettingsViewModel(f.Controller, new MemorySecretStore(), new FakeAccessChecker());
-        var window = new SettingsWindow(vm);
+        var window = new SettingsWindow(new SettingsViewModel(f.Controller, new MemorySecretStore(), new FakeAccessChecker()));
         window.Show();
-        foreach (var tab in window.GetLogicalDescendants().OfType<TabItem>().ToList())
-        {
-            tab.IsSelected = true;
-            Dispatcher.UIThread.RunJobs();
-        }
-        return (window, vm);
+        Dispatcher.UIThread.RunJobs();
+        return (window, window.Settings!);
     }
 
     [AvaloniaFact]
-    public void Locked_fields_are_disabled_and_the_hint_is_shown()
+    public void Locked_fields_are_hidden_and_the_page_says_who_manages_them()
     {
+        // W2-UI1: Fest = Zeile weg (vorher ausgegraut); Gruppe nur aus festen Zeilen = Gruppe weg; Seite nennt den Verwalter.
         Loc.Instance.SetLanguage("de");
         using var f = new ControllerFixture();
-        f.Controller.Policy = new PolicySettings { Locked = ["stt.providerId", "llm", "secrets.stt"], HistoryEnabled = false };
+        f.Controller.Policy = new PolicySettings { Locked = ["stt.providerId", "llm", "secrets.stt", "secrets.llm"], HistoryEnabled = false };
         var (window, vm) = Open(f);
 
-        Assert.False(vm.Editable["stt.providerId"]);
-        Assert.False(vm.Editable["llm.stageModels.polish"]);
-        Assert.False(vm.Editable["history.enabled"]);
-        Assert.True(vm.Editable["stt.model"]);
+        Assert.False(vm.Editable["stt.providerId"]); // der Assistent nutzt weiter die Sperrkarte
         Assert.False(vm.SttKey.Editable);
         Assert.True(vm.SttFallbackKey.Editable);
 
-        var combos = window.GetLogicalDescendants().OfType<ComboBox>().ToList();
-        // Dokumentreihenfolge: erst der Erkennungs-Anbieter, dann der Fallback.
-        var sttCombos = combos.Where(c => ReferenceEquals(c.ItemsSource, vm.SttProviders)).ToList();
-        Assert.False(sttCombos[0].IsEnabled);
-        Assert.True(sttCombos[1].IsEnabled);
-        Assert.False(combos.Single(c => ReferenceEquals(c.ItemsSource, vm.LlmProviders)).IsEnabled);
-        Assert.True(combos.Single(c => ReferenceEquals(c.ItemsSource, vm.Languages)).IsEnabled);
-        var checks = window.GetLogicalDescendants().OfType<CheckBox>().ToList();
-        Assert.Contains(checks, c => !c.IsEnabled && (c.Content as string) == Loc.Instance["Settings_HistoryEnabled"]);
-        var replace = window.GetLogicalDescendants().OfType<Button>().Where(b => b.Name == "ReplaceButton").ToList();
-        Assert.Contains(replace, b => b.DataContext == vm.SttKey && !b.IsEnabled);
-        Assert.Contains(replace, b => b.DataContext == vm.SttFallbackKey && b.IsEnabled);
+        var page = SettingsUi.Show(window, "recognition");
+        Assert.False(SettingsUi.Row(window, "stt.providerId").IsShown);
+        Assert.False(SettingsUi.Row(window, "secrets.stt").IsShown);
+        Assert.True(SettingsUi.Row(window, "stt.model").IsShown);
+        Assert.True(SettingsUi.Row(window, "sttFallback.providerId").IsShown);
+        Assert.True(SettingsUi.Row(window, "secrets.sttFallback").IsShown);
+        Assert.True(page.HasManagedRows);
+        Assert.Equal("Einige Einstellungen werden von deiner IT verwaltet.", page.ManagedText);
 
-        var hint = window.GetLogicalDescendants().OfType<TextBlock>().Single(t => t.Name == "PolicyHint");
-        Assert.True(hint.IsVisible);
-        Assert.Contains("von IT festgelegt", hint.Text, StringComparison.Ordinal);
+        // Ganze Gruppe „KI-Zugang“ (llm.* und secrets.llm) fest → Gruppe weg; Seite „Textverbesserung“ zeigt den Hinweis.
+        page = SettingsUi.Show(window, "text");
+        var llmGroup = window.GetVisualDescendants().OfType<SettingsGroup>().Single(g => g.TitleKey == "G_Llm");
+        Assert.False(llmGroup.IsShown);
+        Assert.True(window.GetVisualDescendants().OfType<SettingsGroup>().Single(g => g.TitleKey == "G_StageChoice").IsShown);
+        Assert.True(page.HasManagedRows);
+
+        // Fester Verlauf → Zeile weg.
+        SettingsUi.Show(window, "privacy");
+        Assert.False(SettingsUi.Row(window, "history.enabled").IsShown);
+        Assert.True(SettingsUi.Row(window, "history.size").IsShown);
+
+        // Seite ohne feste Zeile: kein Hinweis.
+        Assert.False(SettingsUi.Show(window, "network").HasManagedRows);
         window.Close();
     }
 
     [AvaloniaFact]
-    public void Without_policy_everything_is_editable()
+    public void Without_policy_every_row_is_shown_and_no_page_mentions_management()
     {
         using var f = new ControllerFixture();
         var (window, vm) = Open(f);
 
-        Assert.All(window.GetLogicalDescendants().OfType<ComboBox>(), c => Assert.True(c.IsEnabled));
-        Assert.All(window.GetLogicalDescendants().OfType<TextBox>().Where(b => b.Name != "NewKeyBox"), b => Assert.True(b.IsEnabled));
-        Assert.False(window.GetLogicalDescendants().OfType<TextBlock>().Single(t => t.Name == "PolicyHint").IsVisible);
+        SettingsUi.VisitAll(window, id =>
+        {
+            Assert.All(SettingsUi.Rows(window), r => Assert.True(r.IsShown, r.Path));
+            Assert.False(window.GetVisualDescendants().OfType<SettingsPage>().Single().HasManagedRows, id);
+        });
         Assert.False(vm.HasPolicy);
         window.Close();
     }
@@ -98,6 +103,7 @@ public class SyncUiTest
         using var f = new ControllerFixture();
         f.Controller.Policy = new PolicySettings { Locked = ["refine.stage"] };
         var (window, vm) = Open(f);
+        SettingsUi.Show(window, "general");
         var applied = 0;
         vm.Sync.Applied += () => applied++;
 
@@ -107,7 +113,7 @@ public class SyncUiTest
         Assert.True(vm.Sync.CanApply);
         Assert.Contains(vm.Sync.Changes, r => r.Path == "stt.providerId" && r.New == "\"groq\"" && !r.Locked);
         Assert.Contains(vm.Sync.Changes, r => r.Path == "refine.stage" && r.Locked && r.Text.EndsWith("(von IT festgelegt)", StringComparison.Ordinal));
-        var list = window.GetLogicalDescendants().OfType<ListBox>().Distinct().First(l => l.Name == "SyncChanges");
+        var list = window.GetVisualDescendants().OfType<ListBox>().First(l => l.Name == "SyncChanges");
         Assert.Equal(vm.Sync.Changes.Count, list.ItemCount);
 
         await vm.Sync.ApplyCommand.ExecuteAsync(null);

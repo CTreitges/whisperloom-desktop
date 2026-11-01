@@ -6,18 +6,18 @@
              x:DataType="vm:KeyFieldViewModel">
   <!-- Key nur maskiert; kein Aufdecken. Die Ersetzen-Eingabe zeigt Maskenzeichen (RevealPassword bleibt aus). -->
   <StackPanel Spacing="6">
-    <StackPanel Orientation="Horizontal" Spacing="8">
+    <WrapPanel ItemSpacing="8" LineSpacing="6">
       <TextBlock x:Name="MaskText" Text="{Binding MaskText}" FontFamily="monospace" MinWidth="160" VerticalAlignment="Center" />
       <Button x:Name="ReplaceButton" Content="{Binding [Key_Replace], Source={x:Static l:Loc.Instance}}" Command="{Binding ReplaceCommand}" IsEnabled="{Binding Editable}" />
       <Button x:Name="DeleteButton" Content="{Binding [Key_Delete], Source={x:Static l:Loc.Instance}}" Command="{Binding DeleteCommand}" IsEnabled="{Binding CanDelete}" />
       <Button x:Name="CheckButton" Content="{Binding [Key_Check], Source={x:Static l:Loc.Instance}}" Command="{Binding CheckCommand}" />
-    </StackPanel>
+    </WrapPanel>
     <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsReplacing}">
       <TextBox x:Name="NewKeyBox" Text="{Binding NewValue}" PasswordChar="•" RevealPassword="False" Width="320"
                PlaceholderText="{Binding [Key_NewWatermark], Source={x:Static l:Loc.Instance}}" />
       <Button x:Name="SaveKeyButton" Content="{Binding [Action_Save], Source={x:Static l:Loc.Instance}}" Command="{Binding SaveKeyCommand}" />
       <Button Content="{Binding [Action_Cancel], Source={x:Static l:Loc.Instance}}" Command="{Binding CancelReplaceCommand}" />
     </StackPanel>
-    <TextBlock Text="{Binding Status}" Foreground="{StaticResource WlOnSurfaceVariant}" />
+    <TextBlock Text="{Binding Status}" Foreground="{DynamicResource Loom.TextSecondary}" IsVisible="{Binding Status.Length}" />
   </StackPanel>
 </UserControl>

@@ -1,0 +1,13 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ds="using:WhisperLoom.App.Design"
+             xmlns:l="using:WhisperLoom.App.Localization"
+             x:Class="WhisperLoom.App.Design.CustomChoiceBox"
+             x:DataType="ds:CustomChoiceViewModel">
+  <!-- Auswahlliste mit „Eigenes …“: das Textfeld erscheint nur beim letzten Eintrag und übernimmt beim Verlassen bzw. Enter. -->
+  <StackPanel Spacing="6" MinWidth="260" MaxWidth="320">
+    <ComboBox x:Name="Box" HorizontalAlignment="Stretch" ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}" />
+    <TextBox x:Name="CustomBox" IsVisible="{Binding IsCustom}" Text="{Binding CustomText, UpdateSourceTrigger=LostFocus}"
+             PlaceholderText="{Binding [Custom_Placeholder], Source={x:Static l:Loc.Instance}}" />
+  </StackPanel>
+</UserControl>

@@ -1,0 +1,55 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:WhisperLoom.App.ViewModels.Settings"
+             xmlns:avm="using:WhisperLoom.App.ViewModels"
+             xmlns:ds="using:WhisperLoom.App.Design"
+             xmlns:l="using:WhisperLoom.App.Localization"
+             x:Class="WhisperLoom.App.Views.Settings.GeneralPage"
+             x:DataType="vm:GeneralPageViewModel">
+  <ds:SettingsPage TitleKey="Page_general">
+    <StackPanel Spacing="20">
+      <ds:SettingsGroup TitleKey="G_Language">
+        <StackPanel>
+          <ds:SettingRow Path="desktop.uiLanguage">
+            <ComboBox x:Name="UiLanguageBox" Classes="row" ItemsSource="{Binding Session.UiLanguages}" SelectedItem="{Binding Session.UiLanguage}" />
+          </ds:SettingRow>
+          <ds:SettingRow Path="desktop.microphone">
+            <ComboBox Classes="row" ItemsSource="{Binding Session.Microphones}" SelectedItem="{Binding Session.Microphone}" />
+          </ds:SettingRow>
+        </StackPanel>
+      </ds:SettingsGroup>
+
+      <ds:SettingsGroup TitleKey="G_Stage">
+        <StackPanel>
+          <ds:SettingRow Path="desktop.stageFontSize" Error="{Binding Session.Errors[desktop.stageFontSize]}">
+            <TextBox Width="90" Text="{Binding StageFontSize, UpdateSourceTrigger=LostFocus}" />
+          </ds:SettingRow>
+        </StackPanel>
+      </ds:SettingsGroup>
+
+      <ds:SettingsGroup TitleKey="G_Transfer" FooterKey="Sync_Hint">
+        <StackPanel DataContext="{Binding Sync}" x:DataType="avm:SyncViewModel">
+          <ds:SettingRow TitleKey="Sync_ExportTitle" DescriptionKey="Sync_ExportDesc">
+            <Button x:Name="ExportButton" Content="{Binding [Sync_Export], Source={x:Static l:Loc.Instance}}" Click="OnExport" />
+          </ds:SettingRow>
+          <ds:SettingRow TitleKey="Sync_ImportTitle" DescriptionKey="Sync_ImportDesc">
+            <Button x:Name="ImportButton" Content="{Binding [Sync_Import], Source={x:Static l:Loc.Instance}}" Click="OnImport" />
+          </ds:SettingRow>
+          <ds:SettingRow TitleKey="Sync_PreviewTitle" Stacked="True" IsVisible="{Binding Changes.Count}" Margin="0,0,0,0">
+            <StackPanel Spacing="8">
+              <ListBox x:Name="SyncChanges" ItemsSource="{Binding Changes}" MaxHeight="220">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="avm:ChangeRow">
+                    <TextBlock Text="{Binding Text}" FontFamily="monospace" TextWrapping="Wrap" />
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+              <Button x:Name="ApplyImportButton" Classes="accent" Content="{Binding [Sync_Apply], Source={x:Static l:Loc.Instance}}" Command="{Binding ApplyCommand}" />
+            </StackPanel>
+          </ds:SettingRow>
+          <ds:HintRow x:Name="SyncStatus" Text="{Binding Status}" IsVisible="{Binding Status.Length}" Margin="14,0,14,10" />
+        </StackPanel>
+      </ds:SettingsGroup>
+    </StackPanel>
+  </ds:SettingsPage>
+</UserControl>

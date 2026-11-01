@@ -51,22 +51,26 @@ public class UiTest
         var (window, vm, _, f) = await OpenSettings();
         using (f)
         {
-            foreach (var tab in window.GetLogicalDescendants().OfType<TabItem>().ToList())
+            // Seitenleiste statt Tabs (W2-UI1): jede Seite zeigen und prüfen.
+            // Werte je Seite festhalten: beim Seitenwechsel lösen sich die Bindungen der alten Seite.
+            var masks = new List<(string? Text, object? Context)>();
+            var boxes = new List<TextBox>();
+            var buttonTexts = new List<string>();
+            Settings.SettingsUi.VisitAll(window, _ =>
             {
-                tab.IsSelected = true;
-                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
                 Assert.DoesNotContain(TextsOf(window), t => t.Contains(SecretValue, StringComparison.Ordinal));
-            }
+                masks.AddRange(window.GetVisualDescendants().OfType<TextBlock>().Where(t => t.Name == "MaskText").Select(t => (t.Text, t.DataContext)));
+                boxes.AddRange(window.GetLogicalDescendants().OfType<TextBox>().Where(b => b.Name == "NewKeyBox"));
+                buttonTexts.AddRange(window.GetVisualDescendants().OfType<Button>().Select(b => b.Content as string ?? ""));
+            });
 
-            var masks = window.GetLogicalDescendants().OfType<TextBlock>().Where(t => t.Name == "MaskText").ToList();
             Assert.NotEmpty(masks);
             Assert.Contains(masks, m => m.Text == KeyFieldViewModel.Mask);
-            Assert.All(masks.Where(m => vm.SttKey.IsSet && m.DataContext == vm.SttKey), m => Assert.Matches("^•+$", m.Text!));
+            Assert.All(masks.Where(m => vm.SttKey.IsSet && m.Context == vm.SttKey), m => Assert.Matches("^•+$", m.Text!));
 
             // Kein Aufdecken: Ersetzen-Feld maskiert, RevealPassword aus, kein Knopf zum Anzeigen.
-            var boxes = window.GetLogicalDescendants().OfType<TextBox>().Where(b => b.Name == "NewKeyBox").ToList();
+            Assert.NotEmpty(boxes);
             Assert.All(boxes, b => { Assert.Equal('•', b.PasswordChar); Assert.False(b.RevealPassword); });
-            var buttonTexts = window.GetLogicalDescendants().OfType<Button>().Select(b => b.Content as string ?? "").ToList();
             Assert.DoesNotContain(buttonTexts, t => t.Contains("anzeig", StringComparison.OrdinalIgnoreCase)
                 || t.Contains("show", StringComparison.OrdinalIgnoreCase) || t.Contains("reveal", StringComparison.OrdinalIgnoreCase)
                 || t.Contains("aufdeck", StringComparison.OrdinalIgnoreCase));
@@ -174,8 +178,12 @@ public class UiTest
         var opened = new List<string>();
         var tray = new TrayMenu(f.Controller, opened.Add);
         var headers = tray.Menu.Items.OfType<NativeMenuItem>().Where(i => i is not NativeMenuItemSeparator).Select(i => i.Header).ToList();
-        Assert.Equal(["Aufnahme starten", "Stufe: Aus", "Letzte Diktate", "Bühnenansicht", "Verlauf", "Einstellungen", "Einrichtung …", "Beenden"], headers);
-        var stages = tray.Menu.Items.OfType<NativeMenuItem>().ElementAt(1).Menu!.Items.OfType<NativeMenuItem>().Select(i => i.Header);
+        // HIG (W2-UI1): Hauptaktion oben, kurze Labels, „…“ bei Fenstern mit Eingaben, „App beenden“ zuletzt.
+        Assert.Equal(["Aufnahme starten", "Stufe: Aus", "Letzte Diktate", "Bühne", "Verlauf", "Einstellungen …", "Einrichtung …", "WhisperLoom beenden"], headers);
+        // Gruppen durch Trenner: Hauptaktion | Stufe, Letzte | Fenster | Einstellungen, Einrichtung | Beenden.
+        var shape = tray.Menu.Items.Select(i => i is NativeMenuItemSeparator ? "|" : "x");
+        Assert.Equal("x|xx|xx|xx|x", string.Concat(shape));
+        var stages = tray.Menu.Items.OfType<NativeMenuItem>().Where(i => i is not NativeMenuItemSeparator).ElementAt(1).Menu!.Items.OfType<NativeMenuItem>().Select(i => i.Header);
         Assert.Equal(["Aus", "Glätten", "Verschönern", "Zusammenfassen"], stages);
 
         foreach (var item in tray.Menu.Items.OfType<NativeMenuItem>().Where(i => i is not NativeMenuItemSeparator).Skip(3))

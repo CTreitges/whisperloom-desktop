@@ -9,7 +9,7 @@ using WhisperLoom.Core.Contracts.Settings;
 
 namespace WhisperLoom.App.Tests.Local;
 
-/// <summary>Tab „Lokal“ headless: Modelle, Rechenweg, Ollama-Hinweis; Speichern schreibt Engine, Modell und Abschnitt <c>local</c>.</summary>
+/// <summary>Lokale Erkennung (Seite „Erkennung“, W2-UI1) headless: Modelle, Rechenweg, Ollama-Hinweis; Speichern schreibt Engine, Modell und Abschnitt <c>local</c>.</summary>
 public sealed class LocalSettingsUiTest
 {
     private static (SettingsWindow Window, SettingsViewModel Vm, ControllerFixture F) Open()
@@ -18,9 +18,7 @@ public sealed class LocalSettingsUiTest
         var vm = new SettingsViewModel(f.Controller, new MemorySecretStore(), new FakeAccessChecker());
         var window = new SettingsWindow(vm);
         window.Show();
-        var tab = window.GetLogicalDescendants().OfType<TabItem>().Single(t => t.Name == "TabLocal");
-        tab.IsSelected = true;
-        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        Settings.SettingsUi.Show(window, "recognition"); // W2-UI1: lokal und online auf der Seite „Erkennung“
         return (window, vm, f);
     }
 
@@ -32,11 +30,14 @@ public sealed class LocalSettingsUiTest
         using (f)
         {
             var texts = UiTest.TextsOf(window).ToList();
+            Assert.Contains("Online-Anbieter", texts); // online und lokal auf einer Seite
+            Assert.Contains("Lokal auf diesem PC", texts);
             Assert.Contains("Modelle der lokalen Erkennung", texts);
             Assert.Contains(texts, t => t.StartsWith("Small (190 MB)", StringComparison.Ordinal));
             Assert.Contains(texts, t => t.StartsWith("Large v3 Turbo", StringComparison.Ordinal));
             Assert.Contains("noch nicht gestartet", texts);
-            Assert.Contains("Ollama-Modell", texts);
+            Settings.SettingsUi.Show(window, "text"); // Ollama gehört zur Textverbesserung
+            Assert.Contains("Ollama-Modell", UiTest.TextsOf(window));
             window.Close();
         }
     }
@@ -86,7 +87,7 @@ public sealed class LocalSettingsUiTest
         }
     }
 
-    /// <summary>Screenshot des Tabs nur mit <c>WLD_SCREENSHOT_DIR</c> (wie <see cref="ScreenshotTest"/>).</summary>
+    /// <summary>Screenshot der Seite nur mit <c>WLD_SCREENSHOT_DIR</c> (wie <see cref="ScreenshotTest"/>).</summary>
     [AvaloniaFact]
     public void Screenshot()
     {
@@ -125,8 +126,7 @@ public sealed class LocalSettingsUiTest
         var vm = new SettingsViewModel(f.Controller, new MemorySecretStore(), new FakeAccessChecker(), local: parts);
         var window = new SettingsWindow(vm);
         window.Show();
-        window.GetLogicalDescendants().OfType<TabItem>().Single(t => t.Name == "TabLocal").IsSelected = true;
-        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        Settings.SettingsUi.Show(window, "text");
 
         await vm.Local.RefreshOllama();
         Assert.True(vm.Local.OllamaMissing);
