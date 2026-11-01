@@ -47,6 +47,28 @@ public sealed class W2SettingsModelTest
         Assert.Null(new AppProfile().PressEnter);
     }
 
+    /// <summary>
+    /// Review W2-C0 R2: Ältere Versionen lesen <c>pressEnter</c> als bool; ein geschriebenes <c>null</c> ließe dort den ganzen
+    /// desktop-Abschnitt verwerfen. „Erben“ wird deshalb nicht geschrieben (fehlt = Erben bzw. dort „Aus“).
+    /// </summary>
+    [Fact]
+    public void Inherit_is_not_written_so_older_versions_keep_the_desktop_section()
+    {
+        var settings = new WhisperLoomSettings();
+        var desktop = new DesktopSettings { ProxyMode = "off" };
+        desktop.Profiles.Add(new AppProfile { Process = "a.exe" });
+        desktop.Profiles.Add(new AppProfile { Process = "b.exe", PressEnter = false });
+        SettingsStore.SetDesktop(settings, desktop);
+
+        var json = SettingsJson.Serialize(settings);
+
+        var section = System.Text.Json.Nodes.JsonNode.Parse(json)!["desktop"]!.ToJsonString();
+        Assert.DoesNotContain("null", section, StringComparison.Ordinal);
+        Assert.Contains("\"pressEnter\": false", json, StringComparison.Ordinal);
+        var back = SettingsStore.Desktop(SettingsJson.Deserialize(json));
+        Assert.Equal(("off", null, false), (back.ProxyMode, back.Profiles[0].PressEnter, back.Profiles[1].PressEnter));
+    }
+
     [Fact]
     public async Task File_store_accepts_the_device_token_name()
     {

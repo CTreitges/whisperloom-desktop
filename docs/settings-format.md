@@ -132,7 +132,7 @@ Liste von Objekten; gilt für Diktate per Tastenkürzel ins Zielfenster.
 | `titlePattern` | Text | `""` | Regex auf den Fenstertitel (ohne Groß-/Kleinschreibung); `""` = jeder Titel; ungültig = Profil greift nie |
 | `stage` | Text | `""` | Stufen-Schlüssel wie `refine.stage`; `""` = Standard-Stufe. Eine von IT gesperrte Stufe geht vor |
 | `insertMode` | Text | `""` | `paste`/`type`/`clipboard`; `""` = `desktop.insertMode` |
-| `pressEnter` | bool/null | `null` (W2; früher `false`) | Erben/An/Aus: `null` = `output.pressEnter`, `true` = An, `false` = Aus (ältere Dateien mit `false` bleiben „Aus“, gleiches Verhalten). Nach dem Einfügen Enter senden. Ein Import übernimmt `true` nur für ein Profil, das es so schon gab; sonst kommt das Profil mit `false` an (Warnung in der Vorschau) und Enter gilt erst, wenn der Nutzer es im Profil selbst einschaltet |
+| `pressEnter` | bool/null | `null` (W2; früher `false`) | Erben/An/Aus: `null` = `output.pressEnter`, `true` = An, `false` = Aus (ältere Dateien mit `false` bleiben „Aus“, gleiches Verhalten). Erben wird nicht geschrieben (Feld fehlt), weil ältere Versionen bei `null` den ganzen `desktop`-Abschnitt verwürfen. Ein Import macht ein bestehendes Profil nur sicherer: „Aus“ bleibt „Aus“, auch wenn die Datei Erben angibt. Nach dem Einfügen Enter senden. Ein Import übernimmt `true` nur für ein Profil, das es so schon gab; sonst kommt das Profil mit `false` an (Warnung in der Vorschau) und Enter gilt erst, wenn der Nutzer es im Profil selbst einschaltet |
 | `enabled` | bool | `true` | Profil aktiv |
 
 Vorrang: ein Profil mit passendem `titlePattern` vor einem Profil nur mit `process`; unter gleich genauen das erste der
