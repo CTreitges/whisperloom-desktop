@@ -44,7 +44,8 @@ public partial class HelpWindow : Window
     public void ShowTopic(string topic)
     {
         Help?.Open(topic);
-        SectionList.ContainerFromItem(Help?.SelectedSection!)?.Focus(NavigationMethod.Tab);
+        // Fokus ohne Fokusrahmen (Programm-Sprung, keine Tastatur-Navigation); Pfeiltasten wirken sofort.
+        SectionList.ContainerFromItem(Help?.SelectedSection!)?.Focus();
     }
 
     protected override void OnKeyDown(KeyEventArgs e)

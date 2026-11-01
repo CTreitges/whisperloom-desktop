@@ -93,13 +93,20 @@ public sealed partial class HelpViewModel : ObservableObject, IDisposable
                 continue;
             }
             var snippet = lines.Skip(1).FirstOrDefault(l => l.Contains(words[0], StringComparison.CurrentCultureIgnoreCase)) ?? section.Intro;
-            Results.Add(new HelpSearchResult(section, section.Title, Shorten(snippet)));
+            Results.Add(new HelpSearchResult(section, section.Title, Snippet(snippet, words[0])));
         }
     }
 
-    private static string Shorten(string text)
+    /// <summary>Auszug von höchstens ~90 Zeichen, der das Suchwort zeigt (bei Bedarf vorne mit „… “ gekürzt).</summary>
+    public static string Snippet(string text, string word)
     {
         var plain = text.TrimStart('#', '•', ' ');
+        var at = plain.IndexOf(word, StringComparison.CurrentCultureIgnoreCase);
+        if (at > 40)
+        {
+            var start = plain.LastIndexOf(' ', at - 25) + 1;
+            plain = "… " + plain[start..];
+        }
         return plain.Length <= 90 ? plain : plain[..87].TrimEnd() + " …";
     }
 

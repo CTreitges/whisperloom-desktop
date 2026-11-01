@@ -69,7 +69,7 @@
     </Style>
   </Window.Styles>
 
-  <Grid ColumnDefinitions="232,*">
+  <Grid ColumnDefinitions="264,*">
     <Border Grid.Column="0" Background="{DynamicResource Loom.Sidebar}" BorderBrush="{DynamicResource Loom.Separator}" BorderThickness="0,0,1,0">
       <DockPanel>
         <TextBox x:Name="SearchBox" DockPanel.Dock="Top" Margin="12,14,12,6" Text="{Binding SearchText}"
@@ -93,12 +93,13 @@
                 <StackPanel>
                   <TextBlock Classes="section" Text="{Binding GroupTitle}" IsVisible="{Binding GroupTitle, Converter={x:Static ObjectConverters.IsNotNull}}" />
                   <Border Classes="sideItem">
-                    <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Grid ColumnDefinitions="Auto,*" ToolTip.Tip="{Binding Title}">
                       <Border Classes="tile" Background="{Binding Tile, Converter={x:Static ds:ResourceKeyConverter.Instance}}">
                         <PathIcon Data="{Binding IconGeometry}" />
                       </Border>
-                      <TextBlock Text="{Binding Title}" VerticalAlignment="Center" Foreground="{DynamicResource Loom.Text}" TextTrimming="CharacterEllipsis" />
-                    </StackPanel>
+                      <TextBlock Grid.Column="1" Margin="10,0,0,0" Text="{Binding Title}" VerticalAlignment="Center" Foreground="{DynamicResource Loom.Text}"
+                                 TextTrimming="CharacterEllipsis" />
+                    </Grid>
                   </Border>
                 </StackPanel>
               </DataTemplate>
