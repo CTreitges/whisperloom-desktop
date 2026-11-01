@@ -106,13 +106,11 @@ def login(request: Request, benutzername: str = Form(""), passwort: str = Form("
         return RedirectResponse("/", status_code=303)
     if not vor_csrf_ok(request, csrf):
         return verboten(request)
-    ip = client_ip(request)
-    begrenzer = request.app.state.begrenzer
-    # Je Benutzername so viele Versuche wie bis zur Konto-Sperre: unbekannte und gesperrte Namen sehen gleich aus.
-    if (begrenzer.erlaubt("login-ip:" + limit_ip(request), 20, VIERTELSTUNDE) is not None
-            or begrenzer.erlaubt("login-benutzer:" + benutzername.strip().lower()[:64], auth.FEHLVERSUCHE_MAX,
-                                 VIERTELSTUNDE) is not None):
+    ip = limit_ip(request)
+    if request.app.state.begrenzer.erlaubt("login-ip:" + ip, 20, VIERTELSTUNDE) is not None:
         return _vor_seite(request, "login.html", {"fehler": "h.zu_oft"}, 429)
+    # Fehlversuche je (Benutzer, IP bzw. /64) und weiche Grenze je Benutzer zählt auth.anmelden in der DB (Review M-5):
+    # unbekannte und gesperrte Namen sehen gleich aus, Dritte sperren den echten Admin nicht aus.
     ergebnis, admin = auth.anmelden(con, request.app.state.krypto, benutzername[:64], passwort[:256], ip, jetzt(request))
     if ergebnis == "gesperrt":
         return _vor_seite(request, "login.html", {"fehler": "h.zu_oft"}, 429)
@@ -280,8 +278,8 @@ def einladung(token: str, request: Request, passwort: str = Form(""), passwort2:
     if regel:
         return _vor_seite(request, "einladung.html", {"benutzer": e["benutzer"], "fehler": regel}, 400)
     con.execute("UPDATE einladung SET verwendet = 1 WHERE token_hash = ?", (e["token_hash"],))
-    con.execute("UPDATE admin SET pw_hash = ?, fehlversuche = 0, gesperrt_bis_ms = 0 WHERE id = ?",
-                (auth.passwort_hash(passwort), e["admin_id"]))
+    con.execute("UPDATE admin SET pw_hash = ? WHERE id = ?", (auth.passwort_hash(passwort), e["admin_id"]))
+    auth.sperre_aufheben(con, request.app.state.krypto, e["admin_id"], e["benutzer"])
     auth.sitzungen_beenden(con, e["admin_id"])
     firmen.protokoll(con, e["firma_id"], e["benutzer"], "einladung_angenommen", e["benutzer"], zeit)
     admin = con.execute("SELECT * FROM admin WHERE id = ?", (e["admin_id"],)).fetchone()

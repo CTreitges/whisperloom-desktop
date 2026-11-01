@@ -25,7 +25,7 @@ jobs:
       # Bekannte Schwachstellen in den Laufzeit-Abhängigkeiten (pip-audit ist in requirements-dev.txt gepinnt).
       - run: server/.venv/bin/python -m pip_audit -r server/requirements.txt --progress-spinner off
       # test_app_kompat.py schickt mit dem App-Client (WhisperLoom.Core) Anfragen durch den Proxy (W2-SRV2).
-      - uses: actions/setup-dotnet@v6
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with: { global-json-file: global.json }
       - run: server/.venv/bin/python -m pytest server -q -rs
       - run: server/.venv/bin/python -m pytest server -q -k contract

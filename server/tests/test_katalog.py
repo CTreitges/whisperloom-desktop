@@ -32,3 +32,29 @@ def test_eigener_anbieter_custom_id(pfad):
     for falsch in ("custom:", "custom:Gross", "custom:" + "x" * 33, "unbekannt"):
         with pytest.raises(Ungueltig):
             katalog.wert_pruefen(e, falsch)
+
+
+# --- W2-FIXS: Sprache „Deutsch + Englisch“ (de+en, W2-PFIX) im Katalog ---
+def test_language_de_en_zulaessig():
+    e = katalog.eintrag("language")
+    for gut in ("auto", "de", "en", "deu", "de+en"):
+        assert katalog.wert_pruefen(e, gut) == gut
+    for falsch in ("de+fr", "DE+EN", "de+en+fr", "en+de", "de en", "deutsch"):
+        with pytest.raises(Ungueltig):
+            katalog.wert_pruefen(e, falsch)
+
+
+@pytest.mark.parametrize("sprache,anzeige", [("de", "Deutsch + Englisch (DE+EN)"), ("en", "German + English (DE+EN)")])
+def test_language_de_en_im_portal(app, einst, uhr, sprache, anzeige):
+    from .conftest import admin_client, neue_firma, seiten_csrf, sql
+
+    f = neue_firma(einst, "firma-a")
+    admin = admin_client(app, einst, uhr, f["id"], "anna")
+    admin.cookies.set("wl_sprache", sprache)
+    html = admin.get("/richtlinie").text
+    assert 'value="de+en"' in html and anzeige in html  # Vorschlag in der Auswahl
+    r = admin.post("/richtlinie", data={"csrf": seiten_csrf(admin, "/richtlinie"), "s:language": "fixed",
+                                        "w:language": "de+en"}, follow_redirects=False)
+    assert r.status_code == 303
+    werte = [tuple(z) for z in sql(einst, "SELECT stufe, wert FROM richtlinie WHERE pfad = 'language'")]
+    assert werte == [("fixed", '"de+en"')]

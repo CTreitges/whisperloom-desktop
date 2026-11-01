@@ -28,7 +28,8 @@ _KOMBI = re.compile(r"^((Ctrl|Alt|Shift|Win|Meta)\+){0,4}[A-Za-z0-9]{1,6}$")
 EINTRAEGE: tuple[Eintrag, ...] = (
     # Allgemein
     Eintrag("desktop.uiLanguage", "allgemein", "wahl", ("", "de", "en")),
-    Eintrag("language", "allgemein", "text", max_laenge=4),
+    # Freier ISO-Code; optionen = Vorschläge im Portal. "de+en" = Deutsch + Englisch (W2-PFIX, settings-format.md).
+    Eintrag("language", "allgemein", "text", ("auto", "de", "en", "de+en"), max_laenge=5),
     Eintrag("engine", "allgemein", "wahl", ("online", "offline")),
     Eintrag("management.allowLeave", "allgemein", "bool"),
     Eintrag("policy.updatesEnabled", "allgemein", "bool"),
@@ -151,7 +152,7 @@ def wert_pruefen(e: Eintrag, roh):
         if text not in e.optionen and not (e.pfad in _ANBIETER_PFADE and _EIGENER_ANBIETER.fullmatch(text)):
             raise Ungueltig("h.wert")
         return text
-    if e.pfad == "language" and not re.fullmatch(r"auto|[a-z]{2,3}", text):
+    if e.pfad == "language" and not re.fullmatch(r"auto|de\+en|[a-z]{2,3}", text):
         raise Ungueltig("h.wert")
     if e.pfad in _URL_PFADE and text and not re.fullmatch(r"https?://[^\s]+", text):
         raise Ungueltig("h.wert")

@@ -266,6 +266,9 @@ Fehler: `401 device_unknown`, `403 device_blocked`, `403 budget_exhausted`, `413
 - **Budget:** Monatsdeckel (UTC-Monat) je Firma, Gruppe und Gerät für Anfragen, Audio-Minuten, Tokens und geschätzte
   Kosten. Ist eine Grenze erreicht, antwortet der Server `403 budget_exhausted`, ohne den Anbieter zu fragen; einen
   Ersatz-Anbieter gibt es dann nicht. Laufende Anfragen zählen bei der Prüfung mit (Anzahl, Audio-Minuten).
+- **Modell ohne Preis (W2-FIXS, additiv):** Gilt für das Gerät ein Kostendeckel, nutzt der Server nur Zugänge, deren
+  Modell (festes Zugangsmodell, sonst `model` der Anfrage) in der Preistabelle der Firma steht. Ein Zugang ohne Preis
+  wird übersprungen, ohne den Anbieter zu fragen; der Ersatz-Zugang springt ein, sonst `403 budget_exhausted`.
 - **Weitere Fehler:** `400 invalid_request`, `403 device_pending`, `403 tenant_blocked`, `404 not_found` (§1.2).
 - **Datenschutz:** Audio und Text bleiben im Arbeitsspeicher der Anfrage. Der Server speichert je Gerät, Gruppe und Monat
   nur Zähler (Anfragen, Audio-Dauer, Tokens, geschätzte Kosten, Fehler je Klasse) und reicht Antworten des Anbieters nur

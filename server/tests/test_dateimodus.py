@@ -123,3 +123,35 @@ def test_beispieldatei_aus_readme_gueltig(tmp_path, uhr, monkeypatch):
 def test_unbekannte_felder_abgelehnt(datei_einst, datei):
     with pytest.raises(dateimodus.DateiFehler):
         dateimodus.anwenden(datei_einst, kry(datei_einst), [{"slug": "neu-firma", "password": "x"}])
+
+
+# --- Review N-12 (W2-FIXS): Syntaxfehler in einer Zeile mit Klartext-Key → Key nicht im Starttext ---
+@pytest.mark.parametrize("name,inhalt,zeile", [
+    ("firmen.yaml", "tenants:\n  - slug: acme\n    keys:\n      stt: {provider: groq, key: test-key-not-real-77 ] }\n", 4),
+    ("firmen.json", '{"tenants": [{"slug": "acme",\n "keys": {"stt": {"key": "test-key-not-real-77" "x"}}}]}', 2),
+])
+def test_syntaxfehler_ohne_key_im_start(tmp_path, uhr, capsys, name, inhalt, zeile):
+    import traceback
+
+    from whisperloom_server import cli
+
+    datei = tmp_path / name
+    datei.write_text(inhalt, encoding="utf-8")
+    e = neue_einst(tmp_path, uhr, anmeldearten=("file",), konfig_datei=datei)
+    with pytest.raises(dateimodus.DateiFehler) as info:
+        create_app(e)
+    text = "".join(traceback.format_exception(info.value))
+    assert "test-key-not-real-77" not in text, text
+    assert f"in Zeile {zeile}" in str(info.value) and "Error" in str(info.value)
+    # Dienststart über die CLI: kurze Meldung statt Traceback, Exit 1
+    assert cli.main(["serve", "--host", "127.0.0.1", "--port", "1"], e) == 1
+    fehler = capsys.readouterr().err
+    assert fehler.startswith("fehler: ") and f"in Zeile {zeile}" in fehler and "test-key-not-real-77" not in fehler
+
+
+def test_eigene_fehlertexte_bleiben_lesbar(tmp_path, uhr):
+    datei = tmp_path / "firmen.yaml"
+    datei.write_text("tenants:\n  - slug: acme\n    keyMode: falsch\n", encoding="utf-8")
+    e = neue_einst(tmp_path, uhr, anmeldearten=("file",), konfig_datei=datei)
+    with pytest.raises(dateimodus.DateiFehler, match="keyMode: proxy oder distribute"):
+        create_app(e)

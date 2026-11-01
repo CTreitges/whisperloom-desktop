@@ -50,6 +50,7 @@
     <div class="formular" data-zeigen-wenn="ebene=geraet">
       <label for="geraet">{{ t('p.geraet') }}</label>
       <select id="geraet" name="geraet">{% for g in geraete %}<option value="{{ g.id }}">{{ g.name }}</option>{% endfor %}</select>
+      {% if auto_freigabe %}<p class="klein hinweis-auto">{{ t('p.budget_geraet_auto') }}</p>{% endif %}
     </div>
     {% endif %}
     <p class="klein">{{ t('p.budget_grenzen_text') }}</p>

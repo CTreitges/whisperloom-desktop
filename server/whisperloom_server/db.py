@@ -179,7 +179,12 @@ _V3 = """
 ALTER TABLE admin ADD COLUMN totp_spaeter_ms INTEGER NOT NULL DEFAULT 0;
 """
 
-MIGRATIONEN: list[str] = [_V1, _V2, _V3]
+# W2-FIXS (Review M-5): Login-Fehlversuche werden je Benutzer (und IP) gezählt statt nur je Zeitraum aufgeräumt.
+_V4 = """
+CREATE INDEX login_versuch_benutzer ON login_versuch(benutzer_hmac, zeit_ms);
+"""
+
+MIGRATIONEN: list[str] = [_V1, _V2, _V3, _V4]
 SCHEMA_VERSION = len(MIGRATIONEN)
 
 

@@ -94,6 +94,17 @@ def erschoepft(con: sqlite3.Connection, geraet: sqlite3.Row, zeit: int,
     return None
 
 
+def kosten_grenze_aktiv(con: sqlite3.Connection, geraet: sqlite3.Row) -> bool:
+    """Gilt für das Gerät auf einer Ebene ein Kostendeckel? Dann zählt ein Modell ohne Preis nicht 0, sondern wird
+    abgelehnt (Review N-15): sonst unterläuft ein frei gewähltes Modell das Kostenbudget."""
+    return any((b := _budget(con, geraet["firma_id"], e, z)) is not None and b["max_kosten_mikro"] is not None
+               for e, z in ebenen(geraet))
+
+
+def hat_preis(con: sqlite3.Connection, firma_id: str, modell: str) -> bool:
+    return con.execute("SELECT 1 FROM preis WHERE firma_id = ? AND modell = ?", (firma_id, modell)).fetchone() is not None
+
+
 def stand(con: sqlite3.Connection, firma_id: str, monat_: str) -> list[dict]:
     """Alle Budgets der Firma mit Verbrauch, höchstem Anteil und Zustand ok | warnung | erreicht (für das Portal)."""
     namen = {("gruppe", r["id"]): r["name"] for r in con.execute("SELECT id, name FROM gruppe WHERE firma_id = ?", (firma_id,))}

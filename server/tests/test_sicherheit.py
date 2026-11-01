@@ -27,9 +27,12 @@ def test_login_rate_limit_je_benutzer(client, einst, app):
     neuer_admin(einst, f["id"], "anna")
     for i in range(10):
         c = TestClient(app, base_url=BASIS, client=(f"198.51.100.{i}", 1))
-        passwort_login(c, "anna", "falsch")
+        for _ in range(5):
+            passwort_login(c, "anna", "falsch")
+        assert passwort_login(c, "anna", PASSWORT).status_code == 429  # diese IP ist für anna gesperrt
+    # Review M-5: Fehlversuche fremder IPs sperren den echten Admin nicht aus (weiche Grenze: eine neue IP darf einmal).
     c = TestClient(app, base_url=BASIS, client=("198.51.100.99", 1))
-    assert passwort_login(c, "anna", PASSWORT).status_code == 429
+    assert passwort_login(c, "anna", PASSWORT).status_code == 303
 
 
 def test_enrollment_rate_limit(client, einst):

@@ -135,11 +135,13 @@ project (`docs/parity-exceptions.md`). No third-party prompt text is included.
 ## 7. Company server / Firmen-Manager (`server/`, Python)
 
 The self-hostable company server (`server/`, also shipped as a Docker image based on `python:3.12-slim`) uses the
-Python packages below, pinned in `server/requirements.txt`. Licenses were taken from the installed package metadata
+Python packages below, pinned in `server/requirements.txt` (the Docker image installs them with SHA-256 hashes from
+`server/requirements-hashes.txt`, base image pinned by digest). Licenses were taken from the installed package metadata
 (`License-Expression` or classifiers) on 2026-11-01.
 
 Der selbst hostbare Firmen-Manager (`server/`, auch als Docker-Image auf Basis `python:3.12-slim`) nutzt die folgenden
-Python-Pakete, fest in `server/requirements.txt`. Lizenzen laut installierten Paket-Metadaten, Stand 2026-11-01.
+Python-Pakete, fest in `server/requirements.txt` (das Docker-Image installiert sie mit SHA-256-Hashes aus
+`server/requirements-hashes.txt`, Basis-Image per Digest). Lizenzen laut installierten Paket-Metadaten, Stand 2026-11-01.
 
 ### Runtime / Laufzeit
 
