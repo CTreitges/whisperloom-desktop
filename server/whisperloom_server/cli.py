@@ -129,6 +129,7 @@ def _parser() -> argparse.ArgumentParser:
     s = sub.add_parser("serve", help="Dienst starten")
     s.add_argument("--host", default="127.0.0.1")
     s.add_argument("--port", type=int, default=8080)
+    s.add_argument("--init", action="store_true", help="vorher init ausführen (Container-Start)")
     sub.add_parser("init", help="Datenordner, Hauptschlüssel und Datenbank anlegen")
     s = sub.add_parser("instance-admin-create", help="Instanz-Admin anlegen (Einladungs-Link)")
     s.add_argument("benutzer")
@@ -168,6 +169,8 @@ def main(argv: list[str] | None = None, einst: Einstellungen | None = None) -> i
 
             from .app import create_app
 
+            if a.init:
+                init(einst)
             # Ohne proxy_headers: Client-IP und trusted_header wertet netz.py anhand WL_TRUSTED_PROXIES aus.
             uvicorn.run(create_app(einst), host=a.host, port=a.port, proxy_headers=False, access_log=False,
                         server_header=False)

@@ -3,6 +3,7 @@
 import json
 import os
 import time
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -108,6 +109,15 @@ def test_start_mit_kaputter_datei_bricht_ab(tmp_path, uhr):
     einst = neue_einst(tmp_path, uhr, anmeldearten=("file",), konfig_datei=p)
     with pytest.raises(dateimodus.DateiFehler):
         create_app(einst)
+
+
+def test_beispieldatei_aus_readme_gueltig(tmp_path, uhr, monkeypatch):
+    for name, wert in {"WL_CODE_MUSTER": "ABCD-EFGH-JKMN-PQRS", "WL_CODE_VERTRIEB": "VVVV-WWWW-XXXX-YYYY",
+                       "WL_KEY_GROQ": "test-key-not-real-3", "WL_KEY_LLM": "test-key-not-real-4"}.items():
+        monkeypatch.setenv(name, wert)
+    beispiel = Path(__file__).parent.parent / "beispiele" / "firmen.yaml"
+    einst = neue_einst(tmp_path, uhr, anmeldearten=("file",), konfig_datei=beispiel)
+    assert dateimodus.anwenden(einst, kry(einst), dateimodus.lesen(beispiel)) == 1
 
 
 def test_unbekannte_felder_abgelehnt(datei_einst, datei):

@@ -1,0 +1,67 @@
+name: Server
+# Firmen-Manager (server/): pytest + Lint + Smoke ohne Docker, dazu Docker-Image bauen, starten und per API prüfen.
+# Doku: docs.github.com/actions/writing-workflows/workflow-syntax-for-github-actions (abgerufen 2026-11-01),
+# docs.docker.com/reference/cli/docker/container/run/ (abgerufen 2026-11-01).
+on:
+  push:
+    branches: [main]
+    paths: ["server/**", ".github/workflows/server.yml", "docs/server-api.md"]
+  pull_request:
+    paths: ["server/**", ".github/workflows/server.yml", "docs/server-api.md"]
+
+permissions:
+  contents: read
+
+jobs:
+  server-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with: { python-version: "3.12" }
+      - run: python -m venv server/.venv
+      - run: server/.venv/bin/python -m pip install -r server/requirements-dev.txt
+      - run: server/.venv/bin/python -m ruff check server
+      - run: server/.venv/bin/python -m pytest server -q
+      - run: server/.venv/bin/python -m pytest server -q -k contract
+      - run: python server/tools/smoke_server.py
+
+  server-docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: docker build -t whisperloom-server:ci server
+      - name: Container starten
+        run: |
+          docker run -d --name wl -p 127.0.0.1:8080:8080 -e WL_BASE_URL=http://127.0.0.1:8080 \
+            --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges:true \
+            -v wl-data:/data whisperloom-server:ci
+      - name: Auf /healthz warten
+        run: |
+          for i in $(seq 1 60); do
+            if [ "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/healthz)" = 200 ]; then echo "healthz 200"; break; fi
+            sleep 1
+          done
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/healthz)" = 200
+      - name: Läuft nicht als root
+        run: test "$(docker exec wl id -u)" != 0
+      - name: Firma per CLI, Fake-Gerät per API
+        run: |
+          code=$(docker exec wl python -m whisperloom_server tenant-create ci "CI GmbH" --show | sed -n 's/^Firmencode: //p')
+          test -n "$code"
+          antwort=$(curl -s -w '\n%{http_code}' -H 'Content-Type: application/json' \
+            -d "{\"code\": \"$code\", \"deviceName\": \"CI-Fake\", \"platform\": \"linux\", \"appVersion\": \"1.0.0\"}" \
+            http://127.0.0.1:8080/api/v1/enroll)
+          test "$(echo "$antwort" | tail -n1)" = 201
+          echo "$antwort" | head -n1 | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["state"] == "pending" and d["deviceId"].startswith("d_"); print("enroll ok", d["deviceId"])'
+          docker exec wl python -m whisperloom_server device-list ci | grep -q pending
+      - name: Docker-Healthcheck meldet healthy
+        run: |
+          for i in $(seq 1 60); do
+            s=$(docker inspect -f '{{.State.Health.Status}}' wl); echo "$s"
+            [ "$s" = healthy ] && exit 0
+            sleep 2
+          done
+          exit 1
+      - if: always()
+        run: docker logs wl || true

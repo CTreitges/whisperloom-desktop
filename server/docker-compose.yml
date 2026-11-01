@@ -1,0 +1,36 @@
+# Beispiel / Example: docker compose up -d   (danach / then: siehe README „Erste Firma“)
+# Der Dienst lauscht nur auf 127.0.0.1; davor gehört ein Reverse-Proxy mit TLS (Caddy/nginx, siehe README).
+services:
+  whisperloom-server:
+    build: .
+    image: whisperloom-server:local
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      WL_BASE_URL: "https://wl.example.com"      # öffentliche Adresse des Portals / public URL
+      WL_AUTH_MODES: "password_totp"             # siehe README „Anmeldearten“
+      # Hauptschlüssel aus einer Datei statt /data/master.key (empfohlen, getrennt vom Backup der DB):
+      # WL_MASTER_KEY_FILE: /run/secrets/wl_master_key
+      # Vorgeschaltete Anmeldung (Authelia, oauth2-proxy):
+      # WL_AUTH_MODES: "trusted_header"
+      # WL_TRUSTED_PROXIES: "172.16.0.0/12"
+      # WL_TRUSTED_HEADER: "Remote-User"
+    volumes:
+      - whisperloom-data:/data
+    # secrets:
+    #   - wl_master_key
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+volumes:
+  whisperloom-data:
+
+# secrets:
+#   wl_master_key:
+#     file: ./master.key
