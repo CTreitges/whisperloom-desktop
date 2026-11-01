@@ -131,7 +131,8 @@ async def _versuch(request: Request, zugang: dict, a: upstream.Anfrage, verbinde
 async def _weiterleiten(request: Request, con: sqlite3.Connection, g: sqlite3.Row, art: str, modell_wunsch: str,
                         bauen, auswerten, audio_ms: int = 0) -> dict:
     zeit = jetzt(request)
-    ebene = budget.erschoepft(con, g, zeit)
+    offen = request.app.state.__dict__.setdefault("budget_offen", {})
+    ebene = budget.erschoepft(con, g, zeit, offen)
     if ebene is not None:
         nutzung.fehler(con, g, zeit, "budget")
         ereignis("proxy abgelehnt", route=art, geraet=g["id"], firma=g["firma_id"], fehler="budget", art=ebene)
@@ -146,10 +147,21 @@ async def _weiterleiten(request: Request, con: sqlite3.Connection, g: sqlite3.Ro
         ereignis("proxy abgelehnt", route=art, geraet=g["id"], firma=g["firma_id"], fehler="parallel")
         raise ApiFehler("rate_limited", retry_after=5)
     laufend[g["firma_id"]] = laufend.get(g["firma_id"], 0) + 1
+    # Reservierung: zwischen Budget-Prüfung und hier liegt kein await, gleichzeitige Anfragen sehen sich gegenseitig.
+    reserviert = [(g["firma_id"], e, z) for e, z in budget.ebenen(g)]
+    for k in reserviert:
+        n, ms = offen.get(k, (0, 0))
+        offen[k] = (n + 1, ms + audio_ms)
     try:
         return await _kette_abarbeiten(request, con, g, art, kette, modell_wunsch, bauen, auswerten, audio_ms, zeit)
     finally:
         laufend[g["firma_id"]] -= 1
+        for k in reserviert:
+            n, ms = offen[k]
+            if n <= 1:
+                del offen[k]
+            else:
+                offen[k] = (n - 1, ms - audio_ms)
 
 
 async def _kette_abarbeiten(request: Request, con: sqlite3.Connection, g: sqlite3.Row, art: str, kette: list[dict],

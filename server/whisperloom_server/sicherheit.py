@@ -3,8 +3,10 @@
 Basis: whisperloom-android feat/simple-portal server/simple-whisper/sicherheit.py
 """
 
+import asyncio
 import json
 
+from . import vorab
 from .fehler import FEHLER
 from .log import ereignis
 
@@ -16,9 +18,12 @@ GRENZEN = {
 }
 
 
-# Bodies über 64 KiB (nur Proxy) puffert der Server vor der Anmeldung – höchstens so viele gleichzeitig (Prüfer-Befund
-# W2-SRV2 Nr. 3: anonyme parallele 25-MiB-Uploads binden sonst beliebig Arbeitsspeicher). Darüber: 503 mit Retry-After.
-MAX_GROSSE_GLEICHZEITIG = 16
+# Lese-Zeitlimits für jeden Body (Slowloris): höchstens so lange ohne neues Datenpaket bzw. insgesamt. Ein 25-MiB-Upload
+# bei 1 Mbit/s braucht gut 200 s. Danach: 400 invalid_request. Große Proxy-Bodies liest der Server erst nach der
+# Vorab-Prüfung des Geräte-Tokens und nur mit freiem Slot je Gerät/Firma/Instanz (vorab.py, Prüfrunde 1 Befund 1).
+LESE_LEERLAUF_S = 15.0
+LESE_GESAMT_S = 300.0
+LESE_GESAMT_KLEIN_S = 30.0
 
 
 def grenze(pfad: str) -> int:
@@ -46,7 +51,7 @@ class SicherheitsMiddleware:
 
     def __init__(self, app):
         self.app = app
-        self.grosse_laufend = 0
+        self.slots = vorab.Slots()
 
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http":
@@ -59,32 +64,47 @@ class SicherheitsMiddleware:
             await self._zu_gross(scope, send)
             return
         gross = hoechstens > MAX_BODY and (laenge is None or int(laenge) > MAX_BODY)
+        geraet = None
         if gross:
-            if self.grosse_laufend >= MAX_GROSSE_GLEICHZEITIG:
-                await self._antwort(scope, send, 503, "service_unavailable", "Bitte gleich erneut.", [(b"retry-after", b"5")])
+            try:
+                geraet = vorab.geraet_pruefen(scope)
+                self.slots.belegen(*geraet)
+            except vorab.Abgelehnt as e:
+                extra = [(b"retry-after", str(e.retry_after).encode())] if e.retry_after else None
+                await self._antwort(scope, send, FEHLER[e.code][0], e.code, FEHLER[e.code][1], extra)
                 return
-            self.grosse_laufend += 1
         try:
-            await self._verarbeiten(scope, receive, send, hoechstens)
+            body = await self._lesen(scope, receive, send, hoechstens, LESE_GESAMT_S if gross else LESE_GESAMT_KLEIN_S)
         finally:
-            if gross:
-                self.grosse_laufend -= 1
+            if geraet is not None:
+                self.slots.freigeben(*geraet)  # Slot nur für die Lesephase; danach begrenzt proxy.py je Firma
+        if body is not None:
+            await self._verarbeiten(scope, receive, send, body)
 
-    async def _verarbeiten(self, scope, receive, send, hoechstens: int):
+    async def _lesen(self, scope, receive, send, hoechstens: int, gesamt_s: float) -> bytes | None:
+        """Body vollständig lesen; None, wenn schon geantwortet wurde (zu groß, Zeitlimit) oder der Client abbrach."""
         teile: list[bytes] = []
         gelesen = 0
-        while True:
-            nachricht = await receive()
-            if nachricht["type"] != "http.request":
-                return  # Client hat abgebrochen
-            teile.append(nachricht.get("body", b""))
-            gelesen += len(teile[-1])
-            if gelesen > hoechstens:
-                await self._zu_gross(scope, send)
-                return
-            if not nachricht.get("more_body", False):
-                break
-        body = b"".join(teile)
+        try:
+            # Doku: https://docs.python.org/3/library/asyncio-task.html#asyncio.timeout (abgerufen 2026-11-01)
+            async with asyncio.timeout(gesamt_s):
+                while True:
+                    nachricht = await asyncio.wait_for(receive(), LESE_LEERLAUF_S)
+                    if nachricht["type"] != "http.request":
+                        return None  # Client hat abgebrochen
+                    teile.append(nachricht.get("body", b""))
+                    gelesen += len(teile[-1])
+                    if gelesen > hoechstens:
+                        await self._zu_gross(scope, send)
+                        return None
+                    if not nachricht.get("more_body", False):
+                        return b"".join(teile)
+        except TimeoutError:
+            ereignis("anfrage abgebrochen", fehler="lese_zeitlimit", route=scope["path"][:40])
+            await self._antwort(scope, send, 400, "invalid_request", "Die Anfrage kam nicht rechtzeitig an.")
+            return None
+
+    async def _verarbeiten(self, scope, receive, send, body: bytes):
         geliefert = False
 
         async def wiedergabe():

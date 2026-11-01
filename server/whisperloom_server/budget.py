@@ -69,14 +69,27 @@ def _budget(con: sqlite3.Connection, firma_id: str, ebene: str, ziel_id: str) ->
                        (firma_id, ebene, ziel_id)).fetchone()
 
 
-def erschoepft(con: sqlite3.Connection, geraet: sqlite3.Row, zeit: int) -> str | None:
-    """Ebene, deren Budget im laufenden Monat erreicht ist (geraet, gruppe, firma), sonst None."""
+def ebenen(geraet: sqlite3.Row) -> list[tuple[str, str]]:
+    """Budget-Ebenen eines Geräts in Prüfreihenfolge: (ebene, ziel_id)."""
+    gruppe = [("gruppe", geraet["gruppe_id"])] if geraet["gruppe_id"] else []
+    return [("geraet", geraet["id"]), *gruppe, ("firma", "")]
+
+
+def erschoepft(con: sqlite3.Connection, geraet: sqlite3.Row, zeit: int,
+               offen: dict[tuple[str, str, str], tuple[int, int]] | None = None) -> str | None:
+    """Ebene, deren Budget im laufenden Monat erreicht ist (geraet, gruppe, firma), sonst None.
+    `offen`: laufende, noch nicht gezählte Anfragen je (firma_id, ebene, ziel) als (Anzahl, Audio-ms) – Reservierung
+    (Prüfrunde 1 Befund 3): gleichzeitige Anfragen verhalten sich wie nacheinander gestellte. Tokens und Kosten
+    stehen erst nach der Antwort fest; dort kann eine Welle gleichzeitiger Anfragen den Deckel überschreiten."""
     m = nutzung.monat(zeit)
-    for ebene, ziel in (("geraet", geraet["id"]), ("gruppe", geraet["gruppe_id"] or ""), ("firma", "")):
-        if ebene == "gruppe" and not ziel:
-            continue
+    for ebene, ziel in ebenen(geraet):
         b = _budget(con, geraet["firma_id"], ebene, ziel)
-        if b is not None and any(p >= 100 for p in anteile(nutzung.summe(con, geraet["firma_id"], m, ebene, ziel), b).values()):
+        if b is None:
+            continue
+        s = nutzung.summe(con, geraet["firma_id"], m, ebene, ziel)
+        n, ms = (offen or {}).get((geraet["firma_id"], ebene, ziel), (0, 0))
+        s = {**s, "anfragen": s["anfragen"] + n, "audio_ms": s["audio_ms"] + ms}
+        if any(p >= 100 for p in anteile(s, b).values()):
             return ebene
     return None
 

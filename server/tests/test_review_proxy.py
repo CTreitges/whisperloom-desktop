@@ -10,7 +10,7 @@ import time
 
 import pytest
 
-from whisperloom_server import proxy, sicherheit, ssrf, upstream
+from whisperloom_server import proxy, ssrf, upstream, vorab
 
 from .conftest import bearer, chat, proxy_geraet, sql, stt, wav, zugang
 
@@ -59,7 +59,7 @@ def test_multipart_datei_mit_zeilenumbruechen_bleibt_unveraendert(pein, pclient,
 def test_zu_viele_grosse_uploads_gleichzeitig_503(pein, pclient, fake, monkeypatch):
     f, g = proxy_geraet(pclient, pein)
     zugang(pein, f["id"], "stt", "custom", fake.basis + "/v1")
-    monkeypatch.setattr(sicherheit, "MAX_GROSSE_GLEICHZEITIG", 0)
+    monkeypatch.setattr(vorab, "MAX_INSTANZ", 0)
     r = stt(pclient, g["deviceToken"], wav(3.0))  # > 64 KiB
     assert r.status_code == 503 and r.json()["error"] == "service_unavailable" and r.headers["retry-after"].isdigit()
     assert pclient.get("/healthz").status_code == 200  # kleine Anfragen laufen weiter

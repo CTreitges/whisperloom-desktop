@@ -21,10 +21,11 @@ from urllib.parse import urlsplit
 Netz = ipaddress.IPv4Network | ipaddress.IPv6Network
 Aufloeser = Callable[[str, int], list[str]]
 
-# Metadaten-Dienste, die nicht schon über link-local/privat fallen (Alibaba 100.100.100.200 liegt in CGNAT, ist aber
-# ausdrücklich gelistet, falls Python es je als global einstuft).
+# Metadaten-Dienste der Cloud-Anbieter: immer gesperrt, auch wenn WL_UPSTREAM_ALLOW ihr Netz freigibt (Prüfrunde 1
+# Befund 4). AWS/GCP/Azure/Oracle/DigitalOcean 169.254.169.254, AWS IPv6 fd00:ec2::254, AWS ECS 169.254.170.2,
+# Alibaba 100.100.100.200.
 METADATEN = {ipaddress.ip_address("100.100.100.200"), ipaddress.ip_address("169.254.169.254"),
-             ipaddress.ip_address("fd00:ec2::254")}
+             ipaddress.ip_address("169.254.170.2"), ipaddress.ip_address("fd00:ec2::254")}
 
 
 class ZielVerboten(ValueError):
@@ -64,12 +65,12 @@ def _eingebettet(ip: ipaddress.IPv6Address) -> ipaddress.IPv4Address | None:
 def adresse_verboten(ip: ipaddress.IPv4Address | ipaddress.IPv6Address, erlaubt: tuple[Netz, ...]) -> bool:
     if isinstance(ip, ipaddress.IPv6Address) and (v4 := _eingebettet(ip)) is not None:
         ip = v4
-    if any(ip.version == n.version and ip in n for n in GESPERRT):
+    if ip in METADATEN or any(ip.version == n.version and ip in n for n in GESPERRT):
         return True
     if any(ip.version == n.version and ip in n for n in erlaubt):
         return False
     # is_global gilt in Python auch für Multicast (224.0.0.0/4, ff00::/8) – deshalb eigens ausschließen.
-    return ip in METADATEN or ip.is_multicast or not ip.is_global
+    return ip.is_multicast or not ip.is_global
 
 
 def pruefen(url: str, erlaubt: tuple[Netz, ...], aufloeser: Aufloeser) -> Ziel:
