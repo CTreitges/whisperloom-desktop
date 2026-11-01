@@ -41,12 +41,26 @@ internal sealed class FakeClipboard(Steps steps) : IClipboardAdapter
         SequenceNumber++;
     }
 
+    /// <summary>So oft scheitert Restore noch (Zwischenablage belegt).</summary>
+    public int FailRestores { get; set; }
+
     public void Restore(ClipboardSnapshot snapshot)
     {
         steps.Add("restore");
+        if (FailRestores > 0)
+        {
+            FailRestores--;
+            throw new IOException("belegt");
+        }
         Text = snapshot.Items.Count == 0 ? null : System.Text.Encoding.Unicode.GetString(snapshot.Items[0].Data);
         Private = true;
         SequenceNumber++;
+    }
+
+    public string? GetText()
+    {
+        steps.Add("get-text");
+        return Text;
     }
 
     public void OnPaste()
@@ -86,6 +100,20 @@ internal sealed class FakeKeys(Steps steps, FakeClipboard clipboard) : IKeySende
         Target += clipboard.Text;
         clipboard.OnPaste();
         AfterPaste?.Invoke();
+        return true;
+    }
+
+    /// <summary>Was das Ziel markiert hat; null = nichts (Strg+C ändert die Zwischenablage nicht).</summary>
+    public string? Selection { get; set; }
+
+    public bool SendCopy(bool ctrlInsert)
+    {
+        steps.Add(ctrlInsert ? "ctrl-insert" : "ctrl-c");
+        if (Selection is not null)
+        {
+            clipboard.Text = Selection;
+            clipboard.SequenceNumber++;
+        }
         return true;
     }
 

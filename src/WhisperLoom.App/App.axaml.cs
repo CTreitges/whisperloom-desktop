@@ -67,7 +67,8 @@ public partial class App : Application
     {
         try
         {
-            var menu = new TrayMenu(host.Controller, Open);
+            var menu = new TrayMenu(host.Controller, Open, entry => host.InsertRecentTextAsync(entry.Text));
+            _ = menu.ReloadRecentAsync();
             _tray = new TrayIcon
             {
                 Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://WhisperLoom/Assets/whisperloom.ico"))),
@@ -109,6 +110,8 @@ public partial class App : Application
                 return status;
             };
             RecordHotkey = async () => (await input.RecordAsync())?.ToString();
+            host.InsertRecent = input.Flow.InsertRecentAsync;
+            host.Reinsert = input.Flow.ReinsertAsync;
         }
     }
 
@@ -136,7 +139,9 @@ public partial class App : Application
             case "history":
                 if (_historyWindow is null)
                 {
-                    var vm = new HistoryViewModel(host.History);
+                    var c = host.Controller;
+                    var vm = new HistoryViewModel(host.History,
+                        c.StageLocked ? null : (entry, stage) => c.ReprocessAsync(stage, entry.Id), cleared => c.NotifyHistoryChanged(cleared));
                     _historyWindow = new HistoryWindow(vm);
                     _historyWindow.Closed += (_, _) => _historyWindow = null;
                     _ = vm.LoadAsync();

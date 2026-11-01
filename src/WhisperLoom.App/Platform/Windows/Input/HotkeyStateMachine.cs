@@ -8,6 +8,8 @@ public enum HotkeyAction
     HoldCancel,
     Toggle,
     Stage,
+    Reinsert,
+    Rewrite,
     OverlaySend,
     OverlaySendEnter,
     OverlayDiscard,
@@ -54,6 +56,12 @@ public sealed class HotkeyStateMachine
     public Hotkey? Toggle { get; set; }
 
     public Hotkey? Stage { get; set; }
+
+    /// <summary>Letztes Diktat erneut einfügen (WLD-P5b).</summary>
+    public Hotkey? Reinsert { get; set; }
+
+    /// <summary>Markierung umschreiben; zweiter Druck sendet die Anweisung (WLD-P5b).</summary>
+    public Hotkey? Rewrite { get; set; }
 
     /// <summary>Overlay offen und in Aufnahme/Pause: Enter, Strg+Enter und Rücktaste gehören dem Overlay.</summary>
     public bool OverlayKeysActive { get; set; }
@@ -194,6 +202,14 @@ public sealed class HotkeyStateMachine
         if (Stage is not null && Stage.Key == vk && Stage.Modifiers == mods)
         {
             return HotkeyAction.Stage;
+        }
+        if (Reinsert is not null && Reinsert.Key == vk && Reinsert.Modifiers == mods)
+        {
+            return HotkeyAction.Reinsert;
+        }
+        if (Rewrite is not null && Rewrite.Key == vk && Rewrite.Modifiers == mods)
+        {
+            return HotkeyAction.Rewrite;
         }
         return HotkeyAction.None;
     }

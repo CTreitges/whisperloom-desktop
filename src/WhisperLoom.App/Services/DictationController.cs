@@ -213,6 +213,7 @@ public sealed partial class DictationController : ObservableObject
             case DictationState.Recording or DictationState.Paused:
                 _recorder.Cancel();
                 _recorded = TimeSpan.Zero;
+                ActiveProfile = null;
                 State = DictationState.Idle;
                 _log.Event("recording.cancel");
                 return "cancelled";
@@ -276,13 +277,17 @@ public sealed partial class DictationController : ObservableObject
         {
             await _history.ClearAsync(CancellationToken.None);
             _log.Event("history.cleared", ("reason", "disabled"));
+            // Auch Tray-Liste und „erneut einfügen“ zeigen danach keinen alten Text mehr.
+            LastRaw = "";
+            LastResult = "";
+            HistoryChanged?.Invoke();
         }
     }
 
     private async Task ProcessAsync(AudioBuffer audio, CancellationToken ct)
     {
         var watch = Stopwatch.StartNew();
-        var refinement = RefinementOf(Settings.Refine);
+        var refinement = RefinementOf(EffectiveRefine());
         try
         {
             var result = await _pipeline.RunAsync(new DictationRequest(audio, Settings.Language, refinement), ct);
@@ -318,15 +323,7 @@ public sealed partial class DictationController : ObservableObject
         catch (Exception e) when (e is ApiHttpException or ApiNetworkException or ApiNotConfiguredException or LocalNotAvailableException
                                       or IOException)
         {
-            var key = e switch
-            {
-                ApiNotConfiguredException => "Error_NotConfigured",
-                ApiHttpException => "Error_Http",
-                ApiNetworkException => "Error_Network",
-                IOException => "Key_StoreError",
-                _ => "Error_Local",
-            };
-            Fail(key, e.GetType().Name);
+            Fail(ErrorKey(e), e.GetType().Name);
             _log.Event(
                 "dictation",
                 ("status", "error"),
@@ -339,6 +336,7 @@ public sealed partial class DictationController : ObservableObject
             _processing?.Dispose();
             _processing = null;
             _recorded = TimeSpan.Zero;
+            ActiveProfile = null;
             State = DictationState.Idle;
         }
     }
@@ -364,6 +362,7 @@ public sealed partial class DictationController : ObservableObject
         try
         {
             await _history.AddAsync(entry, CancellationToken.None);
+            HistoryChanged?.Invoke();
         }
         catch (IOException)
         {
