@@ -311,6 +311,12 @@ public sealed partial class InputFlow
     /// </summary>
     private void OnControllerChanged(object? sender, PropertyChangedEventArgs e)
     {
+        // Ein Diktat von außen (CLI/IPC, Tray) schließt den Wähler und gibt seine Tasten frei (Review W2-SEL).
+        if (e.PropertyName == nameof(DictationController.State) && _mode == Mode.Picker && _controller.State != DictationState.Idle)
+        {
+            CancelPicker();
+            return;
+        }
         if (e.PropertyName != nameof(DictationController.State) || _mode == Mode.None
             || _controller.State is DictationState.Recording or DictationState.Paused)
         {

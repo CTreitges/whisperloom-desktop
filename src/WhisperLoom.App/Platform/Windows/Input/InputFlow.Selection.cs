@@ -70,7 +70,14 @@ public sealed partial class InputFlow
         if (_controller.RewriteBlocked)
         {
             _target = target;
-            Toast("Rewrite_Locked");
+            if (trigger == SelectionTrigger.CtrlRightClick)
+            {
+                s.ReplayRightClick(); // IT-Sperre: Strg+Rechtsklick bleibt das normale Kontextmenü
+            }
+            else
+            {
+                Toast("Rewrite_Locked");
+            }
             return "stage-locked";
         }
         SelectionRead read;
@@ -128,16 +135,24 @@ public sealed partial class InputFlow
     }
 
     /// <summary>Strg+Rechtsklick (geschluckt): mit Markierung den Wähler, sonst den Rechtsklick nachspielen.</summary>
-    public Task<string> OnCtrlRightClickAsync(PixelPoint at)
+    public async Task<string> OnCtrlRightClickAsync(PixelPoint at)
     {
+        // Offener Wähler: neu ansetzen an der Maus (sonst bliebe der Klick geschluckt und der Wähler offen).
+        CancelPicker();
         var target = _foreground();
         // Klick auf ein anderes als das Vordergrundfenster: dessen Markierung ist nicht lesbar – normales Kontextmenü.
         if (Selection is { } s && s.WindowAt(at) is var under && under != IntPtr.Zero && under != target)
         {
             s.ReplayRightClick();
-            return Task.FromResult("other-window");
+            return "other-window";
         }
-        return StartSelectionAsync(SelectionTrigger.CtrlRightClick, target, at);
+        var result = await StartSelectionAsync(SelectionTrigger.CtrlRightClick, target, at);
+        if (result is "busy" or "unavailable")
+        {
+            // Kein Wähler möglich (Diktat läuft): der Klick bekommt sein normales Kontextmenü zurück.
+            Selection?.ReplayRightClick();
+        }
+        return result;
     }
 
     /// <summary>Taste aus dem Hook an den offenen Wähler (↑/↓, Tab, 1–9, Enter, Esc).</summary>

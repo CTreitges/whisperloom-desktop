@@ -169,6 +169,33 @@ public sealed class SelectionPartsTest
     }
 
     [Fact]
+    public void Gehaltenes_Strg_nach_Strg_Rechtsklick_bedient_den_Waehler_statt_der_Ziel_App()
+    {
+        var m = new HotkeyStateMachine(null, null, null) { PickerKeysActive = true };
+        m.OnKey(new KeyInput(Hotkey.VkLControl, true));
+        Assert.Equal(new HookDecision(true, HotkeyAction.PickerKey, PickerKey: new Hotkey(HotkeyModifiers.Ctrl, '2')), m.OnKey(new KeyInput('2', true)));
+        Assert.Equal(HotkeyAction.PickerKey, m.OnKey(new KeyInput(Hotkey.VkReturn, true)).Action); // nicht Strg+Enter in Word
+    }
+
+    [Fact]
+    public void Umschalt_Ziffer_ist_keine_Waehler_Taste_und_schliesst()
+    {
+        var m = new HotkeyStateMachine(null, null, null) { PickerKeysActive = true };
+        m.OnKey(new KeyInput(Hotkey.VkLShift, true));
+        Assert.Equal(new HookDecision(false, HotkeyAction.Dismiss), m.OnKey(new KeyInput('1', true))); // „!“ geht an die App
+    }
+
+    [Fact]
+    public void Schon_gehaltene_Taste_bleibt_der_App()
+    {
+        var m = new HotkeyStateMachine(null, null, null);
+        m.OnKey(new KeyInput(0x28, true)); // ↓ gedrückt, bevor der Wähler aufgeht
+        m.PickerKeysActive = true;
+        Assert.False(m.OnKey(new KeyInput(0x28, true)).Swallow); // Wiederholung
+        Assert.False(m.OnKey(new KeyInput(0x28, false)).Swallow); // Loslassen erreicht die App
+    }
+
+    [Fact]
     public void Kombi_bleibt_auch_bei_offenem_Waehler_die_Kombi()
     {
         var m = new HotkeyStateMachine(null, null, null) { Selection = Hotkey.DefaultSelection, PickerKeysActive = true };

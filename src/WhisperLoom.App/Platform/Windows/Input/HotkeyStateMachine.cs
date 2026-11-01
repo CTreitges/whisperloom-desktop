@@ -168,9 +168,9 @@ public sealed class HotkeyStateMachine
             }
             return HookDecision.Pass;
         }
-        if (PickerKeysActive && PickerKeys.Contains(vk) && (mods & ~HotkeyModifiers.Shift) == HotkeyModifiers.None)
+        if (PickerKeysActive && !repeat && IsPickerKey(vk, mods))
         {
-            // Auch Wiederholungen (↑/↓ gehalten); Loslassen wird über _swallowed geschluckt.
+            // Gehaltene Wiederholungen schluckt _swallowed oben; eine schon vor dem Öffnen gedrückte Taste bleibt der App.
             _swallowed.Add(vk);
             return new HookDecision(true, HotkeyAction.PickerKey, PickerKey: new Hotkey(mods, vk));
         }
@@ -234,6 +234,16 @@ public sealed class HotkeyStateMachine
             return HotkeyAction.Selection;
         }
         return HotkeyAction.None;
+    }
+
+    /// <summary>
+    /// Wähler-Taste: Strg darf noch gehalten sein (Strg+Rechtsklick), Umschalt nur bei Tab (Umschalt+Tab); Umschalt+Ziffer ist ein
+    /// Zeichen für die App, Alt/Win gehören zu anderen Kürzeln.
+    /// </summary>
+    private static bool IsPickerKey(int vk, HotkeyModifiers mods)
+    {
+        var rest = mods & ~HotkeyModifiers.Ctrl;
+        return PickerKeys.Contains(vk) && (rest == HotkeyModifiers.None || (vk == 0x09 && rest == HotkeyModifiers.Shift));
     }
 
     /// <summary>Tasten des Stufen-Wählers: Tab, Enter, Esc, ↑, ↓, 1–9 und Ziffernblock 1–9.</summary>

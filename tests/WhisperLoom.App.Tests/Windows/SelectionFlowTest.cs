@@ -270,6 +270,48 @@ public sealed class SelectionFlowTest : IDisposable
     }
 
     [AvaloniaFact]
+    public async Task Strg_Rechtsklick_waehrend_Aufnahme_oder_IT_Sperre_gibt_das_Kontextmenue_zurueck()
+    {
+        _rig.Keys.Selection = "markiert";
+        await _flow.HandleAsync(HotkeyAction.Toggle); // Diktat läuft
+        Assert.Equal("busy", await _flow.OnCtrlRightClickAsync(new PixelPoint(5, 5)));
+        Assert.Single(_log, "replay-right-click");
+        await _flow.HandleAsync(HotkeyAction.OverlayDiscard);
+
+        _f.Controller.Policy = new PolicySettings { Locked = ["refine.stage"] };
+        _ui.Hints.Clear();
+        Assert.Equal("stage-locked", await _flow.OnCtrlRightClickAsync(new PixelPoint(5, 5)));
+        Assert.Equal(2, _log.Count(l => l == "replay-right-click"));
+        Assert.Empty(_ui.Hints); // kein Sperr-Hinweis, nur das normale Kontextmenü
+    }
+
+    [AvaloniaFact]
+    public async Task Strg_Rechtsklick_bei_offenem_Waehler_schliesst_ihn_und_startet_neu()
+    {
+        _rig.Keys.Selection = "markiert";
+        await _flow.HandleAsync(HotkeyAction.Selection);
+        Assert.Equal("picker", await _flow.OnCtrlRightClickAsync(new PixelPoint(9, 9)));
+        Assert.Equal(new PixelPoint(9, 9), _picker.PickerAt);
+        Assert.DoesNotContain("replay-right-click", _log);
+    }
+
+    [AvaloniaFact]
+    public async Task Diktat_von_aussen_schliesst_den_Waehler_und_gibt_die_Tasten_frei()
+    {
+        _rig.Keys.Selection = "markiert";
+        await _flow.HandleAsync(HotkeyAction.Selection);
+        Assert.NotNull(_flow.Picker);
+
+        Assert.Equal("recording", _f.Controller.Start()); // CLI/IPC start
+        _f.Controller.Cancel();
+
+        Assert.Null(_flow.Picker);
+        Assert.Null(_picker.Picker);
+        Assert.Equal("picker-keys-off", _log[^1]);
+        Assert.Equal("none", _flow.ModeName);
+    }
+
+    [AvaloniaFact]
     public async Task Strg_Rechtsklick_auf_ein_anderes_Fenster_spielt_den_Klick_nach()
     {
         var flow = new InputFlow(_f.Controller, Sink, _ui, () => _rig.Windows.Current, _ => { })
