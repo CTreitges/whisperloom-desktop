@@ -15,7 +15,7 @@ public static class SettingsCatalog
     [
         ("general", "dictation"), ("recognition", "dictation"), ("text", "dictation"), ("cleanup", "dictation"),
         ("output", "usage"), ("hotkeys", "usage"),
-        ("privacy", "system"), ("network", "system"),
+        ("privacy", "system"), ("network", "system"), ("company", "system"),
     ];
 
     public static readonly IReadOnlyList<SettingEntry> Entries =

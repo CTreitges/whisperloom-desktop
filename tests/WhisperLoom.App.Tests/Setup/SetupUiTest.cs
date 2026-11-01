@@ -202,7 +202,7 @@ public sealed class SetupUiTest
         Assert.Equal([SetupStep.Microphone, SetupStep.Hotkey, SetupStep.Autostart, SetupStep.Done], s.Vm.Steps);
         Assert.Equal(SetupStep.Microphone, s.Vm.Current);
         Assert.Equal("Schritt 1 von 4", Named<TextBlock>(window, "ProgressText").Text);
-        Assert.True(Named<TextBlock>(window, "PolicyHint").IsVisible);
+        Assert.True(Named<WhisperLoom.App.Design.HintRow>(window, "PolicyHint").IsVisible); // W2-ENR: Hinweis-Zeile des Designsystems
         Assert.False(Named<StackPanel>(window, "LanguagePanel").IsVisible);
         s.Vm.Next();
         Assert.Equal(SetupStep.Hotkey, s.Vm.Current);

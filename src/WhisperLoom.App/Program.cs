@@ -50,6 +50,7 @@ internal static class Program
                 "key" => RunKeyCommand(request),
                 "version" => RunVersion(),
                 "update" => RunUpdate(request),
+                "join" => RunJoin(request, endpoint),
                 _ => RunSyncCommand(request, endpoint),
             };
         }
@@ -190,6 +191,41 @@ internal static class Program
         }
         var client = new VelopackUpdateClient(request.Args.Count > 0 ? request.Args[0] : null, []);
         return UpdateCommand.RunAsync(client, policy, log, Console.Out, Console.Error, CancellationToken.None).GetAwaiter().GetResult();
+    }
+
+    /// <summary><c>join</c> (W2-ENR) im eigenen Prozess (Token nie über die IPC); danach lädt eine laufende Instanz neu und gleicht ab.</summary>
+    private static int RunJoin(CliRequest request, InstanceEndpoint endpoint)
+    {
+        int code;
+        try
+        {
+            var dataDir = request.Options.DataDir;
+            var user = SecretStoreFactory.CreateAsync(dataDir, request.Options.SecretPrefix, CancellationToken.None).GetAwaiter().GetResult();
+            var company = Management.ManagementFactory.CompanyStoreAsync(dataDir, request.Options.SecretPrefix, CancellationToken.None)
+                .GetAwaiter().GetResult();
+            Services.DesktopSettings desktop;
+            try
+            {
+                desktop = Services.SettingsStore.Desktop(new Services.SettingsStore(dataDir).Load());
+            }
+            catch (Exception e) when (e is JsonException or NotSupportedException)
+            {
+                desktop = new Services.DesktopSettings(); // JoinCommand meldet die kaputte Datei selbst
+            }
+            using var http = Services.HttpClients.Create(desktop);
+            code = JoinCommand.RunAsync(dataDir, request.Args[0], request.Args[1], request.Args[2], user, company, http, Console.Out,
+                Console.Error, CancellationToken.None).GetAwaiter().GetResult();
+        }
+        catch (Exception e) when (e is ArgumentException or IOException)
+        {
+            Console.Error.WriteLine($"error {e.GetType().Name}");
+            return 1;
+        }
+        if (code == 0)
+        {
+            Forward(endpoint, request with { Verb = "reload", Args = [], Json = false }, attempts: 1);
+        }
+        return code;
     }
 
     /// <summary>

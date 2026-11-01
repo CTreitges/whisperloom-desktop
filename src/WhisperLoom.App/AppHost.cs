@@ -3,6 +3,7 @@ using WhisperLoom.App.Audio;
 using WhisperLoom.App.Cli;
 using WhisperLoom.App.Instance;
 using WhisperLoom.App.Localization;
+using WhisperLoom.App.Management;
 using WhisperLoom.App.Output;
 using WhisperLoom.App.Platform.Sidecar;
 using WhisperLoom.App.Secrets;
@@ -44,6 +45,7 @@ public sealed class AppHost
         }
         Policies = new PolicyStore(options.DataDir);
         var policy = LoadPolicy();
+        settings = EnforceFixed(settings, policy);
         policy.Enforce(settings);
         History = new FileHistoryStore(Path.Combine(options.DataDir, "history"), () => Controller!.Settings.History);
         var dictation = pipeline(() => Controller!.Settings);
@@ -79,6 +81,23 @@ public sealed class AppHost
 
     public PolicyStore Policies { get; }
 
+    /// <summary>Firmen-Anbindung (W2-ENR); null in Tests ohne Server.</summary>
+    public ManagementService? Manager { get; internal set; }
+
+    /// <summary>Einladungslink, mit dem der Assistent als Nächstes öffnet (Server, Code); die App liest und leert ihn.</summary>
+    public JoinLink? PendingJoin { get; set; }
+
+    /// <summary>Werte fester Pfade aus policy-fixed.json wieder einsetzen (lokal geänderte settings.json, auch offline).</summary>
+    private WhisperLoomSettings EnforceFixed(WhisperLoomSettings settings, PolicySettings policy)
+    {
+        var (enforced, changed) = Policies.EnforceFixed(settings, policy);
+        if (changed != 0)
+        {
+            Log.Event("policy.fixed", ("restored", changed));
+        }
+        return enforced;
+    }
+
     /// <summary>Eine kaputte policy.json gilt als keine Richtlinie (geloggt), statt den Start zu verhindern.</summary>
     private PolicySettings LoadPolicy()
     {
@@ -100,11 +119,17 @@ public sealed class AppHost
         {
             var settings = Store.Load();
             var policy = LoadPolicy();
+            settings = EnforceFixed(settings, policy);
             policy.Enforce(settings);
             Controller.Policy = policy;
             await Controller.ApplySettingsAsync(settings);
             Loc.Instance.SetLanguage(SettingsStore.Desktop(settings).UiLanguage);
             Log.Event("settings.reload", ("policy", policy.IsActive));
+            // Nach join bzw. provision mit Firmencode aus einem zweiten Prozess: gleich abgleichen bzw. verbinden.
+            if (Manager is { } management && settings.Management.ServerUrl.Length > 0)
+            {
+                _ = management.SyncAsync(CancellationToken.None);
+            }
             return "reloaded";
         }
         catch (Exception e) when (e is System.Text.Json.JsonException or NotSupportedException or IOException)
@@ -179,12 +204,19 @@ public sealed class AppHost
     }
 
     /// <summary>Die echte Zusammensetzung für einen App-Start.</summary>
-    internal static async Task<AppHost> CreateAsync(AppOptions options, CancellationToken ct)
+    /// <param name="onUiThread">Führt Änderungen der Firmen-Anbindung auf dem UI-Thread aus (Controller, Fenster).</param>
+    internal static async Task<AppHost> CreateAsync(AppOptions options, Func<Func<Task>, Task> onUiThread, CancellationToken ct)
     {
-        var secrets = await SecretStoreFactory.CreateAsync(options.DataDir, options.SecretPrefix, ct).ConfigureAwait(false);
+        var userSecrets = await SecretStoreFactory.CreateAsync(options.DataDir, options.SecretPrefix, ct).ConfigureAwait(false);
+        var companySecrets = await ManagementFactory.CompanyStoreAsync(options.DataDir, options.SecretPrefix, ct).ConfigureAwait(false);
+        ManagementService? management = null;
+        AppHost? host = null;
+        // Firmen-Zugänge (W2-ENR): Geräte-Token für den Proxy bzw. verteilte Keys statt eigener Keys, wo die Firma das Ziel festlegt.
+        ISecretStore secrets = new CompanySecretStore(userSecrets, companySecrets,
+            () => host?.Controller.Settings ?? new WhisperLoomSettings(), () => host?.Controller.Policy ?? PolicySettings.None,
+            () => management?.ProxyBaseUrl);
         IAudioRecorder recorder = options.TestAudio is null ? new PortAudioRecorder() : new WavFileRecorder(options.TestAudio);
         IOutputSink output = options.OutputFile is null ? new ClipboardOutputSink(ProcessRunner.Instance) : new FileOutputSink(options.OutputFile);
-        AppHost? host = null;
         if (OperatingSystem.IsWindows() && options.OutputFile is null)
         {
             // Einfügen per Tastenkürzel; der Modus folgt den Einstellungen des fertigen Hosts.
@@ -200,6 +232,10 @@ public sealed class AppHost
             return new AppPipeline(settings, secrets, cache, local.Stt, local.Refiner);
         }, recorder, output);
         host.Local = local;
+        management = new ManagementService(
+            new HostManagedTarget(host.Controller, host.Policies, onUiThread), userSecrets, companySecrets,
+            ManagementFactory.Api(HttpClients.Create(desktop)), new ManagementCache(options.DataDir).Load(), host.Log);
+        host.Manager = management;
         return host;
     }
 
@@ -264,7 +300,18 @@ public sealed class AppHost
                 ok = message != "no-entry";
                 break;
             case "show": ShowWindow?.Invoke("stage"); message = "shown"; break;
-            case "setup": ShowWindow?.Invoke("setup"); message = "shown"; break;
+            case "setup":
+                PendingJoin = args.Count == 2 ? new JoinLink(args[0], args[1]) : null;
+                ShowWindow?.Invoke("setup");
+                message = "shown";
+                break;
+            case "sync" when Manager is null:
+                ok = false;
+                message = "not-managed";
+                break;
+            case "sync":
+                message = "sync=" + (await Manager.SyncAsync(CancellationToken.None)).ToString().ToLowerInvariant();
+                break;
             case "quit": ShowWindow?.Invoke("quit"); message = "quitting"; break;
             default: ok = false; message = "unknown-verb"; break;
         }
@@ -287,6 +334,20 @@ public sealed class AppHost
         ["updatesEnabled"] = p.UpdatesEnabled,
         ["allowedProviders"] = p.AllowedProviders is null ? null : new JsonArray([.. p.AllowedProviders.Select(a => (JsonNode)a)]),
     };
+    /// <summary>Firmen-Anbindung für <c>status --json</c>: Zustand ohne Token; <c>notice</c> = Hinweis bei Sperre bzw. Widerruf.</summary>
+    private JsonObject ManagementStatus(ManagementSettings m) => new()
+    {
+        ["state"] = m.State,
+        ["serverUrl"] = m.ServerUrl,
+        ["tenantName"] = m.TenantName,
+        ["deviceId"] = m.DeviceId,
+        ["keyMode"] = m.KeyMode,
+        ["lastSync"] = m.LastSync,
+        ["canLeave"] = Manager?.CanLeave,
+        ["lastError"] = Manager?.LastError,
+        ["notice"] = m.State is "blocked" or "revoked" ? ManagementTexts.Notice(m) : null,
+    };
+
     /// <summary>Lokale Erkennung für <c>status --json</c>: Engine, Begleitprozess (PID, Backend, Gerät), Ollama-Modell.</summary>
     private JsonObject LocalStatus()
     {
@@ -352,6 +413,7 @@ public sealed class AppHost
             ["secretStore"] = Secrets.Kind,
             ["keys"] = keys,
             ["policy"] = PolicyStatus(c.Policy),
+            ["management"] = ManagementStatus(c.Settings.Management),
             ["dataDir"] = Options.DataDir,
             ["output"] = Options.OutputFile is null ? "clipboard" : "file",
             ["local"] = LocalStatus(),

@@ -323,7 +323,7 @@ public sealed partial class DictationController : ObservableObject
         catch (Exception e) when (e is ApiHttpException or ApiNetworkException or ApiNotConfiguredException or LocalNotAvailableException
                                       or IOException)
         {
-            Fail(ErrorKey(e), e.GetType().Name);
+            Fail(ErrorKey(e), ErrorClass(e));
             _log.Event(
                 "dictation",
                 ("status", "error"),

@@ -46,7 +46,7 @@ public partial class App : Application
 
     private async Task StartAsync(Cli.AppOptions options, string? verb, IReadOnlyList<string> args)
     {
-        _host = await AppHost.CreateAsync(options, CancellationToken.None);
+        _host = await AppHost.CreateAsync(options, f => Dispatcher.UIThread.InvokeAsync(f), CancellationToken.None);
         _host.ShowWindow = Open;
         _host.Log.Event("app.start", ("pid", Environment.ProcessId), ("secretStore", _host.Secrets.Kind.Replace(' ', '-')));
 
@@ -57,6 +57,7 @@ public partial class App : Application
         CreateTray(_host);
         StartHotkeys(_host);
         StartUpdates(_host);
+        StartManagement(_host);
         if (verb is not null)
         {
             await _host.ExecuteAsync(verb, args);
@@ -134,6 +135,24 @@ public partial class App : Application
         _ = Task.Run(() => service.RunAsync(_updates.Token));
     }
 
+    /// <summary>
+    /// Firmen-Anbindung (W2-ENR): Abgleich beim Start und alle 15 min (Thread-Pool). Im Normalbetrieb registriert die App
+    /// das URL-Schema <c>whisperloom://</c> für Einladungslinks (je Benutzer, ohne Admin-Rechte).
+    /// </summary>
+    private void StartManagement(AppHost host)
+    {
+        if (host.Manager is { } manager)
+        {
+            _ = Task.Run(() => manager.RunAsync(_updates.Token));
+        }
+        if (host.Options.TestAudio is null && host.Options.OutputFile is null && host.Options.SecretPrefix == Cli.AppOptions.DefaultSecretPrefix
+            && Autostart.ExecutablePath() is { } exe)
+        {
+            var status = Platform.JoinLinkRegistration.Register(exe);
+            host.Log.Event("joinlink.register", ("status", status));
+        }
+    }
+
     /// <summary>Rekorder für die Einstellungen (nur mit laufendem Hook).</summary>
     internal Func<Task<string?>>? RecordHotkey { get; private set; }
 
@@ -184,9 +203,12 @@ public partial class App : Application
                 {
                     var settings = CreateSettings(host);
                     var recorder = CreateTestRecorder(host);
+                    SetupViewModel? current = null;
+                    // Die Arbeitskopie wird nach einer Firmen-Freigabe neu aufgebaut: Mikrofon immer aus der aktuellen lesen.
                     var setup = new SetupViewModel(settings, new SetupState(host.Options.DataDir), Autostart.ForCurrentOs(),
-                        new MicLevelTest(recorder, () => settings.Microphone.Value), RecordHotkey,
-                        OperatingSystem.IsWindows(), ToggleCommand());
+                        new MicLevelTest(recorder, () => (current?.Settings ?? settings).Microphone.Value), RecordHotkey,
+                        OperatingSystem.IsWindows(), ToggleCommand(), host.Manager);
+                    current = setup;
                     _setupWindow = new SetupWindow(setup);
                     _setupWindow.Closed += (_, _) =>
                     {
@@ -194,6 +216,11 @@ public partial class App : Application
                         (recorder as IDisposable)?.Dispose();
                     };
                     _ = settings.LoadKeysAsync();
+                }
+                if (host.PendingJoin is { } link && _setupWindow.DataContext is SetupViewModel wizard)
+                {
+                    host.PendingJoin = null;
+                    wizard.OpenJoinLink(link);
                 }
                 Activate(_setupWindow);
                 break;
@@ -210,7 +237,7 @@ public partial class App : Application
 
     private SettingsViewModel CreateSettings(AppHost host) =>
         new(host.Controller, host.Secrets, new HttpAccessChecker(() => HttpClients.Create(SettingsStore.Desktop(host.Controller.Settings))),
-            Microphones(host), host.Local, RecordHotkey);
+            Microphones(host), host.Local, RecordHotkey) { Company = host.Manager };
 
     /// <summary>Eigener Recorder für den Pegel-Test, damit ein laufendes Diktat unberührt bleibt.</summary>
     private static IAudioRecorder CreateTestRecorder(AppHost host) =>

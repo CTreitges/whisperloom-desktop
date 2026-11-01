@@ -8,10 +8,10 @@ internal sealed record CliRequest(string? Verb, IReadOnlyList<string> Args, AppO
 {
     /// <summary>Verben, die eine laufende Instanz voraussetzen und keine starten.</summary>
     public bool NeedsRunningInstance => Verb is "stop" or "cancel" or "stage" or "status" or "pause" or "resume" or "quit"
-        or "reprocess" or "reinsert" or "recent-insert";
+        or "reprocess" or "reinsert" or "recent-insert" or "sync";
 
     /// <summary>Verben, die der aufrufende Prozess selbst erledigt (Key nie über die IPC).</summary>
-    public bool IsLocal => Verb is "key" or "bench" or "provision" or "import" or "export" or "version" or "update";
+    public bool IsLocal => Verb is "key" or "bench" or "provision" or "import" or "export" or "version" or "update" or "join";
 }
 
 /// <summary>Start- und Test-Schalter. Gelten nur für die erste Instanz; ein zweiter Start nutzt sie zum Finden.</summary>
@@ -55,16 +55,20 @@ internal static class CommandLine
         "Aufruf: WhisperLoom [toggle|start|stop|cancel|pause|resume|stage next|stage <name>|status [--json]|show|setup|quit|key set <name>|key delete <name>]\n" +
         "        [provision <datei>|import <datei> [--dry-run]|export <datei>]\n" +
         "        [reprocess <stufe> [<id>]|reinsert|recent-insert <n>]\n" +
+        "        [join --server <url> --code <code> [--device-name <name>]|sync|whisperloom://join?server=<url>&code=<code>]\n" +
         "        [--data-dir <pfad>] [--test-audio <wav>] [--output-file <pfad>] [--secret-prefix <präfix>] [--hotkeys]\n" +
         "        WhisperLoom bench --model <tiny|base|small|large-v3-turbo> --seconds <n> [--backend auto|cpu]\n" +
         "        WhisperLoom --version | update [--feed <ordner|url>]";
 
     private static readonly HashSet<string> Verbs =
         ["toggle", "start", "stop", "cancel", "pause", "resume", "stage", "status", "show", "setup", "key", "quit", "bench", "provision", "import", "export",
-         "reprocess", "reinsert", "recent-insert", "update"];
+         "reprocess", "reinsert", "recent-insert", "update", "join", "sync"];
 
     /// <summary>Schalter des Verbs <c>bench</c>; sie landen samt Wert in <see cref="CliRequest.Args"/>.</summary>
     private static readonly HashSet<string> BenchSwitches = ["--model", "--seconds", "--backend"];
+
+    /// <summary>Schalter des Verbs <c>join</c> (W2-ENR); Werte gehen über <see cref="JoinArgs"/> in <see cref="CliRequest.Args"/>.</summary>
+    private static readonly HashSet<string> JoinSwitches = ["--server", "--code", "--device-name"];
 
     public static CliRequest Parse(IReadOnlyList<string> args)
     {
@@ -75,6 +79,7 @@ internal static class CommandLine
         var version = false;
         var positional = new List<string>();
         var benchArgs = new List<string>();
+        var joinArgs = new List<string>();
         for (var i = 0; i < args.Count; i++)
         {
             var a = args[i];
@@ -82,6 +87,12 @@ internal static class CommandLine
             {
                 benchArgs.Add(a);
                 benchArgs.Add(Value(args, ref i, a));
+                continue;
+            }
+            if (JoinSwitches.Contains(a))
+            {
+                joinArgs.Add(a);
+                joinArgs.Add(Value(args, ref i, a));
                 continue;
             }
             switch (a)
@@ -124,9 +135,19 @@ internal static class CommandLine
         {
             throw new UsageException("--feed gilt nur für update.");
         }
+        if (joinArgs.Count > 0 && positional is not ["join", ..])
+        {
+            throw new UsageException($"{joinArgs[0]} gilt nur für join.");
+        }
         if (positional.Count == 0)
         {
             return new CliRequest(null, [], options, json);
+        }
+        if (positional is [var link] && link.StartsWith(Management.JoinLink.Scheme + ":", StringComparison.OrdinalIgnoreCase))
+        {
+            // Einladungslink (URL-Schema): öffnet den Assistenten mit Server und Code vorbelegt.
+            var join = Management.JoinLink.TryParse(link) ?? throw new UsageException("Einladungslink ohne server bzw. code.");
+            return new CliRequest("setup", [join.Server, join.Code], options, json);
         }
         var verb = positional[0];
         if (!Verbs.Contains(verb))
@@ -141,6 +162,7 @@ internal static class CommandLine
             "reprocess" => 1,
             "key" => 2,
             "provision" or "import" or "export" => 1,
+            "join" when joinArgs.Count == 0 => 2,
             _ => 0,
         };
         if (rest.Count != expected)
@@ -168,6 +190,10 @@ internal static class CommandLine
             }
             return new CliRequest(verb, benchArgs, options, json);
         }
+        if (verb == "join")
+        {
+            return new CliRequest(verb, JoinArgs(rest, joinArgs), options, json);
+        }
         if (dryRun && verb != "import")
         {
             throw new UsageException("--dry-run gibt es nur für import.");
@@ -184,6 +210,21 @@ internal static class CommandLine
                 : Path.GetFullPath(feed)];
         }
         return new CliRequest(verb, rest, options, json, dryRun);
+    }
+
+    /// <summary>
+    /// <c>join</c>: <c>[server, code, deviceName]</c> aus <c>--server/--code/--device-name</c> oder positional
+    /// (<c>join &lt;url&gt; &lt;code&gt;</c>, Form aus <c>docs/server-api.md</c>); deviceName "" = Rechnername.
+    /// </summary>
+    private static List<string> JoinArgs(List<string> positional, List<string> switches)
+    {
+        var server = positional.Count == 2 ? positional[0] : Arg(switches, "--server");
+        var code = positional.Count == 2 ? positional[1] : Arg(switches, "--code");
+        if (string.IsNullOrWhiteSpace(server) || string.IsNullOrWhiteSpace(code))
+        {
+            throw new UsageException("join braucht --server <url> und --code <code>.");
+        }
+        return [server, code, Arg(switches, "--device-name") ?? ""];
     }
 
     private static string? Arg(List<string> args, string name)
