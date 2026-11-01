@@ -17,6 +17,8 @@ Suites:
   zusätzlich tray-visible (Symbol der App-PID beim Shell registriert).
 - input (nur Windows): echte Tastenkürzel per SendInput gegen tests/WhisperLoom.TestTarget (tools/smoke_input.py,
   Goal-File A3.1); App mit --test-audio --hotkeys gegen tools/fake_api.py. --target <exe> statt Build des TestTargets.
+  --only extras: stattdessen die Windows-Extras (tools/smoke_extras.py, Goal-File A5b.1) — reinsert, history-tray,
+  reprocess, profile-stage, rewrite-selection.
 - ui / input: echte Zwischenablage bzw. Eingaben — nur mit gültigem Lock <work>/ui-smoke.lock für --id
   ({"id": "<ID>", "until": "<ISO-Zeit>"}), sonst Abbruch mit Exit 3.
 
@@ -322,6 +324,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--data-dir", type=Path)
     parser.add_argument("--lock", type=Path)
     parser.add_argument("--target", help="TestTarget-Exe für --suite input (sonst aus dem Repo gebaut)")
+    parser.add_argument("--only", choices=["extras"], help="--suite input: nur diesen Teil (extras = WLD-P5b)")
     args = parser.parse_args(argv)
     args.app = str(Path(args.app).resolve())
     work = args.work_dir or default_work_dir(args.platform)
@@ -345,10 +348,13 @@ def main(argv: list[str] | None = None) -> int:
     elif args.platform != "win":
         print("SMOKE input SKIP nur Windows (Linux-Hotkeys sind Out-of-Scope)")
         return 0
+    elif args.only == "extras":
+        import smoke_extras
+        smoke_extras.run_suite(args, work, report, sys.modules[__name__])
     else:
         import smoke_input
         smoke_input.run_suite(args, work, report, sys.modules[__name__])
-    return report.finish(args.suite)
+    return report.finish(args.suite if args.only is None else f"{args.suite}/{args.only}")
 
 
 if __name__ == "__main__":
