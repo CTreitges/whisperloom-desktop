@@ -68,7 +68,7 @@ def test_eine_interne_von_mehreren_adressen_reicht_zum_ablehnen():
 
 
 def test_freigabe_per_config():
-    erlaubt = ssrf.netze_lesen("10.20.0.0/16, 127.0.0.1/32")
+    erlaubt = ssrf.freigaben_lesen("10.20.0.0/16, 127.0.0.1/32")
     assert ssrf.pruefen("http://whisper.intern:8000/v1", erlaubt, aufloeser({"whisper.intern": ["10.20.3.4"]}))
     with pytest.raises(ssrf.ZielVerboten):
         ssrf.pruefen("http://andere.intern/v1", erlaubt, aufloeser({"andere.intern": ["10.21.0.1"]}))
@@ -79,7 +79,7 @@ def test_freigabe_per_config():
 def test_config_aus_umgebung(monkeypatch, tmp_path):
     monkeypatch.setenv("WL_DATA_DIR", str(tmp_path))
     monkeypatch.setenv("WL_UPSTREAM_ALLOW", "192.168.10.0/24")
-    assert Einstellungen.aus_umgebung().upstream_erlaubt == (ipaddress.ip_network("192.168.10.0/24"),)
+    assert Einstellungen.aus_umgebung().upstream_erlaubt == (ssrf.Freigabe(ipaddress.ip_network("192.168.10.0/24")),)
     monkeypatch.setenv("WL_UPSTREAM_ALLOW", "kein-netz")
     with pytest.raises(KonfigFehler, match="WL_UPSTREAM_ALLOW"):
         Einstellungen.aus_umgebung()
@@ -118,7 +118,7 @@ def test_dns_rebinding_wird_je_anfrage_geprueft(tmp_path, uhr, fake):
 def test_proxy_verbindet_sich_mit_der_gepruften_ip(tmp_path, uhr, fake):
     """`upstream.test` kennt nur der Fake-Resolver: der Aufruf klappt nur, wenn der Proxy die geprüfte IP nutzt und
     nicht selbst noch einmal auflöst. Der Anbieter sieht den Namen im Host-Header."""
-    einst = neue_einst(tmp_path, uhr, upstream_erlaubt=(ipaddress.ip_network("127.0.0.1/32"),),
+    einst = neue_einst(tmp_path, uhr, upstream_erlaubt=ssrf.freigaben_lesen("127.0.0.1/32"),
                        aufloeser=aufloeser({"upstream.test": ["127.0.0.1"]}))
     with TestClient(create_app(einst), base_url=BASIS) as c:
         f, g = proxy_geraet(c, einst)
@@ -153,7 +153,7 @@ def test_portal_lehnt_internes_ziel_ab(tmp_path, uhr):
 
 
 def test_portal_nimmt_freigegebenes_ziel(tmp_path, uhr):
-    einst = neue_einst(tmp_path, uhr, upstream_erlaubt=(ipaddress.ip_network("127.0.0.1/32"),))
+    einst = neue_einst(tmp_path, uhr, upstream_erlaubt=ssrf.freigaben_lesen("127.0.0.1/32"))
     app = create_app(einst)
     f = proxy_geraet(TestClient(app, base_url=BASIS), einst)[0]
     c = admin_client(app, einst, uhr, f["id"], "owner-a")

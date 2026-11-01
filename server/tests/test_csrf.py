@@ -52,7 +52,7 @@ def test_post_ohne_gueltiges_csrf_403(app, einst, uhr, pfad, fall):
         headers["Origin"] = "https://angreifer.example"
     url = re.sub(r"\{(\w+)\}", lambda m: _DUMMY[m.group(1)], pfad)
     r = c.post(url, data=daten, headers=headers, follow_redirects=False)
-    if pfad in ("/login/totp", "/login/totp-einrichten") and r.status_code == 303:
+    if pfad in ("/login/totp", "/login/totp-einrichten", "/login/totp-spaeter") and r.status_code == 303:
         assert r.headers["location"] == "/login"  # ohne passende Zwischen-Sitzung gar nicht erst geprüft
     elif pfad == "/einladung/{token}" and r.status_code == 404:
         pass

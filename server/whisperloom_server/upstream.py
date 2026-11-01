@@ -14,6 +14,8 @@ Doku: https://elevenlabs.io/docs/api-reference/speech-to-text/convert (model_id,
 from dataclasses import dataclass, field
 from urllib.parse import quote
 
+from .ssrf import url_bauen
+
 BASIS = {
     "openai": "https://api.openai.com/v1",
     "groq": "https://api.groq.com/openai/v1",
@@ -78,7 +80,9 @@ def kann_text(zugang: dict) -> bool:
 
 
 def basis(zugang: dict) -> str:
-    return (zugang["basis_url"] or BASIS.get(zugang["anbieter"], "")).rstrip("/")
+    """Basis ohne Query und Fragment (W2-SFIX: über URL-Bausteine, ein #/? kann keinen Anbieter-Pfad abschneiden)."""
+    roh = zugang["basis_url"] or BASIS.get(zugang["anbieter"], "")
+    return url_bauen(roh, "") if roh else ""
 
 
 def lese_zeit_s(zugang: dict) -> float:
@@ -110,7 +114,7 @@ def erkennung_anfrage(zugang: dict, felder: dict[str, str], wav: bytes) -> Anfra
         sprache = felder.get("language", "")
         if sprache and sprache != "auto":
             daten["language_code"] = sprache
-        return Anfrage(basis(zugang) + "/speech-to-text", {"xi-api-key": zugang["key"]} if zugang["key"] else {},
+        return Anfrage(url_bauen(basis(zugang), "/speech-to-text"), {"xi-api-key": zugang["key"]} if zugang["key"] else {},
                        daten=daten, datei=("audio.wav", wav, "audio/wav"))
     a = zugang["anbieter"]
     daten = {k: v for k, v in felder.items() if v}
@@ -118,7 +122,7 @@ def erkennung_anfrage(zugang: dict, felder: dict[str, str], wav: bytes) -> Anfra
         daten.pop("prompt", None)
     if a in STT_OHNE_FORMAT:
         daten.pop("response_format", None)
-    url = STT_URL[a] if a in STT_URL and not zugang["basis_url"] else basis(zugang) + "/audio/transcriptions"
+    url = STT_URL[a] if a in STT_URL and not zugang["basis_url"] else url_bauen(basis(zugang), "/audio/transcriptions")
     return Anfrage(url, _bearer(zugang["key"]), daten=daten, datei=("audio.wav", wav, "audio/wav"))
 
 
@@ -154,7 +158,7 @@ def chat_anfrage(zugang: dict, body: dict) -> Anfrage:
             js["system"] = system
         # thinking des Geräts passt zu dessen Modellwahl, nicht zwingend zum Modell dieses Zugangs (Opus 5.5 lehnt
         # "disabled" ab) – der Proxy lässt es weg, das Modell nutzt seinen Standard.
-        return Anfrage(b + "/messages", {"x-api-key": zugang["key"], "anthropic-version": ANTHROPIC_VERSION}, json=js)
+        return Anfrage(url_bauen(b, "/messages"), {"x-api-key": zugang["key"], "anthropic-version": ANTHROPIC_VERSION}, json=js)
     if p == "gemini":
         system, rest = _system_und_rest(body["messages"])
         js = {"contents": [{"role": "model" if n["role"] == "assistant" else "user", "parts": [{"text": n["content"]}]}
@@ -165,15 +169,15 @@ def chat_anfrage(zugang: dict, body: dict) -> Anfrage:
         if "temperature" in body:
             js["generationConfig"]["temperature"] = body["temperature"]
         # Modellname kann vom Gerät stammen: als ein Pfadsegment kodieren (kein ../, ?, # im Pfad des Anbieters).
-        return Anfrage(f"{b}/models/{quote(body['model'], safe='')}:generateContent",
+        return Anfrage(url_bauen(b, f"/models/{quote(body['model'], safe='')}:generateContent"),
                        {"x-goog-api-key": zugang["key"]} if zugang["key"] else {}, json=js)
     if p == "ollama":
         js = {"model": body["model"], "stream": False, "messages": body["messages"]}
         if "temperature" in body:
             js["options"] = {"temperature": body["temperature"]}
-        return Anfrage(_ollama_wurzel(b) + "/api/chat", _bearer(zugang["key"]), json=js)
+        return Anfrage(url_bauen(_ollama_wurzel(b), "/api/chat"), _bearer(zugang["key"]), json=js)
     js = {k: v for k, v in body.items() if k != "stream"}
-    return Anfrage(b + "/chat/completions", _bearer(zugang["key"]), json=js)
+    return Anfrage(url_bauen(b, "/chat/completions"), _bearer(zugang["key"]), json=js)
 
 
 def _chat(modell: str, text: str, ende: str, ein: int, aus: int) -> Ergebnis:

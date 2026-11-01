@@ -42,7 +42,7 @@ ROUTEN = [
     ("/logout", {}),
 ]
 # Routen, die keine Firmendaten berühren (vor dem Login) — eigene Tests in test_anmeldearten/test_csrf.
-OHNE_FIRMA = {"/login", "/login/totp", "/login/totp-einrichten", "/einladung/{token}"}
+OHNE_FIRMA = {"/login", "/login/totp", "/login/totp-einrichten", "/login/totp-spaeter", "/einladung/{token}"}
 
 
 def _stand(einst, fid: str) -> dict:

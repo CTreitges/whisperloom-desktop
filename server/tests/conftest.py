@@ -6,7 +6,6 @@ Alle Keys, Codes, Passwörter und TOTP-Geheimnisse hier sind Fake-Werte.
 
 import importlib.util
 import io
-import ipaddress
 import re
 import wave
 from pathlib import Path
@@ -15,7 +14,7 @@ import pytest
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
-from whisperloom_server import auth, cli, db, firmen, konten, krypto, schluessel, totp
+from whisperloom_server import auth, cli, db, firmen, konten, krypto, schluessel, ssrf, totp
 from whisperloom_server.app import create_app
 from whisperloom_server.config import Einstellungen, lade_master
 from whisperloom_server.krypto import Krypto
@@ -181,7 +180,7 @@ fake_upstream = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(fake_upstream)
 FakeUpstream = fake_upstream.FakeUpstream
 FAKE_KEY_2 = "test-key-not-real-2"
-LOOPBACK = (ipaddress.ip_network("127.0.0.0/8"),)
+LOOPBACK = ssrf.freigaben_lesen("127.0.0.0/8")
 
 
 def wav(sekunden: float = 1.0, rate: int = 16_000) -> bytes:

@@ -10,6 +10,7 @@ Server (`custom`, `ollama`) brauchen keinen Key, dann aber eine Basis-URL.
 import re
 import sqlite3
 
+from . import ssrf
 from .katalog import ANBIETER
 from .krypto import Krypto
 
@@ -36,6 +37,8 @@ def speichern(con: sqlite3.Connection, kry: Krypto, firma_id: str, name: str, an
             raise SchluesselFehler("h.anbieter")
     else:
         anbieter = name
+    if basis_url and ssrf.basis_fehler(basis_url):  # W2-SFIX: kein #, ?, @, Backslash, Leer-/Steuerzeichen
+        raise SchluesselFehler("h.basis_url")
     if basis_url and not _URL.match(basis_url):
         raise SchluesselFehler("h.wert")
     if modell and not _MODELL.match(modell):

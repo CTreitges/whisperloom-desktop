@@ -85,13 +85,13 @@ Für Tests (aus `server/`): `.venv/Scripts/python.exe -m pip install -r requirem
 |---|---|---|
 | `WL_DATA_DIR` | `~/.local/share/whisperloom-server` (Docker: `/data`) | Datenordner (DB, `master.key`, `ausgabe/`) |
 | `WL_BASE_URL` | `http://127.0.0.1:8080` | Öffentliche Adresse; `https://` → Cookies `Secure` mit `__Host-`-Präfix |
-| `WL_AUTH_MODES` | `password_totp` | Anmeldearten, kommagetrennt (siehe unten) oder genau `file` |
+| `WL_AUTH_MODES` | `password_totp,password` | Anmeldearten, kommagetrennt (siehe unten) oder genau `file` |
 | `WL_TRUSTED_PROXIES` | – | Genaue Adresse(n) des Reverse-Proxys, z. B. `127.0.0.1/32` oder `172.30.0.10/32`; nie ganze Docker- oder Firmennetze (siehe trusted_header) |
 | `WL_TRUSTED_HEADER` | `Remote-User` | Header mit dem Benutzernamen (trusted_header) |
 | `WL_CONFIG_FILE` | – | YAML- oder JSON-Datei im Datei-Modus |
 | `WL_MASTER_KEY` / `WL_MASTER_KEY_FILE` | – | Hauptschlüssel (64 Hex-Zeichen) direkt bzw. als Datei |
 | `WL_MIN_APP_VERSION` | – | Ältere Apps erhalten beim Verbinden `426 client_outdated` |
-| `WL_UPSTREAM_ALLOW` | – | Interne Netze, die Anbieter-Adressen des Proxys erreichen dürfen, z. B. `10.20.0.0/16` oder `127.0.0.1/32` (siehe „SSRF-Schutz“) |
+| `WL_UPSTREAM_ALLOW` | – | Interne Ziele, die Anbieter-Adressen des Proxys erreichen dürfen, am besten mit Port, z. B. `10.20.3.4:8000`, `[fd00::5]:8000` oder `10.20.0.0/16:8000` (siehe „SSRF-Schutz“) |
 
 Nur von `WL_TRUSTED_PROXIES` wertet der Server `X-Forwarded-For` aus (Client-IP für Rate-Limits); uvicorn läuft ohne
 `--proxy-headers`.
@@ -129,10 +129,20 @@ Dazu `WL_TRUSTED_PROXIES=127.0.0.1/32`, damit Rate-Limits die echte Client-IP se
 
 `WL_AUTH_MODES` legt fest, was die Instanz erlaubt. Jede Firma kann auf der Seite „Firma“ weiter einschränken (owner).
 
+**Zwei-Faktor ist standardmäßig freiwillig** (ohne `WL_AUTH_MODES` gilt `password_totp,password`). Neue Firmen erlauben
+beide Arten: Beim ersten Login sieht ein Admin die TOTP-Einrichtung mit dem Knopf „Später einrichten“; wer überspringt,
+meldet sich danach nur mit Passwort an, sieht in der Übersicht den Hinweis „Zwei-Faktor ist nicht eingerichtet –
+empfohlen“ und kann es jederzeit unter Admins → „Mein Konto“ einschalten. Ein owner verlangt Zwei-Faktor für alle
+Admins, indem er auf der Seite „Firma“ nur „Passwort und Zwei-Faktor“ ankreuzt; dann gibt es keinen Knopf, der Server
+lehnt ein Überspringen ab (403), und Sitzungen ohne zweiten Faktor enden. Firmen, die schon so eingestellt sind, bleiben
+unverändert. **Update-Hinweis:** Wer `WL_AUTH_MODES` bisher nicht gesetzt hatte, bekam Pflicht-TOTP; Firmen ohne eigene
+Einschränkung erlauben nach dem Update beide Arten. Pflicht für die ganze Instanz behalten: `WL_AUTH_MODES=password_totp`.
+Der Instanz-Admin muss TOTP immer einrichten, sobald die Instanz `password_totp` anbietet (kein „Später einrichten“).
+
 | Art | Verhalten | Beispiel |
 |---|---|---|
-| `password_totp` (Standard) | Passwort + 6-stelliger Code einer Authenticator-App. Wer noch kein TOTP hat, richtet es beim ersten Login ein. | `WL_AUTH_MODES=password_totp` |
-| `password` | Passwort, TOTP freiwillig je Konto („2FA abschaltbar“). Eine Firma, die nur `password_totp` erlaubt, verlangt TOTP trotzdem. | `WL_AUTH_MODES=password_totp,password` |
+| `password_totp` (Standard, zusammen mit `password`) | Passwort + 6-stelliger Code einer Authenticator-App. Erlaubt die Firma nur diese Art, richtet jedes Konto ohne TOTP es beim ersten Login ein (Pflicht). | `WL_AUTH_MODES=password_totp` |
+| `password` (Standard, zusammen mit `password_totp`) | Passwort, TOTP freiwillig je Konto. Erlaubt die Firma beide Arten, bietet der erste Login die Einrichtung mit „Später einrichten“ an; Konten mit TOTP geben den Code weiter ein. | `WL_AUTH_MODES=password_totp,password` |
 | `trusted_header` | Vorgeschaltete Anmeldung (Authelia, oauth2-proxy, Authentik). Der Header mit dem Benutzernamen gilt nur von `WL_TRUSTED_PROXIES`; von jeder anderen Adresse wird er ignoriert. Der Benutzername muss als Admin angelegt sein. | `WL_AUTH_MODES=trusted_header WL_TRUSTED_PROXIES=127.0.0.1/32 WL_TRUSTED_HEADER=Remote-User` |
 | `local_only` | Portal ohne Login, nur direkt auf dem Server-Rechner (`127.0.0.1`/`::1`, lokaler Host-Header, kein `X-Forwarded-*`). Von anderen Adressen: 403. Nicht hinter einem Reverse-Proxy auf demselben Rechner verwenden. Im Docker-Container wirkungslos (Gegenstelle ist das Docker-Netz). | `WL_AUTH_MODES=local_only WL_BASE_URL=http://127.0.0.1:8080` |
 | `file` | Kein Portal, kein Admin-Login. Firmen, Gruppen, Richtlinie und Keys aus `WL_CONFIG_FILE`. Geräte freigeben per `autoApprove` oder CLI `device-approve`. | `WL_AUTH_MODES=file WL_CONFIG_FILE=/etc/whisperloom/firmen.yaml` |
@@ -224,9 +234,21 @@ als `http`/`https` (z. B. Unix-Sockets) und Zugangsdaten in der URL. Geprüft wi
 Anfrage: Der Server löst den Namen selbst auf, prüft alle Adressen und verbindet sich mit genau der geprüften
 (DNS-Rebinding); Weiterleitungen folgt er nicht.
 
-Self-Hosting im Firmennetz (eigener whisper-server, Ollama): das Netz bzw. die Adresse per `WL_UPSTREAM_ALLOW`
-freigeben, so eng wie möglich, z. B. `WL_UPSTREAM_ALLOW=10.20.3.4/32`. In einer Mehrmandanten-Instanz gilt die Freigabe
-für alle Firmen – dort nur Netze freigeben, die jede Firma erreichen darf.
+Die Basis-URL eines Zugangs darf nur Schema (`http`/`https`), Host, Port und Pfad enthalten. Fragment (`#`), Query
+(`?`), Benutzerinfo (`user@`), Backslash, Leer- und Steuerzeichen lehnt der Server ab – beim Speichern (Portal, Datei,
+CLI) und bei jeder Anfrage. Den Anbieter-Pfad (z. B. `/audio/transcriptions`) setzt er aus URL-Bausteinen an den Pfad
+der Basis-URL; ein Admin kann so keinen anderen Pfad auf dem Ziel wählen.
+
+Self-Hosting im Firmennetz (eigener whisper-server, Ollama): das Ziel per `WL_UPSTREAM_ALLOW` freigeben, so eng wie
+möglich und **immer mit Port**, z. B. `WL_UPSTREAM_ALLOW=10.20.3.4:8000`. Erlaubte Formen, kommagetrennt: `IP`, `CIDR`,
+`IP:Port`, `CIDR:Port`, `[IPv6]:Port` (IPv6 mit Port nur in eckigen Klammern). Eine Freigabe mit Port gilt nur für
+genau diesen Port; ohne Port in der Basis-URL zählt der Standard-Port des Schemas (`http` 80, `https` 443).
+**Warnung:** Eine Freigabe ohne Port (z. B. `10.20.3.4` oder `127.0.0.2/32`) gilt wie bisher für alle Ports dieser
+Adresse – damit erreicht ein Firmen-Admin per POST auch andere Dienste dort (sshd, Datenbanken, Dev-Server, Reverse
+Proxy). Cloud-Metadaten (`169.254.169.254` u. a.) bleiben immer gesperrt. In einer Mehrmandanten-Instanz gilt die
+Freigabe für alle Firmen – dort nur Ziele freigeben, die jede Firma erreichen darf. Nur eigenständige Dienste freigeben,
+keinen Reverse Proxy mit mehreren virtuellen Hosts: Der Proxy schickt den Namen aus der Basis-URL als Host-Header und
+TLS-SNI.
 
 ### Nutzung und Budget
 
@@ -323,7 +345,8 @@ directory). Reload file mode with `systemctl kill -s HUP whisperloom-server`.
 
 Environment variables as in the German table: `WL_DATA_DIR`, `WL_BASE_URL`, `WL_AUTH_MODES`, `WL_TRUSTED_PROXIES`,
 `WL_TRUSTED_HEADER`, `WL_CONFIG_FILE`, `WL_MASTER_KEY` / `WL_MASTER_KEY_FILE`, `WL_MIN_APP_VERSION`,
-`WL_UPSTREAM_ALLOW` (internal networks the proxy may reach, see “SSRF protection”). The server reads `X-Forwarded-For`
+`WL_UPSTREAM_ALLOW` (internal targets the proxy may reach, preferably with port, e.g. `10.20.3.4:8000`, see “SSRF
+protection”). The server reads `X-Forwarded-For`
 only from `WL_TRUSTED_PROXIES`.
 
 ### Reverse proxy
@@ -334,13 +357,23 @@ See the Caddy and nginx examples above; set `WL_TRUSTED_PROXIES=127.0.0.1/32` so
 
 | Method | Behaviour |
 |---|---|
-| `password_totp` (default) | Password plus 6-digit authenticator code; accounts without TOTP set it up at first sign-in. |
-| `password` | Password, TOTP optional per account (two-factor can be turned off). A company allowing only `password_totp` still requires it. |
+| `password_totp` (default, together with `password`) | Password plus 6-digit authenticator code. If a company allows only this method, every account without TOTP sets it up at first sign-in (mandatory). |
+| `password` (default, together with `password_totp`) | Password, TOTP optional per account. If a company allows both, the first sign-in offers the setup with “Set up later”; accounts with TOTP keep entering their code. |
 | `trusted_header` | Upstream sign-in (Authelia, oauth2-proxy, Authentik). The user-name header counts only from `WL_TRUSTED_PROXIES` and is ignored from any other address. The user name must exist as an admin. Trust only the proxy's exact address (`/32`), never a whole Docker or office network: anything sending from a trusted address can claim any admin. The proxy must set or overwrite the header on every request; a repeated header is rejected. |
 | `local_only` | Portal without sign-in, only directly on the server machine (`127.0.0.1`/`::1`, local Host header, no `X-Forwarded-*`). Other addresses get 403. Do not use behind a reverse proxy on the same machine; no effect inside Docker. |
 | `file` | No portal, no admin sign-in. Companies, groups, policy and keys come from `WL_CONFIG_FILE` (YAML or JSON, `env:NAME` references for secrets), re-read on SIGHUP and on file change. Approve devices via `autoApprove` or `device-approve`. |
 
 Each company may restrict the instance's methods further (page “Company”, owners only).
+
+**Two-factor is optional by default** (without `WL_AUTH_MODES` the server uses `password_totp,password`). New companies
+allow both: at the first sign-in an admin sees the TOTP setup with a “Set up later” button; after skipping, they sign in
+with the password only, see the hint “Two-factor is not set up – recommended” on the overview and can turn it on any
+time under Admins → “My account”. An owner requires two-factor for all admins by ticking only “Password and two-factor”
+on the page “Company”; then there is no button, the server rejects skipping (403) and sessions without a second factor
+end. Companies already set up that way stay unchanged. **Upgrade note:** instances that did not set `WL_AUTH_MODES`
+used to require TOTP; companies without their own restriction allow both methods after the update. To keep TOTP
+mandatory for the whole instance, set `WL_AUTH_MODES=password_totp`. The instance admin always has to set up TOTP as
+soon as the instance offers `password_totp` (no “Set up later”).
 
 ### Policy, keys, master key
 
@@ -393,9 +426,20 @@ ULA), link-local (including metadata `169.254.169.254`), CGNAT, multicast and re
 resolves the name itself, checks all addresses and connects to exactly the checked one (DNS rebinding); it does not
 follow redirects.
 
-Self-hosting inside the company network (own whisper server, Ollama): allow the network or address via
-`WL_UPSTREAM_ALLOW`, as narrow as possible, e.g. `WL_UPSTREAM_ALLOW=10.20.3.4/32`. In a multi-tenant instance the
-allowance applies to every company – only allow networks every company may reach.
+The base URL of an access may only contain scheme (`http`/`https`), host, port and path. The server rejects a fragment
+(`#`), query (`?`), user info (`user@`), backslash, spaces and control characters – on save (portal, file, CLI) and on
+every request. It appends the provider path (e.g. `/audio/transcriptions`) to the base path from URL components, so an
+admin cannot pick another path on the target.
+
+Self-hosting inside the company network (own whisper server, Ollama): allow the target via `WL_UPSTREAM_ALLOW`, as
+narrow as possible and **always with a port**, e.g. `WL_UPSTREAM_ALLOW=10.20.3.4:8000`. Accepted forms, comma-separated:
+`IP`, `CIDR`, `IP:port`, `CIDR:port`, `[IPv6]:port` (IPv6 with a port only in square brackets). An entry with a port
+allows exactly that port; a base URL without a port uses the scheme's default port (`http` 80, `https` 443).
+**Warning:** an entry without a port (e.g. `10.20.3.4` or `127.0.0.2/32`) still allows every port of that address –
+a company admin can then reach other services there via POST (sshd, databases, dev servers, reverse proxy). Cloud
+metadata (`169.254.169.254` and others) always stays blocked. In a multi-tenant instance the allowance applies to every
+company – only allow targets every company may reach. Allow standalone services only, not a reverse proxy with several
+virtual hosts: the proxy sends the host name from the base URL as Host header and TLS SNI.
 
 ### Usage and budget
 

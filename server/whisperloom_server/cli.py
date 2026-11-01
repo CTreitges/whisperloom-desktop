@@ -139,6 +139,8 @@ def ausfuehren(a: argparse.Namespace, einst: Einstellungen) -> str:
         if a.befehl == "key-set":
             # Key von stdin, nie als Argument (Prozessliste, Shell-Verlauf). Leer = eigener Server ohne Key.
             f = _firma(con, a.slug)
+            if a.base_url and ssrf.basis_fehler(a.base_url.strip()):
+                raise CliFehler("Key nicht gespeichert (basis_url: nur http/https ohne #, ?, @, Backslash, Leerzeichen)")
             if a.base_url and not ssrf.beim_speichern_ok(a.base_url, einst.upstream_erlaubt, einst.aufloeser):
                 raise CliFehler("Ziel zeigt auf ein internes Netz; mit WL_UPSTREAM_ALLOW freigeben")
             key = sys.stdin.readline().strip()

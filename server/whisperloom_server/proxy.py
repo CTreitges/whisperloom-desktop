@@ -81,6 +81,9 @@ async def _lesen(r: httpx.Response) -> bytes:
 
 async def _senden(request: Request, zugang: dict, a: upstream.Anfrage, verbinden_s: float) -> tuple[int, bytes]:
     einst = request.app.state.einst
+    # W2-SFIX: auch gespeicherte Basis-URLs je Anfrage streng prüfen (Altbestand vor dem Fix, Datei-Modus, DB).
+    if zugang["basis_url"] and (grund := ssrf.basis_fehler(zugang["basis_url"])):
+        raise _Ersatz("upstream_error", 0, "ssrf_basis_" + grund)
     try:
         ziel = await asyncio.to_thread(ssrf.pruefen, a.url, einst.upstream_erlaubt, einst.aufloeser)
     except ssrf.ZielVerboten as e:
