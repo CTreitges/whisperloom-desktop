@@ -183,11 +183,20 @@ internal sealed class FakeFocus : IFocusProbe
 
     public int Probes { get; private set; }
 
+    /// <summary>Fokussiertes Element (UIA-RuntimeId); null = unbekannt.</summary>
+    public string? Element { get; set; } = "el-1";
+
+    /// <summary>Läuft bei jeder Fokus-Abfrage (z. B. der Nutzer wechselt währenddessen Fenster oder Element).</summary>
+    public Action? OnProbe { get; set; }
+
     public Task<WhisperLoom.Core.Output.FocusKind> ProbeAsync(CancellationToken ct)
     {
         Probes++;
+        OnProbe?.Invoke();
         return Task.FromResult(Kind);
     }
+
+    public Task<string?> FocusedElementAsync(CancellationToken ct) => Task.FromResult(Element);
 }
 
 /// <summary>Alles für einen Einfüge-Ablauf ohne echte Eingabe. Fokus ab Werk: Eingabefeld.</summary>

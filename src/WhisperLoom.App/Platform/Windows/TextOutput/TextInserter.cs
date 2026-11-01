@@ -51,6 +51,13 @@ public sealed record InsertReport(IntPtr Target, IntPtr Window, string Process, 
     public bool SameTarget => Window == Target;
 }
 
+/// <summary>
+/// „Markierung ersetzen“ (W2-FIX M-4): Das Ziel wird nicht nach vorn geholt. Ersetzt wird nur, wenn das Zielfenster noch vorn
+/// ist und das fokussierte Element das beim Erfassen ist; sonst Zwischenablage + Hinweis (<see cref="InsertOutcome.NotForeground"/>).
+/// </summary>
+/// <param name="ElementId">UIA-RuntimeId beim Erfassen; null = unbekannt (dann zählt nur das Fenster).</param>
+public sealed record InsertGuard(string? ElementId);
+
 public static class InsertModes
 {
     public static InsertMode FromKey(string? key) => key switch
@@ -115,9 +122,11 @@ public sealed class TextInserter(
     /// <param name="alwaysCopy"><c>output.alwaysCopy</c>: nach erfolgreichem Einfügen auch in der Zwischenablage lassen.</param>
     /// <param name="leadingSpace">Diktat: Leerzeichen davor, wenn direkt an ein Wort angefügt wird (Zeichen vor der Schreibmarke
     /// per UIA TextPattern; ohne Auskunft keins).</param>
+    /// <param name="guard">Markierung ersetzen: nicht aktivieren, Fenster und Element müssen stimmen (W2-FIX M-4).</param>
     /// <exception cref="IOException">Zwischenablage belegt.</exception>
     public async Task<InsertOutcome> InsertAsync(
-        IntPtr target, string text, InsertMode mode, bool pressEnter, CancellationToken ct, bool alwaysCopy = false, bool leadingSpace = false)
+        IntPtr target, string text, InsertMode mode, bool pressEnter, CancellationToken ct, bool alwaysCopy = false, bool leadingSpace = false,
+        InsertGuard? guard = null)
     {
         LastReport = null;
         LastFocus = null;
@@ -149,7 +158,7 @@ public sealed class TextInserter(
             return await FallbackAsync(text, InsertOutcome.TargetProtected);
         }
         await keys.WaitForModifiersReleasedAsync(ModifierWait, ct).ConfigureAwait(false);
-        if (!windows.Activate(target))
+        if (guard is not null ? !await OnTargetAsync(target, guard, ct).ConfigureAwait(false) : !windows.Activate(target))
         {
             return await FallbackAsync(text, InsertOutcome.NotForeground);
         }
@@ -171,6 +180,11 @@ public sealed class TextInserter(
         // Im Browser und in Electron-Apps („Vorsichtig im Browser“, Entscheidung Christof): unbekannter Fokus → alte Zwischenablage zurück.
         var cautious = OutputDecision.IsCautious(windows.ProcessName(target), windows.WindowClass(target));
         var keep = OutputDecision.Decide(kind, InsertAttempt.Inserted, alwaysCopy, cautious).Copy;
+        // W2-FIX N-5: Fokus-Prüfung und Leerzeichen-Abfrage dauern bis 600 ms; direkt vor dem Senden noch einmal prüfen.
+        if (!await StillOnTargetAsync(target, guard, ct).ConfigureAwait(false))
+        {
+            return await FallbackAsync(text, InsertOutcome.NotForeground);
+        }
         if (mode == InsertMode.Type)
         {
             LastReport = Describe(target);
@@ -203,6 +217,12 @@ public sealed class TextInserter(
         {
             clipboard.SetText(text, @private: true);
             var ours = clipboard.SequenceNumber;
+            if (windows.Foreground() != target)
+            {
+                // N-5: zwischen Prüfung und Strg+V gewechselt. Text öffentlich in die Zwischenablage statt ins falsche Fenster.
+                restore = false;
+                return await FallbackAsync(text, InsertOutcome.NotForeground);
+            }
             LastReport = Describe(target);
             if (!keys.SendCtrlV())
             {
@@ -233,6 +253,26 @@ public sealed class TextInserter(
             }
         }
     }
+
+    /// <summary>Ziel vorn (ohne es zu holen) und, wenn bekannt, dasselbe fokussierte Element wie beim Erfassen?</summary>
+    private async Task<bool> OnTargetAsync(IntPtr target, InsertGuard guard, CancellationToken ct)
+    {
+        if (windows.Foreground() != target)
+        {
+            return false;
+        }
+        if (guard.ElementId is null)
+        {
+            // Ohne Element-Kennung nur das Fenster. In Browser und Electron (Chats in einem Fenster, Prüfer-Befund 5) reicht
+            // das nicht: dort lieber Zwischenablage + Hinweis.
+            return !OutputDecision.IsCautious(windows.ProcessName(target), windows.WindowClass(target));
+        }
+        var now = await (focus ?? UnknownFocusProbe.Instance).FocusedElementAsync(ct).ConfigureAwait(false);
+        return now == guard.ElementId && windows.Foreground() == target;
+    }
+
+    private async Task<bool> StillOnTargetAsync(IntPtr target, InsertGuard? guard, CancellationToken ct) =>
+        guard is null ? windows.Foreground() == target : await OnTargetAsync(target, guard, ct).ConfigureAwait(false);
 
     /// <summary>Zeilenumbrüche (\r\n, \n, \r) als je ein Leerzeichen.</summary>
     internal static string OneLine(string text) => text.Replace("\r\n", " ", StringComparison.Ordinal).Replace('\n', ' ').Replace('\r', ' ');

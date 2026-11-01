@@ -225,13 +225,22 @@ internal static class CommandLine
         }
         if (verb == "update" && feed is not null)
         {
-            // Ordner oder URL eines Velopack-Feeds; Ordner absolut, URLs unverändert.
+            // Ordner oder URL eines Velopack-Feeds; Ordner absolut, URLs unverändert. http nur zu localhost (W2-FIX N-18:
+            // sonst könnte jeder im Netz ein Update unterschieben, die SHA-256 stehen im selben Feed).
+            if (feed.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && !IsLoopbackUrl(feed))
+            {
+                throw new UsageException("--feed: http nur für localhost; sonst https:// oder ein Ordner.");
+            }
             rest = [feed.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || feed.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
                 ? feed
                 : Path.GetFullPath(feed)];
         }
         return new CliRequest(verb, rest, options, json, dryRun);
     }
+
+    /// <summary>localhost bzw. eine Loopback-Adresse (127.0.0.0/8, ::1).</summary>
+    private static bool IsLoopbackUrl(string url) =>
+        Uri.TryCreate(url, UriKind.Absolute, out var u) && (u.IsLoopback || string.Equals(u.Host, "localhost", StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
     /// <c>join</c>: <c>[server, code, deviceName]</c> aus <c>--server/--code/--device-name</c> oder positional

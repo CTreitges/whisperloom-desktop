@@ -154,8 +154,10 @@ def tray_icon(pid: int) -> str | None:
 def read_clipboard(platform: str) -> str | None:
     """Echte Zwischenablage — nur in den Suites ui/input mit Lock."""
     if platform == "win":
-        r = subprocess.run(["powershell", "-NoProfile", "-Command", "Get-Clipboard -Raw"], capture_output=True, text=True, encoding="utf-8")
-        return r.stdout.rstrip("\r\n") if r.returncode == 0 else None
+        # PowerShell 5 schreibt sonst in der ANSI-Codepage: „ (0x84) war kein UTF-8 und der Smoke brach ab (W2-FIX).
+        script = "[Console]::OutputEncoding = [Text.Encoding]::UTF8; Get-Clipboard -Raw"
+        r = subprocess.run(["powershell", "-NoProfile", "-Command", script], capture_output=True, text=True, encoding="utf-8")
+        return (r.stdout or "").rstrip("\r\n") if r.returncode == 0 else None
     for cmd in (["wl-paste", "--no-newline"], ["xclip", "-selection", "clipboard", "-o"]):
         try:
             r = subprocess.run(cmd, capture_output=True, text=True, timeout=5)

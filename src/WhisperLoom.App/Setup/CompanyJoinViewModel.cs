@@ -114,6 +114,11 @@ public sealed partial class CompanyJoinViewModel : ObservableObject
             Phase = JoinPhase.Input;
             ShowError(ManagementTexts.Error("offline"));
         }
+        catch (ArgumentException e) when (e.Message == "Company_AlreadyJoined")
+        {
+            Phase = JoinPhase.Input;
+            ShowError(Loc.Instance[e.Message]);
+        }
         catch (Exception e) when (e is IOException or ArgumentException)
         {
             Phase = JoinPhase.Input;

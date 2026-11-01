@@ -11,7 +11,7 @@ namespace WhisperLoom.Core.Settings;
 /// (<see cref="SettingsAccess"/>): Statt der Werte stehen Marken in den Keys, und der aufgelöste Zugang verrät, welcher
 /// Key an welchem Origin landet — auch geerbte (Fallback oder KI ohne eigenen Key nutzt den der Erkennung).
 /// </summary>
-internal static class KeyRoutes
+public static class KeyRoutes
 {
     private const string Marker = "\u0001key:";
 
@@ -49,6 +49,22 @@ internal static class KeyRoutes
             }
         }
         return drops;
+    }
+
+    /// <summary>
+    /// Origins, an die <paramref name="settings"/> den Key <paramref name="name"/> schicken würde, wenn nur er gespeichert
+    /// wäre (W2-FIX K-1: Ziel, für das ein eigener Key unter Firmen-Verwaltung gespeichert wurde). Dieselbe Auflösung wie
+    /// <see cref="Dropped"/>; Erben gibt es nur bei gleichem Server, die Menge ist also nie kleiner als im Diktat.
+    /// </summary>
+    /// Geht der Key über einen manuellen Proxy, zählt dieser als eigenes Ziel (<c>Proxy &lt;origin&gt;</c>).
+    public static IReadOnlySet<string> OriginsOf(WhisperLoomSettings settings, string name)
+    {
+        var origins = Targets(settings, [name])[name];
+        if (origins.Count > 0 && ManualProxy(settings) is { } proxy)
+        {
+            origins.Add("Proxy " + proxy);
+        }
+        return origins;
     }
 
     /// <summary>

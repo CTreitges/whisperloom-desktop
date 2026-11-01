@@ -98,9 +98,13 @@ public sealed class LlamaRelease(HttpClient http, string dir)
         if (archive.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
         {
             using var zip = ZipFile.OpenRead(archive);
-            foreach (var e in zip.Entries.Where(e => e.Name.Length > 0))
+            foreach (var e in zip.Entries)
             {
-                e.ExtractToFile(Path.Combine(tmp, e.Name), overwrite: true);
+                // W2-FIX N-9: nie aus dem Zielordner heraus (Zips „made by Unix“ mit ..\, absolut, Laufwerk).
+                if (ArchiveNames.SafePath(tmp, e.Name) is { } path)
+                {
+                    e.ExtractToFile(path, overwrite: true);
+                }
             }
         }
         else
@@ -110,11 +114,10 @@ public sealed class LlamaRelease(HttpClient http, string dir)
             var links = new List<(string Name, string Target)>();
             while (tar.GetNextEntry() is { } e)
             {
-                var name = Path.GetFileName(e.Name);
-                if (name.Length == 0) continue;
+                if (ArchiveNames.SafePath(tmp, e.Name) is not { } path) continue;
+                var name = Path.GetFileName(path);
                 if (e.EntryType is TarEntryType.RegularFile or TarEntryType.V7RegularFile)
                 {
-                    var path = Path.Combine(tmp, name);
                     e.ExtractToFile(path, overwrite: true);
                     if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(path, e.Mode & (UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute | UnixFileMode.GroupRead | UnixFileMode.GroupExecute | UnixFileMode.OtherRead | UnixFileMode.OtherExecute));
                 }

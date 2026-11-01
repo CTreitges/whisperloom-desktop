@@ -133,3 +133,20 @@ class SuiteUiTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ReadClipboardTest(unittest.TestCase):
+    """W2-FIX: PowerShell 5 gab die Zwischenablage in der ANSI-Codepage aus; ein „ (0x84) brach den Smoke ab."""
+
+    def test_powershell_writes_utf8_and_empty_output_is_text(self):
+        result = types.SimpleNamespace(returncode=0, stdout=None)
+        with mock.patch.object(plat.subprocess, "run", return_value=result) as run:
+            self.assertEqual("", plat.read_clipboard("win"))
+        script = run.call_args.args[0][-1]
+        self.assertIn("[Console]::OutputEncoding = [Text.Encoding]::UTF8", script)
+        self.assertEqual("utf-8", run.call_args.kwargs["encoding"])
+
+    def test_text_without_trailing_newline(self):
+        result = types.SimpleNamespace(returncode=0, stdout="„Zitat“\r\n")
+        with mock.patch.object(plat.subprocess, "run", return_value=result):
+            self.assertEqual("„Zitat“", plat.read_clipboard("win"))

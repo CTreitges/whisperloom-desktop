@@ -36,7 +36,8 @@ internal sealed class UiaFocusSource : IFocusSource
                     Bool(element, IsPasswordProperty),
                     valueAvailable,
                     valueAvailable && Bool(element, ValueIsReadOnlyProperty),
-                    Int(element, ProcessIdProperty));
+                    Int(element, ProcessIdProperty),
+                    RuntimeId(element));
             }
             finally
             {
@@ -53,6 +54,11 @@ internal sealed class UiaFocusSource : IFocusSource
         element.GetCurrentPropertyValue(property, out var value) == 0 ? value : null;
 
     private static bool Bool(IUIAutomationElement element, int property) => Value(element, property) is true;
+
+    /// <summary>W2-FIX M-4: RuntimeId (SAFEARRAY von int) als Text; eindeutig, solange das Element lebt.</summary>
+    // Doku: learn.microsoft.com/windows/win32/api/uiautomationclient/nf-uiautomationclient-iuiautomationelement-getruntimeid (abgerufen 2026-11-01).
+    private static string? RuntimeId(IUIAutomationElement element) =>
+        element.GetRuntimeId(out var id) == 0 && id is { Length: > 0 } ? string.Join(".", id) : null;
 
     private static int Int(IUIAutomationElement element, int property) => Value(element, property) is int n ? n : 0;
 
@@ -87,7 +93,8 @@ internal sealed class UiaFocusSource : IFocusSource
     {
         void SetFocus();
 
-        void GetRuntimeId();
+        [PreserveSig]
+        int GetRuntimeId([MarshalAs(UnmanagedType.SafeArray, SafeArraySubType = VarEnum.VT_I4)] out int[]? runtimeId);
 
         void FindFirst();
 

@@ -15,13 +15,15 @@ namespace WhisperLoom.App.Management;
 /// sonst gar kein Key.</item>
 /// <item>Zugang, dessen Ziel die Firma festlegt (Anbieter bzw. Adresse Fest): nie ein eigener Key des Nutzers — sonst ginge
 /// er an ein Ziel, das der Nutzer nicht gewählt hat.</item>
+/// <item>übrige Zugänge unter Verwaltung: eigener Key nur, wenn das aktuelle Ziel dem beim Speichern bzw. Beitritt entspricht
+/// (<paramref name="own"/>) oder der Nutzer Anbieter und Adresse selbst überschrieben hat (W2-FIX K-1).</item>
 /// <item>sonst: eigener Key des Nutzers aus <paramref name="user"/>.</item>
 /// </list>
 /// Schreiben und Löschen betreffen immer nur die eigenen Keys des Nutzers; Firmen-Keys verwaltet <see cref="ManagementService"/>.
 /// </summary>
 /// <param name="targets">Ziele der verteilten Keys aus dem letzten Abgleich (<see cref="ManagementService.KeyTargets"/>).</param>
 public sealed class CompanySecretStore(ISecretStore user, ISecretStore company, Func<WhisperLoomSettings> settings,
-    Func<PolicySettings> policy, Func<IReadOnlyDictionary<string, KeyTarget>> targets) : ISecretStore
+    Func<PolicySettings> policy, Func<IReadOnlyDictionary<string, KeyTarget>> targets, OwnKeyTargets own) : ISecretStore
 {
     /// <summary>Präfix-Zusatz der Firmen-Keys: <c>&lt;Präfix&gt;company:&lt;zugang&gt;</c>, z. B. <c>WhisperLoom:company:stt</c>.</summary>
     public const string PrefixSuffix = "company:";
@@ -54,10 +56,49 @@ public sealed class CompanySecretStore(ISecretStore user, ISecretStore company, 
         {
             return null;
         }
+        // W2-FIX K-1 (Tiefe): Vorgabe oder Frei vom Server zählt nicht als Wahl des Nutzers. Der eigene Key geht nur an das
+        // Ziel, für das er gespeichert wurde, oder an ein Ziel, das der Nutzer selbst überschrieben hat.
+        if (!own.Allows(s, name) && !UserChoseTarget(s, name))
+        {
+            return null;
+        }
         return await user.GetAsync(name, ct).ConfigureAwait(false);
     }
 
-    public Task SetAsync(string name, string value, CancellationToken ct) => user.SetAsync(name, value, ct);
+    /// <summary>Eigener Key unter Verwaltung: Ziel festhalten, das gerade gilt (CLI, Provisioning).</summary>
+    public async Task SetAsync(string name, string value, CancellationToken ct)
+    {
+        await user.SetAsync(name, value, ct).ConfigureAwait(false);
+        if (SecretNames.All.Contains(name) && IsManaged(settings().Management))
+        {
+            own.Record(settings(), name);
+        }
+    }
+
+    /// <summary>
+    /// Key-Feld der Einstellungen: Ziel festhalten, das der Nutzer beim Speichern sieht (<paramref name="target"/>, noch nicht
+    /// gespeicherte Auswahl), nicht das gespeicherte.
+    /// </summary>
+    public async Task SetAsync(string name, string value, (string ProviderId, string BaseUrl) target, CancellationToken ct)
+    {
+        await user.SetAsync(name, value, ct).ConfigureAwait(false);
+        if (SecretNames.All.Contains(name) && IsManaged(settings().Management))
+        {
+            var shown = SettingsJson.Deserialize(SettingsJson.Serialize(settings()));
+            ConfigApply.Access(shown, Section(name)).Set(target.ProviderId, target.BaseUrl);
+            own.Record(shown, name);
+        }
+    }
+
+    /// <summary>Die eigenen Keys des Nutzers ohne Firmen-Regeln (für K1-Prüfungen: was liegt wirklich gespeichert?).</summary>
+    public ISecretStore UserStore => user;
+
+    /// <summary>
+    /// Anbieter und Adresse des Zugangs <paramref name="access"/> hat der Nutzer selbst gegen die Vorgabe gesetzt (Override).
+    /// Nur genau diese Blatt-Pfade zählen: eine Vorgabe auf den ganzen Abschnitt plus geändertes Modell ist keine Wahl des Ziels.
+    /// </summary>
+    public static bool UserChoseTarget(WhisperLoomSettings s, string access) =>
+        s.Management.Overrides.Contains(Section(access) + ".providerId") && s.Management.Overrides.Contains(Section(access) + ".baseUrl");
 
     public Task DeleteAsync(string name, CancellationToken ct) => user.DeleteAsync(name, ct);
 

@@ -26,6 +26,9 @@ public sealed partial class InputFlow
     public static readonly TimeSpan ButtonDuration = TimeSpan.FromSeconds(4);
 
     private StagePickerViewModel? _picker;
+
+    /// <summary>Fokussiertes Element beim Erfassen der Markierung (UIA-RuntimeId); null = unbekannt.</summary>
+    private string? _selectionElement;
     private DateTimeOffset _pickerSince;
     private DateTimeOffset? _buttonSince;
 
@@ -101,6 +104,7 @@ public sealed partial class InputFlow
             return "busy";
         }
         _selection = read.Text;
+        _selectionElement = read.ElementId;
         if (stage is not null)
         {
             return await ChooseSelectionAsync(stage);
@@ -221,8 +225,10 @@ public sealed partial class InputFlow
             return "instruction";
         }
         _selection = "";
-        // Ersetzt nur die Markierung: ohne Enter, ohne Leerzeichen davor/danach; Ausgabemodus wie das Profil des Ziels.
-        _sink.Arm(_target, pressEnter: false, InsertModeOf(ProfileFor(_target)), trailingSpace: false, leadingSpace: false);
+        // Ersetzt nur die Markierung: ohne Enter, ohne Leerzeichen davor/danach; Ausgabemodus wie das Profil des Ziels. Nur ins
+        // unveränderte Ziel (Fenster vorn, gleiches Element), nie zurückgeholt (W2-FIX M-4).
+        _sink.Arm(_target, pressEnter: false, InsertModeOf(ProfileFor(_target)), trailingSpace: false, leadingSpace: false,
+            guard: new Platform.Windows.TextOutput.InsertGuard(_selectionElement));
         _ui.ShowPill(_target);
         _ui.SetPill(0, processing: true);
         string result;

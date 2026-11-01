@@ -21,9 +21,9 @@ public sealed record ProvisioningPlan(
     public bool CanApply => Settings is not null && Errors.Count == 0;
 
     /// <summary>
-    /// Keys eigener Anbieter (<c>custom:&lt;id&gt;</c>), die der Aufrufer vor dem Speichern löscht: Die Datei ändert den Host
-    /// des Eintrags oder entfernt ihn und liefert keinen neuen Key dafür (W2-LOCAL Prüfrunde 2 R-K1-1). Nicht gespeicherte
-    /// Namen zu löschen schadet nicht.
+    /// Gespeicherte Keys (Zugänge und eigene Anbieter), die der Aufrufer vor dem Speichern löscht: Die Datei ändert ihr Ziel
+    /// (Anbieter, Host, manueller Proxy) oder entfernt den Eintrag und liefert keinen neuen Key dafür (W2-LOCAL R-K1-1,
+    /// W2-FIX K-1/M-2). Nicht gespeicherte Namen zu löschen schadet nicht.
     /// </summary>
     public IReadOnlyList<KeyDrop> DroppedKeys { get; init; } = [];
 
@@ -138,9 +138,7 @@ public static class Provisioning
             policy = policy with { Locked = [.. policy.Locked, .. secrets.Keys.Order(StringComparer.Ordinal).Select(n => "secrets." + n)] };
         }
         var drops = preview.Settings is null ? [] : ProviderKeyDrops(current, preview.Settings, file, secrets, storedKeys);
-        warnings.AddRange(drops.Select(d => d.EntryRemoved
-            ? $"secrets.{d.Name}: Eintrag entfernt, gespeicherter Key wird gelöscht"
-            : $"secrets.{d.Name}: Adresse geändert ({d.Target}), gespeicherter Key wird gelöscht"));
+        warnings.AddRange(DropWarnings(drops));
         return new ProvisioningPlan(errors.Count == 0 ? preview.Settings : null, secrets, policy, preview.Changes, errors, warnings)
         {
             DroppedKeys = drops,
@@ -149,17 +147,34 @@ public static class Provisioning
     }
 
     /// <summary>
-    /// Wie beim Import (<see cref="KeyRoutes.Dropped"/>), aber nur für Keys eigener Anbieter: Host-Wechsel oder entfernter
-    /// Eintrag → Key löschen, außer die Datei liefert ihn selbst (<c>secrets."custom:&lt;id&gt;"</c>).
+    /// Wie beim Import (<see cref="KeyRoutes.Dropped"/>): Ziel-Wechsel (Anbieter, Host, manueller Proxy) oder entfernter
+    /// Eintrag → Key löschen, außer die Datei liefert ihn selbst. Gilt für die Zugänge und die eigenen Anbieter (W2-FIX
+    /// K-1/M-2: vorher nur eigene Anbieter, ein Zugangs-Key ging an den neuen Host).
     /// </summary>
-    private static List<KeyDrop> ProviderKeyDrops(
-        WhisperLoomSettings current, WhisperLoomSettings after, SyncDocument file, IReadOnlyDictionary<string, string> secrets, IReadOnlyCollection<string>? storedKeys)
+    private static IReadOnlyList<KeyDrop> ProviderKeyDrops(
+        WhisperLoomSettings current, WhisperLoomSettings after, SyncDocument file, IReadOnlyDictionary<string, string> secrets, IReadOnlyCollection<string>? storedKeys) =>
+        KeyDrops(current, after, storedKeys ?? CandidateKeys(current, SyncImport.ProviderKeyNames(file)), secrets.Keys);
+
+    /// <summary>
+    /// Volle K1-Regel für Firmen-Konfiguration und Provisioning: gespeicherte Keys (<paramref name="storedKeys"/>), die
+    /// <paramref name="after"/> an ein neues Ziel schickt, ohne die Namen, die die Quelle selbst liefert (<paramref name="supplied"/>).
+    /// </summary>
+    public static IReadOnlyList<KeyDrop> KeyDrops(WhisperLoomSettings current, WhisperLoomSettings after, IReadOnlyCollection<string> storedKeys,
+        IEnumerable<string> supplied)
     {
-        var candidates = storedKeys?.Where(SecretNames.IsProviderKey).ToList()
-            ?? [.. current.Providers.Custom.Select(c => ProvidersSettings.CustomPrefix + c.Id).Concat(SyncImport.ProviderKeyNames(file))
-                .Where(SecretNames.IsProviderKey).Distinct(StringComparer.Ordinal)];
-        return [.. KeyRoutes.Dropped(current, after, candidates).Where(d => SecretNames.IsProviderKey(d.Name) && !secrets.ContainsKey(d.Name))];
+        var own = supplied.ToHashSet(StringComparer.Ordinal);
+        return [.. KeyRoutes.Dropped(current, after, storedKeys).Where(d => !own.Contains(d.Name))];
     }
+
+    /// <summary>Warnungen ohne Werte zu verworfenen Keys (nur Name und neues Ziel).</summary>
+    public static IEnumerable<string> DropWarnings(IEnumerable<KeyDrop> drops) => drops.Select(d => d.EntryRemoved
+        ? $"secrets.{d.Name}: Eintrag entfernt, gespeicherter Key wird gelöscht"
+        : $"secrets.{d.Name}: Adresse geändert ({d.Target}), gespeicherter Key wird gelöscht");
+
+    /// <summary>Ohne Blick in die Ablage: alle Zugänge und alle eigenen Anbieter (vorher und aus der Quelle) gelten als gespeichert.</summary>
+    public static IReadOnlyCollection<string> CandidateKeys(WhisperLoomSettings current, IEnumerable<string> incoming) =>
+        [.. SecretNames.All.Concat(current.Providers.Custom.Select(c => ProvidersSettings.CustomPrefix + c.Id).Concat(incoming)
+            .Where(SecretNames.IsProviderKey).Distinct(StringComparer.Ordinal))];
 
     private static Dictionary<string, string> MapSecrets(WhisperLoomSettings s, IReadOnlyDictionary<string, string> secrets, List<string> errors, List<string> warnings)
     {

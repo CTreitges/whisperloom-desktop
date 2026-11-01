@@ -240,7 +240,7 @@ internal sealed class ManagementRig : IDisposable
             uiThread ? f => Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(f) : f => f());
         Service = new ManagementService(Target, User, Company, Server.Api(), Cache, F.Log, () => F.Now);
         Secrets = new CompanySecretStore(User, Company, () => F.Controller.Settings, () => F.Controller.Policy,
-            () => Service.KeyTargets);
+            () => Service.KeyTargets, new OwnKeyTargets(F.DataDir));
     }
 
     public FakeManagementServer Server { get; } = new();

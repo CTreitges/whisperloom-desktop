@@ -56,9 +56,15 @@ public sealed class PolicyStore(string dataDir)
     /// </returns>
     public (WhisperLoomSettings Settings, int Changed, IReadOnlyList<string> Retired) EnforceFixed(WhisperLoomSettings settings, PolicySettings policy)
     {
-        if (!policy.IsActive || !File.Exists(FixedPath))
+        if (!policy.IsActive)
         {
             return (settings, 0, []);
+        }
+        if (!File.Exists(FixedPath))
+        {
+            // W2-FIX N-1: Richtlinie mit Fest-Pfaden, aber Werte gelöscht → wie unlesbar (Log, ETag vergessen). Erzwingen lässt
+            // sich ohne die Werte erst wieder nach dem nächsten vollen Abgleich; offline bleibt der lokale Stand.
+            return (settings, policy.Locked.Count > 0 ? -1 : 0, []);
         }
         JsonObject? stored;
         try

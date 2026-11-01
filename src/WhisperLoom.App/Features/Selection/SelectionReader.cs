@@ -6,7 +6,8 @@ using WhisperLoom.Core.Output;
 namespace WhisperLoom.App.Features.Selection;
 
 /// <summary>Auskunft von UI Automation über die Markierung: ohne TextPattern keine Aussage (<see cref="HasTextPattern"/> false).</summary>
-public sealed record UiaSelection(bool HasTextPattern, string Text);
+/// <param name="IsPassword">Das fokussierte Element ist ein Passwortfeld: nichts gelesen (W2-FIX V-3).</param>
+public sealed record UiaSelection(bool HasTextPattern, string Text, bool IsPassword = false);
 
 /// <summary>Markierung des fokussierten Elements; Windows: <c>UiaSelectionSource</c>, Tests: Fake.</summary>
 public interface ISelectionTextSource
@@ -24,7 +25,9 @@ public enum SelectionReadKind
 }
 
 /// <summary>Ergebnis der Erfassung. <paramref name="ToastKey"/> nennt bei <see cref="SelectionReadKind.Failed"/> den Grund.</summary>
-public sealed record SelectionRead(SelectionReadKind Kind, string Text = "", string? ToastKey = null, bool ViaClipboard = false)
+/// <param name="ElementId">Fokussiertes Element beim Erfassen (UIA-RuntimeId); das Ersetzen geht nur dorthin (W2-FIX M-4).</param>
+public sealed record SelectionRead(SelectionReadKind Kind, string Text = "", string? ToastKey = null, bool ViaClipboard = false,
+    string? ElementId = null)
 {
     public static SelectionRead Empty { get; } = new(SelectionReadKind.Empty);
 
@@ -63,10 +66,16 @@ public sealed class SelectionReader(
         {
             return SelectionRead.Password;
         }
+        // W2-FIX M-4: Element merken, das ersetzt werden soll (vor einem Strg+C, das den Fokus nicht ändert).
+        var element = await focus.FocusedElementAsync(ct).ConfigureAwait(false);
         var fromUia = await QueryAsync(ct).ConfigureAwait(false);
+        if (fromUia is { IsPassword: true })
+        {
+            return SelectionRead.Password;
+        }
         if (fromUia is { HasTextPattern: true })
         {
-            return string.IsNullOrWhiteSpace(fromUia.Text) ? SelectionRead.Empty : new SelectionRead(SelectionReadKind.Text, fromUia.Text);
+            return string.IsNullOrWhiteSpace(fromUia.Text) ? SelectionRead.Empty : new SelectionRead(SelectionReadKind.Text, fromUia.Text, ElementId: element);
         }
         Capture copied;
         try
@@ -79,7 +88,7 @@ public sealed class SelectionReader(
         }
         if (copied.Text is { } text)
         {
-            return new SelectionRead(SelectionReadKind.Text, text, ViaClipboard: true);
+            return new SelectionRead(SelectionReadKind.Text, text, ViaClipboard: true, ElementId: element);
         }
         return copied.ToastKey == Capture.Nothing.ToastKey ? SelectionRead.Empty : new SelectionRead(SelectionReadKind.Failed, ToastKey: copied.ToastKey);
     }
@@ -95,7 +104,7 @@ public sealed class SelectionReader(
             return false;
         }
         var fromUia = await QueryAsync(ct).ConfigureAwait(false);
-        return fromUia is not { HasTextPattern: true } || !string.IsNullOrWhiteSpace(fromUia.Text);
+        return fromUia is not { IsPassword: true } && (fromUia is not { HasTextPattern: true } || !string.IsNullOrWhiteSpace(fromUia.Text));
     }
 
     private async Task<UiaSelection?> QueryAsync(CancellationToken ct)

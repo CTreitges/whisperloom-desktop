@@ -144,9 +144,13 @@ public sealed class SidecarRelease(HttpClient http, string dir)
         if (archive.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
         {
             using var zip = ZipFile.OpenRead(archive);
-            foreach (var e in zip.Entries.Where(e => e.Name.Length > 0))
+            foreach (var e in zip.Entries)
             {
-                e.ExtractToFile(Path.Combine(tmp, e.Name), overwrite: true);
+                // W2-FIX N-9: nie aus dem Zielordner heraus (Zips „made by Unix“ mit ..\, absolut, Laufwerk).
+                if (ArchiveNames.SafePath(tmp, e.Name) is { } path)
+                {
+                    e.ExtractToFile(path, overwrite: true);
+                }
             }
         }
         else
@@ -155,9 +159,9 @@ public sealed class SidecarRelease(HttpClient http, string dir)
             using var tar = new TarReader(gz);
             while (tar.GetNextEntry() is { } e)
             {
-                if (e.EntryType is TarEntryType.RegularFile or TarEntryType.V7RegularFile)
+                if (e.EntryType is TarEntryType.RegularFile or TarEntryType.V7RegularFile && ArchiveNames.SafePath(tmp, e.Name) is { } path)
                 {
-                    e.ExtractToFile(Path.Combine(tmp, Path.GetFileName(e.Name)), overwrite: true);
+                    e.ExtractToFile(path, overwrite: true);
                 }
             }
         }

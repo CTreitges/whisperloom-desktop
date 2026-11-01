@@ -85,6 +85,32 @@ public sealed class ManagementCache(string dataDir)
         File.Move(tmp, FilePath, overwrite: true);
     }
 
+    /// <summary>
+    /// Nur den ETag vergessen (W2-FIX N-1): Der nächste Abgleich holt die volle Konfiguration. Proxy-Adresse und Key-Ziele
+    /// bleiben, bis sie der Abgleich ersetzt.
+    /// </summary>
+    public void ForgetETag()
+    {
+        ETag = null;
+        try
+        {
+            if (File.Exists(FilePath) && JsonNode.Parse(File.ReadAllText(FilePath)) is JsonObject o && o.Remove("etag"))
+            {
+                var tmp = FilePath + ".tmp";
+                File.WriteAllText(tmp, o.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+                File.Move(tmp, FilePath, overwrite: true);
+            }
+        }
+        catch (JsonException)
+        {
+            File.Delete(FilePath); // kaputt: Load gälte ohnehin als „kein Abgleich bisher“
+        }
+        catch (IOException)
+        {
+            // Datei gesperrt: im Speicher ist der ETag weg; der Start darf daran nicht scheitern.
+        }
+    }
+
     public void Clear()
     {
         File.Delete(FilePath);
