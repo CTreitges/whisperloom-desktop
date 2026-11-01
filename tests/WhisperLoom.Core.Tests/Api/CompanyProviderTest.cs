@@ -30,6 +30,31 @@ public sealed class CompanyProviderTest
     }
 
     [Fact]
+    public void Quelle_company_nur_im_Proxy_Modus_mit_Server()
+    {
+        var s = new WhisperLoom.Core.Contracts.Settings.WhisperLoomSettings();
+        Assert.Null(ProviderDirectory.For(s).Find(CompanyProvider.EntryId));
+        s.Management.ServerUrl = "https://wl.example.com";
+        s.Management.State = "approved";
+        s.Management.TenantName = "Muster GmbH";
+        var entry = ProviderDirectory.For(s).Find(CompanyProvider.EntryId);
+        Assert.NotNull(entry);
+        Assert.Equal((Proxy, "Muster GmbH", true), (entry.BaseUrl, entry.Name, entry.IsEntry));
+        Assert.True(entry.HasStt && entry.HasLlm);
+
+        // Key nur über den Eintrag, nie über den Zugang (ProviderDirectory.KeyOf).
+        var dir = ProviderDirectory.For(s).WithKeys(new Dictionary<string, string> { [CompanyProvider.EntryId] = "wld_test-token-not-real-1" });
+        var access = AccessResolver.ResolveStt(CompanyProvider.EntryId, "https://evil.example.test/v1", "test-key-not-real-1", "", providers: dir);
+        Assert.Equal((Proxy, "wld_test-token-not-real-1"), (access.BaseUrl, access.ApiKey));
+
+        s.Management.KeyMode = "distribute";
+        Assert.Null(ProviderDirectory.For(s).Find(CompanyProvider.EntryId));
+        s.Management.KeyMode = "proxy";
+        s.Management.State = "none";
+        Assert.Null(ProviderDirectory.For(s).Find(CompanyProvider.EntryId));
+    }
+
+    [Fact]
     public void Budget_ist_403_mit_budget_exhausted()
     {
         Assert.True(CompanyProvider.IsBudgetError(ApiErrors.Http(403, "budget_exhausted")));

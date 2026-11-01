@@ -213,8 +213,7 @@ public sealed class AppHost
         AppHost? host = null;
         // Firmen-Zugänge (W2-ENR): Geräte-Token für den Proxy bzw. verteilte Keys statt eigener Keys, wo die Firma das Ziel festlegt.
         ISecretStore secrets = new CompanySecretStore(userSecrets, companySecrets,
-            () => host?.Controller.Settings ?? new WhisperLoomSettings(), () => host?.Controller.Policy ?? PolicySettings.None,
-            () => management?.ProxyBaseUrl);
+            () => host?.Controller.Settings ?? new WhisperLoomSettings(), () => host?.Controller.Policy ?? PolicySettings.None);
         IAudioRecorder recorder = options.TestAudio is null ? new PortAudioRecorder() : new WavFileRecorder(options.TestAudio);
         IOutputSink output = options.OutputFile is null ? new ClipboardOutputSink(ProcessRunner.Instance) : new FileOutputSink(options.OutputFile);
         if (OperatingSystem.IsWindows() && options.OutputFile is null)

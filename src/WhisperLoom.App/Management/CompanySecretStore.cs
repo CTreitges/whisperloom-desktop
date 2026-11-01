@@ -6,10 +6,11 @@ using WhisperLoom.Core.Settings;
 namespace WhisperLoom.App.Management;
 
 /// <summary>
-/// Keys der Zugänge unter einer Firmen-Anbindung (W2-ENR). Liest:
+/// Keys unter einer Firmen-Anbindung (W2-ENR). Liest:
 /// <list type="bullet">
-/// <item>Proxy-Modus, Gerät freigegeben: Zugang mit Adresse = Firmen-Proxy (<see cref="CompanyProvider.Targets"/>) → Geräte-Token.</item>
-/// <item>Verteilt-Modus, Gerät freigegeben: verteilter Key aus <paramref name="company"/> (eigenes Präfix).</item>
+/// <item><see cref="CompanyProvider.EntryId"/> (Eintrag „Firma“ im <see cref="ProviderDirectory"/>): Geräte-Token, nur im Proxy-Modus
+/// und nur im Zustand <c>approved</c>. Das Token geht damit nur an die Adresse dieses Eintrags (<see cref="ProviderDirectory.KeyOf"/>).</item>
+/// <item>Zugangs-Key im Verteilt-Modus, Gerät freigegeben: verteilter Key aus <paramref name="company"/> (eigenes Präfix).</item>
 /// <item>Zugang, dessen Ziel die Firma festlegt (Anbieter bzw. Adresse Fest): nie ein eigener Key des Nutzers — sonst ginge
 /// er an ein Ziel, das der Nutzer nicht gewählt hat.</item>
 /// <item>sonst: eigener Key des Nutzers aus <paramref name="user"/>.</item>
@@ -17,7 +18,7 @@ namespace WhisperLoom.App.Management;
 /// Schreiben und Löschen betreffen immer nur die eigenen Keys des Nutzers; Firmen-Keys verwaltet <see cref="ManagementService"/>.
 /// </summary>
 public sealed class CompanySecretStore(ISecretStore user, ISecretStore company, Func<WhisperLoomSettings> settings,
-    Func<PolicySettings> policy, Func<string?> proxyBaseUrl) : ISecretStore
+    Func<PolicySettings> policy) : ISecretStore
 {
     /// <summary>Präfix-Zusatz der Firmen-Keys: <c>&lt;Präfix&gt;company:&lt;zugang&gt;</c>, z. B. <c>WhisperLoom:company:stt</c>.</summary>
     public const string PrefixSuffix = "company:";
@@ -26,21 +27,22 @@ public sealed class CompanySecretStore(ISecretStore user, ISecretStore company, 
 
     public async Task<string?> GetAsync(string name, CancellationToken ct)
     {
-        var s = settings();
-        var m = s.Management;
+        var m = settings().Management;
+        if (name == CompanyProvider.EntryId)
+        {
+            return CompanyProvider.IsActive(m) && m.State == "approved"
+                ? await user.GetAsync(SecretNames.Device, ct).ConfigureAwait(false)
+                : null;
+        }
         if (!SecretNames.All.Contains(name) || !IsManaged(m))
         {
             return await user.GetAsync(name, ct).ConfigureAwait(false);
-        }
-        var (section, baseUrl) = Target(s, name);
-        if (m.State == "approved" && m.KeyMode == "proxy" && CompanyProvider.Targets(proxyBaseUrl(), baseUrl))
-        {
-            return await user.GetAsync(SecretNames.Device, ct).ConfigureAwait(false);
         }
         if (m.State == "approved" && m.KeyMode == "distribute" && await company.GetAsync(name, ct).ConfigureAwait(false) is { } key)
         {
             return key;
         }
+        var section = Section(name);
         var p = policy();
         if (p.IsLocked(section + ".providerId") || p.IsLocked(section + ".baseUrl") || p.IsLocked("secrets." + name))
         {
@@ -53,19 +55,14 @@ public sealed class CompanySecretStore(ISecretStore user, ISecretStore company, 
 
     public Task DeleteAsync(string name, CancellationToken ct) => user.DeleteAsync(name, ct);
 
-    /// <summary>An einen Firmen-Server angebunden (auch wartend oder gesperrt).</summary>
+    /// <summary>An einen Firmen-Server angebunden (auch wartend, gesperrt oder widerrufen).</summary>
     public static bool IsManaged(ManagementSettings m) => m.ServerUrl.Length > 0 && m.State is "pending" or "approved" or "blocked" or "revoked";
 
-    /// <summary>Abschnitt und wirksame Adresse des Zugangs; „wie Erkennung“ nutzt die Adresse der Erkennung.</summary>
-    private static (string Section, string BaseUrl) Target(WhisperLoomSettings s, string name) => name switch
+    private static string Section(string name) => name switch
     {
-        SecretNames.Stt => ("stt", Url(s.Stt.ProviderId, s.Stt.BaseUrl)),
-        SecretNames.SttFallback => ("sttFallback", Url(s.SttFallback.ProviderId, s.SttFallback.BaseUrl)),
-        SecretNames.Llm when s.Llm.ProviderId == LlmSettings.Same => ("llm", Url(s.Stt.ProviderId, s.Stt.BaseUrl)),
-        SecretNames.Llm => ("llm", Url(s.Llm.ProviderId, s.Llm.BaseUrl)),
-        _ => ("llmFallback", Url(s.LlmFallback.ProviderId, s.LlmFallback.BaseUrl)),
+        SecretNames.Stt => "stt",
+        SecretNames.SttFallback => "sttFallback",
+        SecretNames.Llm => "llm",
+        _ => "llmFallback",
     };
-
-    private static string Url(string providerId, string baseUrl) =>
-        string.IsNullOrWhiteSpace(baseUrl) ? ProviderCatalog.Find(providerId)?.BaseUrl ?? "" : baseUrl.Trim();
 }

@@ -53,10 +53,6 @@ public sealed class ManagementService(IManagedTarget target, ISecretStore user, 
     /// <summary>Nach jeder Änderung des Zustands (für Seite „Firma“ und Assistent).</summary>
     public event Action? Changed;
 
-    /// <summary>Proxy-Adresse aus dem letzten Abgleich, sonst aus der Server-Adresse abgeleitet.</summary>
-    public string? ProxyBaseUrl =>
-        cache.ProxyBaseUrl ?? (target.Settings.Management.ServerUrl is { Length: > 0 } url ? Core.Api.CompanyProvider.ProxyBaseUrl(url) : null);
-
     /// <summary>Fehlercode des letzten gescheiterten Schritts (<c>code_invalid</c>, <c>offline</c>, …); null = keiner.</summary>
     public string? LastError { get; private set; }
 
@@ -144,6 +140,7 @@ public sealed class ManagementService(IManagedTarget target, ISecretStore user, 
             await user.DeleteAsync(SecretNames.Device, ct).ConfigureAwait(false);
             await DeleteCompanyKeysAsync(ct).ConfigureAwait(false);
             var settings = Copy(target.Settings);
+            ConfigApply.Detach(settings); // Zugänge auf den Firmen-Proxy wieder als eigener Server mit Proxy-Adresse
             settings.Management = new ManagementSettings();
             cache.Clear();
             await target.SaveAsync(settings, PolicySettings.None).ConfigureAwait(false);
@@ -311,6 +308,11 @@ public sealed class ManagementService(IManagedTarget target, ISecretStore user, 
             {
                 await company.DeleteAsync(name, ct).ConfigureAwait(false);
             }
+        }
+        // W2-LOCAL R-K1-1: eigene Keys, die nach der Konfiguration an ein anderes Ziel gingen, vorher löschen.
+        foreach (var drop in plan.DroppedKeys)
+        {
+            await user.DeleteAsync(drop.Name, ct).ConfigureAwait(false);
         }
         cache.Save(response.ETag, response.Body);
         await target.SaveAsync(plan.Settings!, plan.Policy).ConfigureAwait(false);

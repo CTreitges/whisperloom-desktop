@@ -41,7 +41,7 @@ public sealed class ManagementSyncTest
         r.Server.AutoApprove = true;
         Assert.Equal(SyncOutcome.Synced, await r.JoinAsync());
         Assert.Equal("approved", r.Settings.Management.State);
-        Assert.Equal(r.Server.ProxyUrl, r.Settings.Stt.BaseUrl);
+        Assert.Equal(Core.Api.CompanyProvider.EntryId, r.Settings.Stt.ProviderId); // Zugang = Eintrag „Firma“ (Proxy)
     }
 
     [Fact]

@@ -12,7 +12,7 @@ namespace WhisperLoom.App.Tests.Management;
 public sealed class CompanyAccessTest
 {
     [Fact]
-    public async Task Proxy_Modus_Geraete_Token_nur_an_den_Proxy_keine_Firmen_Keys()
+    public async Task Proxy_Modus_Zugang_wird_Eintrag_Firma_Token_nur_fuer_diesen_Eintrag()
     {
         using var r = new ManagementRig();
         r.Server.AutoApprove = true;
@@ -21,23 +21,60 @@ public sealed class CompanyAccessTest
         var token = r.User.Values[SecretNames.Device];
 
         Assert.Equal("proxy", r.Settings.Management.KeyMode);
-        Assert.Equal(r.Server.ProxyUrl, r.Service.ProxyBaseUrl);
-        Assert.Equal(token, await r.Secrets.GetAsync(SecretNames.Stt, CancellationToken.None));
-        Assert.Equal(token, await r.Secrets.GetAsync(SecretNames.Llm, CancellationToken.None)); // „wie Erkennung“ → Proxy
+        Assert.Equal((CompanyProvider.EntryId, ""), (r.Settings.Stt.ProviderId, r.Settings.Stt.BaseUrl));
+        var entry = ProviderDirectory.For(r.Settings).Find(CompanyProvider.EntryId);
+        Assert.NotNull(entry);
+        Assert.Equal((r.Server.ProxyUrl, ProviderCatalog.CustomId, "Muster GmbH"), (entry.BaseUrl, entry.Family, entry.Name));
+        Assert.Equal(token, await r.Secrets.GetAsync(CompanyProvider.EntryId, CancellationToken.None));
+        Assert.Null(await r.Secrets.GetAsync(SecretNames.Stt, CancellationToken.None)); // Zugangs-Key: Ziel ist Fest, nie der eigene
         Assert.Empty(r.Company.Values);
         Assert.True(r.Policy.IsLocked("secrets.stt")); // kein Key-Feld, key set verweigert
         Assert.Equal("test-key-not-real-1", r.User.Values[SecretNames.Stt]); // eigener Key bleibt liegen, geht aber nicht raus
 
-        // Zeigt ein Zugang woanders hin (eigener Fallback), bekommt er nie das Token.
+        // Auflösung wie in der Pipeline: Key des Eintrags = Token, Adresse = Proxy; „wie Erkennung“ erbt beides.
+        var keys = await Core.Pipeline.SettingsAccess.KeysAsync(r.Secrets, CancellationToken.None, r.Settings);
+        var stt = Core.Pipeline.SettingsAccess.Stt(r.Settings, keys);
+        Assert.Equal((r.Server.ProxyUrl, token), (stt.BaseUrl, stt.ApiKey));
+        Assert.Equal(token, Core.Pipeline.SettingsAccess.Llm(r.Settings, keys).ApiKey);
+
+        // Ein eigener Server mit anderer Adresse bekommt das Token nie (Key gehört nur zum Eintrag).
         r.Settings.SttFallback.Enabled = true;
         r.Settings.SttFallback.ProviderId = "custom";
         r.Settings.SttFallback.BaseUrl = "https://evil.example.test/api/v1/proxy";
-        Assert.NotEqual(token, await r.Secrets.GetAsync(SecretNames.SttFallback, CancellationToken.None));
+        var fallback = Core.Pipeline.SettingsAccess.SttFallback(r.Settings, keys)!;
+        Assert.NotEqual(token, fallback.ApiKey);
 
-        // Gesperrt: kein Token mehr an den Proxy, kein eigener Key an das feste Ziel.
+        // Gesperrt: kein Token mehr; der Eintrag bleibt, damit die festen Zugänge gültig bleiben.
         r.Server.Set("blocked");
         await r.Service.SyncAsync(CancellationToken.None);
-        Assert.Null(await r.Secrets.GetAsync(SecretNames.Stt, CancellationToken.None));
+        Assert.Null(await r.Secrets.GetAsync(CompanyProvider.EntryId, CancellationToken.None));
+        Assert.NotNull(ProviderDirectory.For(r.Settings).Find(CompanyProvider.EntryId));
+        keys = await Core.Pipeline.SettingsAccess.KeysAsync(r.Secrets, CancellationToken.None, r.Settings);
+        Assert.Equal("", Core.Pipeline.SettingsAccess.Stt(r.Settings, keys).ApiKey);
+    }
+
+    [Fact]
+    public async Task Verlassen_stellt_Firmen_Zugaenge_auf_eigenen_Server_mit_Proxy_Adresse_zurueck()
+    {
+        using var r = new ManagementRig();
+        r.Server.AutoApprove = true;
+        await r.JoinAsync();
+        Assert.Equal(LeaveOutcome.Left, await r.Service.LeaveAsync(CancellationToken.None));
+        Assert.Equal((ProviderCatalog.CustomId, r.Server.ProxyUrl), (r.Settings.Stt.ProviderId, r.Settings.Stt.BaseUrl));
+        Assert.Null(ProviderDirectory.For(r.Settings).Find(CompanyProvider.EntryId));
+        Assert.Null(await r.Secrets.GetAsync(CompanyProvider.EntryId, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Proxy_Adresse_eines_anderen_Hosts_wird_nicht_zum_Firmen_Eintrag()
+    {
+        using var r = new ManagementRig();
+        r.Server.AutoApprove = true;
+        r.Server.ProxyOverride = "https://other.example.test/api/v1/proxy";
+        await r.JoinAsync();
+        Assert.Equal(ProviderCatalog.CustomId, r.Settings.Stt.ProviderId); // kein Token an einen fremden Host
+        var keys = await Core.Pipeline.SettingsAccess.KeysAsync(r.Secrets, CancellationToken.None, r.Settings);
+        Assert.Equal("", Core.Pipeline.SettingsAccess.Stt(r.Settings, keys).ApiKey);
     }
 
     [Fact]
@@ -53,11 +90,8 @@ public sealed class CompanyAccessTest
         using var r = new ManagementRig();
         r.Server.AutoApprove = true;
         await r.JoinAsync();
-        // Proxy-Adresse aus der Konfiguration auf den lokalen Fake umbiegen (wie die Server-Antwort mit lokaler Adresse).
-        var cfg = r.Server.BuildConfig();
-        cfg["proxy"] = new JsonObject { ["baseUrl"] = proxy.Url("/api/v1/proxy") };
-        r.Cache.Save("\"x\"", cfg);
-        r.Settings.Stt.BaseUrl = proxy.Url("/api/v1/proxy");
+        // Gerät „läuft“ gegen den lokalen Fake als Firmen-Server: Eintrag-Adresse = <serverUrl>/api/v1/proxy.
+        r.Settings.Management.ServerUrl = proxy.Base;
         r.Settings.Stt.Model = "whisper-large-v3-turbo";
         r.Settings.Engine = "online";
 
@@ -65,6 +99,44 @@ public sealed class CompanyAccessTest
         var result = await pipeline.RunAsync(new DictationRequest(new AudioBuffer(new short[16000], 16000), "de", new Refinement(RefineMode.Off)), CancellationToken.None);
         Assert.Equal("Hallo Welt", result.Raw);
         Assert.Equal("Bearer " + r.User.Values[SecretNames.Device], auth.Single());
+    }
+
+    [Fact]
+    public async Task Budget_403_budget_exhausted_vom_Proxy_ist_Fehlerklasse_budget()
+    {
+        await using var proxy = new FakeServer();
+        proxy.Map("/api/v1/proxy/audio/transcriptions", _ =>
+            new FakeResponse(403, """{"error":"budget_exhausted","message":"Budget der Gruppe aufgebraucht"}"""));
+        using var r = new ManagementRig();
+        r.Server.AutoApprove = true;
+        await r.JoinAsync();
+        r.Settings.Management.ServerUrl = proxy.Base;
+        r.Settings.Engine = "online";
+        using var pipeline = new AppPipeline(() => r.Settings, r.Secrets, new ModelCache(Path.Combine(r.F.DataDir, "mc.json")));
+        var e = await Assert.ThrowsAnyAsync<Exception>(() =>
+            pipeline.RunAsync(new DictationRequest(new AudioBuffer(new short[16000], 16000), "de", new Refinement(RefineMode.Off)), CancellationToken.None));
+        Assert.True(CompanyProvider.IsBudgetError(e), e.GetType().Name);
+    }
+
+    [Fact]
+    public async Task Server_Konfig_mit_eigenem_Anbieter_neuer_Adresse_loescht_den_Nutzer_Key()
+    {
+        // W2-LOCAL R-K1-1 / Hinweis 6: Ein Key eines eigenen Anbieters ginge sonst an die Adresse, die die Firma setzt.
+        var own = new WhisperLoomSettings();
+        own.Providers.Custom.Add(new CustomProvider { Id = "acme", Name = "Acme", Protocol = "openai", BaseUrl = "https://acme.example.test/v1" });
+        using var r = new ManagementRig(own);
+        r.User.Values["custom:acme"] = "test-key-not-real-6";
+        r.Server.AutoApprove = true;
+        r.Server.Settings["providers"] = new JsonObject
+        {
+            ["custom"] = new JsonArray(new JsonObject
+            {
+                ["id"] = "acme", ["name"] = "Acme", ["protocol"] = "openai", ["baseUrl"] = "https://firma.example.test/v1",
+            }),
+        };
+        await r.JoinAsync();
+        Assert.Equal("https://firma.example.test/v1", r.Settings.Providers.Custom.Single().BaseUrl);
+        Assert.False(r.User.Values.ContainsKey("custom:acme"));
     }
 
     [Fact]

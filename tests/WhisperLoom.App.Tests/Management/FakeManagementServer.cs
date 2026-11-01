@@ -57,6 +57,9 @@ internal sealed class FakeManagementServer : HttpMessageHandler
 
     public string ProxyUrl => Url + "/api/v1/proxy";
 
+    /// <summary>Andere Proxy-Adresse in der Konfiguration (Server mit abweichender WL_BASE_URL).</summary>
+    public string? ProxyOverride { get; set; }
+
     /// <summary>Gerät per „Portal“ freigeben bzw. sperren.</summary>
     public void Set(string state) => Only.State = state;
 
@@ -159,9 +162,9 @@ internal sealed class FakeManagementServer : HttpMessageHandler
         var config = new JsonObject { ["tenantName"] = TenantName, ["keyMode"] = KeyMode, ["syncIntervalSec"] = 900, ["rotateToken"] = false };
         if (KeyMode == "proxy")
         {
-            config["proxy"] = new JsonObject { ["baseUrl"] = ProxyUrl };
+            config["proxy"] = new JsonObject { ["baseUrl"] = ProxyOverride ?? ProxyUrl };
             Fix(settings, levels, "stt", "providerId", "custom");
-            Fix(settings, levels, "stt", "baseUrl", ProxyUrl);
+            Fix(settings, levels, "stt", "baseUrl", ProxyOverride ?? ProxyUrl);
             Fix(settings, levels, "llm", "providerId", "same");
             Fix(settings, levels, "sttFallback", "enabled", false);
             Fix(settings, levels, "llmFallback", "enabled", false);
@@ -236,7 +239,7 @@ internal sealed class ManagementRig : IDisposable
         Target = new HostManagedTarget(F.Controller, Policies,
             uiThread ? f => Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(f) : f => f());
         Service = new ManagementService(Target, User, Company, Server.Api(), Cache, F.Log, () => F.Now);
-        Secrets = new CompanySecretStore(User, Company, () => F.Controller.Settings, () => F.Controller.Policy, () => Service.ProxyBaseUrl);
+        Secrets = new CompanySecretStore(User, Company, () => F.Controller.Settings, () => F.Controller.Policy);
     }
 
     public FakeManagementServer Server { get; } = new();
