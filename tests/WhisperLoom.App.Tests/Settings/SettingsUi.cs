@@ -12,7 +12,7 @@ internal static class SettingsUi
     public static readonly IReadOnlyList<string> PageIds = [.. ViewModels.Settings.SettingsCatalog.Pages.Select(p => p.Id)];
 
     /// <summary>Wählt eine Seite und lässt das Layout laufen; Rückgabe = die gezeigte Seiten-View.</summary>
-    public static Control Show(SettingsWindow window, string pageId)
+    public static SettingsPage Show(SettingsWindow window, string pageId)
     {
         window.Shell!.SelectedPage = window.Shell.Page(pageId);
         Dispatcher.UIThread.RunJobs();

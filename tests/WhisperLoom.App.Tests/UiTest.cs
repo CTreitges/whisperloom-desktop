@@ -52,20 +52,21 @@ public class UiTest
         using (f)
         {
             // Seitenleiste statt Tabs (W2-UI1): jede Seite zeigen und prüfen.
-            var masks = new List<TextBlock>();
+            // Werte je Seite festhalten: beim Seitenwechsel lösen sich die Bindungen der alten Seite.
+            var masks = new List<(string? Text, object? Context)>();
             var boxes = new List<TextBox>();
             var buttonTexts = new List<string>();
             Settings.SettingsUi.VisitAll(window, _ =>
             {
                 Assert.DoesNotContain(TextsOf(window), t => t.Contains(SecretValue, StringComparison.Ordinal));
-                masks.AddRange(window.GetVisualDescendants().OfType<TextBlock>().Where(t => t.Name == "MaskText"));
+                masks.AddRange(window.GetVisualDescendants().OfType<TextBlock>().Where(t => t.Name == "MaskText").Select(t => (t.Text, t.DataContext)));
                 boxes.AddRange(window.GetLogicalDescendants().OfType<TextBox>().Where(b => b.Name == "NewKeyBox"));
                 buttonTexts.AddRange(window.GetVisualDescendants().OfType<Button>().Select(b => b.Content as string ?? ""));
             });
 
             Assert.NotEmpty(masks);
             Assert.Contains(masks, m => m.Text == KeyFieldViewModel.Mask);
-            Assert.All(masks.Where(m => vm.SttKey.IsSet && m.DataContext == vm.SttKey), m => Assert.Matches("^•+$", m.Text!));
+            Assert.All(masks.Where(m => vm.SttKey.IsSet && m.Context == vm.SttKey), m => Assert.Matches("^•+$", m.Text!));
 
             // Kein Aufdecken: Ersetzen-Feld maskiert, RevealPassword aus, kein Knopf zum Anzeigen.
             Assert.NotEmpty(boxes);

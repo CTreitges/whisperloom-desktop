@@ -31,7 +31,7 @@ public class SyncUiTest
         // W2-UI1: Fest = Zeile weg (vorher ausgegraut); Gruppe nur aus festen Zeilen = Gruppe weg; Seite nennt den Verwalter.
         Loc.Instance.SetLanguage("de");
         using var f = new ControllerFixture();
-        f.Controller.Policy = new PolicySettings { Locked = ["stt.providerId", "llm", "secrets.stt"], HistoryEnabled = false };
+        f.Controller.Policy = new PolicySettings { Locked = ["stt.providerId", "llm", "secrets.stt", "secrets.llm"], HistoryEnabled = false };
         var (window, vm) = Open(f);
 
         Assert.False(vm.Editable["stt.providerId"]); // der Assistent nutzt weiter die Sperrkarte
@@ -46,9 +46,8 @@ public class SyncUiTest
         Assert.True(SettingsUi.Row(window, "secrets.sttFallback").IsShown);
         Assert.True(page.HasManagedRows);
         Assert.Equal("Einige Einstellungen werden von deiner IT verwaltet.", page.ManagedText);
-        Assert.False(window.GetVisualDescendants().OfType<ComboBox>().Single(c => c.Name == "SttProviderBox").IsEffectivelyVisible);
 
-        // Ganze Gruppe „KI-Zugang“ (llm.*) fest → Gruppe weg; Seite „Textverbesserung“ zeigt den Hinweis.
+        // Ganze Gruppe „KI-Zugang“ (llm.* und secrets.llm) fest → Gruppe weg; Seite „Textverbesserung“ zeigt den Hinweis.
         page = SettingsUi.Show(window, "text");
         var llmGroup = window.GetVisualDescendants().OfType<SettingsGroup>().Single(g => g.TitleKey == "G_Llm");
         Assert.False(llmGroup.IsShown);

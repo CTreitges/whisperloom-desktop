@@ -3,6 +3,7 @@ using System.Windows.Input;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using CommunityToolkit.Mvvm.Input;
 using WhisperLoom.App.Localization;
 using WhisperLoom.App.ViewModels.Settings;
@@ -35,6 +36,9 @@ public class SettingRow : ContentControl
         AvaloniaProperty.RegisterDirect<SettingRow, string>(nameof(BadgeText), r => r.BadgeText);
     public static readonly DirectProperty<SettingRow, string> ResetTextProperty =
         AvaloniaProperty.RegisterDirect<SettingRow, string>(nameof(ResetText), r => r.ResetText);
+
+    public static readonly DirectProperty<SettingRow, ICommand> ResetCommandProperty =
+        AvaloniaProperty.RegisterDirect<SettingRow, ICommand>(nameof(ResetCommand), r => r.ResetCommand);
 
     private string _title = "";
     private string _description = "";
@@ -121,10 +125,14 @@ public class SettingRow : ContentControl
         PseudoClasses.Set(":default", Level == ManagedLevel.Default);
         PseudoClasses.Set(":error", !string.IsNullOrEmpty(Error));
         PseudoClasses.Set(":described", Description.Length > 0);
-        if (Content is Control control)
+        // Name auf das Steuerelement; bei einem Panel auf das erste Eingabeelement ohne eigenen Text (z. B. Liste neben „Neu laden“).
+        var target = Content is Panel panel
+            ? panel.Children.OfType<TemplatedControl>().FirstOrDefault(c => c is not Button)
+            : Content as Control;
+        if (target is not null)
         {
-            control.SetValue(AutomationProperties.NameProperty, Title);
-            control.SetValue(AutomationProperties.HelpTextProperty, string.IsNullOrEmpty(Error) ? Description : Error);
+            target.SetValue(AutomationProperties.NameProperty, Title);
+            target.SetValue(AutomationProperties.HelpTextProperty, string.IsNullOrEmpty(Error) ? Description : Error);
         }
     }
 

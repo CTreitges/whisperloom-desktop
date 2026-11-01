@@ -87,9 +87,11 @@ public partial class SettingsWindow : Window
             {
                 return;
             }
-            if (row.FindAncestorOfType<Expander>() is { } expander)
+            // „Erweitert“ ist zugeklappt nicht im sichtbaren Baum: über den logischen Baum aufklappen, dann Layout abwarten.
+            if (row.FindLogicalAncestorOfType<Expander>() is { IsExpanded: false } expander)
             {
                 expander.IsExpanded = true;
+                UpdateLayout();
             }
             row.BringIntoView();
             var target = (row.Content as Control)?.GetVisualDescendants().OfType<InputElement>().FirstOrDefault(i => i.Focusable && i.IsEffectivelyEnabled)
