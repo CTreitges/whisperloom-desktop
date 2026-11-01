@@ -29,7 +29,9 @@ public sealed class WindowsInput : IDisposable
         _log = log;
         var windows = new Win32Windows();
         Flow = new InputFlow(controller, sink, new InputPresenter(TargetCenter), windows.Foreground,
-            active => _hook!.Update(m => m.OverlayKeysActive = active));
+            active => _hook!.Update(m => m.OverlayKeysActive = active),
+            w => new Features.Profiles.WindowInfo(windows.ProcessName(w), Win32Windows.Title(w)),
+            new Features.Rewrite.SelectionCapture(new Win32TextClipboard(), new Win32KeySender()));
         Flow.FallbackToast += outcome => Dispatcher.UIThread.Post(() => Flow.ShowFallback(outcome));
         // Log nur Metadaten: Ergebnis, Prozess und Fokus-Klasse des Fensters, das die Eingabe bekam — nie Text.
         sink.Inserted += outcome => Dispatcher.UIThread.Post(() => _log.Event(
@@ -121,6 +123,8 @@ public sealed class WindowsInput : IDisposable
             m.Hold = on ? Hotkey.ParseOr(desktop.HotkeyHold, Hotkey.DefaultHold) : null;
             m.Toggle = on ? Hotkey.ParseOr(desktop.HotkeyToggle, Hotkey.DefaultToggle) : null;
             m.Stage = on ? Hotkey.ParseOr(desktop.HotkeyStage, Hotkey.DefaultStage) : null;
+            m.Reinsert = on ? Hotkey.ParseOr(desktop.HotkeyReinsert, Hotkey.DefaultReinsert) : null;
+            m.Rewrite = on ? Hotkey.ParseOr(desktop.HotkeyRewrite, Hotkey.DefaultRewrite) : null;
         });
     }
 

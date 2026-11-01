@@ -26,6 +26,9 @@ internal sealed class Win32KeySender : IKeySender
     public bool SendCtrlV() =>
         Send([Key(Hotkey.VkControl, false), Key('V', false), Key('V', true), Key(Hotkey.VkControl, true)]);
 
+    public bool SendCtrlC() =>
+        Send([Key(Hotkey.VkControl, false), Key('C', false), Key('C', true), Key(Hotkey.VkControl, true)]);
+
     public bool SendEnter() => Send([Key(Hotkey.VkReturn, false), Key(Hotkey.VkReturn, true)]);
 
     // Doku: learn.microsoft.com/windows/win32/api/winuser/ns-winuser-keybdinput (KEYEVENTF_UNICODE, abgerufen 2026-10-31).
@@ -108,6 +111,14 @@ internal sealed class Win32Windows : IWindowAdapter
         return GetForegroundWindow() == window;
     }
 
+    /// <summary>Fenstertitel für die App-Profile; "" ohne Titel.</summary>
+    // Doku: learn.microsoft.com/windows/win32/api/winuser/nf-winuser-getwindowtextw (abgerufen 2026-11-01).
+    public static string Title(IntPtr window)
+    {
+        var title = new System.Text.StringBuilder(512);
+        return GetWindowTextW(window, title, title.Capacity) > 0 ? title.ToString() : "";
+    }
+
     public string ProcessName(IntPtr window)
     {
         GetWindowThreadProcessId(window, out var pid);
@@ -174,6 +185,9 @@ internal sealed class Win32Windows : IWindowAdapter
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern int GetClassNameW(IntPtr hwnd, System.Text.StringBuilder name, int max);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetWindowTextW(IntPtr hwnd, System.Text.StringBuilder text, int max);
 
     [DllImport("kernel32.dll")]
     private static extern bool CloseHandle(IntPtr handle);

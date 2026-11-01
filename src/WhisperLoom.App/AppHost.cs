@@ -46,9 +46,11 @@ public sealed class AppHost
         var policy = LoadPolicy();
         policy.Enforce(settings);
         History = new FileHistoryStore(Path.Combine(options.DataDir, "history"), () => Controller!.Settings.History);
-        Controller = new DictationController(recorder, pipeline(() => Controller!.Settings), output, History, Log, settings, Store.Save)
+        var dictation = pipeline(() => Controller!.Settings);
+        Controller = new DictationController(recorder, dictation, output, History, Log, settings, Store.Save)
         {
             Policy = policy,
+            Rewriter = dictation as Features.Rewrite.ISelectionRewriter,
         };
         Loc.Instance.SetLanguage(SettingsStore.Desktop(settings).UiLanguage);
     }
@@ -113,6 +115,46 @@ public sealed class AppHost
 
     /// <summary>Fenster-Aktionen (Bühnenansicht, Verlauf, Einstellungen, Beenden); setzt die App.</summary>
     public Action<string>? ShowWindow { get; set; }
+
+    /// <summary>Windows mit Hotkeys: Text ins Ziel des letzten Diktats einfügen (Tray-Verlauf); null = kopieren.</summary>
+    public Func<string, Task<string>>? InsertRecent { get; set; }
+
+    /// <summary>Windows mit Hotkeys: wie der Hotkey „erneut einfügen“ (Vordergrundfenster); null = kopieren.</summary>
+    public Func<Task<string>>? Reinsert { get; set; }
+
+    /// <summary>Klick im Tray-Verlauf bzw. <c>recent-insert</c>: einfügen (Windows mit Hotkeys) bzw. in die Zwischenablage.</summary>
+    public Task<string> InsertRecentTextAsync(string text) => InsertRecent is { } insert ? insert(text) : CopyAsync(text);
+
+    private async Task<string> RecentInsertAsync(string index)
+    {
+        IReadOnlyList<HistoryEntry> recent;
+        try
+        {
+            recent = await Controller.RecentAsync();
+        }
+        catch (IOException)
+        {
+            return "no-entry";
+        }
+        return int.TryParse(index, out var n) && n >= 0 && n < recent.Count ? await InsertRecentTextAsync(recent[n].Text) : "no-entry";
+    }
+
+    private async Task<string> CopyAsync(string? text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return "no-entry";
+        }
+        try
+        {
+            await Output.WriteAsync(text, CancellationToken.None);
+            return "copied";
+        }
+        catch (IOException)
+        {
+            return "error";
+        }
+    }
 
     /// <summary>Die echte Zusammensetzung für einen App-Start.</summary>
     internal static async Task<AppHost> CreateAsync(AppOptions options, CancellationToken ct)
@@ -181,9 +223,31 @@ public sealed class AppHost
                     message = "stage-unavailable";
                 }
                 break;
+            case "reprocess":
+                try
+                {
+                    message = await Controller.ReprocessAsync(args.Count > 0 ? args[0] : Controller.Stage.Key(), args.Count > 1 ? args[1] : null);
+                }
+                catch (ArgumentException)
+                {
+                    ok = false;
+                    message = "stage-unavailable";
+                }
+                break;
+            case "reinsert":
+                message = Reinsert is { } reinsert ? await reinsert() : await CopyAsync(await Controller.LatestTextAsync());
+                break;
+            case "recent-insert":
+                message = await RecentInsertAsync(args.Count > 0 ? args[0] : "0");
+                ok = message != "no-entry";
+                break;
             case "show": ShowWindow?.Invoke("stage"); message = "shown"; break;
             case "quit": ShowWindow?.Invoke("quit"); message = "quitting"; break;
             default: ok = false; message = "unknown-verb"; break;
+        }
+        if (message is "no-entry")
+        {
+            ok = false;
         }
         if (message is "audio-unavailable" or "error" or "busy")
         {
@@ -269,6 +333,12 @@ public sealed class AppHost
             ["output"] = Options.OutputFile is null ? "clipboard" : "file",
             ["local"] = LocalStatus(),
             ["input"] = InputStatus?.Invoke(),
+            ["recent"] = new JsonArray([.. Features.Reinsert.RecentHistory.Take(history).Select(e => (JsonNode)new JsonObject
+            {
+                ["id"] = e.Id,
+                ["label"] = Features.Reinsert.RecentHistory.Label(e),
+                ["stage"] = e.Refinement.Mode.Key(),
+            })]),
         };
     }
 }

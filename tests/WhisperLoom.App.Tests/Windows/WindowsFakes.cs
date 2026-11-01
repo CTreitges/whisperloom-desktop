@@ -49,6 +49,12 @@ internal sealed class FakeClipboard(Steps steps) : IClipboardAdapter
         SequenceNumber++;
     }
 
+    public string? GetText()
+    {
+        steps.Add("get-text");
+        return Text;
+    }
+
     public void OnPaste()
     {
         if (ChangedByOthers)
@@ -86,6 +92,20 @@ internal sealed class FakeKeys(Steps steps, FakeClipboard clipboard) : IKeySende
         Target += clipboard.Text;
         clipboard.OnPaste();
         AfterPaste?.Invoke();
+        return true;
+    }
+
+    /// <summary>Was das Ziel markiert hat; null = nichts (Strg+C ändert die Zwischenablage nicht).</summary>
+    public string? Selection { get; set; }
+
+    public bool SendCtrlC()
+    {
+        steps.Add("ctrl-c");
+        if (Selection is not null)
+        {
+            clipboard.Text = Selection;
+            clipboard.SequenceNumber++;
+        }
         return true;
     }
 

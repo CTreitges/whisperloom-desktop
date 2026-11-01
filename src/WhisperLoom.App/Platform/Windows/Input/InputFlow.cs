@@ -1,5 +1,7 @@
 using System.ComponentModel;
 using System.Text.Json.Nodes;
+using WhisperLoom.App.Features.Profiles;
+using WhisperLoom.App.Features.Rewrite;
 using WhisperLoom.App.Localization;
 using WhisperLoom.App.Platform.Windows.Overlay;
 using WhisperLoom.App.Platform.Windows.TextOutput;
@@ -30,7 +32,9 @@ public interface IInputPresenter
 
 /// <summary>
 /// Ablauf der Tastenkürzel auf dem UI-Thread: Halten (Pille), Umschalten (Overlay mit Enter/Strg+Enter/Rücktaste und
-/// Knöpfen), Stufe (Hinweis). Das Zielfenster wird beim Start gemerkt und an die <see cref="InsertOutputSink"/> gegeben.
+/// Knöpfen), Stufe (Hinweis), dazu die Extras (WLD-P5b): erneut einfügen, Markierung umschreiben (Overlay nimmt die
+/// Anweisung auf) und App-Profile des Zielfensters. Das Zielfenster wird beim Start gemerkt und an die
+/// <see cref="InsertOutputSink"/> gegeben.
 /// </summary>
 public sealed class InputFlow
 {
@@ -43,24 +47,39 @@ public sealed class InputFlow
     private readonly IInputPresenter _ui;
     private readonly Func<IntPtr> _foreground;
     private readonly Action<bool> _overlayKeys;
+    private readonly Func<IntPtr, WindowInfo>? _describe;
+    private readonly SelectionCapture? _capture;
     private Mode _mode;
     private IntPtr _target;
+    private string _selection = "";
 
     private enum Mode
     {
         None,
         Hold,
         Toggle,
+        Rewrite,
     }
 
     /// <param name="overlayKeys">Schaltet im Hook Enter/Strg+Enter/Rücktaste ans Overlay (true) bzw. wieder frei.</param>
-    public InputFlow(DictationController controller, InsertOutputSink sink, IInputPresenter ui, Func<IntPtr> foreground, Action<bool> overlayKeys)
+    /// <param name="describe">Prozess und Titel eines Fensters für die App-Profile; null = keine Profile.</param>
+    /// <param name="capture">Markierung holen (Umschreiben); null = nicht verfügbar.</param>
+    public InputFlow(
+        DictationController controller,
+        InsertOutputSink sink,
+        IInputPresenter ui,
+        Func<IntPtr> foreground,
+        Action<bool> overlayKeys,
+        Func<IntPtr, WindowInfo>? describe = null,
+        SelectionCapture? capture = null)
     {
         _controller = controller;
         _sink = sink;
         _ui = ui;
         _foreground = foreground;
         _overlayKeys = overlayKeys;
+        _describe = describe;
+        _capture = capture;
         Overlay = new OverlayViewModel(PauseResume, Discard, enter => _ = SendAsync(enter));
         controller.PropertyChanged += OnControllerChanged;
         sink.Inserted += outcome =>
@@ -84,7 +103,7 @@ public sealed class InputFlow
         switch (action)
         {
             case HotkeyAction.HoldStart when _controller.State == DictationState.Idle:
-                if (Begin(Mode.Hold))
+                if (Begin(Mode.Hold, _foreground()))
                 {
                     _ui.ShowPill(_target);
                 }
@@ -97,6 +116,7 @@ public sealed class InputFlow
                 _ui.HidePill();
                 if (result == "error")
                 {
+                    _sink.Disarm();
                     Toast(_controller.LastErrorKey ?? "Overlay_Error");
                 }
                 break;
@@ -107,18 +127,20 @@ public sealed class InputFlow
                 _ui.HidePill();
                 break;
             case HotkeyAction.Toggle when _mode == Mode.Toggle && _controller.IsRecording:
+            case HotkeyAction.Rewrite when _mode == Mode.Rewrite && _controller.IsRecording:
                 await SendAsync(false);
                 break;
             case HotkeyAction.Toggle when _controller.State == DictationState.Idle:
-                if (Begin(Mode.Toggle))
+                if (Begin(Mode.Toggle, _foreground()))
                 {
-                    Overlay.ErrorKey = null;
-                    Overlay.State = OverlayState.Recording;
-                    Overlay.Stage = StageLabel();
-                    Tick();
-                    _ui.ShowOverlay(Overlay, _target);
-                    _overlayKeys(true);
+                    OpenOverlay(StageLabel());
                 }
+                break;
+            case HotkeyAction.Rewrite when _controller.State == DictationState.Idle && _mode == Mode.None:
+                await BeginRewriteAsync();
+                break;
+            case HotkeyAction.Reinsert when _controller.State == DictationState.Idle && _mode == Mode.None:
+                await ReinsertAsync(_foreground());
                 break;
             case HotkeyAction.OverlaySend:
                 await SendAsync(false);
@@ -146,11 +168,42 @@ public sealed class InputFlow
         }
     }
 
+    /// <summary>
+    /// Fügt <paramref name="text"/> in <paramref name="target"/> ein (Ausgabemodus des Profils, ohne Enter); ist das Ziel weg,
+    /// liegt der Text in der Zwischenablage (Toast). Hotkey „erneut einfügen“ und Klick im Tray-Verlauf.
+    /// </summary>
+    /// <returns>Ergebnis des Einfügens (<see cref="InsertOutcome"/>), "busy" oder "error".</returns>
+    public async Task<string> InsertTextAsync(IntPtr target, string text)
+    {
+        if (_controller.State != DictationState.Idle || _mode != Mode.None)
+        {
+            return "busy";
+        }
+        _target = target;
+        _sink.Arm(target, pressEnter: false, InsertModeOf(ProfileFor(target)));
+        try
+        {
+            await _sink.WriteAsync(text, CancellationToken.None);
+        }
+        catch (IOException)
+        {
+            _sink.Disarm();
+            Toast("Error_Output");
+            return "error";
+        }
+        return _sink.LastOutcome?.ToString() ?? "done";
+    }
+
+    /// <summary>Klick im Tray-Verlauf: ins Ziel des letzten Diktats (Tray-Klick nimmt den Fokus), sonst Zwischenablage.</summary>
+    public Task<string> InsertRecentAsync(string text) => InsertTextAsync(_sink.LastTarget, text);
+
     public JsonObject Status()
     {
         var status = _ui.Status();
         status["mode"] = ModeName;
         status["overlayState"] = Overlay.State.ToString().ToLowerInvariant();
+        status["overlayStage"] = Overlay.Stage;
+        status["profile"] = _controller.ActiveProfile is { } m ? AppProfiles.DisplayName(m.Profile) : null;
         status["lastInsert"] = _sink.LastOutcome?.ToString();
         status["lastInsertWindow"] = _sink.LastReport is { } r
             ? new JsonObject
@@ -165,13 +218,17 @@ public sealed class InputFlow
         return status;
     }
 
-    private bool Begin(Mode mode)
+    private bool Begin(Mode mode, IntPtr target)
     {
-        _target = _foreground();
-        _sink.Arm(_target);
+        _target = target;
+        // Umschreiben ersetzt nur die Markierung: ohne Profil-Stufe und ohne Enter danach.
+        var match = mode == Mode.Rewrite ? null : ProfileFor(target);
+        _controller.ActiveProfile = match;
+        _sink.Arm(target, match?.Profile.PressEnter ?? false, InsertModeOf(match));
         var started = _controller.Start();
         if (started != "recording")
         {
+            _controller.ActiveProfile = null;
             _sink.Disarm();
             Toast(_controller.LastErrorKey ?? "Overlay_Error");
             return false;
@@ -180,19 +237,76 @@ public sealed class InputFlow
         return true;
     }
 
-    private async Task SendAsync(bool pressEnter)
+    private void OpenOverlay(string stage)
     {
-        if (_mode != Mode.Toggle || !_controller.IsRecording)
+        Overlay.ErrorKey = null;
+        Overlay.State = OverlayState.Recording;
+        Overlay.Stage = stage;
+        Tick();
+        _ui.ShowOverlay(Overlay, _target);
+        _overlayKeys(true);
+    }
+
+    /// <summary>Markierung holen (Zwischenablage gesichert und wiederhergestellt), dann die Anweisung im Overlay aufnehmen.</summary>
+    private async Task BeginRewriteAsync()
+    {
+        if (_capture is null)
         {
             return;
         }
+        var target = _foreground();
+        string? selection;
+        try
+        {
+            selection = await _capture.CaptureAsync(CancellationToken.None);
+        }
+        catch (IOException)
+        {
+            selection = null;
+        }
+        if (selection is null)
+        {
+            _target = target;
+            Toast("Rewrite_NothingSelected");
+            return;
+        }
+        if (_controller.State != DictationState.Idle || _mode != Mode.None || !Begin(Mode.Rewrite, target))
+        {
+            return;
+        }
+        _selection = selection;
+        OpenOverlay(Loc.Instance["Rewrite_Label"]);
+    }
+
+    private async Task ReinsertAsync(IntPtr target)
+    {
+        var text = await _controller.LatestTextAsync();
+        if (string.IsNullOrEmpty(text))
+        {
+            _target = target;
+            Toast("Reinsert_Nothing");
+            return;
+        }
+        await InsertTextAsync(target, text);
+    }
+
+    private async Task SendAsync(bool pressEnter)
+    {
+        if (_mode is not (Mode.Toggle or Mode.Rewrite) || !_controller.IsRecording)
+        {
+            return;
+        }
+        var rewrite = _mode == Mode.Rewrite;
         _mode = Mode.None;
         _overlayKeys(false);
-        _sink.SetPressEnter(pressEnter);
+        _sink.SetPressEnter(pressEnter || (_controller.ActiveProfile?.Profile.PressEnter ?? false));
         Overlay.State = OverlayState.Processing;
-        var result = await _controller.StopAsync();
+        var result = rewrite ? await _controller.StopAndRewriteAsync(_selection) : await _controller.StopAsync();
+        _selection = "";
         if (result == "error")
         {
+            // Nichts eingefügt: das nächste Ergebnis (Tray, CLI) darf nicht ins alte Ziel gehen.
+            _sink.Disarm();
             Overlay.ErrorKey = _controller.LastErrorKey;
             Overlay.State = OverlayState.Error;
             await Task.Delay(ErrorDuration);
@@ -207,11 +321,12 @@ public sealed class InputFlow
 
     private void Discard()
     {
-        if (_mode != Mode.Toggle || !_controller.IsRecording)
+        if (_mode is not (Mode.Toggle or Mode.Rewrite) || !_controller.IsRecording)
         {
             return;
         }
         _mode = Mode.None;
+        _selection = "";
         _overlayKeys(false);
         _controller.Cancel();
         _sink.Disarm();
@@ -232,21 +347,22 @@ public sealed class InputFlow
         }
         var mode = _mode;
         _mode = Mode.None;
+        _selection = "";
         _overlayKeys(false);
         _sink.Disarm();
-        if (mode == Mode.Toggle)
+        if (mode == Mode.Hold)
         {
-            _ui.HideOverlay();
+            _ui.HidePill();
         }
         else
         {
-            _ui.HidePill();
+            _ui.HideOverlay();
         }
     }
 
     private void PauseResume()
     {
-        if (_mode != Mode.Toggle)
+        if (_mode is not (Mode.Toggle or Mode.Rewrite))
         {
             return;
         }
@@ -261,19 +377,42 @@ public sealed class InputFlow
         }
     }
 
+    /// <summary>Stufen-Hotkey: mit aktivem Profil (laufendes Diktat bzw. Vordergrundfenster) dessen Stufe, sonst die Standard-Stufe.</summary>
     private void NextStage()
     {
-        try
+        var match = _mode == Mode.None ? ProfileFor(_foreground()) : _controller.ActiveProfile;
+        string label;
+        if (match is not null)
         {
-            _controller.SetStage("next");
+            var stage = _controller.NextProfileStage(match.Index);
+            label = $"{AppProfiles.DisplayName(match.Profile)} · {Loc.Instance["Stage_" + stage.Key()]}";
         }
-        catch (ArgumentException)
+        else
         {
-            return;
+            try
+            {
+                _controller.SetStage("next");
+            }
+            catch (ArgumentException)
+            {
+                return;
+            }
+            label = StageLabel();
         }
-        Overlay.Stage = StageLabel();
-        _ui.ShowHint("stage", Loc.Instance["Stage_Label"], StageLabel(), StageHintDuration, _foreground());
+        if (_mode != Mode.Rewrite)
+        {
+            Overlay.Stage = label;
+        }
+        _ui.ShowHint("stage", Loc.Instance["Stage_Label"], label, StageHintDuration, _foreground());
     }
+
+    private ProfileMatch? ProfileFor(IntPtr window) =>
+        _describe is null || window == IntPtr.Zero
+            ? null
+            : AppProfiles.Resolve(SettingsStore.Desktop(_controller.Settings).Profiles, _describe(window));
+
+    private static InsertMode? InsertModeOf(ProfileMatch? match) =>
+        match is { Profile.InsertMode.Length: > 0 } ? InsertModes.FromKey(match.Profile.InsertMode) : null;
 
     /// <summary>Toast für einen Fallback (Text liegt in der Zwischenablage).</summary>
     public void ShowFallback(InsertOutcome outcome) =>
@@ -281,5 +420,10 @@ public sealed class InputFlow
 
     private void Toast(string key) => _ui.ShowHint("toast", "WhisperLoom", Loc.Instance[key], ToastDuration, _target);
 
-    private string StageLabel() => Loc.Instance["Stage_" + _controller.Stage.Key()];
+    /// <summary>Stufe des laufenden Diktats; mit Profil als „Profil · Stufe“.</summary>
+    private string StageLabel()
+    {
+        var stage = Loc.Instance["Stage_" + _controller.EffectiveStage.Key()];
+        return _controller.ActiveProfile is { } m ? $"{AppProfiles.DisplayName(m.Profile)} · {stage}" : stage;
+    }
 }

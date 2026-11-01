@@ -67,7 +67,8 @@ public partial class App : Application
     {
         try
         {
-            var menu = new TrayMenu(host.Controller, Open);
+            var menu = new TrayMenu(host.Controller, Open, entry => host.InsertRecentTextAsync(entry.Text));
+            _ = menu.ReloadRecentAsync();
             _tray = new TrayIcon
             {
                 Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://WhisperLoom/Assets/whisperloom.ico"))),
@@ -109,6 +110,12 @@ public partial class App : Application
                 return status;
             };
             RecordHotkey = async () => (await input.RecordAsync())?.ToString();
+            host.InsertRecent = input.Flow.InsertRecentAsync;
+            host.Reinsert = async () =>
+            {
+                await input.Flow.HandleAsync(Platform.Windows.Input.HotkeyAction.Reinsert);
+                return input.Flow.Status()["lastInsert"]?.ToString() ?? "done";
+            };
         }
     }
 
