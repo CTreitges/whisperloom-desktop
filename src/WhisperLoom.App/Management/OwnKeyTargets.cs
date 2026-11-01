@@ -72,7 +72,7 @@ public sealed class OwnKeyTargets(string dataDir)
             o[name] = new JsonArray([.. origins.Order(StringComparer.Ordinal).Select(s => (JsonNode)s)]);
         }
         Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-        var tmp = FilePath + ".tmp";
+        var tmp = $"{FilePath}.{Guid.NewGuid():N}.tmp"; // CLI und App schreiben womöglich zugleich
         File.WriteAllText(tmp, o.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
         File.Move(tmp, FilePath, overwrite: true);
     }

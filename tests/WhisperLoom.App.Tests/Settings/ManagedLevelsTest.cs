@@ -87,6 +87,32 @@ public sealed class ManagedLevelsTest
     }
 
     [AvaloniaFact]
+    public async Task Reset_to_a_default_with_another_host_drops_the_own_key()
+    {
+        // W2-FIX Prüfer-Befund 1: Die Vorgabe zeigt auf einen anderen Host; der eigene Key ginge nach dem Zurücksetzen dorthin.
+        Loc.Instance.SetLanguage("de");
+        using var f = new ControllerFixture();
+        f.Controller.Settings.Stt.ProviderId = "custom";
+        f.Controller.Settings.Stt.BaseUrl = "https://eigener.example.test/v1";
+        f.Controller.Settings.Management.Overrides = ["stt.baseUrl"];
+        f.Controller.Policy = new PolicySettings { Defaults = Defaults(("stt.baseUrl", "https://firma.example.test/v1")) };
+        var secrets = new MemorySecretStore();
+        secrets.Values[Core.Contracts.SecretNames.Stt] = "test-key-not-real-1";
+        secrets.Values[Core.Contracts.SecretNames.Llm] = "test-key-not-real-2";
+        var window = new SettingsWindow(new SettingsViewModel(f.Controller, secrets, new FakeAccessChecker()));
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+
+        await window.Shell!.ResetToDefaultAsync("stt.baseUrl");
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Equal("https://firma.example.test/v1", f.Controller.Settings.Stt.BaseUrl);
+        Assert.False(secrets.Values.ContainsKey(Core.Contracts.SecretNames.Stt));
+        Assert.False(secrets.Values.ContainsKey(Core.Contracts.SecretNames.Llm)); // „wie Erkennung“: ginge ebenfalls an die Firma
+        window.Close();
+    }
+
+    [AvaloniaFact]
     public async Task An_import_after_a_reset_reloads_the_window_from_the_new_values()
     {
         // Review W2-UI1 R2: Nach „Zurücksetzen“ ersetzte die Hülle die Session; das Import-Abo hing an der alten → alte Werte.

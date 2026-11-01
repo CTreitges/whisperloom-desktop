@@ -89,4 +89,16 @@ public class ProvisioningAccessKeyTest
         // „wie Erkennung“: „Zugang prüfen“ schickt den llm-Key an die Erkennung.
         Assert.Contains("https://angreifer.example.test:8443", KeyRoutes.OriginsOf(s, SecretNames.Llm));
     }
+
+    [Fact]
+    public void OriginsOf_counts_a_manual_proxy_as_target()
+    {
+        var s = OpenAi();
+        var plain = KeyRoutes.OriginsOf(s, SecretNames.Stt);
+        var proxied = SyncImport.Preview(s, SyncDocument.Parse(
+            """{"schemaVersion":1,"desktop":{"proxyMode":"manual","proxyUrl":"http://proxy.example.test:3128"}}"""), PolicySettings.None, []).Settings!;
+
+        Assert.DoesNotContain(plain, o => o.StartsWith("Proxy ", StringComparison.Ordinal));
+        Assert.Contains("Proxy http://proxy.example.test:3128", KeyRoutes.OriginsOf(proxied, SecretNames.Stt));
+    }
 }

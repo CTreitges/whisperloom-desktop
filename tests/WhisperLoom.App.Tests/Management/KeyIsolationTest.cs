@@ -185,6 +185,38 @@ public sealed class KeyIsolationTest
     }
 
     [Fact]
+    public async Task Tiefe_Override_nur_auf_Abschnittsebene_gibt_den_Key_nicht_frei()
+    {
+        // Prüfer-Befund 3: Vorgabe auf „stt“ als Ganzes plus geändertes Modell ist keine Wahl des Ziels.
+        using var r = Distribute();
+        await r.JoinAsync();
+        var changed = Copy(r.Settings);
+        changed.Stt.ProviderId = "custom";
+        changed.Stt.BaseUrl = "https://firma-vorgabe.example.test/v1";
+        changed.Management.Overrides = ["stt"];
+        await r.F.Controller.ApplySettingsAsync(changed);
+
+        Assert.Equal("", (await SttRoute(r)).Key);
+    }
+
+    [Fact]
+    public async Task M3_Firmencode_in_settings_verbindet_ein_verwaltetes_Geraet_nicht_neu()
+    {
+        // Prüfer-Befund 4: Token verloren, Code nachgetragen – kein neues Gerät (sonst wären Fest und allowLeave=false weg).
+        using var r = new ManagementRig();
+        r.Server.AutoApprove = true;
+        r.Server.AllowLeave = false;
+        await r.JoinAsync();
+        r.User.Values.Remove(SecretNames.Device);
+        var changed = Copy(r.Settings);
+        changed.Management.Code = FakeManagementServer.Code;
+        await r.F.Controller.ApplySettingsAsync(changed);
+
+        Assert.Equal(SyncOutcome.Revoked, await r.Service.SyncAsync(CancellationToken.None));
+        Assert.Single(r.Server.Devices);
+    }
+
+    [Fact]
     public async Task M3_Join_bei_bestehender_Anbindung_abgelehnt()
     {
         using var r = new ManagementRig();

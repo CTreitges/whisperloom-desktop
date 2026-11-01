@@ -56,7 +56,16 @@ public static class KeyRoutes
     /// wäre (W2-FIX K-1: Ziel, für das ein eigener Key unter Firmen-Verwaltung gespeichert wurde). Dieselbe Auflösung wie
     /// <see cref="Dropped"/>; Erben gibt es nur bei gleichem Server, die Menge ist also nie kleiner als im Diktat.
     /// </summary>
-    public static IReadOnlySet<string> OriginsOf(WhisperLoomSettings settings, string name) => Targets(settings, [name])[name];
+    /// Geht der Key über einen manuellen Proxy, zählt dieser als eigenes Ziel (<c>Proxy &lt;origin&gt;</c>).
+    public static IReadOnlySet<string> OriginsOf(WhisperLoomSettings settings, string name)
+    {
+        var origins = Targets(settings, [name])[name];
+        if (origins.Count > 0 && ManualProxy(settings) is { } proxy)
+        {
+            origins.Add("Proxy " + proxy);
+        }
+        return origins;
+    }
 
     /// <summary>
     /// Je Key-Name die Origins, an die ihn die vier Zugänge (und „Zugang prüfen“) schicken. Abgeschaltete Fallbacks zählen mit.

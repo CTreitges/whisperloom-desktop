@@ -88,6 +88,13 @@ public sealed class ZipSlipTest : IDisposable
     [InlineData("sub/", false)]
     [InlineData("C:a.txt", false)]
     [InlineData("a.txt:stream", false)]
+    [InlineData("CON", false)] // Gerätenamen (Prüfer-Befund 9)
+    [InlineData("nul.txt", false)]
+    [InlineData("aux .dll", false)]
+    [InlineData("COM1.dll", false)]
+    [InlineData("lpt9", false)]
+    [InlineData("console.dll", true)]
+    [InlineData("com10.dll", true)]
     public void SafePath_only_plain_names_inside_the_folder(string name, bool ok)
     {
         var path = ArchiveNames.SafePath(_root, name);

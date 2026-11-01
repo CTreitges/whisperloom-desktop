@@ -284,7 +284,8 @@ public sealed class ManagementService(IManagedTarget target, ISecretStore user, 
     /// <summary>Ohne Token: Provisioning mit Firmencode → jetzt verbinden; sonst gilt das Gerät als widerrufen.</summary>
     private async Task<SyncOutcome> WithoutTokenAsync(ManagementSettings m, CancellationToken ct)
     {
-        if (m.Code.Length > 0)
+        // W2-FIX (Prüfer-Befund 4): Der Firmencode verbindet nur ein noch nicht verbundenes bzw. widerrufenes Gerät (M-3).
+        if (m.Code.Length > 0 && m.State is "none" or "revoked")
         {
             try
             {

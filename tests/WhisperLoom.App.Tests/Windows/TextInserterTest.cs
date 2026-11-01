@@ -97,6 +97,17 @@ public class TextInserterTest
     }
 
     [Fact]
+    public async Task M4_guard_without_element_in_a_browser_or_electron_app_copies_instead()
+    {
+        // Prüfer-Befund 5: Chats in einem Fenster; ohne Element-Kennung lieber Zwischenablage + Hinweis.
+        _rig.Windows.Classes[42] = "Chrome_WidgetWin_1";
+        Assert.Equal(InsertOutcome.NotForeground,
+            await _rig.Inserter.InsertAsync(42, "x", InsertMode.Paste, false, CancellationToken.None, guard: new InsertGuard(null)));
+        Assert.DoesNotContain("ctrl-v", _rig.Steps);
+        Assert.Equal("x", _rig.Clipboard.Text);
+    }
+
+    [Fact]
     public async Task M4_element_switch_during_the_check_is_caught_before_sending()
     {
         // Erste Element-Abfrage stimmt, während der Fokus-Prüfung wechselt der Nutzer den Entwurf.

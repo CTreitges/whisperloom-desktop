@@ -93,9 +93,12 @@ public sealed class CompanySecretStore(ISecretStore user, ISecretStore company, 
     /// <summary>Die eigenen Keys des Nutzers ohne Firmen-Regeln (für K1-Prüfungen: was liegt wirklich gespeichert?).</summary>
     public ISecretStore UserStore => user;
 
-    /// <summary>Anbieter und Adresse des Zugangs <paramref name="access"/> hat der Nutzer selbst gegen die Vorgabe gesetzt (Override).</summary>
+    /// <summary>
+    /// Anbieter und Adresse des Zugangs <paramref name="access"/> hat der Nutzer selbst gegen die Vorgabe gesetzt (Override).
+    /// Nur genau diese Blatt-Pfade zählen: eine Vorgabe auf den ganzen Abschnitt plus geändertes Modell ist keine Wahl des Ziels.
+    /// </summary>
     public static bool UserChoseTarget(WhisperLoomSettings s, string access) =>
-        ManagedDefaults.IsOverridden(s, Section(access) + ".providerId") && ManagedDefaults.IsOverridden(s, Section(access) + ".baseUrl");
+        s.Management.Overrides.Contains(Section(access) + ".providerId") && s.Management.Overrides.Contains(Section(access) + ".baseUrl");
 
     public Task DeleteAsync(string name, CancellationToken ct) => user.DeleteAsync(name, ct);
 

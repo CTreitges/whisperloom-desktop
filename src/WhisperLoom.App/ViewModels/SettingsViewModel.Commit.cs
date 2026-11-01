@@ -85,7 +85,17 @@ public sealed partial class SettingsViewModel
     public async Task ResetToDefaultAsync(string path, Design.IManagedSource source)
     {
         await Pending;
-        await ApplyAsync(source.Reset(_controller.Settings, path));
+        var before = _controller.Settings;
+        var after = source.Reset(before, path);
+        // W2-FIX (Prüfer-Befund 1): Die Vorgabe kann ein anderes Ziel haben (Host, eigener Anbieter gleicher ID, Proxy). Eigene
+        // Keys, die danach neu dorthin gingen, verwerfen wie beim Import (K1).
+        var stored = await Cli.SyncCommands.StoredKeysAsync(_secrets, CancellationToken.None, before,
+            after.Providers.Custom.Select(c => ProvidersSettings.CustomPrefix + c.Id));
+        foreach (var drop in KeyRoutes.Dropped(before, after, stored))
+        {
+            await _secrets.DeleteAsync(drop.Name, CancellationToken.None);
+        }
+        await ApplyAsync(after);
     }
 
     /// <summary>Gültige Änderung an der Kopie: im Fenster sofort speichern.</summary>

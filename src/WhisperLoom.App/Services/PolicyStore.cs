@@ -62,7 +62,8 @@ public sealed class PolicyStore(string dataDir)
         }
         if (!File.Exists(FixedPath))
         {
-            // W2-FIX N-1: Richtlinie mit Fest-Pfaden, aber Werte gelöscht → wie unlesbar (fail-closed statt still nichts erzwingen).
+            // W2-FIX N-1: Richtlinie mit Fest-Pfaden, aber Werte gelöscht → wie unlesbar (Log, ETag vergessen). Erzwingen lässt
+            // sich ohne die Werte erst wieder nach dem nächsten vollen Abgleich; offline bleibt der lokale Stand.
             return (settings, policy.Locked.Count > 0 ? -1 : 0, []);
         }
         JsonObject? stored;

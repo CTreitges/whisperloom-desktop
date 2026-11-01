@@ -263,7 +263,9 @@ public sealed class TextInserter(
         }
         if (guard.ElementId is null)
         {
-            return true;
+            // Ohne Element-Kennung nur das Fenster. In Browser und Electron (Chats in einem Fenster, Prüfer-Befund 5) reicht
+            // das nicht: dort lieber Zwischenablage + Hinweis.
+            return !OutputDecision.IsCautious(windows.ProcessName(target), windows.WindowClass(target));
         }
         var now = await (focus ?? UnknownFocusProbe.Instance).FocusedElementAsync(ct).ConfigureAwait(false);
         return now == guard.ElementId && windows.Foreground() == target;

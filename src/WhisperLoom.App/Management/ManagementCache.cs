@@ -105,6 +105,10 @@ public sealed class ManagementCache(string dataDir)
         {
             File.Delete(FilePath); // kaputt: Load gälte ohnehin als „kein Abgleich bisher“
         }
+        catch (IOException)
+        {
+            // Datei gesperrt: im Speicher ist der ETag weg; der Start darf daran nicht scheitern.
+        }
     }
 
     public void Clear()
