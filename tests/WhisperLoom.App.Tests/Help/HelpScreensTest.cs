@@ -56,6 +56,8 @@ public sealed class HelpScreensTest
             Assert.Skip("WLD_HELP_SCREENS_DIR nicht gesetzt (tools/gen_help_screens.py)");
             return;
         }
+        // Die Bilder zeigen die Windows-Bedienung (Tastenkürzel, Einfügen); unter Linux blendet die App diese Zeilen aus.
+        Assert.True(OperatingSystem.IsWindows(), "Hilfe-Screenshots unter Windows erzeugen");
         var spec = Environment.GetEnvironmentVariable("WLD_HELP_SCREENS_SPEC");
         var shots = spec is null ? HelpShots.Load() : HelpShots.Parse(await File.ReadAllTextAsync(spec));
         await RenderAsync(shots, dir, Loc.Languages, Themes);
@@ -74,6 +76,11 @@ public sealed class HelpScreensTest
     [AvaloniaFact]
     public async Task Every_scene_builds_and_every_marker_resolves()
     {
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Skip("Szenen zeigen die Windows-Bedienung; unter Linux sind Tastenkürzel- und Einfüge-Zeilen ausgeblendet");
+            return;
+        }
         var dir = Path.Combine(Path.GetTempPath(), "wl-help-" + Guid.NewGuid().ToString("N"));
         try
         {
