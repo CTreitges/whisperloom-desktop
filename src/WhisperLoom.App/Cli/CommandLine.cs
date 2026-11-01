@@ -46,17 +46,17 @@ internal sealed record AppOptions(string DataDir, string? TestAudio = null, stri
 /// <summary>Fehler in der Befehlszeile; die Meldung geht an stderr, Exit-Code 2.</summary>
 internal sealed class UsageException(string message) : Exception(message);
 
-/// <summary>Zerlegt die Befehlszeile. Verben: toggle, start, stop, cancel, pause, resume, stage next|&lt;name&gt;, status [--json], show, key set|delete &lt;name&gt;, quit.</summary>
+/// <summary>Zerlegt die Befehlszeile. Verben: toggle, start, stop, cancel, pause, resume, stage next|&lt;name&gt;, status [--json], show, setup, key set|delete &lt;name&gt;, quit.</summary>
 internal static class CommandLine
 {
     public const string Usage =
-        "Aufruf: WhisperLoom [toggle|start|stop|cancel|pause|resume|stage next|stage <name>|status [--json]|show|quit|key set <name>|key delete <name>]\n" +
+        "Aufruf: WhisperLoom [toggle|start|stop|cancel|pause|resume|stage next|stage <name>|status [--json]|show|setup|quit|key set <name>|key delete <name>]\n" +
         "        [provision <datei>|import <datei> [--dry-run]|export <datei>]\n" +
         "        [--data-dir <pfad>] [--test-audio <wav>] [--output-file <pfad>] [--secret-prefix <präfix>] [--hotkeys]\n" +
         "        WhisperLoom bench --model <tiny|base|small|large-v3-turbo> --seconds <n> [--backend auto|cpu]";
 
     private static readonly HashSet<string> Verbs =
-        ["toggle", "start", "stop", "cancel", "pause", "resume", "stage", "status", "show", "key", "quit", "bench", "provision", "import", "export"];
+        ["toggle", "start", "stop", "cancel", "pause", "resume", "stage", "status", "show", "setup", "key", "quit", "bench", "provision", "import", "export"];
 
     /// <summary>Schalter des Verbs <c>bench</c>; sie landen samt Wert in <see cref="CliRequest.Args"/>.</summary>
     private static readonly HashSet<string> BenchSwitches = ["--model", "--seconds", "--backend"];

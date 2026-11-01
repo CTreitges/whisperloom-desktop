@@ -111,7 +111,7 @@ public sealed class AppHost
     /// <summary>Lokale Erkennung und Textverbesserung (WLD-P4b); null in Tests ohne lokale Teile.</summary>
     public LocalParts? Local { get; private set; }
 
-    /// <summary>Fenster-Aktionen (Bühnenansicht, Verlauf, Einstellungen, Beenden); setzt die App.</summary>
+    /// <summary>Fenster-Aktionen (Bühnenansicht, Verlauf, Einstellungen, Einrichtung, Beenden); setzt die App.</summary>
     public Action<string>? ShowWindow { get; set; }
 
     /// <summary>Die echte Zusammensetzung für einen App-Start.</summary>
@@ -182,6 +182,7 @@ public sealed class AppHost
                 }
                 break;
             case "show": ShowWindow?.Invoke("stage"); message = "shown"; break;
+            case "setup": ShowWindow?.Invoke("setup"); message = "shown"; break;
             case "quit": ShowWindow?.Invoke("quit"); message = "quitting"; break;
             default: ok = false; message = "unknown-verb"; break;
         }

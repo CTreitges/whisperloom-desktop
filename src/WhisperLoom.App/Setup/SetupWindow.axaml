@@ -1,0 +1,145 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:s="using:WhisperLoom.App.Setup"
+        xmlns:v="using:WhisperLoom.App.Views"
+        xmlns:l="using:WhisperLoom.App.Localization"
+        x:Class="WhisperLoom.App.Setup.SetupWindow"
+        x:DataType="s:SetupViewModel"
+        Title="{Binding [Setup_Title], Source={x:Static l:Loc.Instance}}"
+        Icon="/Assets/whisperloom.ico"
+        Width="760" Height="560"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource WlBackground}">
+  <!-- Einrichtungs-Assistent (WLD-P6b). Je Schritt ein Panel; Kopf zeigt Titel und „Schritt x von n“. -->
+  <Window.Styles>
+    <Style Selector="TextBlock.f">
+      <Setter Property="Foreground" Value="{StaticResource WlOnSurfaceVariant}" />
+      <Setter Property="Margin" Value="0,10,0,4" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="TextBlock.intro">
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Margin" Value="0,0,0,8" />
+    </Style>
+    <Style Selector="ComboBox">
+      <Setter Property="MinWidth" Value="320" />
+    </Style>
+  </Window.Styles>
+
+  <DockPanel Margin="24">
+    <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,0,0,16">
+      <TextBlock x:Name="ProgressText" Text="{Binding Progress}" Foreground="{StaticResource WlOnSurfaceVariant}" />
+      <TextBlock x:Name="StepTitle" Text="{Binding Title}" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource WlAccent}" />
+      <TextBlock x:Name="PolicyHint" IsVisible="{Binding Settings.HasPolicy}" TextWrapping="Wrap" Foreground="{StaticResource WlSecondary}"
+                 Text="{Binding [Setup_PolicyHint], Source={x:Static l:Loc.Instance}}" />
+    </StackPanel>
+
+    <StackPanel DockPanel.Dock="Bottom" Spacing="6" Margin="0,16,0,0">
+      <TextBlock x:Name="StatusText" Text="{Binding Status}" Foreground="{StaticResource WlError}" TextWrapping="Wrap" IsVisible="{Binding Status, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+        <Button x:Name="SkipButton" Grid.Column="0" Content="{Binding [Setup_Skip], Source={x:Static l:Loc.Instance}}" Command="{Binding SkipCommand}" IsVisible="{Binding !IsLast}" />
+        <Button x:Name="BackButton" Grid.Column="2" Margin="0,0,8,0" Content="{Binding [Setup_Back], Source={x:Static l:Loc.Instance}}" Command="{Binding BackCommand}" />
+        <Button x:Name="NextButton" Grid.Column="3" Classes="accent" Content="{Binding [Setup_Next], Source={x:Static l:Loc.Instance}}" Command="{Binding NextCommand}" IsVisible="{Binding !IsLast}" />
+        <Button x:Name="FinishButton" Grid.Column="3" Classes="accent" Content="{Binding [Setup_Finish], Source={x:Static l:Loc.Instance}}" Command="{Binding FinishCommand}" IsVisible="{Binding IsLast}" />
+      </Grid>
+    </StackPanel>
+
+    <ScrollViewer>
+      <Panel>
+        <!-- 1 Sprache -->
+        <StackPanel x:Name="LanguagePanel" IsVisible="{Binding ShowLanguage}">
+          <TextBlock Classes="intro" Text="{Binding [Setup_LanguageIntro], Source={x:Static l:Loc.Instance}}" />
+          <TextBlock Classes="f" Text="{Binding [Settings_UiLanguage], Source={x:Static l:Loc.Instance}}" />
+          <ComboBox x:Name="UiLanguageBox" IsEnabled="{Binding Settings.Editable[desktop.uiLanguage]}" ItemsSource="{Binding Settings.UiLanguages}" SelectedItem="{Binding Settings.UiLanguage}" />
+          <TextBlock Classes="f" Text="{Binding [Setup_RecognitionLanguage], Source={x:Static l:Loc.Instance}}" />
+          <ComboBox x:Name="LanguageBox" IsEnabled="{Binding Settings.Editable[language]}" ItemsSource="{Binding Settings.Languages}" SelectedItem="{Binding Settings.Language}" />
+        </StackPanel>
+
+        <!-- 2 Mikrofon mit Pegel-Test -->
+        <StackPanel x:Name="MicrophonePanel" IsVisible="{Binding ShowMicrophone}">
+          <TextBlock Classes="intro" Text="{Binding [Setup_MicIntro], Source={x:Static l:Loc.Instance}}" />
+          <TextBlock Classes="f" Text="{Binding [Settings_Microphone], Source={x:Static l:Loc.Instance}}" />
+          <ComboBox x:Name="MicrophoneBox" IsEnabled="{Binding Settings.Editable[desktop.microphone]}" ItemsSource="{Binding Settings.Microphones}" SelectedItem="{Binding Settings.Microphone}" />
+          <StackPanel IsVisible="{Binding Mic, Converter={x:Static ObjectConverters.IsNotNull}}" Spacing="8" Margin="0,12,0,0">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button x:Name="MicStartButton" Content="{Binding [Setup_MicStart], Source={x:Static l:Loc.Instance}}" Command="{Binding Mic.StartCommand, FallbackValue={x:Null}}" />
+              <Button x:Name="MicStopButton" Content="{Binding [Setup_MicStop], Source={x:Static l:Loc.Instance}}" Command="{Binding Mic.StopCommand, FallbackValue={x:Null}}" />
+            </StackPanel>
+            <ProgressBar x:Name="MicLevelBar" Minimum="0" Maximum="1" Value="{Binding Mic.Level, FallbackValue=0}" Height="18" MinWidth="420" HorizontalAlignment="Left"
+                         Foreground="{StaticResource WlAccent}" />
+            <TextBlock x:Name="MicStatusText" Text="{Binding Mic.Status, FallbackValue=''}" TextWrapping="Wrap" />
+          </StackPanel>
+          <TextBlock Classes="f" IsVisible="{Binding Mic, Converter={x:Static ObjectConverters.IsNull}}" Text="{Binding [Setup_MicUnavailable], Source={x:Static l:Loc.Instance}}" />
+        </StackPanel>
+
+        <!-- 3 Erkennungsweg -->
+        <StackPanel x:Name="RecognitionPanel" IsVisible="{Binding ShowRecognition}">
+          <TextBlock Classes="intro" Text="{Binding [Setup_RecognitionIntro], Source={x:Static l:Loc.Instance}}" />
+          <ComboBox x:Name="EngineBox" IsEnabled="{Binding Settings.Editable[engine]}" ItemsSource="{Binding Settings.Local.Engines}" SelectedItem="{Binding Settings.Local.Engine}" />
+          <StackPanel x:Name="OnlinePanel" IsVisible="{Binding ShowOnline}">
+            <TextBlock Classes="f" Text="{Binding [Settings_Provider], Source={x:Static l:Loc.Instance}}" />
+            <ComboBox x:Name="ProviderBox" IsEnabled="{Binding Settings.Editable[stt.providerId]}" ItemsSource="{Binding Settings.SttProviders}" SelectedItem="{Binding Settings.SttProvider}" />
+            <TextBlock Classes="f" Text="{Binding [Settings_ApiKey], Source={x:Static l:Loc.Instance}}" />
+            <v:KeyFieldView x:Name="SttKeyField" DataContext="{Binding Settings.SttKey}" />
+          </StackPanel>
+          <StackPanel x:Name="OfflinePanel" IsVisible="{Binding ShowOffline}">
+            <TextBlock Classes="f" Text="{Binding [Local_Model], Source={x:Static l:Loc.Instance}}" />
+            <ComboBox x:Name="ModelBox" IsEnabled="{Binding Settings.Editable[offline.model]}" ItemsSource="{Binding Settings.Local.ModelChoices}" SelectedItem="{Binding Settings.Local.SelectedModel}" />
+            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+              <TextBlock Text="{Binding SelectedModel.Label}" VerticalAlignment="Center" MinWidth="220" />
+              <TextBlock Text="✓" IsVisible="{Binding SelectedModel.Installed}" Foreground="{StaticResource WlAccent}" VerticalAlignment="Center" />
+              <Button x:Name="DownloadButton" Content="{Binding [Local_Download], Source={x:Static l:Loc.Instance}}" Command="{Binding SelectedModel.DownloadCommand}" />
+              <Button Content="{Binding [Local_Cancel], Source={x:Static l:Loc.Instance}}" Command="{Binding SelectedModel.CancelCommand}" />
+            </StackPanel>
+            <TextBlock x:Name="DownloadStatus" Text="{Binding SelectedModel.Status}" TextWrapping="Wrap" />
+          </StackPanel>
+        </StackPanel>
+
+        <!-- 4 Stufe -->
+        <StackPanel x:Name="StagePanel" IsVisible="{Binding ShowStage}">
+          <TextBlock Classes="intro" Text="{Binding [Setup_StageIntro], Source={x:Static l:Loc.Instance}}" />
+          <ComboBox x:Name="StageBox" IsEnabled="{Binding Settings.Editable[refine.stage]}" ItemsSource="{Binding Settings.Stages}" SelectedItem="{Binding Settings.Stage}" />
+          <TextBlock Classes="f" Text="{Binding [Setup_StageNote], Source={x:Static l:Loc.Instance}}" />
+        </StackPanel>
+
+        <!-- 5 Hotkey-Test (Windows) bzw. Desktop-Kürzel (Linux) -->
+        <StackPanel x:Name="HotkeyPanel" IsVisible="{Binding ShowHotkey}">
+          <StackPanel IsVisible="{Binding Windows}">
+            <TextBlock Classes="intro" Text="{Binding [Setup_HotkeyIntro], Source={x:Static l:Loc.Instance}}" />
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" Margin="0,4,0,8">
+              <TextBlock Grid.Row="0" Text="{Binding [Hotkey_Hold], Source={x:Static l:Loc.Instance}}" Margin="0,0,16,4" />
+              <TextBlock Grid.Row="0" Grid.Column="1" x:Name="HoldCombo" Text="{Binding Settings.Hotkeys.Hold.Value}" FontFamily="monospace" />
+              <TextBlock Grid.Row="1" Text="{Binding [Hotkey_Toggle], Source={x:Static l:Loc.Instance}}" Margin="0,0,16,0" />
+              <TextBlock Grid.Row="1" Grid.Column="1" x:Name="ToggleCombo" Text="{Binding Settings.Hotkeys.Toggle.Value}" FontFamily="monospace" />
+            </Grid>
+            <Button x:Name="HotkeyTestButton" Content="{Binding [Setup_HotkeyTest], Source={x:Static l:Loc.Instance}}" Command="{Binding Hotkey.TestCommand}" IsVisible="{Binding Hotkey.Available}" />
+            <TextBlock x:Name="HotkeyStatusText" Text="{Binding Hotkey.Status}" TextWrapping="Wrap" Margin="0,8,0,0" />
+            <TextBlock Classes="f" IsVisible="{Binding !Hotkey.Available}" Text="{Binding [Setup_HotkeyUnavailable], Source={x:Static l:Loc.Instance}}" />
+          </StackPanel>
+          <StackPanel IsVisible="{Binding !Windows}">
+            <TextBlock Classes="intro" Text="{Binding [Setup_LinuxIntro], Source={x:Static l:Loc.Instance}}" />
+            <SelectableTextBlock x:Name="ToggleCommandText" Text="{Binding ToggleCommand}" FontFamily="monospace" Foreground="{StaticResource WlAccent}" Margin="0,4,0,8" />
+            <TextBlock Classes="f" Text="{Binding [Setup_LinuxKde], Source={x:Static l:Loc.Instance}}" />
+            <TextBlock Classes="f" Text="{Binding [Setup_LinuxGnome], Source={x:Static l:Loc.Instance}}" />
+            <TextBlock Classes="f" Text="{Binding [Setup_LinuxDocs], Source={x:Static l:Loc.Instance}}" />
+          </StackPanel>
+        </StackPanel>
+
+        <!-- 6 Autostart -->
+        <StackPanel x:Name="AutostartPanel" IsVisible="{Binding ShowAutostart}">
+          <TextBlock Classes="intro" Text="{Binding [Setup_AutostartIntro], Source={x:Static l:Loc.Instance}}" />
+          <ToggleSwitch x:Name="AutostartSwitch" IsVisible="{Binding AutostartAvailable}" IsChecked="{Binding AutostartEnabled}"
+                        OnContent="{Binding [Setup_AutostartOn], Source={x:Static l:Loc.Instance}}"
+                        OffContent="{Binding [Setup_AutostartOff], Source={x:Static l:Loc.Instance}}" />
+          <TextBlock Classes="f" IsVisible="{Binding !AutostartAvailable}" Text="{Binding [Setup_AutostartUnavailable], Source={x:Static l:Loc.Instance}}" />
+        </StackPanel>
+
+        <!-- 7 Fertig -->
+        <StackPanel x:Name="DonePanel" IsVisible="{Binding ShowDone}">
+          <TextBlock x:Name="DoneHintText" Classes="intro" FontSize="16" Text="{Binding DoneHint}" />
+          <TextBlock Classes="f" Text="{Binding [Setup_DoneAgain], Source={x:Static l:Loc.Instance}}" />
+        </StackPanel>
+      </Panel>
+    </ScrollViewer>
+  </DockPanel>
+</Window>

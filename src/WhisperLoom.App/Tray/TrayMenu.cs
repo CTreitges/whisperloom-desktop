@@ -7,7 +7,7 @@ using WhisperLoom.Core.Contracts;
 namespace WhisperLoom.App.Tray;
 
 /// <summary>
-/// Tray-Menü: Start/Stopp, Stufe (Untermenü), Bühnenansicht, Verlauf, Einstellungen, Beenden. Texte folgen
+/// Tray-Menü: Start/Stopp, Stufe (Untermenü), Bühnenansicht, Verlauf, Einstellungen, Einrichtung, Beenden. Texte folgen
 /// Zustand, Stufe und Oberflächensprache. Unter Linux exportiert Avalonia es als StatusNotifierItem; zeigt der
 /// Desktop kein Tray, reichen Bühnenansicht und CLI.
 /// </summary>
@@ -20,9 +20,10 @@ public sealed class TrayMenu
     private readonly NativeMenuItem _show;
     private readonly NativeMenuItem _history;
     private readonly NativeMenuItem _settings;
+    private readonly NativeMenuItem _setup;
     private readonly NativeMenuItem _quit;
 
-    /// <param name="open">Fenster-Aktion: "stage", "history", "settings", "quit".</param>
+    /// <param name="open">Fenster-Aktion: "stage", "history", "settings", "setup", "quit".</param>
     public TrayMenu(DictationController controller, Action<string> open)
     {
         _controller = controller;
@@ -31,9 +32,10 @@ public sealed class TrayMenu
         _show = new NativeMenuItem { Command = new RelayCommand(() => open("stage")) };
         _history = new NativeMenuItem { Command = new RelayCommand(() => open("history")) };
         _settings = new NativeMenuItem { Command = new RelayCommand(() => open("settings")) };
+        _setup = new NativeMenuItem { Command = new RelayCommand(() => open("setup")) };
         _quit = new NativeMenuItem { Command = new RelayCommand(() => open("quit")) };
         Menu = new NativeMenu();
-        foreach (var item in new NativeMenuItemBase[] { _toggle, _stage, _show, _history, _settings, new NativeMenuItemSeparator(), _quit })
+        foreach (var item in new NativeMenuItemBase[] { _toggle, _stage, _show, _history, _settings, _setup, new NativeMenuItemSeparator(), _quit })
         {
             Menu.Items.Add(item);
         }
@@ -55,6 +57,7 @@ public sealed class TrayMenu
         _show.Header = loc["Tray_Stage"];
         _history.Header = loc["Tray_History"];
         _settings.Header = loc["Tray_Settings"];
+        _setup.Header = loc["Tray_Setup"];
         _quit.Header = loc["Tray_Quit"];
 
         _stage.Menu!.Items.Clear();
