@@ -47,9 +47,25 @@ def system_aufloesen(host: str, port: int) -> list[str]:
     return list(dict.fromkeys(str(i[4][0]) for i in infos))
 
 
+# Netze, die Python als global einstuft, die aber nicht direkt erreichbar sein sollen (6to4-Relay, site-local).
+GESPERRT = (ipaddress.ip_network("192.88.99.0/24"), ipaddress.ip_network("fec0::/10"))
+NAT64 = ipaddress.ip_network("64:ff9b::/96")
+
+
+def _eingebettet(ip: ipaddress.IPv6Address) -> ipaddress.IPv4Address | None:
+    """IPv4 in IPv6: gemappt (::ffff:a.b.c.d), NAT64 (64:ff9b::a.b.c.d), IPv4-kompatibel (::a.b.c.d), 6to4 (2002::/16)."""
+    if ip.ipv4_mapped is not None:
+        return ip.ipv4_mapped
+    if ip in NAT64 or (int(ip) >> 32 == 0 and int(ip) > 1):
+        return ipaddress.IPv4Address(int(ip) & 0xFFFFFFFF)
+    return ip.sixtofour
+
+
 def adresse_verboten(ip: ipaddress.IPv4Address | ipaddress.IPv6Address, erlaubt: tuple[Netz, ...]) -> bool:
-    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
-        ip = ip.ipv4_mapped
+    if isinstance(ip, ipaddress.IPv6Address) and (v4 := _eingebettet(ip)) is not None:
+        ip = v4
+    if any(ip.version == n.version and ip in n for n in GESPERRT):
+        return True
     if any(ip.version == n.version and ip in n for n in erlaubt):
         return False
     # is_global gilt in Python auch für Multicast (224.0.0.0/4, ff00::/8) – deshalb eigens ausschließen.

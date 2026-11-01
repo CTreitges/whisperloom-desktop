@@ -53,7 +53,8 @@ def kosten_mikro(con: sqlite3.Connection, firma_id: str, modell: str, audio_ms: 
 
 def erfassen(con: sqlite3.Connection, geraet: sqlite3.Row, zeit: int, modell: str, audio_ms: int = 0, ein: int = 0,
              aus: int = 0) -> None:
-    """Eine weitergeleitete Anfrage zählen (auch eine, die beim Anbieter scheiterte: sie hat ihn erreicht)."""
+    """Eine erfolgreich beantwortete Anfrage zählen. Fehlschläge zählen getrennt je Klasse ([fehler]); ein Anbieter, der
+    Fehlschläge berechnet, taucht dort auf, nicht im Anfragen- oder Token-Budget (bewusste Vereinfachung, README)."""
     kosten = kosten_mikro(con, geraet["firma_id"], modell, audio_ms, ein, aus)
     con.execute(
         "INSERT INTO nutzung (firma_id, geraet_id, gruppe_id, monat, anfragen, audio_ms, tokens_ein, tokens_aus, "

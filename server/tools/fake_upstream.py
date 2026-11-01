@@ -104,6 +104,17 @@ class _Handler(BaseHTTPRequestHandler):
         if s.modus == "kaputt":
             self._senden(200, b"<html>kein json</html>")
             return
+        if s.modus == "tropfen":  # Antwort Byte für Byte, je Byte unter dem Lese-Zeitlimit (Gesamt-Deadline testen)
+            roh = json.dumps({"text": "spät", "choices": []}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(roh)))
+            self.end_headers()
+            for b in roh:
+                self.wfile.write(bytes([b]))
+                self.wfile.flush()
+                time.sleep(0.2)
+            return
         if s.modus == "weiterleitung":  # Versuch, den Proxy auf die Metadaten-Adresse umzulenken
             self.send_response(307)
             self.send_header("Location", "http://169.254.169.254/latest/meta-data/")

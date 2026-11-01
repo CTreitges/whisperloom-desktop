@@ -8,14 +8,10 @@ Zeitlimits wie die App: Verbindung 15 s, mit Ersatz-Zugang 8 s; Antwort 90 s, ei
 """
 
 import asyncio
-import io
 import json
 import math
 import sqlite3
 import time
-import wave
-from email import policy as email_policy
-from email.parser import BytesParser
 
 import httpx
 from fastapi import APIRouter, Depends, Request
@@ -25,13 +21,14 @@ from .abhaengig import jetzt, verbindung
 from .api_v1 import geraet_aus_token
 from .fehler import ApiFehler
 from .log import ereignis
+from .upload import audio_dauer_ms, multipart_im_thread, multipart_lesen  # noqa: F401 (Tests)
 
 router = APIRouter(prefix="/api/v1/proxy")
 MAX_AUDIO = 25 * 1024 * 1024  # §3.7; die Middleware begrenzt den ganzen Body (sicherheit.GRENZEN)
 MAX_ANTWORT = 8 * 1024 * 1024
 VERBINDEN_S = 15.0
 VERBINDEN_MIT_ERSATZ_S = 8.0
-STT_FELDER = {"file", "model", "language", "languages[]", "prompt", "response_format", "temperature"}
+MAX_GLEICHZEITIG_JE_FIRMA = 20
 
 
 class _Ersatz(Exception):
@@ -66,7 +63,9 @@ def _kette(request: Request, con: sqlite3.Connection, firma_id: str, art: str) -
     elif z["llm"] is not None:
         kette, kann = [z["llm"], z["llm_fallback"]], upstream.kann_text
     else:
-        kette, kann = [z["stt"], z["llm_fallback"] or z["stt_fallback"]], upstream.kann_text
+        # Erkennungs-Zugang für Text: dessen festes Modell ist ein Erkennungsmodell → Modell der Anfrage nehmen.
+        geliehen = [{**k, "modell": ""} if k is not None else None for k in (z["stt"], z["stt_fallback"])]
+        kette, kann = [geliehen[0], z["llm_fallback"] or geliehen[1]], upstream.kann_text
     return [k for k in kette if k is not None and kann(k) and upstream.basis(k)]
 
 
@@ -90,16 +89,19 @@ async def _senden(request: Request, zugang: dict, a: upstream.Anfrage, verbinden
     erweiterung = {"sni_hostname": ziel.sni} if ziel.sni else None
     zeit = httpx.Timeout(upstream.lese_zeit_s(zugang), connect=verbinden_s)
     try:
-        async with httpx.AsyncClient(follow_redirects=False, trust_env=False, timeout=zeit) as c:
-            dateien = {"file": a.datei} if a.datei else None
-            anfrage = c.build_request("POST", ziel.url, headers=kopf, json=a.json, data=a.daten, files=dateien,
-                                      extensions=erweiterung)
-            r = await c.send(anfrage, stream=True)
-            try:
-                return r.status_code, await _lesen(r)
-            finally:
-                await r.aclose()
-    except httpx.TimeoutException as e:
+        # httpx' Lese-Zeitlimit gilt je Block; die Gesamt-Deadline beendet auch eine tröpfelnde Antwort.
+        # Doku: https://docs.python.org/3/library/asyncio-task.html#asyncio.timeout (abgerufen 2026-11-01)
+        async with asyncio.timeout(upstream.lese_zeit_s(zugang) + verbinden_s):
+            async with httpx.AsyncClient(follow_redirects=False, trust_env=False, timeout=zeit) as c:
+                dateien = {"file": a.datei} if a.datei else None
+                anfrage = c.build_request("POST", ziel.url, headers=kopf, json=a.json, data=a.daten, files=dateien,
+                                          extensions=erweiterung)
+                r = await c.send(anfrage, stream=True)
+                try:
+                    return r.status_code, await _lesen(r)
+                finally:
+                    await r.aclose()
+    except (httpx.TimeoutException, TimeoutError) as e:
         raise _Ersatz("upstream_timeout", 0, "zeit") from e
     except httpx.HTTPError as e:
         raise _Ersatz("upstream_error", 0, "netz") from e
@@ -138,6 +140,20 @@ async def _weiterleiten(request: Request, con: sqlite3.Connection, g: sqlite3.Ro
     if not kette:
         ereignis("proxy abgelehnt", route=art, geraet=g["id"], firma=g["firma_id"], fehler="kein_zugang")
         raise ApiFehler("not_found")
+    # Gleichzeitige Anbieter-Anfragen je Firma begrenzen: ein langsamer Anbieter einer Firma bindet nicht den Server.
+    laufend = request.app.state.__dict__.setdefault("proxy_laufend", {})
+    if laufend.get(g["firma_id"], 0) >= MAX_GLEICHZEITIG_JE_FIRMA:
+        ereignis("proxy abgelehnt", route=art, geraet=g["id"], firma=g["firma_id"], fehler="parallel")
+        raise ApiFehler("rate_limited", retry_after=5)
+    laufend[g["firma_id"]] = laufend.get(g["firma_id"], 0) + 1
+    try:
+        return await _kette_abarbeiten(request, con, g, art, kette, modell_wunsch, bauen, auswerten, audio_ms, zeit)
+    finally:
+        laufend[g["firma_id"]] -= 1
+
+
+async def _kette_abarbeiten(request: Request, con: sqlite3.Connection, g: sqlite3.Row, art: str, kette: list[dict],
+                            modell_wunsch: str, bauen, auswerten, audio_ms: int, zeit: int) -> dict:
     verbinden = VERBINDEN_MIT_ERSATZ_S if len(kette) > 1 else VERBINDEN_S
     code = "upstream_error"
     for zugang in kette:
@@ -180,51 +196,18 @@ def models(g=Depends(geraet_aus_token), con: sqlite3.Connection = Depends(verbin
     return {"object": "list", "data": daten}
 
 
-def audio_dauer_ms(wav: bytes) -> int:
-    """Dauer aus dem WAV-Kopf; ohne lesbaren Kopf geschätzt als 16 kHz, 16 bit, mono (Aufnahmeformat der App)."""
-    try:
-        with wave.open(io.BytesIO(wav)) as w:
-            return int(w.getnframes() * 1000 / w.getframerate())
-    except (wave.Error, EOFError, ZeroDivisionError):
-        return len(wav) * 1000 // 32_000
-
-
-def multipart_lesen(typ: str, body: bytes) -> tuple[dict[str, str], bytes]:
-    """multipart/form-data im Arbeitsspeicher zerlegen (request.form() spoolt Dateien ab 1 MiB auf die Platte; Audio
-    darf nie auf die Platte). Nur STT_FELDER, jedes Feld höchstens einmal, genau eine Datei `file`. Sonst ValueError.
-    Doku: https://docs.python.org/3/library/email.parser.html (BytesParser, policy HTTP; abgerufen 2026-11-01)"""
-    if not typ.lower().startswith("multipart/form-data") or "boundary=" not in typ.lower():
-        raise ValueError("typ")
-    nachricht = BytesParser(policy=email_policy.HTTP).parsebytes(b"Content-Type: " + typ.encode("latin-1") + b"\r\n\r\n" + body)
-    if not nachricht.is_multipart():
-        raise ValueError("kein multipart")
-    felder: dict[str, str] = {}
-    datei: bytes | None = None
-    for teil in nachricht.iter_parts():
-        name = teil.get_param("name", header="content-disposition")
-        if name not in STT_FELDER or name in felder or (name == "file" and datei is not None):
-            raise ValueError("feld")
-        inhalt = teil.get_payload(decode=True) or b""
-        if name == "file":
-            datei = inhalt
-        elif len(inhalt) > 4000:
-            raise ValueError("lang")
-        else:
-            felder[name] = inhalt.decode("utf-8")
-    if not datei:
-        raise ValueError("datei")
-    return felder, datei
-
-
 @router.post("/audio/transcriptions")
 async def transkription(request: Request, g=Depends(geraet_aus_token), con: sqlite3.Connection = Depends(verbindung)):
     _zulassen(g)
     try:
-        felder, wav = multipart_lesen(request.headers.get("content-type", ""), await request.body())
+        felder, wav = await multipart_im_thread(request.headers.get("content-type", ""), await request.body())
     except (ValueError, UnicodeError):
         raise _ungueltig(con, g, request) from None
     if len(wav) > MAX_AUDIO:
         raise ApiFehler("payload_too_large")
+    dauer = audio_dauer_ms(wav)
+    if dauer is None:  # Vertrag §3.7: WAV; nur so lässt sich die Dauer (Budget, Statistik) bestimmen
+        raise _ungueltig(con, g, request)
     felder["response_format"] = "json"  # Der Proxy antwortet immer als JSON {"text": …}
     wunsch = felder.pop("model", "")
 
@@ -234,7 +217,7 @@ async def transkription(request: Request, g=Depends(geraet_aus_token), con: sqli
     def auswerten(zugang: dict, _modell: str, daten):
         return upstream.erkennung_antwort(zugang, daten)
 
-    return await _weiterleiten(request, con, g, "stt", wunsch, bauen, auswerten, audio_dauer_ms(wav))
+    return await _weiterleiten(request, con, g, "stt", wunsch, bauen, auswerten, dauer)
 
 
 def _zahl(wert, unten: float, oben: float) -> bool:

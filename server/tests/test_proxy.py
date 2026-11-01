@@ -314,3 +314,11 @@ def test_erkennung_ungueltig(pein, pclient, fake):
     _fehler(stt(pclient, g["deviceToken"], timestamp_granularities="word"), 400, "invalid_request")
     _fehler(stt(pclient, g["deviceToken"], b""), 400, "invalid_request")
     assert fake.anfragen == []
+
+
+def test_gemini_modellname_bleibt_ein_pfadsegment(pein, pclient, fake):
+    """Ohne Modell am Zugang kommt der Name vom Gerät: er darf den Pfad beim Anbieter nicht verlassen."""
+    f, g = proxy_geraet(pclient, pein)
+    zugang(pein, f["id"], "llm", "gemini", fake.basis + "/v1beta")
+    assert chat(pclient, g["deviceToken"], model="../../v1/files?x=1#").status_code == 200
+    assert fake.anfragen[0]["pfad"] == "/v1beta/models/..%2F..%2Fv1%2Ffiles%3Fx%3D1%23:generateContent"

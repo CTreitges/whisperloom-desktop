@@ -16,6 +16,11 @@ GRENZEN = {
 }
 
 
+# Bodies über 64 KiB (nur Proxy) puffert der Server vor der Anmeldung – höchstens so viele gleichzeitig (Prüfer-Befund
+# W2-SRV2 Nr. 3: anonyme parallele 25-MiB-Uploads binden sonst beliebig Arbeitsspeicher). Darüber: 503 mit Retry-After.
+MAX_GROSSE_GLEICHZEITIG = 16
+
+
 def grenze(pfad: str) -> int:
     return GRENZEN.get(pfad, MAX_BODY)
 
@@ -41,6 +46,7 @@ class SicherheitsMiddleware:
 
     def __init__(self, app):
         self.app = app
+        self.grosse_laufend = 0
 
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http":
@@ -52,7 +58,19 @@ class SicherheitsMiddleware:
         if laenge is not None and (not laenge.isdigit() or int(laenge) > hoechstens):
             await self._zu_gross(scope, send)
             return
+        gross = hoechstens > MAX_BODY and (laenge is None or int(laenge) > MAX_BODY)
+        if gross:
+            if self.grosse_laufend >= MAX_GROSSE_GLEICHZEITIG:
+                await self._antwort(scope, send, 503, "service_unavailable", "Bitte gleich erneut.", [(b"retry-after", b"5")])
+                return
+            self.grosse_laufend += 1
+        try:
+            await self._verarbeiten(scope, receive, send, hoechstens)
+        finally:
+            if gross:
+                self.grosse_laufend -= 1
 
+    async def _verarbeiten(self, scope, receive, send, hoechstens: int):
         teile: list[bytes] = []
         gelesen = 0
         while True:
@@ -105,12 +123,12 @@ class SicherheitsMiddleware:
         await cls._antwort(scope, send, 413, "payload_too_large", "Die Anfrage ist zu groß.")
 
     @staticmethod
-    async def _antwort(scope, send, status: int, code: str, text: str):
+    async def _antwort(scope, send, status: int, code: str, text: str, extra: list | None = None):
         if scope["path"].startswith("/api/"):
             body = json.dumps({"error": code, "message": FEHLER[code][1]}).encode()
             typ = b"application/json"
         else:
             body, typ = text.encode(), b"text/plain; charset=utf-8"
-        headers = [(b"content-type", typ), (b"content-length", str(len(body)).encode()), *HEADER]
+        headers = [(b"content-type", typ), (b"content-length", str(len(body)).encode()), *HEADER, *(extra or [])]
         await send({"type": "http.response.start", "status": status, "headers": headers})
         await send({"type": "http.response.body", "body": body})

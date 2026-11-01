@@ -12,6 +12,7 @@ Doku: https://elevenlabs.io/docs/api-reference/speech-to-text/convert (model_id,
 """
 
 from dataclasses import dataclass, field
+from urllib.parse import quote
 
 BASIS = {
     "openai": "https://api.openai.com/v1",
@@ -151,8 +152,8 @@ def chat_anfrage(zugang: dict, body: dict) -> Anfrage:
         js: dict = {"model": body["model"], "max_tokens": grenze, "messages": rest}
         if system:
             js["system"] = system
-        if isinstance(body.get("thinking"), dict):
-            js["thinking"] = body["thinking"]
+        # thinking des Geräts passt zu dessen Modellwahl, nicht zwingend zum Modell dieses Zugangs (Opus 5.5 lehnt
+        # "disabled" ab) – der Proxy lässt es weg, das Modell nutzt seinen Standard.
         return Anfrage(b + "/messages", {"x-api-key": zugang["key"], "anthropic-version": ANTHROPIC_VERSION}, json=js)
     if p == "gemini":
         system, rest = _system_und_rest(body["messages"])
@@ -163,7 +164,8 @@ def chat_anfrage(zugang: dict, body: dict) -> Anfrage:
             js["systemInstruction"] = {"parts": [{"text": system}]}
         if "temperature" in body:
             js["generationConfig"]["temperature"] = body["temperature"]
-        return Anfrage(f"{b}/models/{body['model']}:generateContent",
+        # Modellname kann vom Gerät stammen: als ein Pfadsegment kodieren (kein ../, ?, # im Pfad des Anbieters).
+        return Anfrage(f"{b}/models/{quote(body['model'], safe='')}:generateContent",
                        {"x-goog-api-key": zugang["key"]} if zugang["key"] else {}, json=js)
     if p == "ollama":
         js = {"model": body["model"], "stream": False, "messages": body["messages"]}
