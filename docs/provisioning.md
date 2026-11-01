@@ -53,7 +53,7 @@ Wiederholen ist gefahrlos: Ein neues Provisioning setzt die Werte erneut und ers
 sind aber keine Sicherheitsgrenze. `settings.json` und `policy.json` liegen im Datenordner des Benutzers; wer dort
 schreiben darf (der Benutzer selbst, lokale Admins), kann sie ändern. Für echte Durchsetzung braucht es Mittel des
 Betriebssystems (z. B. Rechte auf den Ordner, Softwareverteilung, die das Provisioning regelmäßig wiederholt).
-Ist `policy.json` unlesbar, lehnt `WhisperLoom key set|delete` ab (Exit 1), statt ohne Richtlinie zu laufen.
+Ist `policy.json` unlesbar, lehnen `WhisperLoom key set|delete` und `update` ab (Exit 1), statt ohne Richtlinie zu laufen.
 
 **Freigabeliste `allowedProviders`:** Sie gilt auch für die Adresse. Bei Anbietern mit fester Adresse (z. B. `groq`,
 `openai`) ist eine eigene `baseUrl` zu einem anderen Host ein Verstoß — im Einstellungsfenster wie beim Import — damit
@@ -129,7 +129,7 @@ Running it again is safe: values are set again and the policy is replaced.
 but are not a security boundary. `settings.json` and `policy.json` live in the user's data folder; anyone who can
 write there (the user, local admins) can change them. Real enforcement needs OS means (folder permissions, software
 distribution that re-runs the provisioning regularly).
-If `policy.json` cannot be read, `WhisperLoom key set|delete` refuses (exit 1) instead of running without a policy.
+If `policy.json` cannot be read, `WhisperLoom key set|delete` and `update` refuse (exit 1) instead of running without a policy.
 
 **Allow list `allowedProviders`:** it also covers the address. For providers with a fixed address (e.g. `groq`,
 `openai`) a custom `baseUrl` pointing to another host is a violation — in the settings window and on import — so
