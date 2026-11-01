@@ -43,6 +43,7 @@ geladen. Lizenzen laut NuGet-Metadaten (`.nuspec`) und Upstream-Repositories, St
 | SkiaSharp.NativeAssets.WebAssembly | 3.119.4 | MIT / Skia BSD-3-Clause | https://github.com/mono/SkiaSharp |
 | SkiaSharp.NativeAssets.Win32 | 3.119.4 | MIT / Skia BSD-3-Clause | https://github.com/mono/SkiaSharp |
 | Tmds.DBus.Protocol | 0.94.1 | MIT | https://github.com/tmds/Tmds.DBus |
+| Velopack | 1.2.161 | MIT | https://github.com/velopack/velopack |
 
 The .NET runtime itself (self-contained publish) is MIT-licensed: https://github.com/dotnet/runtime.
 Die .NET-Laufzeit (self-contained) steht unter MIT.
@@ -68,9 +69,17 @@ WhisperLoom only talks to it on 127.0.0.1. Linux helper tools `wl-copy` (wl-clip
 
 ## 3. Installer and updates / Installer und Updates
 
-| Component | License | Source |
-|---|---|---|
-| Velopack (NuGet `Velopack`, CLI `vpk`) — per-user setup, portable package, updates (packaging PR WLD-P6a) | MIT | https://github.com/velopack/velopack |
+The Windows setup and the Linux AppImage are built with Velopack (`build/pack.py`, `.github/workflows/release.yml`).
+Setup und AppImage baut Velopack; die portable ZIP enthält nur das `dotnet publish` der App, ohne Updater.
+
+| Component | Version | License | Source |
+|---|---|---|---|
+| Velopack runtime (NuGet `Velopack`, see table 1) — update check and install, per-user install hooks | 1.2.161 | MIT | https://github.com/velopack/velopack |
+| Velopack `Update.exe`, start stub and `WhisperLoom-win-Setup.exe` bootstrapper (inside the setup, not in the portable ZIP) | 1.2.161 | MIT | https://github.com/velopack/velopack |
+| `vpk` CLI (`dotnet-tools.json`, build time only / nur beim Bauen) | 1.2.161 | MIT | https://github.com/velopack/velopack |
+
+Updates come from the GitHub releases of this repository only and can be disabled by IT policy
+(`policy.updatesEnabled=false`, see `docs/provisioning.md` and `docs/signing.md`).
 
 ## 4. Fonts and assets / Schriften und Grafiken
 
@@ -113,4 +122,5 @@ Avalonia.Fonts.Inter nutzen nur die Headless-UI-Tests; die App verwendet die Sys
 ## 6. Prompts and parity / Prompts und Parität
 
 The text stages port prompts from WhisperLoom for Android (https://github.com/CTreitges/whisperloom-android, MIT,
-same author). No third-party prompt text is included.
+same author). The desktop-only prompt “rewrite by instruction” (`src/WhisperLoom.Core/Prompts/desktop/`) is part of this
+project (`docs/parity-exceptions.md`). No third-party prompt text is included.

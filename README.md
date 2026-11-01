@@ -17,6 +17,9 @@ als Hintergrund-App. **[English version below](#english).**
 - **Windows:** frei belegbare Tastenkürzel – *Halten* (Standard Strg+Win), *Umschalten* mit Overlay
   (Strg+Leertaste; Enter = einfügen, Strg+Enter = einfügen + Enter, Rücktaste = verwerfen) und *Stufe wechseln*
   (Strg+Alt+Leertaste). Der Text wird ins aktive Fenster eingefügt oder direkt getippt.
+- **Windows-Extras:** die letzten 10 Diktate im Tray, *letztes erneut einfügen* (Strg+Alt+Umschalt+V),
+  *neu verarbeiten* aus dem Rohtext mit anderer Stufe, **App-Profile** (z. B. Windows Terminal → Stufe Prompt,
+  Outlook → Verschönern) und **markierten Text per Sprachanweisung umschreiben** (Strg+Alt+Umschalt+R).
 - **Linux (Wayland/X11):** Befehl `WhisperLoom toggle` für ein Kürzel der Desktop-Umgebung, Ergebnis in der
   Zwischenablage.
 - **Bühnenansicht** für Beamer: Rohtext neben dem Ergebnis in Großschrift.
@@ -30,12 +33,20 @@ als Hintergrund-App. **[English version below](#english).**
 - Logs enthalten nur Metadaten (Dauer, Anbieter, Status, Fehlerklasse).
 
 ### Installation
-**Windows** (ohne Admin-Rechte): Setup aus den [GitHub-Releases](https://github.com/CTreitges/whisperloom-desktop/releases)
-starten – installiert pro Benutzer nach `%LocalAppData%` und aktualisiert sich selbst (abschaltbar). Alternativ die
-portable ZIP entpacken und `WhisperLoom.exe` starten.
+Alle Pakete liegen in den [GitHub-Releases](https://github.com/CTreitges/whisperloom-desktop/releases):
 
-**Linux:** AppImage (bzw. `linux-x64.tar.gz`) herunterladen, ausführbar machen, starten. Empfohlene Pakete:
-`wl-clipboard` (Wayland) bzw. `xclip` (X11), `libsecret` für den Schlüsselbund. Details: [`docs/DEMO.md`](docs/DEMO.md).
+| Datei | Für | Updates |
+|---|---|---|
+| `WhisperLoom-win-Setup.exe` | Windows, Installation pro Benutzer nach `%LocalAppData%\WhisperLoom`, ohne Admin-Rechte | ja: Prüfung beim Start und täglich, Installation erst nach Bestätigung |
+| `WhisperLoom-<version>-win-x64-portable.zip` | Windows ohne Installation (entpacken, `WhisperLoom.exe` starten), z. B. für Firmen-Verteilung | nein |
+| `WhisperLoom.AppImage` | Linux (`chmod +x WhisperLoom.AppImage`, dann starten) | ja |
+
+Die Builds sind **unsigniert**; Windows SmartScreen fragt beim ersten Start nach („Weitere Informationen“ →
+„Trotzdem ausführen“). Firmen signieren selbst: `docs/signing.md`. Updates lassen sich per IT-Richtlinie abschalten
+(`updatesEnabled=false`). Version anzeigen: `WhisperLoom --version`.
+
+Empfohlene Linux-Pakete: `wl-clipboard` (Wayland) bzw. `xclip` (X11), `libsecret` für den Schlüsselbund. Details:
+[`docs/DEMO.md`](docs/DEMO.md).
 
 ### Erster Start: Einrichtungs-Assistent
 Beim ersten Start führt ein Assistent in wenigen Schritten zum ersten Diktat:
@@ -57,14 +68,17 @@ Einstellungen vorgegeben, entfallen die gesperrten Schritte.
 | Diktat starten/stoppen | Strg+Win halten oder Strg+Leertaste | Kürzel auf `WhisperLoom toggle` ([Anleitung](docs/linux-shortcuts.md)) |
 | Stufe wechseln | Strg+Alt+Leertaste oder Tray | `WhisperLoom stage next` oder Tray |
 | Ergebnis | ins aktive Fenster eingefügt | Zwischenablage |
+| Letztes erneut einfügen | Strg+Alt+Umschalt+V oder Tray → Letzte Diktate | `WhisperLoom reinsert` |
+| Markierung umschreiben | Strg+Alt+Umschalt+R, dann Anweisung sprechen | – |
 
-Weitere Befehle: `start`, `stop`, `cancel`, `pause`, `resume`, `show`, `setup`, `status --json`, `quit`.
+Weitere Befehle: `start`, `stop`, `cancel`, `pause`, `resume`, `show`, `setup`, `status --json`, `reprocess <stufe>`,
+`recent-insert <n>`, `update`, `--version`, `quit`.
 
 ### Firmen-Einsatz
 - **Proxy:** System-Proxy inkl. PAC und NTLM/Kerberos mit dem Windows-Konto, manuell oder aus – [`docs/proxy.md`](docs/proxy.md).
 - **IT-Vorgaben** (Anbieter, Keys, gesperrte Felder, Verlauf, Updates): [`docs/provisioning.md`](docs/provisioning.md),
   Format: [`docs/settings-format.md`](docs/settings-format.md).
-- **Signatur** der Builds durch die Firma: `docs/signing.md`.
+- **Signatur** der Builds durch die Firma, Verteilung der portablen ZIP: [`docs/signing.md`](docs/signing.md).
 
 ### Aus dem Quellcode bauen
 Voraussetzung: .NET SDK 10 (`global.json`).
@@ -96,6 +110,9 @@ MIT, siehe [`LICENSE`](LICENSE). Komponenten von Dritten: [`THIRD_PARTY.md`](THI
 - **Windows:** configurable shortcuts – *Hold* (default Ctrl+Win), *Toggle* with an overlay (Ctrl+Space; Enter = insert,
   Ctrl+Enter = insert + Enter, Backspace = discard) and *Next stage* (Ctrl+Alt+Space). Text is pasted into the active
   window or typed directly.
+- **Windows extras:** last 10 dictations in the tray, *insert last again* (Ctrl+Alt+Shift+V), *reprocess* from the raw
+  text with another stage, **app profiles** (e.g. Windows Terminal → Prompt stage, Outlook → Beautify) and **rewrite the
+  selection by voice instruction** (Ctrl+Alt+Shift+R).
 - **Linux (Wayland/X11):** command `WhisperLoom toggle` for a desktop-environment shortcut; result on the clipboard.
 - **Stage view** for projectors: raw text next to the result in large type.
 - **History** (can be turned off), UI in German and English, settings export/import compatible with Android.
@@ -107,12 +124,20 @@ MIT, siehe [`LICENSE`](LICENSE). Komponenten von Dritten: [`THIRD_PARTY.md`](THI
 - Logs contain metadata only (duration, provider, status, error class).
 
 ### Install
-**Windows** (no admin rights): run the setup from [GitHub Releases](https://github.com/CTreitges/whisperloom-desktop/releases) –
-installs per user to `%LocalAppData%` and updates itself (can be disabled). Or unzip the portable ZIP and run
-`WhisperLoom.exe`.
+All packages are on [GitHub Releases](https://github.com/CTreitges/whisperloom-desktop/releases):
 
-**Linux:** download the AppImage (or `linux-x64.tar.gz`), make it executable, run it. Recommended packages:
-`wl-clipboard` (Wayland) or `xclip` (X11), `libsecret` for the keyring. Details: [`docs/DEMO.md`](docs/DEMO.md).
+| File | For | Updates |
+|---|---|---|
+| `WhisperLoom-win-Setup.exe` | Windows, per-user install to `%LocalAppData%\WhisperLoom`, no admin rights | yes: checked at start and daily, installed only after you confirm |
+| `WhisperLoom-<version>-win-x64-portable.zip` | Windows without installing (unzip, run `WhisperLoom.exe`), e.g. for company rollout | no |
+| `WhisperLoom.AppImage` | Linux (`chmod +x WhisperLoom.AppImage`, then run it) | yes |
+
+Builds are **unsigned**; Windows SmartScreen asks on first start (“More info” → “Run anyway”). Companies sign them
+themselves: `docs/signing.md`. Updates can be turned off by IT policy (`updatesEnabled=false`). Show the version with
+`WhisperLoom --version`.
+
+Recommended Linux packages: `wl-clipboard` (Wayland) or `xclip` (X11), `libsecret` for the keyring. Details:
+[`docs/DEMO.md`](docs/DEMO.md).
 
 ### First start: setup wizard
 On first start a wizard takes you to your first dictation: **language**, **microphone** with a level test,
@@ -126,14 +151,17 @@ Skip it any time; run it again from tray → **Setup …** or with `WhisperLoom 
 | Start/stop dictation | hold Ctrl+Win or press Ctrl+Space | shortcut bound to `WhisperLoom toggle` ([guide](docs/linux-shortcuts.md)) |
 | Next stage | Ctrl+Alt+Space or tray | `WhisperLoom stage next` or tray |
 | Result | pasted into the active window | clipboard |
+| Insert last again | Ctrl+Alt+Shift+V or tray → Recent dictations | `WhisperLoom reinsert` |
+| Rewrite the selection | Ctrl+Alt+Shift+R, then speak the instruction | – |
 
-More verbs: `start`, `stop`, `cancel`, `pause`, `resume`, `show`, `setup`, `status --json`, `quit`.
+More verbs: `start`, `stop`, `cancel`, `pause`, `resume`, `show`, `setup`, `status --json`, `reprocess <stage>`,
+`recent-insert <n>`, `update`, `--version`, `quit`.
 
 ### In companies
 - **Proxy:** system proxy incl. PAC and NTLM/Kerberos with the Windows account, manual, or off – [`docs/proxy.md`](docs/proxy.md).
 - **IT provisioning** (providers, keys, locked fields, history, updates): [`docs/provisioning.md`](docs/provisioning.md),
   format: [`docs/settings-format.md`](docs/settings-format.md).
-- **Code signing** by the company: `docs/signing.md`.
+- **Code signing** by the company, rolling out the portable ZIP: [`docs/signing.md`](docs/signing.md).
 
 ### Build from source
 Requires the .NET 10 SDK (`global.json`).
