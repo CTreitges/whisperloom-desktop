@@ -29,10 +29,11 @@ FIRMA_COOKIE = "wl_firma"
 PASSWORT_ARTEN = ("password", "password_totp")
 _LOKAL_ORIGIN = re.compile(r"^https?://(127\.0\.0\.1|localhost|\[::1\])(:\d{1,5})?$")
 
-# Navigation der Firmen-Seiten (W2-SRV2 hängt „Nutzung“ und „Budget“ an).
+# Navigation der Firmen-Seiten („Nutzung“ und „Budget“ seit W2-SRV2).
 NAVIGATION: list[tuple[str, str]] = [
     ("/", "uebersicht"), ("/geraete", "geraete"), ("/gruppen", "gruppen"), ("/richtlinie", "richtlinie"),
-    ("/schluessel", "schluessel"), ("/admins", "admins"), ("/firma", "firma"),
+    ("/schluessel", "schluessel"), ("/nutzung", "nutzung"), ("/budget", "budget"), ("/admins", "admins"),
+    ("/firma", "firma"),
 ]
 
 
@@ -86,6 +87,14 @@ def _zeit(ms: int | None) -> str:
 
 
 templates.env.filters["zeit"] = _zeit
+
+
+def _zahl(wert, stellen: int = 0) -> str:
+    """Tausender mit schmalem Leerzeichen (DE und EN lesbar, ISO 31-0), Dezimalpunkt; für Nutzung und Budget."""
+    return f"{wert:,.{stellen}f}".replace(",", " ")
+
+
+templates.env.filters["zahl"] = _zahl
 
 
 def cookie_name(request: Request, basis: str) -> str:

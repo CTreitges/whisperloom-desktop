@@ -1,8 +1,8 @@
 """Contract-Tests gegen docs/server-api.md (§1.2 Fehlerformat, §3.1–3.5 Routen): Statuscodes und Felder.
 
 ROUTEN spiegelt die Überschriften „### 3.x `METHODE /pfad`“ des Vertrags. test_contract_routen_wie_doku prüft, dass
-beide übereinstimmen (Doku aus docs/server-api.md im Repo oder per WL_SERVER_API_MD). Die Proxy-Routen §3.6/§3.7 baut
-W2-SRV2; bis dahin antworten sie im Fehlerformat mit 404 not_found.
+beide übereinstimmen (Doku aus docs/server-api.md im Repo oder per WL_SERVER_API_MD). Die Proxy-Routen §3.6/§3.7
+(W2-SRV2) prüft test_contract_proxy.py.
 """
 
 import os
@@ -24,7 +24,7 @@ ROUTEN = {
     ("POST", "/api/v1/device/token"),
     ("POST", "/api/v1/device/leave"),
 }
-PROXY_SRV2 = {
+PROXY = {
     ("GET", "/api/v1/proxy/models"),
     ("POST", "/api/v1/proxy/audio/transcriptions"),
     ("POST", "/api/v1/proxy/chat/completions"),
@@ -55,21 +55,16 @@ def test_contract_routen_wie_doku():
     for kopf in re.findall(r"^### 3\.\d+ (.+)$", text, flags=re.M):
         for methode, pfad in re.findall(r"`(GET|POST|PUT|DELETE|PATCH) (/api/v1/[^`]+)`", kopf):
             gefunden.add((methode, pfad))
-    assert gefunden == ROUTEN | PROXY_SRV2
+    assert gefunden == ROUTEN | PROXY
 
 
 # --- §1.2 Fehlerformat und §1.1 Anmeldung ---
 
 
-@pytest.mark.parametrize("methode,pfad", sorted(ROUTEN - {("POST", "/api/v1/enroll")}))
+@pytest.mark.parametrize("methode,pfad", sorted((ROUTEN | PROXY) - {("POST", "/api/v1/enroll")}))
 def test_contract_ohne_oder_falsches_token_401(client, methode, pfad):
     _fehler(client.request(methode, pfad), 401, "device_unknown")
     _fehler(client.request(methode, pfad, headers=bearer("wld_" + "x" * 43)), 401, "device_unknown")
-
-
-@pytest.mark.parametrize("methode,pfad", sorted(PROXY_SRV2))
-def test_contract_proxy_routen_kommen_mit_srv2(client, methode, pfad):
-    _fehler(client.request(methode, pfad), 404, "not_found")
 
 
 # --- §3.1 POST /api/v1/enroll ---

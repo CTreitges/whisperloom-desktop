@@ -91,6 +91,7 @@ Für Tests (aus `server/`): `.venv/Scripts/python.exe -m pip install -r requirem
 | `WL_CONFIG_FILE` | – | YAML- oder JSON-Datei im Datei-Modus |
 | `WL_MASTER_KEY` / `WL_MASTER_KEY_FILE` | – | Hauptschlüssel (64 Hex-Zeichen) direkt bzw. als Datei |
 | `WL_MIN_APP_VERSION` | – | Ältere Apps erhalten beim Verbinden `426 client_outdated` |
+| `WL_UPSTREAM_ALLOW` | – | Interne Netze, die Anbieter-Adressen des Proxys erreichen dürfen, z. B. `10.20.0.0/16` oder `127.0.0.1/32` (siehe „SSRF-Schutz“) |
 
 Nur von `WL_TRUSTED_PROXIES` wertet der Server `X-Forwarded-For` aus (Client-IP für Rate-Limits); uvicorn läuft ohne
 `--proxy-headers`.
@@ -191,7 +192,72 @@ Im Key-Modus „Proxy“ setzt der Server Erkennung und Textmodell fest auf den 
 - Firmencodes liegen als HMAC (Suche) und zusätzlich AES-GCM-verschlüsselt (damit das Portal sie jederzeit anzeigen
   kann); Geräte-Token, Sitzungen und Einladungen nur als Hash.
 
+### Proxy (Key-Modus „Proxy“)
+
+Geräte schicken Erkennung und Textverbesserung an `<WL_BASE_URL>/api/v1/proxy` (OpenAI-kompatibel, Anmeldung mit dem
+Geräte-Token); der Server ersetzt das Token durch den Key der Firma und spricht den Anbieter in dessen Protokoll an:
+OpenAI-kompatibel (OpenAI, Groq, Mistral, Together, DeepInfra, OpenRouter, DeepSeek, eigener Server), ElevenLabs,
+Anthropic Messages, Gemini und Ollama. Die App braucht dafür keine Sonderlogik (Anbieter „Eigener Server“).
+
+- **Zugänge** (Seite „Keys“ oder `key-set`): `stt` und `stt_fallback` für die Erkennung, `llm` und `llm_fallback` für
+  Text (ohne `llm` nimmt der Server den Erkennungs-Zugang). Optional je Zugang ein **Modell**: Dann geht genau dieses
+  Modell an den Anbieter, egal was das Gerät schickt. Eigene Server (`custom`, `ollama`) dürfen ohne Key sein.
+- **Ersatz:** Bei Netzfehler, Zeitlimit, `401`/`403`/`429`/`5xx` oder unbrauchbarer Antwort nimmt der Server den
+  `…_fallback`-Zugang; nicht bei Fehlern der Anfrage (`400`/`404`/`413`/`422`). Zeitlimits wie die App: Verbindung 15 s
+  (mit Ersatz 8 s), Antwort 90 s, eigene Server 600 s.
+- **Grenzen:** Audio als WAV bis 25 MiB, Text bis 1 MiB. Gerät muss freigegeben sein, die Firma nicht gesperrt.
+  Höchstens 20 gleichzeitige Anbieter-Anfragen je Firma (sonst `429` mit `Retry-After`). Große Uploads liest der
+  Server erst nach Prüfung des Geräte-Tokens (unbekannt → `401`, ohne Lesen) und mit freiem Slot: je Gerät 2, je Firma
+  8, je Instanz 32 gleichzeitig (sonst `429` bzw. `503`). Jeder Body muss ohne Pause über 15 s und insgesamt in 300 s
+  ankommen (sonst `400`). Jede Anbieter-Anfrage endet spätestens nach Antwort- plus Verbindungs-Zeitlimit.
+- **Kosten verlässlich schätzen:** Modell am Zugang festlegen. Sonst rechnet der Server mit dem Modellnamen der Anfrage,
+  und ein Name ohne Eintrag in der Preistabelle zählt 0. Fehlgeschlagene Anfragen zählen nur als Fehler je Klasse.
+- Zugang per Kommandozeile (Key über stdin, nie als Argument):
+  `echo "$KEY" | python -m whisperloom_server key-set acme stt --provider groq --model whisper-large-v3-turbo`
+
+### SSRF-Schutz
+
+Anbieter-Adressen trägt der Firmen-Admin ein. Damit niemand über den Proxy interne Dienste der Instanz erreicht,
+lehnt der Server Ziele in Loopback (`127.0.0.0/8`, `::1`), privaten Netzen (`10/8`, `172.16/12`, `192.168/16`, ULA),
+link-local (inkl. Metadaten `169.254.169.254`), CGNAT, Multicast und reservierten Bereichen ab, ebenso andere Schemata
+als `http`/`https` (z. B. Unix-Sockets) und Zugangsdaten in der URL. Geprüft wird beim Speichern und bei **jeder**
+Anfrage: Der Server löst den Namen selbst auf, prüft alle Adressen und verbindet sich mit genau der geprüften
+(DNS-Rebinding); Weiterleitungen folgt er nicht.
+
+Self-Hosting im Firmennetz (eigener whisper-server, Ollama): das Netz bzw. die Adresse per `WL_UPSTREAM_ALLOW`
+freigeben, so eng wie möglich, z. B. `WL_UPSTREAM_ALLOW=10.20.3.4/32`. In einer Mehrmandanten-Instanz gilt die Freigabe
+für alle Firmen – dort nur Netze freigeben, die jede Firma erreichen darf.
+
+### Nutzung und Budget
+
+- **Nutzung** (Seite „Nutzung“, CSV-Export): je Monat (UTC) und Gerät, Gruppe und Firma die Zahl der beantworteten
+  Anfragen, Audio-Minuten, Tokens (laut Anbieter-Antwort), geschätzte Kosten und Fehler je Klasse (Anbieter-Fehler,
+  Zeitüberschreitung, Budget erreicht, ungültige Anfrage).
+- **Budget** (Seite „Budget“, nur owner ändern): Monatsdeckel je Firma, Gruppe oder Gerät für Anfragen, Audio-Minuten,
+  Tokens und/oder Kosten, mit Warnschwelle (Standard 80 %). Ist eine Grenze erreicht, lehnt der Proxy bis Monatsende mit
+  `403 budget_exhausted` ab, ohne den Anbieter zu fragen, und ohne Ersatz-Anbieter: Die App zeigt „Firmenbudget für
+  diesen Monat erreicht – bitte IT fragen“. Laufende Anfragen zählen bei der Prüfung schon mit (Reservierung von Anfrage
+  und Audio-Minuten), gleichzeitige Anfragen verhalten sich also wie nacheinander gestellte: Die Anfrage, die die
+  Grenze überschreitet, läuft noch, die nächste nicht. Tokens und Kosten stehen erst nach der Antwort fest; dort kann
+  eine Welle gleichzeitiger Anfragen den Deckel überschreiten, höchstens um 20 Anfragen je Firma (Parallelitätsgrenze),
+  je Anfrage bis zur Antwortlänge des Modells.
+- **Preistabelle** (Seite „Budget“): Preis je Modell und Audio-Minute bzw. je 1 Mio. Tokens ein/aus, Grundlage der
+  Kosten-Schätzung. Ohne Eintrag zählt ein Modell 0.
+
+### Datenschutz: was der Server speichert und was nicht
+
+| Gespeichert | Nicht gespeichert |
+|---|---|
+| Firmen, Gruppen, Admins (Passwort als Argon2-Hash, TOTP verschlüsselt), Richtlinie | Diktat-Audio (bleibt im Arbeitsspeicher der Anfrage, auch kein Temp-File) |
+| Anbieter-Keys AES-256-GCM-verschlüsselt, angezeigt nur die letzten 4 Zeichen | Erkannter Text, Text vor und nach der Verbesserung, Prompts |
+| Geräte (Name, Plattform, App-Version, Zustand), Geräte-Token nur als SHA-256-Hash | Header und Fehlertexte der Anbieter |
+| Nutzungszähler je Gerät/Gruppe/Monat, Budgets, Preistabelle | Geräte-Token und Keys im Log |
+| Audit-Log der Admin-Aktionen, Log-Zeilen mit Metadaten (Gerät, Zugang, Anbieter, Status, Dauer, Fehlerklasse) | IP-Adressen im Klartext (nur als HMAC für Login-Sperren) |
+
+Der Anbieter selbst erhält Audio bzw. Text – seine Datenschutzbedingungen gelten zusätzlich.
+
 ### Backup
+
 
 ```sh
 sqlite3 "$WL_DATA_DIR/whisperloom-server.db" ".backup '/backup/wl-$(date +%F).db'"
@@ -206,13 +272,13 @@ DB-Datei ersetzen, starten.
 
 `python -m whisperloom_server --help`: `serve`, `init`, `instance-admin-create`, `tenant-create`, `tenant-list`,
 `code-rotate`, `code-show`, `admin-create`, `admin-invite` (Passwort vergessen), `admin-totp-reset`, `device-list`,
-`device-approve`, `device-block`.
+`device-approve`, `device-block`, `key-set` (Zugang speichern, Key von stdin).
 
 ### Sicherheit
 
 CSRF-Token + Origin-Prüfung auf jedem Formular, Cookies `HttpOnly`/`SameSite=Strict` (bei https `Secure`, `__Host-`),
 CSP ohne Inline-Skript, Rate-Limits für Login, TOTP und Enrollment, Konto-Sperre nach 5 Fehlversuchen (15 min),
-Body-Grenze 64 KiB, Audit-Log der Admin-Aktionen (nur Metadaten), Logs ohne Keys, Token, Codes oder Inhalte.
+Body-Grenze 64 KiB (Proxy: Audio 25 MiB, Text 1 MiB), SSRF-Schutz für Anbieter-Adressen, Audit-Log der Admin-Aktionen (nur Metadaten), Logs ohne Keys, Token, Codes oder Inhalte.
 
 ---
 
@@ -222,7 +288,7 @@ Body-Grenze 64 KiB, Audit-Log der Admin-Aktionen (nur Metadaten), Logs ohne Keys
 
 Self-hostable, multi-tenant service for managing WhisperLoom centrally: device approval via company code, groups, a
 three-level policy per setting (Locked / Default / Free), provider keys, admins. Client API:
-[`docs/server-api.md`](../docs/server-api.md). The recognition/text proxy (key mode “proxy”) follows with W2-SRV2.
+[`docs/server-api.md`](../docs/server-api.md), including the recognition/text proxy (key mode “proxy”).
 
 Several companies per instance, each with its own rotatable company code, admins (roles owner/admin), groups, devices,
 keys and policy. The instance admin creates and blocks companies but never sees their devices, keys or policies.
@@ -256,8 +322,9 @@ directory). Reload file mode with `systemctl kill -s HUP whisperloom-server`.
 ### Configuration
 
 Environment variables as in the German table: `WL_DATA_DIR`, `WL_BASE_URL`, `WL_AUTH_MODES`, `WL_TRUSTED_PROXIES`,
-`WL_TRUSTED_HEADER`, `WL_CONFIG_FILE`, `WL_MASTER_KEY` / `WL_MASTER_KEY_FILE`, `WL_MIN_APP_VERSION`. The server reads
-`X-Forwarded-For` only from `WL_TRUSTED_PROXIES`.
+`WL_TRUSTED_HEADER`, `WL_CONFIG_FILE`, `WL_MASTER_KEY` / `WL_MASTER_KEY_FILE`, `WL_MIN_APP_VERSION`,
+`WL_UPSTREAM_ALLOW` (internal networks the proxy may reach, see “SSRF protection”). The server reads `X-Forwarded-For`
+only from `WL_TRUSTED_PROXIES`.
 
 ### Reverse proxy
 
@@ -294,6 +361,69 @@ With “Approve new devices automatically” on, a blocked device that knows the
 (with keys in “distribute” mode). Renew the company code after blocking (page “Company” or `code-rotate`); the portal
 points this out when you block a device.
 
+### Proxy (key mode “proxy”)
+
+Devices send recognition and text refinement to `<WL_BASE_URL>/api/v1/proxy` (OpenAI-compatible, authenticated with
+the device token); the server swaps the token for the company's key and talks to the provider in its own protocol:
+OpenAI-compatible (OpenAI, Groq, Mistral, Together, DeepInfra, OpenRouter, DeepSeek, custom server), ElevenLabs,
+Anthropic Messages, Gemini and Ollama. The app needs no special logic (provider “custom server”).
+
+- **Accesses** (page “Keys” or `key-set`): `stt` and `stt_fallback` for recognition, `llm` and `llm_fallback` for text
+  (without `llm` the recognition access is used). Optionally a **model** per access: exactly this model is sent to the
+  provider, whatever the device asks for. Own servers (`custom`, `ollama`) may have no key.
+- **Fallback:** on network errors, timeouts, `401`/`403`/`429`/`5xx` or an unusable answer the server uses the
+  `…_fallback` access; not on request errors (`400`/`404`/`413`/`422`). Timeouts as in the app: connect 15 s (8 s with a
+  fallback), response 90 s, own servers 600 s.
+- **Limits:** audio as WAV up to 25 MiB, text up to 1 MiB. The device must be approved and the company not blocked.
+  At most 20 concurrent provider requests per company (otherwise `429` with `Retry-After`). Large uploads are read only
+  after the device token has been checked (unknown → `401`, nothing read) and with a free slot: 2 per device, 8 per
+  company, 32 per instance at a time (otherwise `429` or `503`). Every body must arrive without a pause of more than 15 s
+  and within 300 s in total (otherwise `400`). Every provider request ends after the response plus connect timeout.
+- **Reliable cost estimates:** set the model on the access. Otherwise the server uses the model name of the request, and
+  a name without a price table entry counts as 0. Failed requests only count as errors per class.
+- Command line (key via stdin, never as an argument):
+  `echo "$KEY" | python -m whisperloom_server key-set acme stt --provider groq --model whisper-large-v3-turbo`
+
+### SSRF protection
+
+Company admins enter provider addresses. So that nobody reaches internal services of the instance through the proxy,
+the server rejects targets in loopback (`127.0.0.0/8`, `::1`), private networks (`10/8`, `172.16/12`, `192.168/16`,
+ULA), link-local (including metadata `169.254.169.254`), CGNAT, multicast and reserved ranges, other schemes than
+`http`/`https` (e.g. Unix sockets) and credentials in the URL. Checks run on save and on **every** request: the server
+resolves the name itself, checks all addresses and connects to exactly the checked one (DNS rebinding); it does not
+follow redirects.
+
+Self-hosting inside the company network (own whisper server, Ollama): allow the network or address via
+`WL_UPSTREAM_ALLOW`, as narrow as possible, e.g. `WL_UPSTREAM_ALLOW=10.20.3.4/32`. In a multi-tenant instance the
+allowance applies to every company – only allow networks every company may reach.
+
+### Usage and budget
+
+- **Usage** (page “Usage”, CSV export): per month (UTC) and device, group and company the number of answered requests,
+  audio minutes, tokens (as reported by the provider), estimated cost and errors per class.
+- **Budget** (page “Budget”, owners change it): monthly caps per company, group or device for requests, audio minutes,
+  tokens and/or cost, with a warning threshold (default 80 %). Once a limit is reached the proxy declines with
+  `403 budget_exhausted` until the end of the month without asking the provider and without a fallback provider: the
+  app shows “Company budget for this month reached – please ask IT”. Running requests already count during the check
+  (requests and audio minutes are reserved), so concurrent requests behave like sequential ones: the request that crosses
+  the limit still runs, the next one does not. Tokens and cost are only known after the response; there a wave of
+  concurrent requests can exceed the cap, by at most 20 requests per company (concurrency limit), each up to the
+  model's response length.
+- **Price table** (page “Budget”): price per model and audio minute or per 1M tokens in/out, the basis of the cost
+  estimate. Models without an entry count as 0.
+
+### Privacy: what the server stores and what it does not
+
+| Stored | Not stored |
+|---|---|
+| Companies, groups, admins (password as Argon2 hash, TOTP encrypted), policy | Dictation audio (kept in memory for the request only, no temp file) |
+| Provider keys AES-256-GCM encrypted, only the last 4 characters shown | Recognised text, text before and after refinement, prompts |
+| Devices (name, platform, app version, state), device tokens as SHA-256 hash only | Provider headers and error texts |
+| Usage counters per device/group/month, budgets, price table | Device tokens and keys in logs |
+| Admin audit log, log lines with metadata (device, access, provider, status, duration, error class) | IP addresses in plain text (only as an HMAC for sign-in locks) |
+
+The provider itself receives the audio or text – its privacy terms apply in addition.
+
 ### Backup
 
 Use SQLite's online backup (`sqlite3 … ".backup …"`, see above) and back up the master key once, separately.
@@ -302,4 +432,5 @@ Use SQLite's online backup (`sqlite3 … ".backup …"`, see above) and back up 
 
 CSRF token plus origin check on every form, `HttpOnly`/`SameSite=Strict` cookies (`Secure` and `__Host-` on https), CSP
 without inline script, rate limits for sign-in, TOTP and enrollment, account lock after 5 failures (15 min), 64 KiB body
-limit, admin audit log (metadata only), no keys, tokens, codes or content in logs.
+limit (proxy: audio 25 MiB, text 1 MiB), SSRF protection for provider addresses, admin audit log (metadata only), no
+keys, tokens, codes or content in logs. Command line additionally: `key-set` (store an access, key via stdin).

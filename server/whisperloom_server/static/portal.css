@@ -165,3 +165,18 @@ th { color: var(--leise); font-weight: 600; }
   .leiste ul { flex-direction: row; flex-wrap: wrap; }
   .einstellung { grid-template-columns: 1fr; gap: .4rem; }
 }
+/* Nutzung und Budget (W2-SRV2) */
+th.zahl, td.zahl { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.kennzahlen { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: .75rem; margin: .5rem 0; }
+.kennzahlen div { background: var(--hg, transparent); border: 1px solid var(--linie); border-radius: 10px; padding: .6rem .8rem; }
+.kennzahlen dt { font-size: .8rem; color: var(--leise); }
+.kennzahlen dd { margin: .15rem 0 0; font-size: 1.35rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.budget-zeile meter { width: 100%; max-width: 22rem; height: .6rem; margin: .35rem 0; }
+.budget-zeile .abzeichen { align-self: flex-start; margin-top: .25rem; }
+.budget-ok { background: var(--ok-hg); color: var(--ok); }
+.budget-warnung { background: var(--warn-hg); color: var(--warn); }
+.budget-erreicht { background: var(--fehler-hg); color: var(--gefahr); }
+/* Bezugsrahmen für .nur-sr in Tabellen: sonst ragt das Label aus dem Scroll-Bereich und verbreitert die Seite. */
+.tabelle-rahmen { position: relative; }
+.nur-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+th.name { white-space: nowrap; }

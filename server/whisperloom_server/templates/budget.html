@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block titel %}{{ t('nav.budget') }}{% endblock %}
+{% block inhalt %}
+<h1>{{ t('nav.budget') }}</h1>
+<p class="untertitel">{{ t('p.budget_text') }}</p>
+<section class="gruppe-box" aria-labelledby="t-stand">
+  <h2 id="t-stand">{{ t('p.budget_stand') }} {{ monat }}</h2>
+  {% if not stand %}<p class="leer">{{ t('p.budget_leer') }}</p>{% endif %}
+  <ul class="liste">
+  {% for s in stand %}
+    {% set b = s.b %}
+    <li class="zeile budget-zeile">
+      <span class="zeile-text">
+        <strong>{% if b.ebene == 'firma' %}{{ t('p.ebene_firma') }}{% else %}{{ t('p.ebene_' ~ b.ebene) }}: {{ s.name }}{% endif %}</strong>
+        <span class="abzeichen budget-{{ s.zustand }}">{{ t('budget.' ~ s.zustand) }} · {{ s.prozent }} %</span>
+        <meter min="0" max="100" low="{{ b.warn_prozent }}" high="{{ [b.warn_prozent, 99] | min }}" optimum="0" value="{{ [s.prozent, 100] | min }}" aria-label="{{ t('p.verbraucht') }}">{{ s.prozent }} %</meter>
+        <span class="klein">
+          {% if b.max_anfragen is not none %}{{ t('p.anfragen') }} {{ s.summe.anfragen | zahl }} / {{ b.max_anfragen | zahl }} · {% endif %}
+          {% if b.max_audio_min is not none %}{{ t('p.audio_minuten') }} {{ (s.summe.audio_ms / 60000) | zahl(1) }} / {{ b.max_audio_min | zahl }} · {% endif %}
+          {% if b.max_tokens is not none %}{{ t('p.tokens') }} {{ (s.summe.tokens_ein + s.summe.tokens_aus) | zahl }} / {{ b.max_tokens | zahl }} · {% endif %}
+          {% if b.max_kosten_mikro is not none %}{{ t('p.kosten') }} {{ (s.summe.kosten_mikro / 1000000) | zahl(2) }} / {{ (b.max_kosten_mikro / 1000000) | zahl(2) }} · {% endif %}
+          {{ t('p.warnschwelle') }} {{ b.warn_prozent }} %
+        </span>
+      </span>
+      {% if wer.owner %}
+      <form method="post" action="/budget/entfernen"><input type="hidden" name="csrf" value="{{ wer.csrf }}"><input type="hidden" name="ebene" value="{{ b.ebene }}"><input type="hidden" name="ziel" value="{{ b.ziel_id }}"><button class="knopf leise">{{ t('p.entfernen') }}</button></form>
+      {% endif %}
+    </li>
+  {% endfor %}
+  </ul>
+</section>
+{% if wer.owner %}
+<section class="gruppe-box" aria-labelledby="t-neu">
+  <h2 id="t-neu">{{ t('p.budget_setzen') }}</h2>
+  <form method="post" action="/budget" class="formular">
+    <input type="hidden" name="csrf" value="{{ wer.csrf }}">
+    <label for="ebene">{{ t('p.ebene') }}</label>
+    <select id="ebene" name="ebene">
+      <option value="firma">{{ t('p.ebene_firma') }}</option>
+      {% if gruppen %}<option value="gruppe">{{ t('p.ebene_gruppe') }}</option>{% endif %}
+      {% if geraete %}<option value="geraet">{{ t('p.ebene_geraet') }}</option>{% endif %}
+    </select>
+    {% if gruppen %}
+    <div class="formular" data-zeigen-wenn="ebene=gruppe">
+      <label for="gruppe">{{ t('p.gruppe') }}</label>
+      <select id="gruppe" name="gruppe">{% for g in gruppen %}<option value="{{ g.id }}">{{ g.name }}</option>{% endfor %}</select>
+    </div>
+    {% endif %}
+    {% if geraete %}
+    <div class="formular" data-zeigen-wenn="ebene=geraet">
+      <label for="geraet">{{ t('p.geraet') }}</label>
+      <select id="geraet" name="geraet">{% for g in geraete %}<option value="{{ g.id }}">{{ g.name }}</option>{% endfor %}</select>
+    </div>
+    {% endif %}
+    <p class="klein">{{ t('p.budget_grenzen_text') }}</p>
+    <label for="max_anfragen">{{ t('p.max_anfragen') }}</label>
+    <input id="max_anfragen" name="max_anfragen" inputmode="numeric" pattern="[0-9]*" maxlength="15">
+    <label for="max_minuten">{{ t('p.max_minuten') }}</label>
+    <input id="max_minuten" name="max_minuten" inputmode="numeric" pattern="[0-9]*" maxlength="15">
+    <label for="max_tokens">{{ t('p.max_tokens') }}</label>
+    <input id="max_tokens" name="max_tokens" inputmode="numeric" pattern="[0-9]*" maxlength="15">
+    <label for="max_kosten">{{ t('p.max_kosten') }}</label>
+    <input id="max_kosten" name="max_kosten" inputmode="decimal" maxlength="20" aria-describedby="kosten-hinweis">
+    <p id="kosten-hinweis" class="klein">{{ t('p.max_kosten_text') }}</p>
+    <label for="warn_prozent">{{ t('p.warnschwelle') }} (%)</label>
+    <input id="warn_prozent" name="warn_prozent" inputmode="numeric" pattern="[0-9]*" maxlength="3" value="80">
+    <button type="submit" class="knopf haupt">{{ t('p.speichern') }}</button>
+  </form>
+</section>
+{% endif %}
+<section class="gruppe-box" aria-labelledby="t-preise">
+  <h2 id="t-preise">{{ t('p.preise') }}</h2>
+  <p class="klein">{{ t('p.preise_text') }}</p>
+  {% if not preise %}<p class="leer">{{ t('p.preise_leer') }}</p>{% else %}
+  <div class="tabelle-rahmen"><table>
+    <thead><tr><th scope="col">{{ t('p.modell') }}</th><th scope="col" class="zahl">{{ t('p.preis_minute') }}</th><th scope="col" class="zahl">{{ t('p.preis_ein') }}</th><th scope="col" class="zahl">{{ t('p.preis_aus') }}</th>{% if wer.owner %}<th scope="col"><span class="nur-sr">{{ t('p.entfernen') }}</span></th>{% endif %}</tr></thead>
+    <tbody>
+    {% for p in preise %}
+      <tr><th scope="row">{{ p.modell }}</th><td class="zahl">{{ betrag(p.minute_mikro) or '0' }}</td><td class="zahl">{{ betrag(p.mio_ein_mikro) or '0' }}</td><td class="zahl">{{ betrag(p.mio_aus_mikro) or '0' }}</td>
+      {% if wer.owner %}<td><form method="post" action="/budget/preis/entfernen"><input type="hidden" name="csrf" value="{{ wer.csrf }}"><input type="hidden" name="modell" value="{{ p.modell }}"><button class="knopf leise klein-knopf">{{ t('p.entfernen') }}</button></form></td>{% endif %}</tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% endif %}
+  {% if wer.owner %}
+  <form method="post" action="/budget/preis" class="formular" autocomplete="off">
+    <input type="hidden" name="csrf" value="{{ wer.csrf }}">
+    <label for="p-modell">{{ t('p.modell') }}</label>
+    <input id="p-modell" name="modell" maxlength="100" required autocapitalize="none" spellcheck="false">
+    <label for="p-minute">{{ t('p.preis_minute') }}</label>
+    <input id="p-minute" name="minute" inputmode="decimal" maxlength="20">
+    <label for="p-ein">{{ t('p.preis_ein') }}</label>
+    <input id="p-ein" name="mio_ein" inputmode="decimal" maxlength="20">
+    <label for="p-aus">{{ t('p.preis_aus') }}</label>
+    <input id="p-aus" name="mio_aus" inputmode="decimal" maxlength="20">
+    <button type="submit" class="knopf">{{ t('p.preis_speichern') }}</button>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

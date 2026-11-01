@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block titel %}{{ t('nav.nutzung') }}{% endblock %}
+{% macro fehler_text(f) %}{% for k in klassen if f.get(k) %}{{ t('fk.' ~ k) }}: {{ f[k] }}{% if not loop.last %}<br>{% endif %}{% else %}–{% endfor %}{% endmacro %}
+{% macro minuten(ms) %}{{ (ms / 60000) | zahl(1) }}{% endmacro %}
+{% macro kosten(mikro) %}{{ (mikro / 1000000) | zahl(2) }}{% endmacro %}
+{% block inhalt %}
+<h1>{{ t('nav.nutzung') }}</h1>
+<p class="untertitel">{{ t('p.nutzung_text') }}</p>
+<form method="get" action="/nutzung" class="formular reihe">
+  <label for="monat">{{ t('p.monat') }}</label>
+  <select id="monat" name="monat">
+    {% for m in monate %}<option value="{{ m }}"{% if m == monat %} selected{% endif %}>{{ m }}</option>{% endfor %}
+  </select>
+  <button type="submit" class="knopf leise">{{ t('p.anzeigen') }}</button>
+  <a class="knopf leise" href="/nutzung.csv?monat={{ monat }}" download>{{ t('p.csv') }}</a>
+</form>
+{% set f = daten.firma %}
+<section class="gruppe-box" aria-labelledby="t-firma">
+  <h2 id="t-firma">{{ t('p.nutzung_firma') }}</h2>
+  <dl class="kennzahlen">
+    <div><dt>{{ t('p.anfragen') }}</dt><dd>{{ f.anfragen | zahl }}</dd></div>
+    <div><dt>{{ t('p.audio_minuten') }}</dt><dd>{{ minuten(f.audio_ms) }}</dd></div>
+    <div><dt>{{ t('p.tokens') }}</dt><dd>{{ (f.tokens_ein + f.tokens_aus) | zahl }}</dd></div>
+    <div><dt>{{ t('p.kosten') }}</dt><dd>{{ kosten(f.kosten_mikro) }}</dd></div>
+  </dl>
+  <p class="klein">{{ t('p.fehler') }}: {{ fehler_text(f.fehler) | replace('<br>', ', ') }}</p>
+</section>
+<section class="gruppe-box" aria-labelledby="t-geraete">
+  <h2 id="t-geraete">{{ t('p.nutzung_geraete') }}</h2>
+  {% if not daten.geraete %}<p class="leer">{{ t('p.nutzung_leer') }}</p>{% else %}
+  <div class="tabelle-rahmen"><table>
+    <thead><tr><th scope="col">{{ t('p.geraet') }}</th><th scope="col">{{ t('p.gruppe') }}</th><th scope="col" class="zahl">{{ t('p.anfragen') }}</th><th scope="col" class="zahl">{{ t('p.minuten') }}</th><th scope="col" class="zahl">{{ t('p.tokens_ein_aus') }}</th><th scope="col" class="zahl">{{ t('p.kosten_kurz') }}</th><th scope="col">{{ t('p.fehler') }}</th></tr></thead>
+    <tbody>
+    {% for d in daten.geraete %}
+      <tr><th scope="row" class="name">{{ d.name or d.geraet_id }}{% if d.geloescht %} <span class="klein">({{ t('p.geloescht') }})</span>{% endif %}</th><td>{{ d.gruppe or '–' }}</td><td class="zahl">{{ d.anfragen | zahl }}</td><td class="zahl">{{ minuten(d.audio_ms) }}</td><td class="zahl">{{ d.tokens_ein | zahl }} / {{ d.tokens_aus | zahl }}</td><td class="zahl">{{ kosten(d.kosten_mikro) }}</td><td class="klein">{{ fehler_text(d.fehler) }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% endif %}
+</section>
+{% if daten.gruppen %}
+<section class="gruppe-box" aria-labelledby="t-gruppen">
+  <h2 id="t-gruppen">{{ t('p.nutzung_gruppen') }}</h2>
+  <div class="tabelle-rahmen"><table>
+    <thead><tr><th scope="col">{{ t('p.gruppe') }}</th><th scope="col" class="zahl">{{ t('p.anfragen') }}</th><th scope="col" class="zahl">{{ t('p.minuten') }}</th><th scope="col" class="zahl">{{ t('p.tokens') }}</th><th scope="col" class="zahl">{{ t('p.kosten_kurz') }}</th><th scope="col">{{ t('p.fehler') }}</th></tr></thead>
+    <tbody>
+    {% for g in daten.gruppen %}
+      <tr><th scope="row" class="name">{{ g.name or t('p.keine_gruppe') }}</th><td class="zahl">{{ g.anfragen | zahl }}</td><td class="zahl">{{ minuten(g.audio_ms) }}</td><td class="zahl">{{ (g.tokens_ein + g.tokens_aus) | zahl }}</td><td class="zahl">{{ kosten(g.kosten_mikro) }}</td><td class="klein">{{ fehler_text(g.fehler) }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endif %}
+<p class="klein">{{ t('p.nutzung_datenschutz') }}</p>
+{% endblock %}

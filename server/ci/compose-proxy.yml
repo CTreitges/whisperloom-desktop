@@ -1,0 +1,30 @@
+# Nur CI (server-docker, W2-SRV2): Server aus docker-compose.yml plus Fake-Anbieter im selben Compose-Netz.
+# docker compose -f docker-compose.yml -f ci/compose-proxy.yml up -d --build
+# Der Fake-Anbieter liegt in einem privaten Netz; der Server darf ihn nur, weil WL_UPSTREAM_ALLOW genau dieses Netz
+# freigibt (SSRF-Schutz, README). Fake-Key, kein echter Anbieter.
+services:
+  whisperloom-server:
+    environment:
+      WL_BASE_URL: "http://127.0.0.1:8080"
+      WL_UPSTREAM_ALLOW: "172.31.250.0/24"
+    depends_on:
+      - fake-upstream
+
+  fake-upstream:
+    image: python:3.12-slim
+    read_only: true
+    user: "10002:10002"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - ./tools/fake_upstream.py:/fake_upstream.py:ro  # relativ zum Projektordner server/ (erste -f-Datei)
+    command: ["python", "/fake_upstream.py", "--host", "0.0.0.0", "--port", "9000", "--key", "test-key-not-real-1",
+              "--name", "ci-fake"]
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.31.250.0/24

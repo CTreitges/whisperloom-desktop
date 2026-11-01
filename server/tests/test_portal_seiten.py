@@ -4,7 +4,7 @@ import pytest
 
 from .conftest import admin_client, neue_firma
 
-SEITEN = ["/", "/geraete", "/gruppen", "/richtlinie", "/schluessel", "/admins", "/firma"]
+SEITEN = ["/", "/geraete", "/gruppen", "/richtlinie", "/schluessel", "/nutzung", "/budget", "/admins", "/firma"]
 
 
 @pytest.mark.parametrize("pfad", SEITEN)
