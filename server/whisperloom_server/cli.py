@@ -10,7 +10,7 @@ import os
 import sys
 import time
 
-from . import __version__, auth, db, firmen, konten, krypto
+from . import __version__, auth, db, firmen, konten, krypto, schluessel, ssrf
 from .config import Einstellungen, KonfigFehler, lade_master
 from .krypto import Krypto
 
@@ -112,6 +112,17 @@ def ausfuehren(a: argparse.Namespace, einst: Einstellungen) -> str:
             if con.execute("UPDATE geraet SET status = ? WHERE id = ?", (status, a.geraet)).rowcount != 1:
                 raise CliFehler("unbekanntes Gerät")
             return "ok"
+        if a.befehl == "key-set":
+            # Key von stdin, nie als Argument (Prozessliste, Shell-Verlauf). Leer = eigener Server ohne Key.
+            f = _firma(con, a.slug)
+            if a.base_url and not ssrf.beim_speichern_ok(a.base_url, einst.upstream_erlaubt, einst.aufloeser):
+                raise CliFehler("Ziel zeigt auf ein internes Netz; mit WL_UPSTREAM_ALLOW freigeben")
+            key = sys.stdin.readline().strip()
+            schluessel.speichern(con, kry, f["id"], a.zugang, a.provider, a.base_url, key, jetzt, modell=a.model)
+            firmen.protokoll(con, f["id"], "cli", "key_gespeichert", a.zugang, jetzt)
+            return "ok"
+    except schluessel.SchluesselFehler as e:
+        raise CliFehler(f"Key nicht gespeichert ({str(e).removeprefix('h.')})") from e
     except (firmen.FirmenFehler, konten.KontoFehler) as e:
         raise CliFehler(str(e)) from e
     finally:
@@ -151,6 +162,12 @@ def _parser() -> argparse.ArgumentParser:
     sub.add_parser("device-list", help="Geräte einer Firma").add_argument("slug")
     sub.add_parser("device-approve", help="Gerät freigeben").add_argument("geraet")
     sub.add_parser("device-block", help="Gerät sperren").add_argument("geraet")
+    s = sub.add_parser("key-set", help="Zugang einer Firma speichern (Key von stdin)")
+    s.add_argument("slug")
+    s.add_argument("zugang", help="stt, stt_fallback, llm, llm_fallback oder eine Anbieter-ID")
+    s.add_argument("--provider", default="")
+    s.add_argument("--base-url", default="")
+    s.add_argument("--model", default="")
     for name in ("instance-admin-create", "tenant-create", "code-rotate", "code-show", "admin-create", "admin-invite"):
         sub.choices[name].add_argument("--show", action="store_true", help="Geheimnisse auf stdout statt in eine Datei")
     return p
