@@ -27,6 +27,10 @@ Richtlinie), Modell `src/WhisperLoom.Core/Contracts/Settings/WhisperLoomSettings
   einen Fallback oder die Textverbesserung, die den Key erben; abgeschaltete Fallbacks zählen mit), zeigt die Vorschau
   die Zeile `secrets.<zugang>: gespeichert → gelöscht (neues Ziel …)` mit Warnung. Beim Übernehmen wird dieser Key
   gelöscht, bevor die Einstellungen gespeichert werden; danach neu eingeben. Bleibt der Host gleich, bleibt der Key.
+  Bei `llm.providerId = "same"` zählt für den `llm`-Key die Adresse der Erkennung (dorthin schickt ihn „Zugang prüfen“).
+  Felder in `desktop` und `local` zählen in jeder Groß-/Kleinschreibung, wie die App sie liest.
+- **Gerätebezogene Ziele** übernimmt ein Import nie: `stt.vocabularyFile` und `local.ollamaUrl` (Adresse der lokalen
+  Textverbesserung). Ein Export enthält `stt.vocabularyFile` nicht.
 
 ## Felder
 

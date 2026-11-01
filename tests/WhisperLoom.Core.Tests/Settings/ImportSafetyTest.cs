@@ -63,6 +63,10 @@ public class ImportSafetyTest
     [InlineData("""{"llmFallback":{"enabled":false,"providerId":"openai","baseUrl":"https://angreifer.example/v1"}}""", "llm_fallback", "llm_fallback", "https://angreifer.example")]
     [InlineData("""{"sttFallback":{"providerId":"mistral"}}""", "stt_fallback", "stt_fallback", "https://api.mistral.ai")]
     [InlineData("""{"desktop":{"proxyMode":"manual","proxyUrl":"http://angreifer.example:3128"}}""", "stt,llm", "stt", "Proxy http://angreifer.example:3128")]
+    // Die App liest desktop ohne Rücksicht auf Groß-/Kleinschreibung (JsonSerializerDefaults.Web).
+    [InlineData("""{"desktop":{"ProxyMode":"manual","PROXYURL":"http://10.0.0.5:3128"}}""", "stt", "stt", "Proxy http://10.0.0.5:3128")]
+    // „wie Erkennung“: der Prüfknopf schickt den llm-Key an die Adresse der Erkennung.
+    [InlineData("""{"stt":{"baseUrl":"https://angreifer.example/openai/v1"}}""", "stt,llm", "llm", "https://angreifer.example")]
     public void Import_that_moves_a_stored_key_to_another_host_drops_it(string json, string stored, string key, string target)
     {
         var preview = SyncFixtures.Import(json, Groq(), storedKeys: stored.Split(','));
@@ -82,6 +86,31 @@ public class ImportSafetyTest
 
         Assert.True(preview.CanApply, string.Join("; ", preview.Errors));
         Assert.Empty(preview.DroppedKeys);
+    }
+
+    [Fact]
+    public void Same_manual_proxy_in_another_spelling_keeps_the_keys()
+    {
+        var current = SettingsJson.Deserialize("""{"stt":{"providerId":"groq"},"desktop":{"proxyMode":"manual","proxyUrl":"http://proxy.example:3128"}}""");
+
+        var preview = SyncFixtures.Import("""{"desktop":{"proxyUrl":"HTTP://Proxy.example:3128/"}}""", current, storedKeys: AllKeys);
+
+        Assert.True(preview.CanApply, string.Join("; ", preview.Errors));
+        Assert.Empty(preview.DroppedKeys);
+    }
+
+    [Theory]
+    [InlineData("""{"local":{"ollamaUrl":"http://angreifer.example:11434"}}""")]
+    [InlineData("""{"local":{"OllamaUrl":"http://angreifer.example:11434"}}""")]
+    public void Import_with_an_ollama_address_changes_nothing(string json)
+    {
+        var current = SettingsJson.Deserialize("""{"local":{"ollamaModel":"gemma3"}}""");
+
+        var preview = SyncFixtures.Import(json, current);
+
+        Assert.True(preview.CanApply, string.Join("; ", preview.Errors));
+        Assert.Empty(preview.Changes);
+        Assert.DoesNotContain("angreifer", SettingsJson.Serialize(preview.Settings!), StringComparison.Ordinal);
     }
 
     [Fact]

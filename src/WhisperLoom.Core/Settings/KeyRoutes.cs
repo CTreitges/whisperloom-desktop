@@ -42,7 +42,9 @@ internal static class KeyRoutes
         return drops;
     }
 
-    /// <summary>Je Key-Name die Origins, an die ihn die vier Zugänge schicken. Abgeschaltete Fallbacks zählen mit.</summary>
+    /// <summary>
+    /// Je Key-Name die Origins, an die ihn die vier Zugänge (und „Zugang prüfen“) schicken. Abgeschaltete Fallbacks zählen mit.
+    /// </summary>
     private static Dictionary<string, HashSet<string>> Targets(WhisperLoomSettings settings, IReadOnlyList<string> stored)
     {
         var s = SettingsJson.Deserialize(SettingsJson.Serialize(settings));
@@ -60,6 +62,13 @@ internal static class KeyRoutes
                 targets[a.ApiKey[Marker.Length..]].Add(Origin(a.BaseUrl));
             }
         }
+        // „wie Erkennung“: Das Diktat nutzt den llm-Key nicht, „Zugang prüfen“ schickt ihn aber an die Erkennung.
+        var stt = accesses[0]!;
+        if (stored.Contains(SecretNames.Llm) && (string.IsNullOrWhiteSpace(s.Llm.ProviderId) || s.Llm.ProviderId == LlmSettings.Same) &&
+            stt.BaseUrl.Trim().Length > 0)
+        {
+            targets[SecretNames.Llm].Add(Origin(stt.BaseUrl));
+        }
         return targets;
     }
 
@@ -67,12 +76,19 @@ internal static class KeyRoutes
     internal static string Origin(string url) =>
         Uri.TryCreate(url.Trim(), UriKind.Absolute, out var u) ? $"{u.Scheme}://{u.Authority}".ToLowerInvariant() : url.Trim();
 
-    /// <summary>Adresse des manuellen Proxys aus <c>desktop</c> (wie <c>HttpClients.Proxy</c> der App), sonst null.</summary>
+    /// <summary>Origin des manuellen Proxys aus <c>desktop</c> (wie <c>HttpClients.Proxy</c> der App), sonst null.</summary>
     private static string? ManualProxy(WhisperLoomSettings s)
     {
         var desktop = SyncImport.Tree(s)[SyncDocument.DesktopSection] as JsonObject;
-        var mode = (desktop?["proxyMode"] as JsonValue)?.TryGetValue<string>(out var m) == true ? m : "";
-        var url = (desktop?["proxyUrl"] as JsonValue)?.TryGetValue<string>(out var p) == true ? p.Trim() : "";
-        return mode == "manual" && Uri.TryCreate(url, UriKind.Absolute, out _) ? url : null;
+        var url = Field(desktop, "proxyUrl").Trim();
+        return Field(desktop, "proxyMode") == "manual" && Uri.TryCreate(url, UriKind.Absolute, out _) ? Origin(url) : null;
     }
+
+    /// <summary>
+    /// Textfeld so, wie die App den Abschnitt liest (<c>JsonSerializerDefaults.Web</c>): Name ohne Rücksicht auf
+    /// Groß-/Kleinschreibung, bei Dopplung gilt das letzte. "" = fehlt oder kein Text.
+    /// </summary>
+    internal static string Field(JsonObject? section, string name) =>
+        section?.LastOrDefault(p => string.Equals(p.Key, name, StringComparison.OrdinalIgnoreCase)).Value is JsonValue v &&
+        v.TryGetValue<string>(out var text) ? text : "";
 }

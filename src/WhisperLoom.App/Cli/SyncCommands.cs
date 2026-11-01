@@ -100,7 +100,7 @@ internal sealed class SyncCommands(string dataDir, ISecretStore secrets, TextWri
         var stored = new List<string>();
         foreach (var name in SecretNames.All)
         {
-            if (!string.IsNullOrEmpty(await store.GetAsync(name, ct)))
+            if (!string.IsNullOrWhiteSpace(await store.GetAsync(name, ct)))
             {
                 stored.Add(name);
             }
@@ -116,7 +116,7 @@ internal sealed class SyncCommands(string dataDir, ISecretStore secrets, TextWri
         }
     }
 
-    private static string DropWarning(KeyDrop d) => $"Key {d.Name} wird gelöscht: der Import schickte ihn an {d.Target}; danach neu eingeben";
+    private static string DropWarning(KeyDrop d) => $"Key {d.Name} wird gelöscht: der Import würde ihn an {d.Target} schicken; danach neu eingeben";
 
     private void Report(IReadOnlyList<string> warnings, IReadOnlyList<string> errorList)
     {

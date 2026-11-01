@@ -34,6 +34,9 @@ public sealed record KeyDrop(string Name, string Target);
 /// </summary>
 public static class SyncImport
 {
+    /// <summary>Abschnitt der lokalen Verarbeitung (Desktop, <c>LocalSettings</c> der App).</summary>
+    private const string LocalSection = "local";
+
     /// <summary>
     /// Vorschau eines Imports aus einer fremden Datei. Schutzregeln: <c>stt.vocabularyFile</c> wird nie übernommen;
     /// lenkt die Datei einen gespeicherten Key an ein neues Ziel (Adresse, Anbieter oder manueller Proxy), steht er in
@@ -47,8 +50,17 @@ public static class SyncImport
         {
             warnings.Add("Keys und Richtlinie (secrets, policy) übernimmt nur „WhisperLoom provision“; hier ignoriert.");
         }
+        // Gerätebezogene Ziele, die keine fremde Datei setzen darf: Vokabular-Datei und die Ollama-Adresse (lokale
+        // Textverbesserung, ohne Key, aber mit Diktattext). „local“ liest die App ohne Rücksicht auf Groß-/Kleinschreibung.
         var settings = (JsonObject)file.Settings.DeepClone();
         (settings["stt"] as JsonObject)?.Remove("vocabularyFile");
+        if (settings[LocalSection] is JsonObject local)
+        {
+            foreach (var name in local.Select(p => p.Key).Where(k => k.Equals("ollamaUrl", StringComparison.OrdinalIgnoreCase)).ToList())
+            {
+                local.Remove(name);
+            }
+        }
         var preview = Merge(current, file with { Settings = settings }, policy, policy.IsLocked, warnings);
         if (preview.Settings is null)
         {

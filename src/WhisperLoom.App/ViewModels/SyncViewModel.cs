@@ -26,6 +26,7 @@ public sealed partial class SyncViewModel(DictationController controller, ISecre
     public const string SuggestedFileName = "whisperloom-settings.json";
 
     private ImportPreview? _preview;
+    private string? _json;
 
     public ObservableCollection<ChangeRow> Changes { get; } = [];
 
@@ -81,29 +82,46 @@ public sealed partial class SyncViewModel(DictationController controller, ISecre
         lines.AddRange(preview.DroppedKeys.Select(d => Loc.Instance.Format("Sync_KeyDropWarning", d.Name, d.Target)));
         Status = string.Join("\n", lines);
         _preview = preview;
+        _json = json;
         CanApply = preview.CanApply && preview.Changes.Any(c => !c.Locked);
     }
 
     [RelayCommand(CanExecute = nameof(CanApply))]
     public async Task Apply()
     {
-        if (_preview?.Settings is not { } settings)
+        if (_preview is null || _json is null)
         {
             return;
         }
+        CanApply = false;
+        _preview = null;
         try
         {
+            // Neu berechnen: Seit der Vorschau kann ein Key gespeichert worden sein, den der Import umlenkt.
+            var stored = await SyncCommands.StoredKeysAsync(secrets, CancellationToken.None);
+            var preview = SyncImport.Preview(controller.Settings, SyncDocument.Parse(_json), controller.Policy, stored);
+            if (preview.Settings is not { } settings)
+            {
+                Status = string.Join("\n", [Loc.Instance["Sync_Invalid"], .. preview.Errors]);
+                return;
+            }
             // Erst die Keys: scheitert das Löschen, bleiben die Einstellungen wie vorher.
-            await SyncCommands.DropKeysAsync(secrets, _preview, CancellationToken.None);
-            await controller.ApplySettingsAsync(settings);
-            Status = Loc.Instance["Sync_Applied"];
+            await SyncCommands.DropKeysAsync(secrets, preview, CancellationToken.None);
+            try
+            {
+                await controller.ApplySettingsAsync(settings);
+                Status = Loc.Instance["Sync_Applied"];
+            }
+            catch (IOException)
+            {
+                Status = Loc.Instance["Settings_HistoryClearError"];
+            }
         }
         catch (IOException)
         {
-            Status = Loc.Instance["Settings_HistoryClearError"];
+            Status = Loc.Instance["Key_StoreError"];
+            return;
         }
-        CanApply = false;
-        _preview = null;
         Applied?.Invoke();
     }
 }

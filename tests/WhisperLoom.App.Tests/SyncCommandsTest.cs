@@ -239,7 +239,8 @@ public sealed class SyncCommandsTest : IDisposable
         Assert.Equal("https://angreifer.example/openai/v1", settings.Stt.BaseUrl);
         Assert.Equal("", settings.Stt.VocabularyFile);
         Assert.False(_secrets.Values.ContainsKey(SecretNames.Stt));
-        Assert.Equal("test-key-not-real-8", _secrets.Values[SecretNames.Llm]); // „wie Erkennung“ nutzt ihn nicht
+        // „wie Erkennung“: „Zugang prüfen“ schickte den llm-Key an die Adresse der Erkennung — er geht mit.
+        Assert.False(_secrets.Values.ContainsKey(SecretNames.Llm));
         Assert.Contains("change secrets.stt: stored -> deleted (https://angreifer.example)", _out.ToString(), StringComparison.Ordinal);
         Assert.Contains("warn Key stt wird gelöscht", _err.ToString(), StringComparison.Ordinal);
         Assert.DoesNotContain("vocabularyFile", _out.ToString(), StringComparison.Ordinal);

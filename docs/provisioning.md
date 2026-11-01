@@ -60,10 +60,11 @@ Ist `policy.json` unlesbar, lehnt `WhisperLoom key set|delete` ab (Exit 1), stat
 Diktate und der verteilte Key nicht an einen fremden Server gehen. `custom` (eigener Server) und `ollama` haben keine
 feste Adresse: Wer sie freigibt, gibt jeden Server frei; dann `stt.baseUrl` bzw. `llm.baseUrl` mitsperren.
 
-**Fremde Einstellungsdateien:** Ein Import des Nutzers übernimmt nie Keys, Richtlinie oder den Pfad der
-Vokabular-Datei. Lenkt er einen gespeicherten Key an einen anderen Host (Adresse, Anbieter oder manueller Proxy),
-warnt die Vorschau und der Key wird beim Übernehmen gelöscht. Ein manueller Proxy bekommt nie die Windows-Anmeldung
-(NTLM/Kerberos); die gilt nur für den System-Proxy.
+**Fremde Einstellungsdateien:** Ein Import des Nutzers übernimmt nie Keys, Richtlinie, den Pfad der Vokabular-Datei
+oder die Ollama-Adresse. Lenkt er einen gespeicherten Key an einen anderen Host (Adresse, Anbieter oder manueller
+Proxy), warnt die Vorschau und der Key wird beim Übernehmen gelöscht. Ein manueller Proxy bekommt nie die
+Windows-Anmeldung (NTLM/Kerberos); die gilt nur für den System-Proxy. Verlangt der Firmen-Proxy die Windows-Anmeldung,
+ihn als System-Proxy setzen (Interneteinstellungen bzw. PAC per Gruppenrichtlinie) und in WhisperLoom „System“ lassen.
 
 ### Beispielskript (PowerShell, z. B. als Anmeldeskript oder per Softwareverteilung)
 
@@ -135,9 +136,11 @@ If `policy.json` cannot be read, `WhisperLoom key set|delete` refuses (exit 1) i
 dictations and the distributed key never go to a foreign server. `custom` (own server) and `ollama` have no fixed
 address: allowing them allows any server; lock `stt.baseUrl` or `llm.baseUrl` as well.
 
-**Foreign settings files:** a user import never takes keys, the policy or the vocabulary file path. If it would send a
-stored key to another host (address, provider or manual proxy), the preview warns and the key is deleted on apply.
-A manual proxy never gets the Windows sign-in (NTLM/Kerberos); that only applies to the system proxy.
+**Foreign settings files:** a user import never takes keys, the policy, the vocabulary file path or the Ollama
+address. If it would send a stored key to another host (address, provider or manual proxy), the preview warns and the
+key is deleted on apply. A manual proxy never gets the Windows sign-in (NTLM/Kerberos); that only applies to the system
+proxy. If the company proxy requires the Windows sign-in, set it as system proxy (Internet settings or PAC via group
+policy) and keep WhisperLoom on "System".
 
 On Linux the same command stores keys in the Secret Service (via `secret-tool`) or, if none is available, in
 `~/.config/whisperloom/secrets.json` with mode 600.

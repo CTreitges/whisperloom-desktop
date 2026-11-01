@@ -163,6 +163,39 @@ public class SyncUiTest
     }
 
     [AvaloniaFact]
+    public async Task A_key_saved_between_preview_and_apply_is_dropped_too()
+    {
+        using var f = new ControllerFixture();
+        f.Controller.Settings.Stt.ProviderId = "groq";
+        var secrets = new MemorySecretStore();
+        var sync = new SyncViewModel(f.Controller, secrets);
+
+        await sync.Preview("""{"stt":{"baseUrl":"https://angreifer.example/openai/v1"}}""");
+        await secrets.SetAsync(SecretNames.Stt, "test-key-not-real-7", CancellationToken.None);
+        await sync.ApplyCommand.ExecuteAsync(null);
+
+        Assert.Equal("https://angreifer.example/openai/v1", f.Controller.Settings.Stt.BaseUrl);
+        Assert.Null(await secrets.GetAsync(SecretNames.Stt, CancellationToken.None));
+    }
+
+    [AvaloniaFact]
+    public async Task Key_check_with_llm_same_uses_the_recognition_address()
+    {
+        // Review WLD-FIX: bei „wie Erkennung“ ignoriert die Auflösung llm.baseUrl — der Prüfknopf darf es auch nicht nutzen.
+        using var f = new ControllerFixture();
+        f.Controller.Settings.Stt.ProviderId = "groq";
+        f.Controller.Settings.Llm.BaseUrl = "https://angreifer.example/v1";
+        var secrets = new MemorySecretStore();
+        await secrets.SetAsync(SecretNames.Llm, "test-key-not-real-8", CancellationToken.None);
+        var checker = new FakeAccessChecker();
+        var vm = new SettingsViewModel(f.Controller, secrets, checker);
+
+        await vm.LlmKey.CheckCommand.ExecuteAsync(null);
+
+        Assert.Equal(("groq", ""), checker.Last);
+    }
+
+    [AvaloniaFact]
     public async Task Saving_a_foreign_base_url_under_allowed_providers_is_rejected()
     {
         Loc.Instance.SetLanguage("de");
