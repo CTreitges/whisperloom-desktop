@@ -22,6 +22,8 @@ jobs:
       - run: python -m venv server/.venv
       - run: server/.venv/bin/python -m pip install -r server/requirements-dev.txt -e server
       - run: server/.venv/bin/python -m ruff check server
+      # Bekannte Schwachstellen in den Laufzeit-Abhängigkeiten (pip-audit ist in requirements-dev.txt gepinnt).
+      - run: server/.venv/bin/python -m pip_audit -r server/requirements.txt --progress-spinner off
       - run: server/.venv/bin/python -m pytest server -q
       - run: server/.venv/bin/python -m pytest server -q -k contract
       - run: python server/tools/smoke_server.py

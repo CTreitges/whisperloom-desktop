@@ -131,9 +131,10 @@ def totp_seite(request: Request, con: sqlite3.Connection = Depends(verbindung)):
     return seite(request, "login_totp.html", {"csrf": s["csrf"]})
 
 
-def _voll(con: sqlite3.Connection, s) -> None:
-    con.execute("UPDATE sitzung SET stufe = 'voll', totp_neu_enc = NULL, totp_neu_nonce = NULL WHERE id_hash = ?",
-                (s["id_hash"],))
+def _voll(request: Request, con: sqlite3.Connection, s, ziel: str) -> RedirectResponse:
+    """Rechtewechsel → neue Sitzungs-ID (OWASP Session Management); die bisherige Sitzung wird gelöscht."""
+    con.execute("DELETE FROM sitzung WHERE id_hash = ?", (s["id_hash"],))
+    return _neue_sitzung(request, con, s["admin_id"], "voll", ziel)
 
 
 def _totp_versuch(request: Request, s) -> bool:
@@ -157,9 +158,8 @@ def totp_login(request: Request, code: str = Form(""), csrf: str = Form(""), con
     if not auth.totp_pruefen(con, request.app.state.krypto, admin, code[:12], jetzt(request)):
         ereignis("login fehler", fehler="totp", admin=admin["id"])
         return seite(request, "login_totp.html", {"csrf": s["csrf"], "fehler": "h.totp_falsch"}, 200)
-    _voll(con, s)
     ereignis("login ok", admin=admin["id"], art="totp")
-    return RedirectResponse("/", status_code=303)
+    return _voll(request, con, s, "/")
 
 
 def _einrichten_ctx(request: Request, con: sqlite3.Connection, s) -> dict:
@@ -170,7 +170,8 @@ def _einrichten_ctx(request: Request, con: sqlite3.Connection, s) -> dict:
         enc, nonce = kry.verschluesseln(geheimnis, f"{s['admin_id']}|totp")
         con.execute("UPDATE sitzung SET totp_neu_enc = ?, totp_neu_nonce = ? WHERE id_hash = ?", (enc, nonce, s["id_hash"]))
     gruppen = " ".join(geheimnis[i : i + 4] for i in range(0, len(geheimnis), 4))
-    return {"csrf": s["csrf"], "geheimnis": gruppen, "uri": totp.uri(geheimnis, s["benutzer"], AUSSTELLER)}
+    return {"csrf": s["csrf"], "geheimnis": gruppen, "uri": totp.uri(geheimnis, s["benutzer"], AUSSTELLER),
+            "passwort_noetig": s["stufe"] == "voll"}
 
 
 def _einrichten_sitzung(request: Request, con: sqlite3.Connection):
@@ -190,7 +191,7 @@ def totp_einrichten_seite(request: Request, con: sqlite3.Connection = Depends(ve
 
 
 @router.post("/login/totp-einrichten", response_class=HTMLResponse)
-def totp_einrichten(request: Request, code: str = Form(""), csrf: str = Form(""),
+def totp_einrichten(request: Request, code: str = Form(""), csrf: str = Form(""), passwort: str = Form(""),
                     con: sqlite3.Connection = Depends(verbindung)):
     s = _einrichten_sitzung(request, con)
     if s is None:
@@ -199,16 +200,24 @@ def totp_einrichten(request: Request, code: str = Form(""), csrf: str = Form("")
         return verboten(request)
     if not _totp_versuch(request, s):
         return seite(request, "totp_einrichten.html", {**_einrichten_ctx(request, con, s), "fehler": "h.zu_oft"}, 429)
+    if s["stufe"] == "voll":
+        # Aus einer bestehenden Sitzung (ein- bzw. umstellen) nur mit Passwort: Wer eine Sitzung übernommen hat,
+        # darf den zweiten Faktor nicht tauschen (wie /konto/totp-aus).
+        pw = con.execute("SELECT pw_hash FROM admin WHERE id = ?", (s["admin_id"],)).fetchone()
+        if (request.app.state.begrenzer.erlaubt("passwort:" + s["admin_id"], 10, VIERTELSTUNDE) is not None
+                or not auth.passwort_pruefen(pw["pw_hash"], passwort[:256])):
+            return seite(request, "totp_einrichten.html", {**_einrichten_ctx(request, con, s), "fehler": "h.pw_alt"}, 400)
     kry = request.app.state.krypto
     geheimnis = auth.totp_geheimnis(kry, s["totp_neu_enc"], s["totp_neu_nonce"], s["admin_id"])
     schritt = totp.pruefen(geheimnis, code[:12], jetzt(request), 0) if geheimnis else None
     if schritt is None:
         return seite(request, "totp_einrichten.html", {**_einrichten_ctx(request, con, s), "fehler": "h.totp_falsch"})
     auth.totp_speichern(con, kry, s["admin_id"], geheimnis, schritt)
-    _voll(con, s)
     admin = con.execute("SELECT firma_id, benutzer FROM admin WHERE id = ?", (s["admin_id"],)).fetchone()
     firmen.protokoll(con, admin["firma_id"], admin["benutzer"], "totp_ein", admin["benutzer"], jetzt(request))
-    return RedirectResponse("/?ok=totp_ein", status_code=303)
+    if s["stufe"] == "voll":
+        auth.sitzungen_beenden(con, s["admin_id"])  # neuer zweiter Faktor: andere Sitzungen des Kontos enden
+    return _voll(request, con, s, "/?ok=totp_ein")
 
 
 @router.get("/einladung/{token}", response_class=HTMLResponse)

@@ -176,6 +176,7 @@ Python-Pakete, fest in `server/requirements.txt`. Lizenzen laut installierten Pa
 | Pygments | 2.21.0 | BSD-2-Clause |
 | pytest | 9.2.0 | MIT |
 | ruff | 0.17.3 | MIT |
+| pip-audit (plus its own dependencies / samt Abhängigkeiten, CI only) | 2.10.1 | Apache-2.0 |
 
 TOTP (RFC 6238) is implemented with the Python standard library; no third-party OTP package is used. The base image
 `python:3.12-slim` contains CPython (PSF-2.0) and Debian packages under their respective licenses.

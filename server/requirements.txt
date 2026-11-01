@@ -1,4 +1,4 @@
-# Laufzeit (feste Versionen; pip-audit prüft diese Datei).
+# Laufzeit (feste Versionen; der CI-Job server-tests prüft diese Datei mit pip-audit).
 # Basis: whisperloom-android feat/simple-portal server/simple-whisper/requirements.txt, ergänzt um pyyaml (Datei-Modus).
 fastapi==0.162.0
 starlette==1.10.0

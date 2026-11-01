@@ -162,6 +162,13 @@ Datei-Modus: Beispiel [`beispiele/firmen.yaml`](beispiele/firmen.yaml). Werte `e
 Umgebung (Keys, Codes). Ein Fehler in der Datei ändert nichts (vorheriger Stand bleibt, Log nennt die Fehlerklasse);
 beim Start bricht der Server ab. Firmen, die aus der Datei verschwinden, werden gesperrt, nicht gelöscht.
 
+### Geräte sperren bei automatischer Freigabe
+
+Ist „Neue Geräte automatisch freigeben“ an, kann sich ein gesperrtes Gerät mit dem bekannten Firmencode sofort neu
+verbinden und ist wieder freigegeben (im Key-Modus „Verteilen“ samt Keys). Nach dem Sperren deshalb den Firmencode
+erneuern (Seite „Firma“ bzw. `code-rotate`); das Portal weist beim Sperren darauf hin. Verbundene Geräte bleiben
+verbunden.
+
 ### Richtlinie (drei Stufen)
 
 Je Einstellung: **Fest** (zentral, in der App ausgeblendet), **Vorgabe** (vorbelegt, änderbar), **Frei** (nichts
@@ -175,9 +182,14 @@ Im Key-Modus „Proxy“ setzt der Server Erkennung und Textmodell fest auf den 
 - **Key-Modus je Firma:** `proxy` (Standard) – Keys verlassen den Server nie; `distribute` – freigegebene Geräte erhalten
   die Keys bei `GET /api/v1/config`, nie wartende oder gesperrte.
 - Hauptschlüssel: `init` legt `master.key` (Rechte 600) an, wenn weder `WL_MASTER_KEY` noch `WL_MASTER_KEY_FILE` gesetzt
-  ist. Empfehlung: Schlüssel getrennt von der DB aufbewahren (Docker-Secret, systemd `LoadCredential`). Ohne den
-  Hauptschlüssel sind Keys und Firmencodes im Backup nicht lesbar; geht er verloren, müssen Keys neu eingetragen und
-  Codes rotiert werden.
+  ist. Ohne den Hauptschlüssel sind Keys und Firmencodes im Backup nicht lesbar; geht er verloren, müssen Keys neu
+  eingetragen und Codes rotiert werden.
+- **`master.key` nicht im selben Backup bzw. Volume wie die DB ablegen.** Liegt beides zusammen (Standard: beides in
+  `WL_DATA_DIR`), entschlüsselt jeder mit dem Backup auch Keys und Firmencodes. Für den Betrieb den Schlüssel per
+  `WL_MASTER_KEY_FILE` (Docker-Secret unter `/run/secrets/…`), systemd `LoadCredential=master.key:…` oder
+  `WL_MASTER_KEY` aus einem Secret-Store liefern und `master.key` aus dem Datenordner entfernen.
+- Firmencodes liegen als HMAC (Suche) und zusätzlich AES-GCM-verschlüsselt (damit das Portal sie jederzeit anzeigen
+  kann); Geräte-Token, Sitzungen und Einladungen nur als Hash.
 
 ### Backup
 
@@ -187,7 +199,8 @@ sqlite3 "$WL_DATA_DIR/whisperloom-server.db" ".backup '/backup/wl-$(date +%F).db
 docker compose exec whisperloom-server python -c "import sqlite3; s=sqlite3.connect('/data/whisperloom-server.db'); d=sqlite3.connect('/data/backup.db'); s.backup(d)"
 ```
 
-Den Hauptschlüssel einmalig getrennt sichern. Wiederherstellen: Dienst stoppen, DB-Datei ersetzen, starten.
+Den Hauptschlüssel einmalig getrennt sichern, nie im selben Backup wie die DB. Wiederherstellen: Dienst stoppen,
+DB-Datei ersetzen, starten.
 
 ### Kommandozeile
 
@@ -269,8 +282,17 @@ Each company may restrict the instance's methods further (page “Company”, ow
 - Keys are stored AES-256-GCM encrypted; only the last four characters are shown. Device tokens, company codes and
   sessions are stored as hashes only.
 - Key mode per company: `proxy` (default, keys never leave the server) or `distribute` (approved devices receive the keys).
-- Keep the master key separate from database backups (Docker secret, systemd credential). Losing it means re-entering
-  keys and rotating codes.
+- Never keep `master.key` in the same backup or volume as the database (by default both live in `WL_DATA_DIR`): whoever
+  has both can decrypt keys and company codes. Supply it via `WL_MASTER_KEY_FILE` (Docker secret), systemd
+  `LoadCredential=master.key:…` or `WL_MASTER_KEY` from a secret store, and remove `master.key` from the data directory.
+  Losing it means re-entering keys and rotating codes.
+- Company codes are stored as an HMAC (lookup) and additionally AES-GCM encrypted so the portal can always show them.
+
+### Blocking devices with automatic approval
+
+With “Approve new devices automatically” on, a blocked device that knows the company code can connect again at once
+(with keys in “distribute” mode). Renew the company code after blocking (page “Company” or `code-rotate`); the portal
+points this out when you block a device.
 
 ### Backup
 

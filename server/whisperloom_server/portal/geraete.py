@@ -87,6 +87,9 @@ def geraet_aktion(gid: str, aktion: str, request: Request, csrf: str = Form(""),
         return fehlerseite(request, "f.nicht_gefunden_titel", "f.nicht_gefunden", 404)
     firmen.protokoll(con, fid, wer.benutzer, "geraet_" + aktion, gid, jetzt(request))
     ereignis("geraet " + aktion, geraet=gid, firma=fid)
+    if aktion == "sperren" and con.execute("SELECT auto_freigabe FROM firma WHERE id = ?", (fid,)).fetchone()[0]:
+        # Unter Auto-Freigabe meldet sich ein Gerät mit bekanntem Firmencode sofort neu an (wieder freigegeben).
+        ergebnis = "gesperrt_auto"
     return zurueck("/geraete", ok=ergebnis)
 
 

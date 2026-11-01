@@ -3,6 +3,9 @@
 {% block inhalt %}
 <h1>{{ t('nav.geraete') }}</h1>
 <p class="untertitel">{{ t('p.geraete_text') }}</p>
+{% if request.query_params.get('ok') == 'gesperrt_auto' %}
+<p class="meldung hinweis" role="alert">{{ t('p.sperren_auto_hinweis') }} <a href="/firma">{{ t('p.code_erneuern') }}</a></p>
+{% endif %}
 {% if not geraete %}
 <p class="leer">{{ t('p.geraete_leer') }}</p>
 {% endif %}
