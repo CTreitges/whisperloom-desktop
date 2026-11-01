@@ -47,7 +47,7 @@ public sealed class SelectionPresenter(bool noActivate, Func<IntPtr, PixelPoint?
     {
         _picker ??= new SelectionPickerWindow(noActivate);
         _picker.DataContext = picker;
-        Place(_picker, at ?? targetCenter(target), new Size(260, 280));
+        Place(_picker, at ?? targetCenter(target), new Size(290, 280));
         _picker.Show();
     }
 

@@ -48,8 +48,6 @@
           </StackPanel>
           <ds:SettingRow Path="selection.hotkeyCombo" Error="{Binding Hotkeys.Selection.Warnings}" IsVisible="{Binding !IsLinux}">
             <StackPanel Orientation="Horizontal" Spacing="8">
-              <ToggleSwitch x:Name="SelectionHotkeyToggle" IsChecked="{Binding Hotkeys.SelectionOn}" OnContent="" OffContent=""
-                            AutomationProperties.Name="{Binding Hotkeys.Selection.Label}" />
               <Border Background="{DynamicResource Loom.SurfaceHigh}" CornerRadius="{DynamicResource Loom.Radius.Control}" Padding="10,5" MinWidth="150"
                       IsVisible="{Binding Hotkeys.SelectionOn}">
                 <TextBlock x:Name="SelectionHotkeyValue" Text="{Binding Hotkeys.Selection.Value}" FontWeight="SemiBold" FontFamily="monospace" />
@@ -57,6 +55,8 @@
               <Button Content="{Binding [Hotkey_Record], Source={x:Static l:Loc.Instance}}" Command="{Binding Hotkeys.Selection.RecordCommand}"
                       IsVisible="{Binding Hotkeys.SelectionOn}" IsEnabled="{Binding !Hotkeys.Selection.IsRecording}"
                       AutomationProperties.HelpText="{Binding Hotkeys.Selection.Label}" />
+              <ToggleSwitch x:Name="SelectionHotkeyToggle" IsChecked="{Binding Hotkeys.SelectionOn}" OnContent="" OffContent=""
+                            AutomationProperties.Name="{Binding Hotkeys.Selection.Label}" />
             </StackPanel>
           </ds:SettingRow>
           <ds:SettingRow Path="selection.floatingButton" IsVisible="{Binding !IsLinux}">
