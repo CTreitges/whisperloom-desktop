@@ -45,6 +45,15 @@ public sealed class DesktopSettings
     /// <summary>Windows, Diktat per Tastenkürzel: "paste" (einfügen), "type" (direkt tippen) oder "clipboard" (nur Zwischenablage).</summary>
     public string InsertMode { get; set; } = "paste";
 
+    /// <summary>Windows: letztes Diktat erneut ins Vordergrundfenster einfügen (WLD-P5b).</summary>
+    public string HotkeyReinsert { get; set; } = "Ctrl+Alt+Shift+V";
+
+    /// <summary>Windows: markierten Text per gesprochener Anweisung umschreiben (WLD-P5b).</summary>
+    public string HotkeyRewrite { get; set; } = "Ctrl+Alt+Shift+R";
+
+    /// <summary>App-Profile (WLD-P5b): Stufe, Ausgabemodus und Enter je Zielprogramm; Reihenfolge = Vorrang unter gleich genauen.</summary>
+    public List<Features.Profiles.AppProfile> Profiles { get; set; } = [];
+
     /// <summary>Unbekannte Felder (neuere Version, Sync von Android) bleiben beim Speichern erhalten.</summary>
     [System.Text.Json.Serialization.JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }
@@ -88,7 +97,9 @@ public sealed class SettingsStore
         {
             try
             {
-                return element.Deserialize<DesktopSettings>(DesktopJson) ?? new DesktopSettings();
+                var desktop = element.Deserialize<DesktopSettings>(DesktopJson) ?? new DesktopSettings();
+                desktop.Profiles = Features.Profiles.AppProfiles.Clean(desktop.Profiles);
+                return desktop;
             }
             catch (JsonException)
             {

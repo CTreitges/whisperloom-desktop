@@ -69,6 +69,32 @@ internal sealed class Win32TextClipboard : IClipboardAdapter
 
     public void Restore(ClipboardSnapshot snapshot) => Write(snapshot.Items, @private: true);
 
+    public string? GetText()
+    {
+        Open();
+        try
+        {
+            var handle = GetClipboardData(CfUnicodeText);
+            var source = handle == IntPtr.Zero ? IntPtr.Zero : GlobalLock(handle);
+            if (source == IntPtr.Zero)
+            {
+                return null;
+            }
+            try
+            {
+                return Marshal.PtrToStringUni(source);
+            }
+            finally
+            {
+                GlobalUnlock(handle);
+            }
+        }
+        finally
+        {
+            CloseClipboard();
+        }
+    }
+
     private static void Write(IReadOnlyList<(uint Format, byte[] Data)> items, bool @private)
     {
         Open();

@@ -24,6 +24,7 @@ DYNAMIC = (
     [f"Stage_{k}" for k in ("off", "polish", "beautify", "summarize", "readable", "prompt")]
     + [f"State_{k}" for k in ("idle", "recording", "paused", "processing")]
     + [f"Proxy_{k}" for k in ("system", "off", "manual")]
+    + [f"History_Status_{k}" for k in ("done", "skipped", "no-entry", "busy", "error", "cancelled", "stage-locked", "stage-unavailable")]
     + [f"Setup_Step_{k}" for k in ("Language", "Microphone", "Recognition", "Stage", "Hotkey", "Autostart", "Done")]
 )
 

@@ -9,6 +9,7 @@ using WhisperLoom.App.Instance;
 using WhisperLoom.App.Services;
 using WhisperLoom.App.Setup;
 using WhisperLoom.App.Tray;
+using WhisperLoom.App.Updates;
 using WhisperLoom.App.ViewModels;
 using WhisperLoom.App.Views;
 
@@ -28,6 +29,7 @@ public partial class App : Application
     private SettingsWindow? _settingsWindow;
     private SetupWindow? _setupWindow;
     private IDisposable? _input;
+    private readonly CancellationTokenSource _updates = new();
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
@@ -54,6 +56,7 @@ public partial class App : Application
 
         CreateTray(_host);
         StartHotkeys(_host);
+        StartUpdates(_host);
         if (verb is not null)
         {
             await _host.ExecuteAsync(verb, args);
@@ -73,7 +76,8 @@ public partial class App : Application
     {
         try
         {
-            var menu = new TrayMenu(host.Controller, Open);
+            var menu = new TrayMenu(host.Controller, Open, entry => host.InsertRecentTextAsync(entry.Text));
+            _ = menu.ReloadRecentAsync();
             _tray = new TrayIcon
             {
                 Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://WhisperLoom/Assets/whisperloom.ico"))),
@@ -115,7 +119,19 @@ public partial class App : Application
                 return status;
             };
             RecordHotkey = async () => (await input.RecordAsync())?.ToString();
+            host.InsertRecent = input.Flow.InsertRecentAsync;
+            host.Reinsert = input.Flow.ReinsertAsync;
         }
+    }
+
+    /// <summary>Auto-Update (Phase 6): beim Start und täglich, Installation erst nach Bestätigung; Richtlinie schaltet ab.</summary>
+    private void StartUpdates(AppHost host)
+    {
+        var client = new VelopackUpdateClient(feed: null, restartArgs: [.. Environment.GetCommandLineArgs().Skip(1)]);
+        var service = new UpdateService(client, host.Log, () => host.Controller.Policy,
+            version => Dispatcher.UIThread.InvokeAsync(() => UpdatePrompt.AskAsync(version)));
+        // Auf dem Thread-Pool: die Feed-Abfrage soll den UI-Thread nie blockieren.
+        _ = Task.Run(() => service.RunAsync(_updates.Token));
     }
 
     /// <summary>Rekorder für die Einstellungen (nur mit laufendem Hook).</summary>
@@ -142,7 +158,9 @@ public partial class App : Application
             case "history":
                 if (_historyWindow is null)
                 {
-                    var vm = new HistoryViewModel(host.History);
+                    var c = host.Controller;
+                    var vm = new HistoryViewModel(host.History,
+                        c.StageLocked ? null : (entry, stage) => c.ReprocessAsync(stage, entry.Id), cleared => c.NotifyHistoryChanged(cleared));
                     _historyWindow = new HistoryWindow(vm);
                     _historyWindow.Closed += (_, _) => _historyWindow = null;
                     _ = vm.LoadAsync();
@@ -234,6 +252,7 @@ public partial class App : Application
     {
         _host?.Controller.Cancel();
         _host?.Log.Event("app.quit");
+        _updates.Cancel();
         _input?.Dispose();
         _tray?.Dispose();
         if (_server is not null)

@@ -174,11 +174,11 @@ public class UiTest
         var opened = new List<string>();
         var tray = new TrayMenu(f.Controller, opened.Add);
         var headers = tray.Menu.Items.OfType<NativeMenuItem>().Where(i => i is not NativeMenuItemSeparator).Select(i => i.Header).ToList();
-        Assert.Equal(["Aufnahme starten", "Stufe: Aus", "Bühnenansicht", "Verlauf", "Einstellungen", "Einrichtung …", "Beenden"], headers);
+        Assert.Equal(["Aufnahme starten", "Stufe: Aus", "Letzte Diktate", "Bühnenansicht", "Verlauf", "Einstellungen", "Einrichtung …", "Beenden"], headers);
         var stages = tray.Menu.Items.OfType<NativeMenuItem>().ElementAt(1).Menu!.Items.OfType<NativeMenuItem>().Select(i => i.Header);
         Assert.Equal(["Aus", "Glätten", "Verschönern", "Zusammenfassen"], stages);
 
-        foreach (var item in tray.Menu.Items.OfType<NativeMenuItem>().Where(i => i is not NativeMenuItemSeparator).Skip(2))
+        foreach (var item in tray.Menu.Items.OfType<NativeMenuItem>().Where(i => i is not NativeMenuItemSeparator).Skip(3))
         {
             item.Command!.Execute(null);
         }

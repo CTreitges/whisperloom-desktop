@@ -6,7 +6,9 @@
 - Proxy-Fake (zweiter Port): leitet Anfragen in absoluter Form (http://…) weiter und markiert sie. Hosts auf
   ".invalid" (z. B. http://fake-api.invalid:<port>) gehen an 127.0.0.1 — so erreicht die App die Fake-API nur über
   den Proxy (Loopback-Ziele umgehen jeden Proxy).
-- Steuerung: POST /_control {"fail": {"<pfad>": {"status": 500, "count": 1}}, "stt_text": "…"}
+- Steuerung: POST /_control {"fail": {"<pfad>": {"status": 500, "count": 1}}, "stt_text": "…", "llm_text": "…",
+  "record_text": true} — llm_text: feste Antwort statt "[fake-llm] <nutzer>"; record_text: /_requests enthält zusätzlich
+  die vollen Nachrichten (system, user), nur Fake-Daten
   GET /_requests → aufgezeichnete Anfragen (nur Metadaten: Pfad, Felder language/model, Prompt-Anfang,
   ob ein Key kam, ob über den Proxy) · POST /_reset
 
@@ -35,6 +37,8 @@ class State:
         self.requests: list[dict] = []
         self.fail: dict[str, dict] = {}
         self.stt_text = DEFAULT_STT_TEXT
+        self.llm_text: str | None = None
+        self.record_text = False
 
     def take_failure(self, path: str) -> int | None:
         with self.lock:
@@ -115,6 +119,8 @@ def make_handler(state: State):
                 with state.lock:
                     state.fail.update(ctl.get("fail", {}))
                     state.stt_text = ctl.get("stt_text", state.stt_text)
+                    state.llm_text = ctl.get("llm_text", state.llm_text)
+                    state.record_text = bool(ctl.get("record_text", state.record_text))
                 self._send(200, {"ok": True})
                 return
             if path == "/_reset":
@@ -122,6 +128,8 @@ def make_handler(state: State):
                     state.requests.clear()
                     state.fail.clear()
                     state.stt_text = DEFAULT_STT_TEXT
+                    state.llm_text = None
+                    state.record_text = False
                 self._send(200, {"ok": True})
                 return
 
@@ -144,11 +152,13 @@ def make_handler(state: State):
                 if isinstance(user, list):
                     user = " ".join(p.get("text", "") for p in user if isinstance(p, dict))
                 entry.update({"model": payload.get("model"), "system_start": str(system)[:80], "user_start": str(user)[:40]})
+                if state.record_text:
+                    entry.update({"system": str(system), "user": str(user)})
                 state.record(entry)
                 if failure:
                     self._send(failure, {"error": {"message": "fake failure"}})
                     return
-                text = f"[fake-llm] {user}"
+                text = state.llm_text if state.llm_text is not None else f"[fake-llm] {user}"
                 if path.endswith("/messages"):
                     self._send(200, {"content": [{"type": "text", "text": text}], "stop_reason": "end_turn"})
                 else:

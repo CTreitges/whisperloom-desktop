@@ -36,8 +36,9 @@ def target_exe(args, work: Path) -> str:
 class Target:
     """Ein TestTarget-Fenster; Fokus per echtem Klick ins Textfeld."""
 
-    def __init__(self, exe: str, out: Path, keys: wi.Keyboard):
+    def __init__(self, exe: str, out: Path, keys: wi.Keyboard, extra: list[str] | None = None):
         self.exe, self.out, self.keys = exe, out, keys
+        self.extra = extra or []
         self.proc: subprocess.Popen | None = None
         self.hwnd = 0
 
@@ -49,7 +50,7 @@ class Target:
 
     def __enter__(self) -> Target:
         self.out.unlink(missing_ok=True)
-        self.proc = subprocess.Popen([self.exe, "--out", str(self.out), "--seconds", "90"])
+        self.proc = subprocess.Popen([self.exe, "--out", str(self.out), "--seconds", "90", *self.extra])
         state = wait_for(lambda: (lambda d: d if target_ready(d) else None)(self.read()), 15)
         if not state:
             if self.proc:

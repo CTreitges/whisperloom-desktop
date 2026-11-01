@@ -20,6 +20,10 @@ public interface IClipboardAdapter
     /// <summary>Stellt eine Sicherung wieder her (privat, damit der Verlauf keinen Doppel-Eintrag bekommt).</summary>
     /// <exception cref="IOException">Zwischenablage belegt.</exception>
     void Restore(ClipboardSnapshot snapshot);
+
+    /// <summary>Text der Zwischenablage (CF_UNICODETEXT); null ohne Text (WLD-P5b, Markierung umschreiben).</summary>
+    /// <exception cref="IOException">Zwischenablage belegt.</exception>
+    string? GetText();
 }
 
 /// <summary>Tastatur-Ausgabe per SendInput; alle Ereignisse tragen die eigene dwExtraInfo-Kennung.</summary>
@@ -30,6 +34,9 @@ public interface IKeySender
 
     /// <returns>false, wenn das System die Eingabe nicht angenommen hat.</returns>
     bool SendCtrlV();
+
+    /// <summary>Markierung des Vordergrundfensters kopieren (WLD-P5b): Strg+C, in Konsolen Strg+Einfg (dort ist Strg+C ein Abbruch).</summary>
+    bool SendCopy(bool ctrlInsert);
 
     bool SendEnter();
 

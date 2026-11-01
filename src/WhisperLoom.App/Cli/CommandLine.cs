@@ -7,10 +7,11 @@ namespace WhisperLoom.App.Cli;
 internal sealed record CliRequest(string? Verb, IReadOnlyList<string> Args, AppOptions Options, bool Json, bool DryRun = false)
 {
     /// <summary>Verben, die eine laufende Instanz voraussetzen und keine starten.</summary>
-    public bool NeedsRunningInstance => Verb is "stop" or "cancel" or "stage" or "status" or "pause" or "resume" or "quit";
+    public bool NeedsRunningInstance => Verb is "stop" or "cancel" or "stage" or "status" or "pause" or "resume" or "quit"
+        or "reprocess" or "reinsert" or "recent-insert";
 
     /// <summary>Verben, die der aufrufende Prozess selbst erledigt (Key nie über die IPC).</summary>
-    public bool IsLocal => Verb is "key" or "bench" or "provision" or "import" or "export";
+    public bool IsLocal => Verb is "key" or "bench" or "provision" or "import" or "export" or "version" or "update";
 }
 
 /// <summary>Start- und Test-Schalter. Gelten nur für die erste Instanz; ein zweiter Start nutzt sie zum Finden.</summary>
@@ -46,27 +47,32 @@ internal sealed record AppOptions(string DataDir, string? TestAudio = null, stri
 /// <summary>Fehler in der Befehlszeile; die Meldung geht an stderr, Exit-Code 2.</summary>
 internal sealed class UsageException(string message) : Exception(message);
 
-/// <summary>Zerlegt die Befehlszeile. Verben: toggle, start, stop, cancel, pause, resume, stage next|&lt;name&gt;, status [--json], show, setup, key set|delete &lt;name&gt;, quit.</summary>
+/// <summary>Zerlegt die Befehlszeile. Verben: toggle, start, stop, cancel, pause, resume, stage next|&lt;name&gt;, status [--json], show, setup, key set|delete &lt;name&gt;, quit,
+/// reprocess &lt;stufe&gt; [&lt;id&gt;], reinsert, recent-insert &lt;n&gt; (WLD-P5b).</summary>
 internal static class CommandLine
 {
     public const string Usage =
         "Aufruf: WhisperLoom [toggle|start|stop|cancel|pause|resume|stage next|stage <name>|status [--json]|show|setup|quit|key set <name>|key delete <name>]\n" +
         "        [provision <datei>|import <datei> [--dry-run]|export <datei>]\n" +
+        "        [reprocess <stufe> [<id>]|reinsert|recent-insert <n>]\n" +
         "        [--data-dir <pfad>] [--test-audio <wav>] [--output-file <pfad>] [--secret-prefix <präfix>] [--hotkeys]\n" +
-        "        WhisperLoom bench --model <tiny|base|small|large-v3-turbo> --seconds <n> [--backend auto|cpu]";
+        "        WhisperLoom bench --model <tiny|base|small|large-v3-turbo> --seconds <n> [--backend auto|cpu]\n" +
+        "        WhisperLoom --version | update [--feed <ordner|url>]";
 
     private static readonly HashSet<string> Verbs =
-        ["toggle", "start", "stop", "cancel", "pause", "resume", "stage", "status", "show", "setup", "key", "quit", "bench", "provision", "import", "export"];
+        ["toggle", "start", "stop", "cancel", "pause", "resume", "stage", "status", "show", "setup", "key", "quit", "bench", "provision", "import", "export",
+         "reprocess", "reinsert", "recent-insert", "update"];
 
     /// <summary>Schalter des Verbs <c>bench</c>; sie landen samt Wert in <see cref="CliRequest.Args"/>.</summary>
     private static readonly HashSet<string> BenchSwitches = ["--model", "--seconds", "--backend"];
 
     public static CliRequest Parse(IReadOnlyList<string> args)
     {
-        string? dataDir = null, testAudio = null, outputFile = null, prefix = null;
+        string? dataDir = null, testAudio = null, outputFile = null, prefix = null, feed = null;
         var json = false;
         var hotkeys = false;
         var dryRun = false;
+        var version = false;
         var positional = new List<string>();
         var benchArgs = new List<string>();
         for (var i = 0; i < args.Count; i++)
@@ -87,6 +93,8 @@ internal static class CommandLine
                 case "--json": json = true; break;
                 case "--hotkeys": hotkeys = true; break;
                 case "--dry-run": dryRun = true; break;
+                case "--version": version = true; break;
+                case "--feed": feed = Value(args, ref i, a); break;
                 default:
                     if (a.StartsWith("--", StringComparison.Ordinal))
                     {
@@ -108,6 +116,14 @@ internal static class CommandLine
             prefix ?? AppOptions.DefaultSecretPrefix,
             hotkeys);
 
+        if (version)
+        {
+            return new CliRequest("version", [], options, json);
+        }
+        if (feed is not null && positional is not ["update", ..])
+        {
+            throw new UsageException("--feed gilt nur für update.");
+        }
         if (positional.Count == 0)
         {
             return new CliRequest(null, [], options, json);
@@ -120,7 +136,9 @@ internal static class CommandLine
         var rest = positional.Skip(1).ToList();
         var expected = verb switch
         {
-            "stage" => 1,
+            "stage" or "recent-insert" => 1,
+            "reprocess" when rest.Count == 2 => 2,
+            "reprocess" => 1,
             "key" => 2,
             "provision" or "import" or "export" => 1,
             _ => 0,
@@ -157,6 +175,13 @@ internal static class CommandLine
         if (verb is "provision" or "import" or "export")
         {
             rest = [Path.GetFullPath(rest[0])];
+        }
+        if (verb == "update" && feed is not null)
+        {
+            // Ordner oder URL eines Velopack-Feeds; Ordner absolut, URLs unverändert.
+            rest = [feed.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || feed.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+                ? feed
+                : Path.GetFullPath(feed)];
         }
         return new CliRequest(verb, rest, options, json, dryRun);
     }

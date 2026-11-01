@@ -11,6 +11,7 @@ public sealed class InsertOutputSink(IOutputSink inner, TextInserter inserter, F
     private IntPtr _target;
     private bool _pressEnter;
     private bool _armed;
+    private InsertMode? _mode;
 
     public string Kind => inner.Kind;
 
@@ -22,11 +23,17 @@ public sealed class InsertOutputSink(IOutputSink inner, TextInserter inserter, F
     /// <summary>Wohin die letzte Eingabe ging (Fenster, Prozess, Fokus-Klasse); null ohne Eingabe.</summary>
     public InsertReport? LastReport => inserter.LastReport;
 
+    /// <summary>Ziel des letzten <see cref="Arm"/> (Tray-Verlauf fügt dorthin ein); 0 = noch keins.</summary>
+    public IntPtr LastTarget { get; private set; }
+
     /// <summary>Das nächste Diktat geht in <paramref name="target"/>; einmalig.</summary>
-    public void Arm(IntPtr target, bool pressEnter = false)
+    /// <param name="mode">Ausgabemodus des App-Profils; null = Einstellung.</param>
+    public void Arm(IntPtr target, bool pressEnter = false, InsertMode? mode = null)
     {
         _target = target;
+        LastTarget = target;
         _pressEnter = pressEnter;
+        _mode = mode;
         _armed = true;
     }
 
@@ -43,7 +50,7 @@ public sealed class InsertOutputSink(IOutputSink inner, TextInserter inserter, F
             return;
         }
         _armed = false;
-        var outcome = await inserter.InsertAsync(_target, text, mode(), _pressEnter, ct).ConfigureAwait(false);
+        var outcome = await inserter.InsertAsync(_target, text, _mode ?? mode(), _pressEnter, ct).ConfigureAwait(false);
         LastOutcome = outcome;
         Inserted?.Invoke(outcome);
     }

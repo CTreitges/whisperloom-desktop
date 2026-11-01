@@ -6,6 +6,7 @@ namespace WhisperLoom.TestTarget;
 /// Testziel für Einfügen und Tippen: ein Fenster "WhisperLoom TestTarget" mit Textfeld. Jede Änderung schreibt
 /// <c>{"text", "enter", "backspace", "hwnd", "ready", "focused"}</c> nach <c>--out &lt;datei&gt;</c>. Enter (ohne Umschalt) fügt keinen
 /// Umbruch ein, sondern zählt nur — wie ein Chat, der abschickt. Beendet sich nach <c>--seconds</c> (Standard 120) selbst.
+/// <c>--text &lt;starttext&gt;</c> steht beim Start im Feld und ist ganz markiert (Umschreiben der Markierung, WLD-P5b).
 /// </summary>
 internal static class Program
 {
@@ -15,12 +16,12 @@ internal static class Program
         var outPath = Arg(args, "--out");
         if (outPath is null)
         {
-            Console.Error.WriteLine("Aufruf: WhisperLoom.TestTarget --out <datei> [--seconds <n>]");
+            Console.Error.WriteLine("Aufruf: WhisperLoom.TestTarget --out <datei> [--seconds <n>] [--text <starttext>]");
             return 2;
         }
         var seconds = int.TryParse(Arg(args, "--seconds"), out var s) ? s : 120;
         ApplicationConfiguration.Initialize();
-        Application.Run(new TargetForm(outPath, TimeSpan.FromSeconds(seconds)));
+        Application.Run(new TargetForm(outPath, TimeSpan.FromSeconds(seconds), Arg(args, "--text") ?? ""));
         return 0;
     }
 
@@ -39,7 +40,7 @@ internal sealed class TargetForm : Form
     private int _backspace;
     private bool _ready;
 
-    public TargetForm(string outPath, TimeSpan lifetime)
+    public TargetForm(string outPath, TimeSpan lifetime, string initialText = "")
     {
         _outPath = outPath;
         Text = "WhisperLoom TestTarget";
@@ -57,6 +58,8 @@ internal sealed class TargetForm : Form
         // damit der Smoke nicht zu früh Tasten drückt (Fall hold-insert beim kalten ersten Start).
         Shown += (_, _) =>
         {
+            _box.Text = initialText;
+            _box.SelectAll();
             _box.Focus();
             _ready = true;
             Save();
@@ -68,6 +71,13 @@ internal sealed class TargetForm : Form
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
+        if (e.KeyCode == Keys.A && e.Control && !e.Alt)
+        {
+            // Mehrzeilige WinForms-Felder kennen Strg+A nicht von selbst (Smoke rewrite-selection markiert damit).
+            _box.SelectAll();
+            e.SuppressKeyPress = true;
+            return;
+        }
         if (e.KeyCode == Keys.Enter && !e.Shift)
         {
             _enter++;
