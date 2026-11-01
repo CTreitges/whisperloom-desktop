@@ -45,6 +45,13 @@ public sealed class SelectionSettingsTest
 
         var group = window.GetVisualDescendants().OfType<SettingsGroup>().Single(g => g.TitleKey == "G_Selection");
         Assert.True(group.IsShown);
+        if (!OperatingSystem.IsWindows())
+        {
+            // Linux: statt der drei Windows-Starter der Befehl für ein Kürzel der Desktop-Umgebung.
+            Assert.EndsWith("process-selection", SettingsUi.Named<SelectableTextBlock>(window, "SelectionCommand").Text);
+            window.Close();
+            return;
+        }
         foreach (var path in new[] { "selection.hotkeyCombo", "selection.floatingButton", "selection.ctrlRightClick" })
         {
             Assert.True(SettingsUi.Row(window, path).IsShown, path);
