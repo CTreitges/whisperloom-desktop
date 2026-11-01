@@ -102,5 +102,12 @@ public sealed partial class HelpSectionViewModel : ObservableObject, IDisposable
 
     public override string ToString() => Title;
 
-    private void OnLanguageChanged(object? sender, PropertyChangedEventArgs e) => OnPropertyChanged(string.Empty);
+    // Loc meldet je Wechsel „Item“, „Item[]“ und „Language“; einmal neu aufbauen reicht.
+    private void OnLanguageChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(Loc.Language))
+        {
+            OnPropertyChanged(string.Empty);
+        }
+    }
 }

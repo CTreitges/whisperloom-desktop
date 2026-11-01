@@ -192,6 +192,36 @@ public sealed class HelpWindowTest
     }
 
     [AvaloniaFact]
+    public void Screenshot_releases_its_bitmap_when_removed()
+    {
+        // Review W2-HELP: alte Screenshots hielten ihre dekodierte PNG bis zum GC (Abschnittswechsel baut sie neu).
+        var window = Open("output");
+        var shot = window.GetVisualDescendants().OfType<HelpScreenshot>().First();
+        Assert.NotNull(shot.Source);
+        window.ShowTopic("privacy");
+        Dispatcher.UIThread.RunJobs();
+        Assert.Null(shot.Source);
+        Assert.Null(shot.CurrentPath);
+        // Nicht im Baum: nichts laden.
+        var loose = new HelpScreenshot { Shot = "output" };
+        Assert.Null(loose.Source);
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public void Language_switch_refreshes_each_section_once()
+    {
+        // Review W2-HELP: Loc meldet drei Ereignisse je Wechsel; der Abschnitt baute sich dreimal neu.
+        Loc.Instance.SetLanguage("de");
+        using var help = new HelpViewModel();
+        var refreshes = 0;
+        help.Section("output").PropertyChanged += (_, e) => refreshes += e.PropertyName == "" ? 1 : 0;
+        Loc.Instance.SetLanguage("en");
+        Loc.Instance.SetLanguage("de");
+        Assert.Equal(2, refreshes);
+    }
+
+    [AvaloniaFact]
     public void Illustration_renders_without_errors_at_any_size()
     {
         var window = Open("start");

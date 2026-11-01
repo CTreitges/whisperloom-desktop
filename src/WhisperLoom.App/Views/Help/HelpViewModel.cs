@@ -122,6 +122,10 @@ public sealed partial class HelpViewModel : ObservableObject, IDisposable
 
     private void OnLanguageChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName != nameof(Loc.Language))
+        {
+            return;
+        }
         UpdateGroupTitles();
         RunSearch();
     }

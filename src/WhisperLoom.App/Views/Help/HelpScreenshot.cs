@@ -34,9 +34,11 @@ public sealed class HelpScreenshot : Image
         Reload();
     }
 
+    /// <summary>Aus dem Baum genommen (Abschnitts- oder Sprachwechsel): Bild sofort freigeben, nicht erst beim GC.</summary>
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         Loc.Instance.PropertyChanged -= OnLanguageChanged;
+        Show(null);
         base.OnDetachedFromVisualTree(e);
     }
 
@@ -49,19 +51,43 @@ public sealed class HelpScreenshot : Image
         }
     }
 
-    private void OnLanguageChanged(object? sender, PropertyChangedEventArgs e) => Reload();
+    // Loc meldet je Wechsel drei Eigenschaften; nur „Language“ zählt.
+    private void OnLanguageChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(Loc.Language))
+        {
+            Reload();
+        }
+    }
 
+    /// <summary>Lädt nur im Baum: erst dort steht die Variante des Fensters fest.</summary>
     private void Reload()
     {
+        if (VisualRoot is null)
+        {
+            return;
+        }
         var theme = ActualThemeVariant == ThemeVariant.Dark ? "dark" : "light";
-        var path = Shot is { } name ? HelpShot.AssetPath(name, Loc.Instance.Language, theme) : null;
+        Show(Shot is { } name ? HelpShot.AssetPath(name, Loc.Instance.Language, theme) : null);
+    }
+
+    private void Show(string? path)
+    {
         if (path == CurrentPath)
         {
             return;
         }
         CurrentPath = path;
         var old = Source as IDisposable;
-        Source = path is not null && AssetLoader.Exists(new Uri(path)) ? new Bitmap(AssetLoader.Open(new Uri(path))) : null;
+        if (path is not null && AssetLoader.Exists(new Uri(path)))
+        {
+            using var stream = AssetLoader.Open(new Uri(path));
+            Source = new Bitmap(stream);
+        }
+        else
+        {
+            Source = null;
+        }
         MaxWidth = Source is Bitmap bitmap ? bitmap.Size.Width : 0;
         old?.Dispose();
     }
