@@ -8,7 +8,7 @@ Docker. Allgemeine Installation: [`../README.md`](../README.md).
 | `setup-demo.sh` | venv, Hauptschlüssel und env (600), Datenordner (700), Instanz-Admin `admin`, Firma „Demo GmbH“ mit owner `demo`, Units aktivieren. Wiederholbar. |
 | `env.example` | Umgebung (`WL_*`), wird nach `~/.config/whisperloom-admin/env` kopiert |
 | `whisperloom-admin.service` | Server auf `127.0.0.1:8099` |
-| `whisperloom-admin-fake.service` | Fake-Anbieter `tools/fake_api.py` auf `127.0.0.2:8100` (nur Loopback) |
+| `whisperloom-admin-fake.service` | Fake-Anbieter `tools/fake_api.py` auf `127.0.0.2:8100` (nur Loopback, ohne Forward-Proxy) |
 | `wl-admin` | Admin-CLI mit der Umgebung des Dienstes; dazu `demo-fake-url`, `demo-fake-requests`, `demo-fake-reset` |
 | `Caddyfile.block` | Host-Block für die Caddy-Vorlage |
 
@@ -37,6 +37,13 @@ ein (Pflicht); Firmen-Admins können es überspringen („Später einrichten“)
   Backslash lehnt der Server ab, der Anbieter-Pfad lässt sich nicht abschneiden.
 - **Umstellen einer bestehenden Demo:** in `~/.config/whisperloom-admin/env` `WL_UPSTREAM_ALLOW=127.0.0.2:8100` und
   `WL_AUTH_MODES=password_totp,password` setzen, dann `systemctl --user restart whisperloom-admin`.
+- **Update:** `git -C ~/whisperloom-admin/app pull --ff-only`, `sh ~/whisperloom-admin/app/server/deploy/setup-demo.sh`
+  (installiert venv-Abhängigkeiten und Units neu, lässt env, Schlüssel, Admins und Keys stehen), dann
+  `systemctl --user restart whisperloom-admin whisperloom-admin-fake`.
+- **Unit-Härtung:** nur seccomp-Optionen (`SystemCallFilter`, `RestrictAddressFamilies`, `MemoryDenyWriteExecute`, …).
+  `ProtectSystem`, `PrivateTmp` und `ProtectHome` wirken in User-Units nicht (kein eigener Mount-Namespace; auf Ubuntu
+  24.04 geprüft: Dateien in `~` und `/tmp` entstehen trotzdem) und fehlen deshalb bewusst. Mehr Abschottung nur als
+  System-Unit mit eigenem Benutzer (siehe `../README.md`).
 - Hauptschlüssel außerhalb des Datenordners (`WL_MASTER_KEY_FILE`), ein Backup von `data/` enthält ihn nicht.
 
 ## Live-Smoke

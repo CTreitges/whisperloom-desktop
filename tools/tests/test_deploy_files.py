@@ -45,6 +45,27 @@ class TemplateTest(unittest.TestCase):
         self.assertEqual(f"{host}:{port}", env["WL_UPSTREAM_ALLOW"])
         self.assertNotEqual("127.0.0.1", host)
 
+    def test_fake_runs_without_forward_proxy(self):
+        """D3: Der Forward-Proxy des Fakes ist in der Demo unnötig und bleibt aus."""
+        exec_line = next(line for line in (DEPLOY / "whisperloom-admin-fake.service").read_text(encoding="utf-8").splitlines()
+                         if line.startswith("ExecStart="))
+        self.assertIn("--no-proxy", exec_line)
+        self.assertNotIn("--proxy-port", exec_line)
+
+    def test_units_are_hardened_with_options_that_work_in_user_units(self):
+        """D1: seccomp-Optionen gesetzt; Mount-Namespace-Optionen fehlen, weil sie in User-Units wirkungslos bleiben."""
+        wanted = ("NoNewPrivileges=true", "UMask=0077", "LockPersonality=yes", "RestrictNamespaces=yes",
+                  "RestrictSUIDSGID=yes", "MemoryDenyWriteExecute=yes", "SystemCallFilter=@system-service",
+                  "SystemCallArchitectures=native")
+        for name in ("whisperloom-admin.service", "whisperloom-admin-fake.service"):
+            lines = (DEPLOY / name).read_text(encoding="utf-8").splitlines()
+            for option in wanted:
+                self.assertIn(option, lines, f"{name}: {option}")
+            families = next(line for line in lines if line.startswith("RestrictAddressFamilies="))
+            self.assertNotIn("AF_PACKET", families)
+            for option in ("ProtectSystem=", "PrivateTmp=", "ProtectHome=", "PrivateDevices="):
+                self.assertFalse(any(line.startswith(option) for line in lines), f"{name}: {option} wirkt nicht")
+
     def test_no_secrets_in_templates(self):
         for path in DEPLOY.iterdir():
             text = path.read_text(encoding="utf-8")
@@ -99,7 +120,7 @@ S="$HOME/state"; touch "$S"
 shift 2
 case "$1" in
   init) echo bereit ;;
-  tenant-list) grep -q '^tenant demo$' "$S" && printf 'demo\\taktiv\\t0 Geräte\\tDemo GmbH\\n' || echo "(keine)" ;;
+  tenant-list) [ -n "${FAIL_LIST:-}" ] && { echo "fehler: db" >&2; exit 1; }; grep -q '^tenant demo$' "$S" && printf 'demo\\taktiv\\t0 Geräte\\tDemo GmbH\\n' || echo "(keine)" ;;
   tenant-create) echo "tenant $2" >> "$S" ;;
   key-set) read -r k; echo "key $2 $3" >> "$S"; echo ok ;;
   instance-admin-create|admin-create)
@@ -162,6 +183,13 @@ class SetupDemoTest(unittest.TestCase):
         self.assertNotIn("@HOME@", env_text)
         self.assertIn("enable --now whisperloom-admin-fake whisperloom-admin",
                       (self.home / "systemctl.log").read_text(encoding="utf-8"))
+
+    def test_failing_tenant_list_stops_before_creating_anything(self):
+        """D2: Ohne pipefail darf ein Fehler von tenant-list nicht in der Pipe verschwinden."""
+        r = self.setup(FAIL_LIST="1")
+        self.assertNotEqual(0, r.returncode)
+        state = self.home / "state"
+        self.assertFalse(state.exists() and any(s.startswith(("tenant ", "key ", "admin ")) for s in self.state()))
 
     def test_rerun_after_abort_uses_the_same_passwords_and_keeps_keys(self):
         r = self.setup(FAIL_ON="demo")
