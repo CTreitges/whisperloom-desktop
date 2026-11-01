@@ -12,7 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from . import firmen, konfig, krypto, richtlinie
 from .abhaengig import begrenzen, jetzt, verbindung
-from .fehler import ApiFehler
+from .fehler import FEHLER, ApiFehler
 from .log import ereignis
 from .netz import client_ip
 from .ratelimit import MINUTE, VIERTELSTUNDE
@@ -38,9 +38,27 @@ def _sauber(text: str) -> str:
     return "".join(c for c in text if c.isprintable()).strip()
 
 
+def _version(text: str) -> tuple[int, ...]:
+    """„1.2.3-beta“ → (1, 2, 3); Unlesbares zählt als 0."""
+    teile = []
+    for t in text.split("-")[0].split(".")[:4]:
+        teile.append(int(t) if t.isdigit() else 0)
+    return tuple(teile)
+
+
+def _zu_alt(request: Request, app_version: str | None) -> JSONResponse | None:
+    mindest = request.app.state.einst.min_app_version
+    if not mindest or _version(app_version or "0") >= _version(mindest):
+        return None
+    status, meldung = FEHLER["client_outdated"]
+    return JSONResponse({"error": "client_outdated", "message": meldung, "minAppVersion": mindest}, status_code=status)
+
+
 @router.post("/enroll", status_code=201)
 def enroll(body: Enrollment, request: Request, con: sqlite3.Connection = Depends(verbindung)):
     begrenzen(request, "enroll-ip:" + client_ip(request), 20, VIERTELSTUNDE)
+    if (alt := _zu_alt(request, body.appVersion)) is not None:
+        return alt
     kry = request.app.state.krypto
     treffer = firmen.per_code(con, kry, body.code)
     if treffer is None:

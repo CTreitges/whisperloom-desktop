@@ -56,6 +56,7 @@ class Einstellungen:
     header_benutzer: str = "Remote-User"
     konfig_datei: Path | None = None
     master_hex: str | None = None
+    min_app_version: str = ""
     uhr: Callable[[], int] = field(default=jetzt_ms)
 
     @property
@@ -96,6 +97,7 @@ class Einstellungen:
             header_benutzer=env.get("WL_TRUSTED_HEADER", cls.header_benutzer),
             konfig_datei=Path(datei) if datei else None,
             master_hex=env.get("WL_MASTER_KEY") or None,
+            min_app_version=env.get("WL_MIN_APP_VERSION", ""),
         )
         e.pruefen()
         return e
