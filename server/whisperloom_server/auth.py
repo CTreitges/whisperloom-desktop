@@ -20,8 +20,14 @@ _DUMMY = _ph.hash("whisperloom-dummy-passwort")
 IDLE_MS = 30 * 60 * 1000
 ABSOLUT_MS = 12 * 3600 * 1000
 EINLADUNG_MS = 72 * 3600 * 1000
+# Passwort-Fehlversuche zählen je (Benutzer, Client-IP bzw. IPv6-/64), nicht je Benutzer allein (Review M-5): Wer
+# nur den Namen kennt, sperrt sonst den echten Admin aus. Erfolgreiche Logins zählen nicht.
 FEHLVERSUCHE_MAX = 5
 SPERRE_MS = 15 * 60 * 1000
+# Weiche globale Grenze je Benutzer: Ab so vielen Fehlversuchen je Stunde (alle IPs) bekommt jede IP nur noch einen
+# Versuch je Stunde. Eine neue IP (der echte Admin) darf weiter einmal, es gibt keine harte Sperre des Kontos.
+GLOBAL_MAX = 50
+GLOBAL_MS = 3600 * 1000
 PASSWORT_MIN = 12
 PASSWORT_MAX = 128
 
@@ -58,15 +64,36 @@ def _fehlversuch(con: sqlite3.Connection, row: sqlite3.Row, jetzt: int) -> None:
         con.execute("UPDATE admin SET fehlversuche = ? WHERE id = ?", (n, row["id"]))
 
 
+def _ip_gesperrt(con: sqlite3.Connection, b_hmac: str, ip_hmac: str, jetzt: int) -> bool:
+    """Fehlversuche dieser IP für diesen Benutzer (seit dem letzten Erfolg) bzw. weiche Grenze über alle IPs."""
+    row = con.execute(
+        "SELECT"
+        " SUM(ip_hmac = :i AND zeit_ms > MAX(:sperre, COALESCE((SELECT MAX(zeit_ms) FROM login_versuch"
+        "     WHERE benutzer_hmac = :b AND ip_hmac = :i AND erfolg = 1), 0))) AS hier,"
+        " SUM(ip_hmac = :i) AS hier_stunde, COUNT(*) AS gesamt "
+        "FROM login_versuch WHERE benutzer_hmac = :b AND erfolg = 0 AND zeit_ms > :stunde",
+        {"b": b_hmac, "i": ip_hmac, "sperre": jetzt - SPERRE_MS, "stunde": jetzt - GLOBAL_MS},
+    ).fetchone()
+    if (row["hier"] or 0) >= FEHLVERSUCHE_MAX:
+        return True
+    return row["gesamt"] >= GLOBAL_MAX and (row["hier_stunde"] or 0) >= 1
+
+
 def anmelden(con: sqlite3.Connection, kry: Krypto, benutzer: str, passwort: str, ip: str, jetzt: int):
-    """("ok", admin) | ("falsch", None) | ("gesperrt", None) | ("konto_gesperrt", None)."""
+    """("ok", admin) | ("falsch", None) | ("gesperrt", None) | ("konto_gesperrt", None).
+
+    `ip` ist der Limit-Schlüssel (IPv4-Adresse bzw. IPv6-/64, `netz.limit_ip`). Unbekannte Namen zählen genauso wie
+    bekannte, damit beide gleich aussehen. Die Konto-Sperre `gesperrt_bis_ms` setzen nur noch TOTP-Fehlversuche
+    (dafür braucht man das Passwort).
+    """
     benutzer = benutzer.strip().lower()
+    b_hmac, ip_hmac = kry.hmac("benutzer:" + benutzer), kry.hmac("ip:" + ip)
     row = con.execute("SELECT * FROM admin WHERE benutzer = ?", (benutzer,)).fetchone()
+    if (row is not None and row["gesperrt_bis_ms"] > jetzt) or _ip_gesperrt(con, b_hmac, ip_hmac, jetzt):
+        passwort_pruefen(None, passwort)  # gleiche Laufzeit; gesperrte Versuche zählen nicht weiter
+        return ("gesperrt", None)
     ergebnis: tuple[str, sqlite3.Row | None]
-    if row is not None and row["gesperrt_bis_ms"] > jetzt:
-        passwort_pruefen(None, passwort)  # gleiche Laufzeit
-        ergebnis = ("gesperrt", None)
-    elif passwort_pruefen(row["pw_hash"] if row is not None else None, passwort):
+    if passwort_pruefen(row["pw_hash"] if row is not None else None, passwort):
         if row["gesperrt"]:
             ergebnis = ("konto_gesperrt", None)
         else:
@@ -75,14 +102,18 @@ def anmelden(con: sqlite3.Connection, kry: Krypto, benutzer: str, passwort: str,
             con.execute("UPDATE admin SET fehlversuche = 0, pw_hash = ? WHERE id = ?", (neu_hash, row["id"]))
     else:
         ergebnis = ("falsch", None)
-        if row is not None:
-            _fehlversuch(con, row, jetzt)
     con.execute(
         "INSERT INTO login_versuch (ip_hmac, benutzer_hmac, zeit_ms, erfolg) VALUES (?, ?, ?, ?)",
-        (kry.hmac("ip:" + ip), kry.hmac("benutzer:" + benutzer), jetzt, int(ergebnis[0] == "ok")),
+        (ip_hmac, b_hmac, jetzt, int(ergebnis[0] == "ok")),
     )
     con.execute("DELETE FROM login_versuch WHERE zeit_ms < ?", (jetzt - 86_400_000,))
     return ergebnis
+
+
+def sperre_aufheben(con: sqlite3.Connection, kry: Krypto, admin_id: str, benutzer: str) -> None:
+    """Konto-Sperre und gezählte Fehlversuche zurücksetzen (Portal „Entsperren“, Einladung, CLI `admin-unlock`)."""
+    con.execute("UPDATE admin SET fehlversuche = 0, gesperrt_bis_ms = 0 WHERE id = ?", (admin_id,))
+    con.execute("DELETE FROM login_versuch WHERE benutzer_hmac = ? AND erfolg = 0", (kry.hmac("benutzer:" + benutzer),))
 
 
 # --- TOTP-Geheimnis: verschlüsselt am Admin, beim Einrichten vorläufig an der Sitzung ---

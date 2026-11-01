@@ -123,7 +123,11 @@ server {
 }
 ```
 
-Dazu `WL_TRUSTED_PROXIES=127.0.0.1/32`, damit Rate-Limits die echte Client-IP sehen.
+Dazu `WL_TRUSTED_PROXIES=127.0.0.1/32`, damit Rate-Limits die echte Client-IP sehen. **Achtung:** Dann vertraut der
+Server jedem Prozess auf diesem Rechner. Wer dort lokal Code ausführt (anderer Dienst, anderer Benutzer), kann
+`X-Forwarded-For` fälschen und so die IP-Limits für Login und Enrollment umgehen (die Grenzen je Benutzer, Gerät und
+Firma bleiben). Auf geteilten Rechnern den Proxy über eine eigene Loopback-Adresse anbinden (z. B. Server auf
+`127.0.0.3`, `WL_TRUSTED_PROXIES` auf die Quelladresse des Proxys) oder Server und Proxy in ein eigenes Netz legen.
 
 ### Anmeldearten
 
@@ -144,7 +148,7 @@ Der Instanz-Admin muss TOTP immer einrichten, sobald die Instanz `password_totp`
 | `password_totp` (Standard, zusammen mit `password`) | Passwort + 6-stelliger Code einer Authenticator-App. Erlaubt die Firma nur diese Art, richtet jedes Konto ohne TOTP es beim ersten Login ein (Pflicht). | `WL_AUTH_MODES=password_totp` |
 | `password` (Standard, zusammen mit `password_totp`) | Passwort, TOTP freiwillig je Konto. Erlaubt die Firma beide Arten, bietet der erste Login die Einrichtung mit „Später einrichten“ an; Konten mit TOTP geben den Code weiter ein. | `WL_AUTH_MODES=password_totp,password` |
 | `trusted_header` | Vorgeschaltete Anmeldung (Authelia, oauth2-proxy, Authentik). Der Header mit dem Benutzernamen gilt nur von `WL_TRUSTED_PROXIES`; von jeder anderen Adresse wird er ignoriert. Der Benutzername muss als Admin angelegt sein. | `WL_AUTH_MODES=trusted_header WL_TRUSTED_PROXIES=127.0.0.1/32 WL_TRUSTED_HEADER=Remote-User` |
-| `local_only` | Portal ohne Login, nur direkt auf dem Server-Rechner (`127.0.0.1`/`::1`, lokaler Host-Header, kein `X-Forwarded-*`). Von anderen Adressen: 403. Nicht hinter einem Reverse-Proxy auf demselben Rechner verwenden. Im Docker-Container wirkungslos (Gegenstelle ist das Docker-Netz). | `WL_AUTH_MODES=local_only WL_BASE_URL=http://127.0.0.1:8080` |
+| `local_only` | Portal ohne Login, nur direkt auf dem Server-Rechner (`127.0.0.1`/`::1`, lokaler Host-Header, kein `X-Forwarded-*`). Von anderen Adressen: 403. Nicht hinter einem Reverse-Proxy auf demselben Rechner verwenden. `serve` startet damit nur an Loopback (`--host 127.0.0.1` bzw. `::1`) und bricht sonst mit einer Meldung ab, also auch im Docker-Container (`0.0.0.0`). | `WL_AUTH_MODES=local_only WL_BASE_URL=http://127.0.0.1:8080` |
 | `file` | Kein Portal, kein Admin-Login. Firmen, Gruppen, Richtlinie und Keys aus `WL_CONFIG_FILE`. Geräte freigeben per `autoApprove` oder CLI `device-approve`. | `WL_AUTH_MODES=file WL_CONFIG_FILE=/etc/whisperloom/firmen.yaml` |
 
 **Wichtig bei `trusted_header`:** Jeder Rechner bzw. Prozess, der von einer Adresse in `WL_TRUSTED_PROXIES` aus den
@@ -171,7 +175,8 @@ wl.example.com {
 
 Datei-Modus: Beispiel [`beispiele/firmen.yaml`](beispiele/firmen.yaml). Werte `env:NAME` liest der Server aus der
 Umgebung (Keys, Codes). Ein Fehler in der Datei ändert nichts (vorheriger Stand bleibt, Log nennt die Fehlerklasse);
-beim Start bricht der Server ab. Firmen, die aus der Datei verschwinden, werden gesperrt, nicht gelöscht.
+beim Start bricht der Server mit Fehlerklasse und Zeilennummer ab, ohne den Inhalt der Zeile (sie könnte einen Key
+enthalten). Firmen, die aus der Datei verschwinden, werden gesperrt, nicht gelöscht.
 
 ### Geräte sperren bei automatischer Freigabe
 
@@ -262,9 +267,16 @@ TLS-SNI.
   und Audio-Minuten), gleichzeitige Anfragen verhalten sich also wie nacheinander gestellte: Die Anfrage, die die
   Grenze überschreitet, läuft noch, die nächste nicht. Tokens und Kosten stehen erst nach der Antwort fest; dort kann
   eine Welle gleichzeitiger Anfragen den Deckel überschreiten, höchstens um 20 Anfragen je Firma (Parallelitätsgrenze),
-  je Anfrage bis zur Antwortlänge des Modells.
+  je Anfrage bis zur Antwortlänge des Modells (`max_tokens` bis 200 000). Token- und Kostendeckel sind damit **weiche
+  Grenzen**: Wer sie hart braucht, setzt sie mit Puffer unter das echte Limit und nutzt die Warnschwelle.
+- **Geräte-Budget und automatische Freigabe:** Ist „Neue Geräte automatisch freigeben“ an, holt sich ein Gerät durch
+  Verlassen und Neu-Verbinden mit dem Firmencode eine neue Geräte-ID mit frischem Budget (das Portal weist im
+  Formular darauf hin). Gruppen- und Firmenbudget greifen weiter; für eine feste Grenze das Budget je Gruppe oder Firma
+  setzen.
 - **Preistabelle** (Seite „Budget“): Preis je Modell und Audio-Minute bzw. je 1 Mio. Tokens ein/aus, Grundlage der
-  Kosten-Schätzung. Ohne Eintrag zählt ein Modell 0.
+  Kosten-Schätzung. Ohne Eintrag zählt ein Modell 0. Gilt für das Gerät ein **Kostendeckel** (Firma, Gruppe oder
+  Gerät), lehnt der Proxy Modelle ohne Eintrag ab, ohne den Anbieter zu fragen: Ein Ersatz-Zugang mit Preis springt
+  ein, sonst `403 budget_exhausted`, in der Nutzung als Fehlerklasse „Modell ohne Preis“.
 
 ### Datenschutz: was der Server speichert und was nicht
 
@@ -293,14 +305,23 @@ DB-Datei ersetzen, starten.
 ### Kommandozeile
 
 `python -m whisperloom_server --help`: `serve`, `init`, `instance-admin-create`, `tenant-create`, `tenant-list`,
-`code-rotate`, `code-show`, `admin-create`, `admin-invite` (Passwort vergessen), `admin-totp-reset`, `device-list`,
-`device-approve`, `device-block`, `key-set` (Zugang speichern, Key von stdin).
+`code-rotate`, `code-show`, `admin-create`, `admin-invite` (Passwort vergessen), `admin-totp-reset`, `admin-unlock`
+(Login-Sperre aufheben), `device-list`, `device-approve`, `device-block`, `key-set` (Zugang speichern, Key von stdin).
 
 ### Sicherheit
 
 CSRF-Token + Origin-Prüfung auf jedem Formular, Cookies `HttpOnly`/`SameSite=Strict` (bei https `Secure`, `__Host-`),
-CSP ohne Inline-Skript, Rate-Limits für Login, TOTP und Enrollment, Konto-Sperre nach 5 Fehlversuchen (15 min),
+CSP ohne Inline-Skript, Rate-Limits für Login, TOTP und Enrollment, Login-Sperre nach 5 Fehlversuchen (15 min),
 Body-Grenze 64 KiB (Proxy: Audio 25 MiB, Text 1 MiB), SSRF-Schutz für Anbieter-Adressen, Audit-Log der Admin-Aktionen (nur Metadaten), Logs ohne Keys, Token, Codes oder Inhalte.
+
+**Login-Sperre:** Falsche Passwörter zählen je Benutzer **und** Client-IP (IPv6 je /64): Nach 5 Fehlversuchen in
+15 Minuten ist dieser Benutzer von dieser Adresse 15 Minuten gesperrt. Wer nur einen Admin-Namen kennt, sperrt den
+echten Admin damit nicht aus. Erfolgreiche Logins zählen nicht und setzen die Zählung für diese Adresse zurück. Dazu
+kommt eine weiche Grenze je Benutzer: Ab 50 Fehlversuchen je Stunde (alle Adressen zusammen) bekommt jede Adresse nur
+noch einen Versuch je Stunde; eine neue Adresse, also der echte Admin, darf weiter. 5 falsche TOTP-Codes (dafür
+braucht man das Passwort) sperren das Konto 15 Minuten. Zähler und Sperre liegen in der Datenbank und überstehen einen
+Neustart. **Wiederherstellung** per Kommandozeile: `python -m whisperloom_server admin-unlock <benutzer>` (Docker: `docker compose exec whisperloom-server python -m
+whisperloom_server admin-unlock <benutzer>`). Eine angenommene Einladung (`admin-invite`) hebt die Sperre ebenfalls auf.
 
 ---
 
@@ -352,6 +373,9 @@ only from `WL_TRUSTED_PROXIES`.
 ### Reverse proxy
 
 See the Caddy and nginx examples above; set `WL_TRUSTED_PROXIES=127.0.0.1/32` so rate limits see the real client IP.
+**Note:** the server then trusts every process on that machine. Anyone running code there (another service or user)
+can forge `X-Forwarded-For` and bypass the IP limits for sign-in and enrollment (limits per user, device and company
+stay). On shared machines connect the proxy via its own loopback address or put server and proxy into their own network.
 
 ### Sign-in methods
 
@@ -360,8 +384,8 @@ See the Caddy and nginx examples above; set `WL_TRUSTED_PROXIES=127.0.0.1/32` so
 | `password_totp` (default, together with `password`) | Password plus 6-digit authenticator code. If a company allows only this method, every account without TOTP sets it up at first sign-in (mandatory). |
 | `password` (default, together with `password_totp`) | Password, TOTP optional per account. If a company allows both, the first sign-in offers the setup with “Set up later”; accounts with TOTP keep entering their code. |
 | `trusted_header` | Upstream sign-in (Authelia, oauth2-proxy, Authentik). The user-name header counts only from `WL_TRUSTED_PROXIES` and is ignored from any other address. The user name must exist as an admin. Trust only the proxy's exact address (`/32`), never a whole Docker or office network: anything sending from a trusted address can claim any admin. The proxy must set or overwrite the header on every request; a repeated header is rejected. |
-| `local_only` | Portal without sign-in, only directly on the server machine (`127.0.0.1`/`::1`, local Host header, no `X-Forwarded-*`). Other addresses get 403. Do not use behind a reverse proxy on the same machine; no effect inside Docker. |
-| `file` | No portal, no admin sign-in. Companies, groups, policy and keys come from `WL_CONFIG_FILE` (YAML or JSON, `env:NAME` references for secrets), re-read on SIGHUP and on file change. Approve devices via `autoApprove` or `device-approve`. |
+| `local_only` | Portal without sign-in, only directly on the server machine (`127.0.0.1`/`::1`, local Host header, no `X-Forwarded-*`). Other addresses get 403. Do not use behind a reverse proxy on the same machine. `serve` only starts on loopback (`--host 127.0.0.1` or `::1`) and aborts with a message otherwise, also inside Docker (`0.0.0.0`). |
+| `file` | No portal, no admin sign-in. Companies, groups, policy and keys come from `WL_CONFIG_FILE` (YAML or JSON, `env:NAME` references for secrets), re-read on SIGHUP and on file change. An error at startup aborts with error class and line number only, never the line's content. Approve devices via `autoApprove` or `device-approve`. |
 
 Each company may restrict the instance's methods further (page “Company”, owners only).
 
@@ -452,9 +476,15 @@ virtual hosts: the proxy sends the host name from the base URL as Host header an
   (requests and audio minutes are reserved), so concurrent requests behave like sequential ones: the request that crosses
   the limit still runs, the next one does not. Tokens and cost are only known after the response; there a wave of
   concurrent requests can exceed the cap, by at most 20 requests per company (concurrency limit), each up to the
-  model's response length.
+  model's response length (`max_tokens` up to 200,000). Token and cost caps are therefore **soft limits**: set them with
+  headroom below the real limit and use the warning threshold.
+- **Device budget and automatic approval:** with “Approve new devices automatically” on, a device can leave and
+  reconnect with the company code and gets a new device ID with a fresh budget (the portal points this out). Group and
+  company budgets still apply; for a firm limit set the budget per group or company.
 - **Price table** (page “Budget”): price per model and audio minute or per 1M tokens in/out, the basis of the cost
-  estimate. Models without an entry count as 0.
+  estimate. Models without an entry count as 0. If a **cost cap** applies to the device (company, group or device), the
+  proxy rejects models without an entry without asking the provider: a fallback access with a price steps in, otherwise
+  `403 budget_exhausted`, shown in usage as error class “Model without price”.
 
 ### Privacy: what the server stores and what it does not
 
@@ -475,6 +505,17 @@ Use SQLite's online backup (`sqlite3 … ".backup …"`, see above) and back up 
 ### Security
 
 CSRF token plus origin check on every form, `HttpOnly`/`SameSite=Strict` cookies (`Secure` and `__Host-` on https), CSP
-without inline script, rate limits for sign-in, TOTP and enrollment, account lock after 5 failures (15 min), 64 KiB body
+without inline script, rate limits for sign-in, TOTP and enrollment, sign-in lock after 5 failures (15 min), 64 KiB body
 limit (proxy: audio 25 MiB, text 1 MiB), SSRF protection for provider addresses, admin audit log (metadata only), no
-keys, tokens, codes or content in logs. Command line additionally: `key-set` (store an access, key via stdin).
+keys, tokens, codes or content in logs. Command line additionally: `key-set` (store an access, key via stdin),
+`admin-unlock` (lift a sign-in lock).
+
+**Sign-in lock:** wrong passwords count per user **and** client IP (IPv6 per /64): after 5 failures within 15 minutes
+that user is locked from that address for 15 minutes, so someone who only knows an admin's name cannot lock out the
+real admin. Successful sign-ins do not count and reset the count for that address. In addition there is a soft limit
+per user: from 50 failures per hour (all addresses together) every address gets only one attempt per hour; a new
+address, i.e. the real admin, still gets through. 5 wrong TOTP codes (which needs the password) lock the account for
+15 minutes. Counters and lock live in the database and survive a restart. **Recovery** via the command line:
+`python -m whisperloom_server admin-unlock <user>` (Docker: `docker compose exec
+whisperloom-server python -m whisperloom_server admin-unlock <user>`). Accepting an invitation (`admin-invite`) also
+lifts the lock.

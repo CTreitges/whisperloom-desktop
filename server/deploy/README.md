@@ -28,7 +28,14 @@ ein (Pflicht); Firmen-Admins können es überspringen („Später einrichten“)
 
 - Anmeldearten `password_totp,password` (Zwei-Faktor freiwillig, Instanz-Admin immer mit TOTP), Cookies
   `Secure`/`__Host-` über `WL_BASE_URL=https://…`, Header setzt die App.
-- `WL_TRUSTED_PROXIES=127.0.0.1/32`: nur Caddy liefert `X-Forwarded-For` (Rate-Limits je Client).
+- `WL_TRUSTED_PROXIES=127.0.0.1/32`: nur Caddy liefert `X-Forwarded-For` (Rate-Limits je Client). **Grenze
+  (Review N-17):** Der Server kann Caddy nicht von anderen lokalen Prozessen unterscheiden. Wer auf dem VPS Code
+  ausführt (anderer Dienst, anderer Benutzer), kann `X-Forwarded-For` fälschen und die IP-Limits für Login und
+  Enrollment umgehen; die Grenzen je Benutzer, Gerät und Firma bleiben. Die Demo nimmt das hin (Ein-Benutzer-VPS).
+  Strenger: Server an eine eigene Loopback-Adresse binden und nur die Quelladresse von Caddy vertrauen, oder Caddy
+  und Server in ein eigenes Netz legen.
+- Login-Sperre aufheben (z. B. nach eigenen Tippfehlern oder einer TOTP-Sperre):
+  `~/whisperloom-admin/app/server/deploy/wl-admin admin-unlock <benutzer>`.
 - `WL_UPSTREAM_ALLOW=127.0.0.2:8100`: Der Proxy darf von den internen Zielen nur den Fake auf `127.0.0.2:8100`
   erreichen. Auf `127.0.0.1` lauschen andere Dienste (u. a. die Caddy-Admin-API); eine Freigabe für `127.0.0.1/32` würde
   sie für jeden Firmen-Admin erreichbar machen.

@@ -135,3 +135,23 @@ def test_admin_mit_passwort_von_stdin(einst, client, capsys, monkeypatch):
     assert cli.main(["admin-create", "muster", "chef2", "--password-stdin"], einst) == 1
     assert "pw_kurz" in capsys.readouterr().err
     assert sql(einst, "SELECT COUNT(*) FROM admin WHERE benutzer = 'chef2'")[0][0] == 0
+
+
+# --- Review N-13 (W2-FIXS): local_only startet nur an Loopback ---
+def test_local_only_nur_mit_loopback_host(tmp_path, uhr, capsys, monkeypatch):
+    import uvicorn
+
+    from .conftest import neue_einst
+
+    gestartet = []
+    monkeypatch.setattr(uvicorn, "run", lambda app, **kw: gestartet.append(kw["host"]))
+    e = neue_einst(tmp_path, uhr, anmeldearten=("local_only",), basis_url="http://127.0.0.1:8080")
+    for host in ("0.0.0.0", "::", "192.168.1.20", "wl.example.com"):  # noqa: S104 (Test der Abweisung)
+        assert cli.main(["serve", "--host", host], e) == 1
+        assert "local_only nur mit --host 127.0.0.1" in capsys.readouterr().err
+    assert gestartet == []
+    for host in ("127.0.0.1", "::1", "[::1]", "localhost", "127.0.0.2"):
+        assert cli.main(["serve", "--host", host], e) == 0
+    assert gestartet == ["127.0.0.1", "::1", "[::1]", "localhost", "127.0.0.2"]
+    # andere Anmeldearten dürfen weiter an alle Adressen binden (Docker: 0.0.0.0)
+    assert cli.main(["serve", "--host", "0.0.0.0"], neue_einst(tmp_path / "b", uhr)) == 0  # noqa: S104

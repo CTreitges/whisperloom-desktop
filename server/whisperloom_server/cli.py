@@ -6,12 +6,14 @@ auf stdout (für Skripte, z. B. CI). Nie in Logs.
 """
 
 import argparse
+import ipaddress
 import os
 import sys
 import time
 
 from . import __version__, auth, db, firmen, konten, krypto, schluessel, ssrf
 from .config import Einstellungen, KonfigFehler, lade_master
+from .dateimodus import DateiFehler
 from .krypto import Krypto
 
 
@@ -117,10 +119,14 @@ def ausfuehren(a: argparse.Namespace, einst: Einstellungen) -> str:
             if passwort:
                 return f"Admin: {a.benutzer.lower()}\nPasswort gesetzt (zweiter Faktor beim ersten Login)"
             return _ausgeben(einst, "admin", _einladung_text(con, einst, aid, a.benutzer.lower()), a.show)
-        if a.befehl in ("admin-invite", "admin-totp-reset"):
+        if a.befehl in ("admin-invite", "admin-totp-reset", "admin-unlock"):
             row = con.execute("SELECT * FROM admin WHERE benutzer = ?", (a.benutzer.lower(),)).fetchone()
             if row is None:
                 raise CliFehler("unbekannter Admin")
+            if a.befehl == "admin-unlock":
+                auth.sperre_aufheben(con, kry, row["id"], row["benutzer"])
+                firmen.protokoll(con, row["firma_id"], "cli", "admin_entsperrt", row["benutzer"], jetzt)
+                return "ok"
             if a.befehl == "admin-totp-reset":
                 auth.totp_speichern(con, kry, row["id"], None)
                 auth.sitzungen_beenden(con, row["id"])
@@ -188,6 +194,7 @@ def _parser() -> argparse.ArgumentParser:
     s.add_argument("--role", choices=konten.ROLLEN, default="owner")
     sub.add_parser("admin-invite", help="Neuer Einladungs-Link (Passwort vergessen)").add_argument("benutzer")
     sub.add_parser("admin-totp-reset", help="TOTP eines Admins zurücksetzen").add_argument("benutzer")
+    sub.add_parser("admin-unlock", help="Login-Sperre und Fehlversuche eines Admins zurücksetzen").add_argument("benutzer")
     sub.add_parser("device-list", help="Geräte einer Firma").add_argument("slug")
     sub.add_parser("device-approve", help="Gerät freigeben").add_argument("geraet")
     sub.add_parser("device-block", help="Gerät sperren").add_argument("geraet")
@@ -205,6 +212,23 @@ def _parser() -> argparse.ArgumentParser:
     return p
 
 
+def loopback(host: str) -> bool:
+    if host.strip().lower() == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host.strip().strip("[]")).is_loopback
+    except ValueError:
+        return False
+
+
+def serve_pruefen(einst: Einstellungen, host: str) -> None:
+    """local_only nur an Loopback (Review N-13): hinter einem Reverse-Proxy mit Standard-proxy_pass sähe sonst jede
+    Anfrage aus dem Internet lokal aus und wäre Instanz-Admin."""
+    if "local_only" in einst.anmeldearten and not loopback(host):
+        raise CliFehler(f"local_only nur mit --host 127.0.0.1 bzw. ::1 (nicht {host}); "
+                        "für Zugriff über das Netz eine Anmeldeart mit Passwort oder trusted_header wählen")
+
+
 def main(argv: list[str] | None = None, einst: Einstellungen | None = None) -> int:
     # Umlaute auch bei umgeleiteter Ausgabe unter Windows (cp1252) lesbar.
     for strom in (sys.stdout, sys.stderr):
@@ -214,6 +238,7 @@ def main(argv: list[str] | None = None, einst: Einstellungen | None = None) -> i
     try:
         einst = einst or Einstellungen.aus_umgebung()
         if a.befehl == "serve":
+            serve_pruefen(einst, a.host)
             import uvicorn
 
             from .app import create_app
@@ -225,7 +250,7 @@ def main(argv: list[str] | None = None, einst: Einstellungen | None = None) -> i
                         server_header=False)
             return 0
         print(ausfuehren(a, einst))
-    except (CliFehler, KonfigFehler) as e:
+    except (CliFehler, KonfigFehler, DateiFehler) as e:
         print(f"fehler: {e}", file=sys.stderr)
         return 1
     return 0

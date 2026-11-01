@@ -78,7 +78,8 @@ def admin_aktion(aid: str, aktion: str, request: Request, csrf: str = Form(""), 
         con.execute("UPDATE admin SET gesperrt = 1 WHERE id = ?", (aid,))
         auth.sitzungen_beenden(con, aid)
     elif aktion == "entsperren":
-        con.execute("UPDATE admin SET gesperrt = 0, fehlversuche = 0, gesperrt_bis_ms = 0 WHERE id = ?", (aid,))
+        con.execute("UPDATE admin SET gesperrt = 0 WHERE id = ?", (aid,))
+        auth.sperre_aufheben(con, request.app.state.krypto, aid, a["benutzer"])
     elif aktion == "loeschen":
         con.execute("DELETE FROM admin WHERE id = ?", (aid,))
     elif aktion == "rolle" and rolle in konten.ROLLEN:

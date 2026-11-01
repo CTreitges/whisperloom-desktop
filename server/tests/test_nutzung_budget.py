@@ -165,7 +165,10 @@ def test_portal_budget_owner_setzt_admin_nicht(papp, pein, pclient, uhr, firma):
                                 "max_anfragen": "1", "max_kosten": "12,50", "warn_prozent": "75"}, follow_redirects=False)
     assert r.headers["location"] == "/budget?ok=gespeichert"
     assert tuple(sql(pein, "SELECT max_anfragen, max_kosten_mikro, warn_prozent FROM budget")[0]) == (1, 12_500_000, 75)
-    stt(pclient, g["deviceToken"])
+    con = db.verbinden(pein.db_pfad)
+    budget.preis_setzen(con, f["id"], "whisper-fest", 0, None, None)  # unter Kostendeckel braucht das Modell einen Preis
+    con.close()
+    assert stt(pclient, g["deviceToken"]).status_code == 200
     html = c.get("/budget").text
     assert "Erreicht" in html and "<meter" in html
     c.post("/budget/preis", data={"csrf": seiten_csrf(c, "/budget"), "modell": "whisper-fest", "minute": "0,006"})
@@ -208,3 +211,46 @@ def test_nutzung_ohne_login_umgeleitet(pein):
         for pfad in ("/nutzung", "/nutzung.csv", "/budget"):
             r = c.get(pfad, follow_redirects=False)
             assert r.status_code == 303 and r.headers["location"] == "/login"
+
+
+# --- Review N-15 (W2-FIXS): unter Kostendeckel kein Modell ohne Preiseintrag ---
+def test_kostendeckel_lehnt_modell_ohne_preis_ab(pein, pclient, fake, firma):
+    f, g = firma
+    zugang(pein, f["id"], "llm", "custom", fake.basis + "/v1")  # ohne festes Modell: das Gerät wählt frei
+    con = db.verbinden(pein.db_pfad)
+    budget.preis_setzen(con, f["id"], "text-x", None, nutzung.betrag_lesen("1"), None)
+    con.close()
+    assert chat(pclient, g["deviceToken"], model="gratis-modell").status_code == 200  # ohne Kostendeckel wie bisher
+    _budget(pein, f["id"], "firma", max_kosten_mikro=1_000_000)
+    n = len(fake.anfragen)
+    r = chat(pclient, g["deviceToken"], model="gratis-modell")
+    assert r.status_code == 403 and r.json()["error"] == "budget_exhausted"
+    assert len(fake.anfragen) == n  # der Anbieter wurde nicht gefragt
+    assert chat(pclient, g["deviceToken"]).status_code == 200  # text-x hat einen Preis
+    assert [tuple(z) for z in sql(pein, "SELECT klasse, anzahl FROM nutzung_fehler")] == [("no_price", 1)]
+
+
+@pytest.mark.parametrize("sprache,wort", [("de", "frisches Geräte-Budget"), ("en", "fresh device budget")])
+def test_portal_geraete_budget_hinweis_bei_auto_freigabe(papp, pein, uhr, firma, sprache, wort):
+    """Review N-14: unter Auto-Freigabe ist ein Geräte-Budget per Neu-Verbinden umgehbar → Hinweis im Formular."""
+    f, _ = firma
+    c = admin_client(papp, pein, uhr, f["id"], "owner-n14")
+    c.cookies.set("wl_sprache", sprache)
+    assert wort not in c.get("/budget").text
+    con = db.verbinden(pein.db_pfad)
+    con.execute("UPDATE firma SET auto_freigabe = 1 WHERE id = ?", (f["id"],))
+    con.close()
+    html = c.get("/budget").text
+    assert wort in html and ("Preistabelle ab" if sprache == "de" else "without a price table entry") in html
+
+
+def test_kostendeckel_ersatz_zugang_mit_preis_springt_ein(pein, pclient, fake, fake2, firma):
+    f, g = firma
+    zugang(pein, f["id"], "llm_fallback", "custom", fake2.basis + "/v1", key="test-key-not-real-2", modell="ersatz-preis")
+    con = db.verbinden(pein.db_pfad)
+    budget.preis_setzen(con, f["id"], "ersatz-preis", None, nutzung.betrag_lesen("1"), None)
+    con.close()
+    _budget(pein, f["id"], "geraet", g["deviceId"], max_kosten_mikro=1_000_000)
+    n = len(fake.anfragen)
+    r = chat(pclient, g["deviceToken"])  # llm-fest hat keinen Preis → Ersatz-Zugang
+    assert r.status_code == 200 and len(fake.anfragen) == n and len(fake2.anfragen) == 1

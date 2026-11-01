@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block titel %}{{ t('nav.richtlinie') }}{% endblock %}
 {% macro wert_anzeige(e, wert) -%}
-{%- if wert is none -%}–{%- elif e.typ == 'bool' -%}{{ t('p.an') if wert else t('p.aus') }}{%- elif e.typ == 'liste' -%}{{ wert | join(', ') or '–' }}{%- elif e.typ == 'wahl' -%}{{ opt(e.pfad, wert) }}{%- else -%}{{ wert if wert != '' else '–' }}{%- endif -%}
+{%- if wert is none -%}–{%- elif e.typ == 'bool' -%}{{ t('p.an') if wert else t('p.aus') }}{%- elif e.typ == 'liste' -%}{{ wert | join(', ') or '–' }}{%- elif e.typ == 'wahl' or (e.typ == 'text' and e.optionen and wert) -%}{{ opt(e.pfad, wert) }}{%- else -%}{{ wert if wert != '' else '–' }}{%- endif -%}
 {%- endmacro %}
 {% block inhalt %}
 <h1>{{ t('nav.richtlinie') }}</h1>
@@ -47,7 +47,8 @@
         {% elif e.max_laenge > 200 %}
           <textarea id="w-{{ id }}" name="w:{{ e.pfad }}" rows="3" maxlength="{{ e.max_laenge }}">{{ z.wert or '' }}</textarea>
         {% else %}
-          <input id="w-{{ id }}" name="w:{{ e.pfad }}" value="{{ z.wert if z.wert is not none else '' }}" maxlength="{{ e.max_laenge }}">
+          <input id="w-{{ id }}" name="w:{{ e.pfad }}" value="{{ z.wert if z.wert is not none else '' }}" maxlength="{{ e.max_laenge }}"{% if e.optionen %} list="v-{{ id }}"{% endif %}>
+          {% if e.optionen %}<datalist id="v-{{ id }}">{% for o in e.optionen %}<option value="{{ o }}" label="{{ opt(e.pfad, o) }}">{{ opt(e.pfad, o) }}</option>{% endfor %}</datalist>{% endif %}
         {% endif %}
         </div>
       </li>

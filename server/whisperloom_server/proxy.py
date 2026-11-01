@@ -171,8 +171,15 @@ async def _kette_abarbeiten(request: Request, con: sqlite3.Connection, g: sqlite
                             modell_wunsch: str, bauen, auswerten, audio_ms: int, zeit: int) -> dict:
     verbinden = VERBINDEN_MIT_ERSATZ_S if len(kette) > 1 else VERBINDEN_S
     code = "upstream_error"
+    nur_mit_preis = budget.kosten_grenze_aktiv(con, g)
     for zugang in kette:
         modell = zugang["modell"] or modell_wunsch
+        if nur_mit_preis and not budget.hat_preis(con, g["firma_id"], modell):
+            # Review N-15: unter Kostendeckel kein Modell ohne Preiseintrag (zählte sonst 0); Ersatz-Zugang darf.
+            code = "no_price"
+            ereignis("proxy abgelehnt", route=art, geraet=g["id"], firma=g["firma_id"], zugang=zugang["name"],
+                     anbieter=zugang["anbieter"], fehler="ohne_preis")
+            continue
         start = time.monotonic()
         try:
             daten = await _versuch(request, zugang, bauen(zugang, modell), verbinden)
@@ -192,7 +199,7 @@ async def _kette_abarbeiten(request: Request, con: sqlite3.Connection, g: sqlite
         if ende:
             break
     nutzung.fehler(con, g, zeit, code)
-    raise ApiFehler(code)
+    raise ApiFehler("budget_exhausted" if code == "no_price" else code)
 
 
 def _ungueltig(con: sqlite3.Connection, g: sqlite3.Row, request: Request) -> ApiFehler:
