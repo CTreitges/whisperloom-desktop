@@ -30,6 +30,21 @@ public sealed class DesktopSettings
     /// <summary>Nur bei <see cref="ProxyMode"/> "manual", z. B. http://proxy:3128.</summary>
     public string ProxyUrl { get; set; } = "";
 
+    /// <summary>Windows: globale Tastenkürzel an.</summary>
+    public bool HotkeysEnabled { get; set; } = true;
+
+    /// <summary>Windows: Halten-Kombi (Aufnahme, solange gedrückt), z. B. "Ctrl+Win".</summary>
+    public string HotkeyHold { get; set; } = "Ctrl+Win";
+
+    /// <summary>Windows: Umschalt-Kombi (Overlay; zweiter Druck = Senden).</summary>
+    public string HotkeyToggle { get; set; } = "Ctrl+Space";
+
+    /// <summary>Windows: Kombi für die nächste Stufe.</summary>
+    public string HotkeyStage { get; set; } = "Ctrl+Alt+Space";
+
+    /// <summary>Windows, Diktat per Tastenkürzel: "paste" (einfügen), "type" (direkt tippen) oder "clipboard" (nur Zwischenablage).</summary>
+    public string InsertMode { get; set; } = "paste";
+
     /// <summary>Unbekannte Felder (neuere Version, Sync von Android) bleiben beim Speichern erhalten.</summary>
     [System.Text.Json.Serialization.JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }

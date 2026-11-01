@@ -82,7 +82,8 @@ internal sealed class FakeAccessChecker : IAccessChecker
 /// <summary>Ein Controller mit Fakes und Temp-Datenordner; räumt beim Dispose auf.</summary>
 internal sealed class ControllerFixture : IDisposable
 {
-    public ControllerFixture(WhisperLoomSettings? settings = null)
+    /// <param name="output">Andere Ausgabe statt <see cref="Sink"/> (Windows-Einfügen, Phase 3).</param>
+    public ControllerFixture(WhisperLoomSettings? settings = null, IOutputSink? output = null)
     {
         DataDir = Path.Combine(Path.GetTempPath(), "wl-test-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(DataDir);
@@ -90,7 +91,7 @@ internal sealed class ControllerFixture : IDisposable
         Store = new SettingsStore(DataDir);
         var s = settings ?? new WhisperLoomSettings();
         History = new FileHistoryStore(Path.Combine(DataDir, "history"), () => Controller!.Settings.History);
-        Controller = new DictationController(Recorder, Pipeline, Sink, History, Log, s, Store.Save, () => Now);
+        Controller = new DictationController(Recorder, Pipeline, output ?? Sink, History, Log, s, Store.Save, () => Now);
     }
 
     public string DataDir { get; }

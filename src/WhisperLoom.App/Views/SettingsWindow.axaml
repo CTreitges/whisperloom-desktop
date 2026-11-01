@@ -138,12 +138,61 @@
         <StackPanel Margin="4">
           <TextBlock Classes="f" Text="{Binding [Settings_Output], Source={x:Static l:Loc.Instance}}" />
           <ComboBox IsEnabled="{Binding Editable[desktop.output]}" ItemsSource="{Binding Outputs}" SelectedItem="{Binding Output}" />
+          <TextBlock Classes="f" Text="{Binding [Settings_InsertMode], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding Hotkeys.Available}" />
+          <ComboBox x:Name="InsertModeBox" ItemsSource="{Binding InsertModes}" SelectedItem="{Binding InsertMode}" IsVisible="{Binding Hotkeys.Available}" />
           <TextBlock Classes="f" Text="{Binding [Settings_Microphone], Source={x:Static l:Loc.Instance}}" />
           <ComboBox IsEnabled="{Binding Editable[desktop.microphone]}" ItemsSource="{Binding Microphones}" SelectedItem="{Binding Microphone}" />
           <TextBlock Classes="f" Text="{Binding [Settings_UiLanguage], Source={x:Static l:Loc.Instance}}" />
           <ComboBox IsEnabled="{Binding Editable[desktop.uiLanguage]}" x:Name="UiLanguageBox" ItemsSource="{Binding UiLanguages}" SelectedItem="{Binding UiLanguage}" />
         </StackPanel>
       </TabItem>
+
+      <!-- Tastenkürzel (nur Windows, Phase 3) -->
+      <TabItem x:Name="TabHotkeys" Header="{Binding [Settings_Hotkeys], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding Hotkeys.Available}">
+        <StackPanel Margin="4">
+          <CheckBox x:Name="HotkeysEnabledBox" IsChecked="{Binding Hotkeys.Enabled}" Content="{Binding [Hotkey_Enabled], Source={x:Static l:Loc.Instance}}" />
+          <StackPanel x:Name="HotkeyHold" DataContext="{Binding Hotkeys.Hold}" x:DataType="vm:HotkeyRowViewModel" Margin="0,8,0,0">
+            <TextBlock Classes="f" Text="{Binding Label}" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Border Background="{StaticResource WlSurfaceHigh}" CornerRadius="4" Padding="10,4" MinWidth="180">
+                <TextBlock Text="{Binding Value}" FontWeight="SemiBold" />
+              </Border>
+              <Button Content="{Binding [Hotkey_Record], Source={x:Static l:Loc.Instance}}" Command="{Binding RecordCommand}"
+                      IsVisible="{Binding CanRecord}" IsEnabled="{Binding !IsRecording}" />
+              <TextBlock Text="{Binding [Hotkey_Recording], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding IsRecording}"
+                         VerticalAlignment="Center" Foreground="{StaticResource WlAccent}" />
+            </StackPanel>
+            <TextBlock Text="{Binding Warnings}" TextWrapping="Wrap" Foreground="{StaticResource WlError}" FontSize="12" Margin="0,4,0,0" />
+          </StackPanel>
+          <StackPanel x:Name="HotkeyToggle" DataContext="{Binding Hotkeys.Toggle}" x:DataType="vm:HotkeyRowViewModel" Margin="0,8,0,0">
+            <TextBlock Classes="f" Text="{Binding Label}" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Border Background="{StaticResource WlSurfaceHigh}" CornerRadius="4" Padding="10,4" MinWidth="180">
+                <TextBlock Text="{Binding Value}" FontWeight="SemiBold" />
+              </Border>
+              <Button Content="{Binding [Hotkey_Record], Source={x:Static l:Loc.Instance}}" Command="{Binding RecordCommand}"
+                      IsVisible="{Binding CanRecord}" IsEnabled="{Binding !IsRecording}" />
+              <TextBlock Text="{Binding [Hotkey_Recording], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding IsRecording}"
+                         VerticalAlignment="Center" Foreground="{StaticResource WlAccent}" />
+            </StackPanel>
+            <TextBlock Text="{Binding Warnings}" TextWrapping="Wrap" Foreground="{StaticResource WlError}" FontSize="12" Margin="0,4,0,0" />
+          </StackPanel>
+          <StackPanel x:Name="HotkeyStage" DataContext="{Binding Hotkeys.Stage}" x:DataType="vm:HotkeyRowViewModel" Margin="0,8,0,0">
+            <TextBlock Classes="f" Text="{Binding Label}" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Border Background="{StaticResource WlSurfaceHigh}" CornerRadius="4" Padding="10,4" MinWidth="180">
+                <TextBlock Text="{Binding Value}" FontWeight="SemiBold" />
+              </Border>
+              <Button Content="{Binding [Hotkey_Record], Source={x:Static l:Loc.Instance}}" Command="{Binding RecordCommand}"
+                      IsVisible="{Binding CanRecord}" IsEnabled="{Binding !IsRecording}" />
+              <TextBlock Text="{Binding [Hotkey_Recording], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding IsRecording}"
+                         VerticalAlignment="Center" Foreground="{StaticResource WlAccent}" />
+            </StackPanel>
+            <TextBlock Text="{Binding Warnings}" TextWrapping="Wrap" Foreground="{StaticResource WlError}" FontSize="12" Margin="0,4,0,0" />
+          </StackPanel>
+        </StackPanel>
+      </TabItem>
+
       <!-- Import/Export (Format v1, docs/settings-format.md) -->
       <TabItem x:Name="TabSync" Header="{Binding [Settings_Sync], Source={x:Static l:Loc.Instance}}">
         <DockPanel Margin="4" DataContext="{Binding Sync}" x:DataType="vm:SyncViewModel">

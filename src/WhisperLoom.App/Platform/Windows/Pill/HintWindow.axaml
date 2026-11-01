@@ -1,0 +1,16 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="WhisperLoom.App.Platform.Windows.Pill.HintWindow"
+        Title="WhisperLoom Hint"
+        SizeToContent="WidthAndHeight" MaxWidth="640"
+        Background="Transparent" TransparencyLevelHint="Transparent">
+  <!-- Stufen-Hinweis und Toasts: fokusfrei, unten mittig auf dem Monitor des Ziels. -->
+  <Border Background="{StaticResource WlSurface}" CornerRadius="16" Padding="20,10"
+          BorderBrush="{StaticResource WlAccent}" BorderThickness="1">
+    <StackPanel Spacing="2">
+      <TextBlock x:Name="Caption" FontSize="12" Foreground="{StaticResource WlOnSurfaceVariant}" />
+      <TextBlock x:Name="Message" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource WlOnSurface}"
+                 TextWrapping="Wrap" />
+    </StackPanel>
+  </Border>
+</Window>

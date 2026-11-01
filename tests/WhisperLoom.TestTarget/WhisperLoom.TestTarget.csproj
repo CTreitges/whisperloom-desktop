@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Zielfenster für smoke.py (Suite input): Textfeld, schreibt Text und Tastenzähler als JSON in eine Datei.
+       WinForms = echtes Win32-Edit-Steuerelement wie in vielen Zielprogrammen.
+       Doku: learn.microsoft.com/dotnet/desktop/winforms/ (abgerufen 2026-10-31). -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <!-- Damit auch der Ubuntu-Lauf der CI die Solution bauen kann (ausführbar nur unter Windows). -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+</Project>
