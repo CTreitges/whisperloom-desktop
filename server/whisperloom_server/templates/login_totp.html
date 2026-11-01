@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block titel %}{{ t('p.totp_titel') }}{% endblock %}
+{% block inhalt %}
+<section class="karte">
+  <h1>{{ t('p.totp_titel') }}</h1>
+  <p class="klein">{{ t('p.totp_text') }}</p>
+  {% if fehler %}<p class="meldung fehler" role="alert">{{ t(fehler) }}</p>{% endif %}
+  <form method="post" action="/login/totp" class="formular">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label for="code">{{ t('p.totp_code') }}</label>
+    <input id="code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" required autofocus class="code-feld">
+    <button type="submit" class="knopf haupt">{{ t('p.bestaetigen') }}</button>
+  </form>
+</section>
+{% endblock %}

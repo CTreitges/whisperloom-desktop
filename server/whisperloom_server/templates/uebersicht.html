@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block titel %}{{ t('nav.uebersicht') }}{% endblock %}
+{% block inhalt %}
+<h1>{{ t('nav.uebersicht') }}</h1>
+<section class="gruppe-box" aria-labelledby="t-wartend">
+  <h2 id="t-wartend">{{ t('p.wartend_titel') }}</h2>
+  {% if wartend %}
+  <ul class="liste">
+    {% for g in wartend %}
+    <li class="zeile">
+      <span class="zeile-text"><strong>{{ g.name }}</strong><span class="klein">{{ g.plattform }} · {{ g.angelegt_ms | zeit }}</span></span>
+      <form method="post" action="/geraete/{{ g.id }}/freigeben"><input type="hidden" name="csrf" value="{{ wer.csrf }}"><button type="submit" class="knopf haupt">{{ t('p.freigeben') }}</button></form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="leer">{{ t('p.wartend_leer') }}</p>
+  {% endif %}
+</section>
+<div class="raster">
+  <section class="gruppe-box" aria-labelledby="t-geraete">
+    <h2 id="t-geraete">{{ t('nav.geraete') }}</h2>
+    <dl class="werte">
+      <div><dt>{{ t('status.approved') }}</dt><dd>{{ anzahl.approved }}</dd></div>
+      <div><dt>{{ t('status.pending') }}</dt><dd>{{ anzahl.pending }}</dd></div>
+      <div><dt>{{ t('status.blocked') }}</dt><dd>{{ anzahl.blocked }}</dd></div>
+    </dl>
+    <p><a href="/geraete">{{ t('p.alle_geraete') }}</a></p>
+  </section>
+  <section class="gruppe-box" aria-labelledby="t-code">
+    <h2 id="t-code">{{ t('p.firmencode') }}</h2>
+    <p class="geheimnis"><code id="firmencode">{{ code or '–' }}</code>
+      <button type="button" class="knopf leise klein-knopf" data-kopieren="firmencode" data-kopiert="{{ t('p.kopiert') }}">{{ t('p.kopieren') }}</button></p>
+    <p class="klein">{{ t('p.firmencode_text') }}</p>
+  </section>
+  <section class="gruppe-box" aria-labelledby="t-zugang">
+    <h2 id="t-zugang">{{ t('p.zugang_titel') }}</h2>
+    <dl class="werte">
+      <div><dt>{{ t('p.key_modus') }}</dt><dd>{{ t('modus.' ~ firma.key_modus) }}</dd></div>
+      <div><dt>{{ t('nav.schluessel') }}</dt><dd>{{ schluessel_anzahl }}</dd></div>
+      <div><dt>{{ t('nav.gruppen') }}</dt><dd>{{ gruppen_anzahl }}</dd></div>
+      <div><dt>{{ t('p.auto_freigabe') }}</dt><dd>{{ t('p.an') if firma.auto_freigabe else t('p.aus') }}</dd></div>
+    </dl>
+  </section>
+</div>
+{% endblock %}

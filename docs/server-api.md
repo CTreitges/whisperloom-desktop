@@ -39,6 +39,7 @@ Die App wählt ihren Text nach `error` (DE/EN aus `Localization`); `message` ist
 | `invalid_request` | 400 | Format, Pflichtfeld, unbekanntes Feld | Fehler anzeigen, nicht wiederholen |
 | `device_unknown` | 401 | Token unbekannt oder widerrufen (Gerät gelöscht) | `management.state = "revoked"`, Token löschen, „Neu verbinden“ anbieten; Firmen-Werte bleiben bis dahin stehen |
 | `code_invalid` | 404 | Firmencode unbekannt oder abgelaufen | Eingabe prüfen lassen |
+| `not_found` | 404 | Route unbekannt, z. B. Proxy-Routen (§3.6/§3.7) auf einem Server ohne Proxy | nicht wiederholen; die Funktion gilt als vom Server nicht angeboten |
 | `device_pending` | 403 | Gerät noch nicht freigegeben (Route braucht Freigabe) | Warten, `GET /device` abfragen |
 | `device_blocked` | 403 | Gerät gesperrt | `management.state = "blocked"`, Proxy-Zugang aus |
 | `tenant_blocked` | 403 | Firma gesperrt | wie `device_blocked` |

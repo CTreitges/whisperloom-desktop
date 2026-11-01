@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block titel %}{{ t('nav.firma') }}{% endblock %}
+{% block inhalt %}
+<h1>{{ t('nav.firma') }}</h1>
+{% if not wer.owner %}<p class="meldung info">{{ t('p.nur_owner_aendern') }}</p>{% endif %}
+<form method="post" action="/firma" class="formular breit">
+  <input type="hidden" name="csrf" value="{{ wer.csrf }}">
+  <fieldset class="gruppe-box"{% if not wer.owner %} disabled{% endif %}>
+    <legend>{{ t('p.allgemein') }}</legend>
+    <label for="name">{{ t('p.firmenname') }}</label>
+    <input id="name" name="name" value="{{ firma.name }}" maxlength="80" required>
+    <label class="mit-schalter"><input type="checkbox" class="schalter" name="auto_freigabe"{% if firma.auto_freigabe %} checked{% endif %}> {{ t('p.auto_freigabe') }}</label>
+    <p class="klein">{{ t('p.auto_freigabe_text') }}</p>
+    <label for="max_wartend">{{ t('p.max_wartend') }}</label>
+    <input id="max_wartend" name="max_wartend" type="number" min="1" max="10000" value="{{ firma.max_wartend }}">
+  </fieldset>
+  <fieldset class="gruppe-box"{% if not wer.owner %} disabled{% endif %}>
+    <legend>{{ t('p.key_modus') }}</legend>
+    {% for m in ('proxy', 'distribute') %}
+    <label class="wahl"><input type="radio" name="key_modus" value="{{ m }}"{% if firma.key_modus == m %} checked{% endif %}>
+      <span><strong>{{ t('modus.' ~ m) }}</strong><span class="klein">{{ t('modus.' ~ m ~ '_text') }}</span></span></label>
+    {% endfor %}
+  </fieldset>
+  <fieldset class="gruppe-box"{% if not wer.owner %} disabled{% endif %}>
+    <legend>{{ t('p.anmeldearten') }}</legend>
+    <p class="klein">{{ t('p.anmeldearten_text') }}</p>
+    {% for a in instanz_arten %}
+    <label class="wahl"><input type="checkbox" name="art:{{ a }}"{% if a in firma_arten %} checked{% endif %}>
+      <span><strong>{{ t('art.' ~ a) }}</strong><span class="klein">{{ t('art.' ~ a ~ '_text') }}</span></span></label>
+    {% endfor %}
+  </fieldset>
+  {% if wer.owner %}<div class="leiste-unten"><button type="submit" class="knopf haupt">{{ t('p.speichern') }}</button></div>{% endif %}
+</form>
+<section class="gruppe-box" aria-labelledby="t-code">
+  <h2 id="t-code">{{ t('p.firmencode') }}</h2>
+  <p class="geheimnis"><code id="firmencode">{{ code or '–' }}</code>
+    <button type="button" class="knopf leise klein-knopf" data-kopieren="firmencode" data-kopiert="{{ t('p.kopiert') }}">{{ t('p.kopieren') }}</button></p>
+  <p class="klein">{{ t('p.firmencode_text') }}</p>
+  {% if wer.owner %}
+  <details class="mehr">
+    <summary>{{ t('p.code_erneuern') }}</summary>
+    <form method="post" action="/firma/code" class="formular">
+      <input type="hidden" name="csrf" value="{{ wer.csrf }}">
+      <p class="klein">{{ t('p.code_erneuern_text') }}</p>
+      <button type="submit" class="knopf gefahr">{{ t('p.code_erneuern') }}</button>
+    </form>
+  </details>
+  {% endif %}
+</section>
+{% endblock %}

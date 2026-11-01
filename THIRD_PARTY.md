@@ -132,3 +132,59 @@ Avalonia.Fonts.Inter nutzen nur die Headless-UI-Tests; die App verwendet die Sys
 The text stages port prompts from WhisperLoom for Android (https://github.com/CTreitges/whisperloom-android, MIT,
 same author). The desktop-only prompt “rewrite by instruction” (`src/WhisperLoom.Core/Prompts/desktop/`) is part of this
 project (`docs/parity-exceptions.md`). No third-party prompt text is included.
+
+## 7. Company server / Firmen-Manager (`server/`, Python)
+
+The self-hostable company server (`server/`, also shipped as a Docker image based on `python:3.12-slim`) uses the
+Python packages below, pinned in `server/requirements.txt`. Licenses were taken from the installed package metadata
+(`License-Expression` or classifiers) on 2026-11-01.
+
+Der selbst hostbare Firmen-Manager (`server/`, auch als Docker-Image auf Basis `python:3.12-slim`) nutzt die folgenden
+Python-Pakete, fest in `server/requirements.txt`. Lizenzen laut installierten Paket-Metadaten, Stand 2026-11-01.
+
+### Runtime / Laufzeit
+
+| Package | Version | License | Upstream |
+|---|---|---|---|
+| annotated-doc | 0.0.5 | MIT | https://github.com/fastapi/annotated-doc |
+| annotated-types | 0.8.0 | MIT | https://github.com/annotated-types/annotated-types |
+| anyio | 4.15.1 | MIT | https://github.com/agronholm/anyio |
+| argon2-cffi | 25.1.0 | MIT | https://github.com/hynek/argon2-cffi |
+| argon2-cffi-bindings | 26.1.0 | MIT | https://github.com/hynek/argon2-cffi-bindings |
+| certifi | 2026.10.23 | MPL-2.0 | https://github.com/certifi/python-certifi |
+| cffi | 2.1.1 | MIT-0 | https://github.com/python-cffi/cffi |
+| click | 8.5.0 | BSD-3-Clause | https://github.com/pallets/click |
+| colorama (Windows only / nur Windows) | 0.4.6 | BSD-3-Clause | https://github.com/tartley/colorama |
+| cryptography | 50.0.2 | Apache-2.0 OR BSD-3-Clause | https://github.com/pyca/cryptography |
+| fastapi | 0.162.0 | MIT | https://github.com/fastapi/fastapi |
+| h11 | 0.16.0 | MIT | https://github.com/python-hyper/h11 |
+| httpcore | 1.0.9 | BSD-3-Clause | https://github.com/encode/httpcore |
+| httpx | 0.28.1 | BSD-3-Clause | https://github.com/encode/httpx |
+| idna | 3.20 | BSD-3-Clause | https://github.com/kjd/idna |
+| Jinja2 | 3.1.6 | BSD-3-Clause | https://github.com/pallets/jinja |
+| MarkupSafe | 3.0.4 | BSD-3-Clause | https://github.com/pallets/markupsafe |
+| opentelemetry-api | 1.45.2 | Apache-2.0 | https://github.com/open-telemetry/opentelemetry-python |
+| pycparser | 3.12 | BSD-3-Clause | https://github.com/eliben/pycparser |
+| pydantic | 2.14.2 | MIT | https://github.com/pydantic/pydantic |
+| pydantic_core | 2.50.2 | MIT | https://github.com/pydantic/pydantic-core |
+| python-multipart | 0.0.32 | Apache-2.0 | https://github.com/Kludex/python-multipart |
+| PyYAML | 6.0.3 | MIT | https://github.com/yaml/pyyaml |
+| starlette | 1.10.0 | BSD-3-Clause | https://github.com/Kludex/starlette |
+| typing_extensions | 4.16.0 | PSF-2.0 | https://github.com/python/typing_extensions |
+| typing-inspection | 0.4.4 | MIT | https://github.com/pydantic/typing-inspection |
+| uvicorn | 0.54.0 | BSD-3-Clause | https://github.com/Kludex/uvicorn |
+
+### Tests and lint only / Nur Tests und Lint (`server/requirements-dev.txt`, not shipped)
+
+| Package | Version | License |
+|---|---|---|
+| iniconfig | 2.3.1 | MIT |
+| packaging | 26.3 | Apache-2.0 OR BSD-2-Clause |
+| pluggy | 1.7.0 | MIT |
+| Pygments | 2.21.0 | BSD-2-Clause |
+| pytest | 9.2.0 | MIT |
+| ruff | 0.17.3 | MIT |
+| pip-audit (plus its own dependencies / samt Abhängigkeiten, CI only) | 2.10.1 | Apache-2.0 |
+
+TOTP (RFC 6238) is implemented with the Python standard library; no third-party OTP package is used. The base image
+`python:3.12-slim` contains CPython (PSF-2.0) and Debian packages under their respective licenses.
