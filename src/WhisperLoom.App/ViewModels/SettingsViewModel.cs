@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using WhisperLoom.App.Localization;
@@ -29,6 +30,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly WhisperLoomSettings _s;
     private readonly DesktopSettings _desktop;
     private readonly PolicySettings _policy;
+    private readonly ISecretStore _secrets;
     private readonly bool _ready;
 
     /// <param name="local">Lokale Teile der App (Modelle, Begleitprozess, Ollama); null = Seite „Erkennung“ ohne Downloads.</param>
@@ -37,6 +39,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         Platform.Sidecar.LocalParts? local = null, Func<Task<string?>>? recordHotkey = null)
     {
         _controller = controller;
+        _secrets = secrets;
+        Checker = checker;
         _reopen = () => new SettingsViewModel(controller, secrets, checker, microphones, local, recordHotkey);
         _s = SettingsJson.Deserialize(SettingsJson.Serialize(controller.Settings));
         _desktop = SettingsStore.Desktop(_s);
@@ -47,12 +51,12 @@ public sealed partial class SettingsViewModel : ObservableObject
         LocalParts = local;
         var loc = Loc.Instance;
 
-        // Von IT nicht freigegebene Anbieter erscheinen nicht; der aktuelle bleibt sichtbar, sonst wechselte er still.
-        var used = new[] { _s.Stt.ProviderId, _s.SttFallback.ProviderId, _s.Llm.ProviderId, _s.LlmFallback.ProviderId };
-        var offered = ProviderChoice.All.Where(p => _policy.IsProviderAllowed(p.Id) || used.Contains(p.Id)).ToList();
-        SttProviders = [.. offered.Where(p => p.Stt).Select(p => new Choice(p.Id, p.Name))];
-        LlmProviders = [new Choice(LlmSettings.Same, loc["Settings_LlmSame"]), .. offered.Where(p => p.Llm).Select(p => new Choice(p.Id, p.Name))];
-        LlmFallbackProviders = [.. offered.Where(p => p.Llm).Select(p => new Choice(p.Id, p.Name))];
+        // Katalog, eigene Anbieter und lokale Server (SettingsViewModel.Providers.cs).
+        FillProviderChoices();
+        EnsureChoice(SttProviders, _s.Stt.ProviderId);
+        EnsureChoice(SttProviders, _s.SttFallback.ProviderId);
+        EnsureChoice(LlmProviders, _s.Llm.ProviderId);
+        EnsureChoice(LlmFallbackProviders, _s.LlmFallback.ProviderId);
         Languages = [.. RecognitionLanguages.Select(l => new Choice(l, l == "auto" ? loc["Language_auto"] : l.ToUpperInvariant()))];
         Stages = [.. RefineModes.SettingsFor(true).Select(m => new Choice(m.Key(), loc["Stage_" + m.Key()]))];
         ProxyModes = [.. new[] { "system", "off", "manual" }.Select(m => new Choice(m, loc["Proxy_" + m]))];
@@ -88,10 +92,17 @@ public sealed partial class SettingsViewModel : ObservableObject
         {
             if (e.PropertyName is nameof(LocalViewModel.Engine) or nameof(LocalViewModel.Backend) or nameof(LocalViewModel.Rule)
                 or nameof(LocalViewModel.SelectedModel) or nameof(LocalViewModel.OllamaModel) or nameof(LocalViewModel.Accurate)
-                or nameof(LocalViewModel.IdleMinutes) or nameof(LocalViewModel.OllamaUrl))
+                or nameof(LocalViewModel.IdleMinutes) or nameof(LocalViewModel.OllamaUrl) or nameof(LocalViewModel.TextEngine)
+                or nameof(LocalViewModel.BundledModel) or nameof(LocalViewModel.TextServer))
             {
                 Touch();
             }
+        };
+        // Eigene Whisper-Dateien und lokale Server (W2-LOCAL): Anbieterlisten neu, dann speichern.
+        Local.EntriesChanged += () =>
+        {
+            RefreshProviders();
+            Touch();
         };
         _baseline = BuildResult(); // normalisiert (Abschnitte desktop/local vollständig), damit der erste Commit nur echte Änderungen überträgt
         _ready = true;
@@ -122,9 +133,9 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     internal DesktopSettings Desktop => _desktop;
 
-    public IReadOnlyList<Choice> SttProviders { get; }
-    public IReadOnlyList<Choice> LlmProviders { get; }
-    public IReadOnlyList<Choice> LlmFallbackProviders { get; }
+    public ObservableCollection<Choice> SttProviders { get; } = [];
+    public ObservableCollection<Choice> LlmProviders { get; } = [];
+    public ObservableCollection<Choice> LlmFallbackProviders { get; } = [];
     public IReadOnlyList<Choice> Languages { get; }
     public IReadOnlyList<Choice> Stages { get; }
     public IReadOnlyList<Choice> ProxyModes { get; }
@@ -226,10 +237,21 @@ public sealed partial class SettingsViewModel : ObservableObject
     });
 
     // Auswahllisten: jede Änderung zählt sofort (AutoSave).
-    partial void OnSttProviderChanged(Choice value) => Touch();
-    partial void OnSttFallbackProviderChanged(Choice value) => Touch();
-    partial void OnLlmProviderChanged(Choice value) => Touch();
-    partial void OnLlmFallbackProviderChanged(Choice value) => Touch();
+    // Beim Neuaufbau der Listen (RefreshProviders) setzt die ComboBox kurz null: nicht speichern.
+    partial void OnSttProviderChanged(Choice value) => ProviderChanged(value);
+    partial void OnSttFallbackProviderChanged(Choice value) => ProviderChanged(value);
+    partial void OnLlmProviderChanged(Choice value) => ProviderChanged(value);
+    partial void OnLlmFallbackProviderChanged(Choice value) => ProviderChanged(value);
+
+    private void ProviderChanged(Choice? value)
+    {
+        if (_refreshingProviders || value is null)
+        {
+            return;
+        }
+        NotifyEntryUse();
+        Touch();
+    }
     partial void OnLanguageChanged(Choice value) => Touch();
     partial void OnStageChanged(Choice value) => Touch();
     partial void OnProxyModeChanged(Choice value) => Touch();

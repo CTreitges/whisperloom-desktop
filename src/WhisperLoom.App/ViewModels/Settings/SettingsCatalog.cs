@@ -14,6 +14,7 @@ public static class SettingsCatalog
     public static readonly IReadOnlyList<(string Id, string Section)> Pages =
     [
         ("general", "dictation"), ("recognition", "dictation"), ("text", "dictation"), ("cleanup", "dictation"),
+        ("providers", "sources"), ("localmodels", "sources"),
         ("output", "usage"), ("hotkeys", "usage"),
         ("privacy", "system"), ("network", "system"),
     ];
@@ -59,6 +60,9 @@ public static class SettingsCatalog
         new("llm.stageModels.summarize", "text", "G_Llm", "Set_StageModel_summarize", "Set_StageModel_Desc", Advanced: true),
         new("llm.stageModels.prompt", "text", "G_Llm", "Set_StageModel_prompt", "Set_StageModel_Desc", Advanced: true),
         new("offline.refine", "text", "G_LocalText", "Local_Rule"),
+        new("local.textEngine", "text", "G_LocalText", "Set_TextEngine", "Set_TextEngine_Desc"),
+        new("local.bundledModel", "text", "G_LocalText", "Set_BundledModel"),
+        new("local.textServer", "text", "G_LocalText", "Set_TextServer"),
         new("local.ollamaModel", "text", "G_LocalText", "Local_Ollama"),
         new("local.ollamaUrl", "text", "G_LocalText", "Set_OllamaUrl", "Set_OllamaUrl_Desc", Advanced: true),
         new("llmFallback.enabled", "text", "G_Fallback", "Set_FallbackEnabled", "Set_FallbackEnabled_Desc"),
@@ -72,6 +76,10 @@ public static class SettingsCatalog
         new("polish.trailingSpace", "cleanup", "G_Auto", "Set_TrailingSpace"),
         new("polish.customFillers", "cleanup", "G_Fillers", "Set_CustomFillers", "Set_FillerList_Desc"),
         new("polish.disabledFillers", "cleanup", "G_Fillers", "Set_DisabledFillers", "Set_DisabledFillers_Desc"),
+        // Anbieter und lokale Modelle (W2-LOCAL)
+        new("providers.custom", "providers", "G_CustomProviders", "Set_CustomProviders", "Set_CustomProviders_Desc"),
+        new("offline.customModels", "localmodels", "G_WhisperModels", "Set_CustomModels", "Set_CustomModels_Desc"),
+        new("local.servers", "localmodels", "G_LocalServers", "Set_LocalServers", "Set_LocalServers_Desc"),
         // Ausgabe
         new("desktop.insertMode", "output", "G_Insert", "Set_InsertMode", "Set_InsertMode_Desc"),
         new("desktop.profiles", "output", "G_Profiles", "Settings_Profiles", "Profile_Hint"),
@@ -108,11 +116,6 @@ public static class SettingsCatalog
         ["selection.hotkeyCombo"] = "W2-SEL (Markierung verarbeiten) – Seite „Tastenkürzel“",
         ["selection.floatingButton"] = "W2-SEL (schwebender Knopf) – Seite „Ausgabe“",
         ["selection.ctrlRightClick"] = "W2-SEL (Strg+Rechtsklick) – Seite „Ausgabe“",
-        ["providers.custom"] = "W2-LOCAL (eigene Anbieter) – eigene Seite „Anbieter“ bzw. Erkennung/Text",
-        ["offline.customModels"] = "W2-LOCAL (eigene Whisper-Datei) – Seite „Erkennung“, Gruppe „Lokal“",
-        ["local.servers"] = "W2-LOCAL (lokale Server) – Seiten „Erkennung“/„Textverbesserung“",
-        ["local.textEngine"] = "W2-LOCAL (mitgeliefertes Textmodell) – Seite „Textverbesserung“, Gruppe „Lokal“",
-        ["local.bundledModel"] = "W2-LOCAL (mitgeliefertes Textmodell) – Seite „Textverbesserung“, Gruppe „Lokal“",
     };
 
     public static SettingEntry? Find(string path) =>

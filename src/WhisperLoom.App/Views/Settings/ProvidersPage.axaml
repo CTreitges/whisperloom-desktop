@@ -1,0 +1,71 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:WhisperLoom.App.ViewModels.Settings"
+             xmlns:v="using:WhisperLoom.App.Views"
+             xmlns:ds="using:WhisperLoom.App.Design"
+             xmlns:l="using:WhisperLoom.App.Localization"
+             x:Class="WhisperLoom.App.Views.Settings.ProvidersPage"
+             x:DataType="vm:ProvidersPageViewModel">
+  <!-- Eigene Anbieter (W2-LOCAL): je Eintrag eine Gruppe; Key gehört zum Eintrag und geht nur an dessen Adresse. -->
+  <ds:SettingsPage TitleKey="Page_providers">
+    <StackPanel Spacing="20">
+      <ds:SettingsGroup TitleKey="G_CustomProviders" FooterKey="G_CustomProviders_Footer">
+        <StackPanel>
+          <ds:SettingRow Path="providers.custom" Stacked="True">
+            <StackPanel Spacing="8">
+              <TextBlock x:Name="EmptyText" Text="{Binding [Providers_Empty], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding IsEmpty}"
+                         Foreground="{DynamicResource Loom.TextSecondary}" TextWrapping="Wrap" />
+              <Button x:Name="AddProviderButton" Content="{Binding [Providers_Add], Source={x:Static l:Loc.Instance}}" Command="{Binding AddCommand}" />
+            </StackPanel>
+          </ds:SettingRow>
+        </StackPanel>
+      </ds:SettingsGroup>
+
+      <ItemsControl x:Name="ProviderList" ItemsSource="{Binding Rows}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <StackPanel Spacing="20" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:CustomProviderRow">
+            <StackPanel Spacing="6">
+            <TextBlock Text="{Binding Name}" FontSize="{DynamicResource Loom.Font.GroupTitle}" FontWeight="SemiBold"
+                       Foreground="{DynamicResource Loom.TextSecondary}" Margin="4,0,0,0" />
+            <Border Background="{DynamicResource Loom.Surface}" CornerRadius="{DynamicResource Loom.Radius.Group}"
+                    BorderBrush="{DynamicResource Loom.Separator}" BorderThickness="1" ClipToBounds="True">
+              <StackPanel>
+                <ds:SettingRow TitleKey="Provider_Name">
+                  <TextBox Classes="row" Text="{Binding Name, UpdateSourceTrigger=LostFocus}" />
+                </ds:SettingRow>
+                <ds:SettingRow TitleKey="Provider_Protocol" DescriptionKey="Provider_Protocol_Desc">
+                  <ComboBox Classes="row" ItemsSource="{Binding Protocols}" SelectedItem="{Binding Protocol}" />
+                </ds:SettingRow>
+                <ds:SettingRow TitleKey="Set_BaseUrl" Error="{Binding Error}">
+                  <TextBox Classes="row" Text="{Binding BaseUrl, UpdateSourceTrigger=LostFocus}" PlaceholderText="https://…/v1" />
+                </ds:SettingRow>
+                <ds:HintRow Text="{Binding Hint}" IsVisible="{Binding Hint.Length}" Kind="Warning" Margin="14,0,14,10" />
+                <ds:SettingRow TitleKey="Provider_Models" DescriptionKey="Provider_Models_Desc">
+                  <TextBox Classes="row" Text="{Binding Models, UpdateSourceTrigger=LostFocus}" PlaceholderText="whisper-1, gpt-…" />
+                </ds:SettingRow>
+                <ds:SettingRow TitleKey="Provider_KeyOptional">
+                  <ToggleSwitch IsChecked="{Binding KeyOptional}" OnContent="" OffContent="" />
+                </ds:SettingRow>
+                <ds:SettingRow TitleKey="Settings_ApiKey" DescriptionKey="Provider_Key_Desc" Stacked="True">
+                  <v:KeyFieldView DataContext="{Binding Key}" />
+                </ds:SettingRow>
+                <ds:SettingRow TitleKey="Provider_Id">
+                  <StackPanel Orientation="Horizontal" Spacing="12">
+                    <SelectableTextBlock Text="{Binding Id}" FontFamily="monospace" VerticalAlignment="Center" Foreground="{DynamicResource Loom.TextSecondary}" />
+                    <Button Content="{Binding [Providers_Delete], Source={x:Static l:Loc.Instance}}" Command="{Binding DeleteCommand}" />
+                  </StackPanel>
+                </ds:SettingRow>
+              </StackPanel>
+            </Border>
+            </StackPanel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+  </ds:SettingsPage>
+</UserControl>

@@ -5,6 +5,7 @@
              xmlns:v="using:WhisperLoom.App.Views"
              xmlns:ds="using:WhisperLoom.App.Design"
              xmlns:l="using:WhisperLoom.App.Localization"
+             xmlns:vs="using:WhisperLoom.App.Views.Settings"
              x:Class="WhisperLoom.App.Views.Settings.RecognitionPage"
              x:DataType="vm:RecognitionPageViewModel">
   <!-- Online und lokal auf einer Seite (W2-UI1); Modelle aus providers.json mit „Eigenes Modell …“. -->
@@ -26,11 +27,14 @@
           <ds:SettingRow Path="stt.providerId">
             <ComboBox x:Name="SttProviderBox" Classes="row" ItemsSource="{Binding Session.SttProviders}" SelectedItem="{Binding Session.SttProvider}" />
           </ds:SettingRow>
-          <ds:SettingRow Path="secrets.stt" Stacked="True">
-            <v:KeyFieldView x:Name="SttKeyView" DataContext="{Binding Session.SttKey}" />
-          </ds:SettingRow>
+          <Panel IsVisible="{Binding !Session.SttUsesEntry}">
+            <ds:SettingRow Path="secrets.stt" Stacked="True">
+              <v:KeyFieldView x:Name="SttKeyView" DataContext="{Binding Session.SttKey}" />
+            </ds:SettingRow>
+          </Panel>
+          <ds:HintRow TextKey="Key_AtEntry" IsVisible="{Binding Session.SttUsesEntry}" Margin="14,4,14,10" />
           <ds:SettingRow Path="stt.model">
-            <ds:CustomChoiceBox DataContext="{Binding SttModel}" />
+            <vs:ModelPickerView x:Name="SttModelPicker" DataContext="{Binding SttModelPicker}" />
           </ds:SettingRow>
           <Expander Classes="advanced" IsExpanded="{Binding AdvancedOpen}" Header="{Binding [Advanced], Source={x:Static l:Loc.Instance}}">
             <StackPanel>
@@ -50,25 +54,7 @@
           <ds:SettingRow Path="offline.model">
             <ComboBox x:Name="ModelBox" Classes="row" ItemsSource="{Binding Local.ModelChoices}" SelectedItem="{Binding Local.SelectedModel}" />
           </ds:SettingRow>
-          <ds:SettingRow TitleKey="Local_Models" Stacked="True">
-            <ItemsControl ItemsSource="{Binding Local.Models}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="avm:LocalModelViewModel">
-                  <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,3">
-                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                      <TextBlock Text="{Binding Label}" />
-                      <TextBlock Text="✓" IsVisible="{Binding Installed}" Foreground="{DynamicResource Loom.Accent}" />
-                      <TextBlock Text="{Binding Status}" Foreground="{DynamicResource Loom.TextSecondary}" FontSize="{DynamicResource Loom.Font.Caption}" VerticalAlignment="Center" />
-                    </StackPanel>
-                    <Button Grid.Column="1" Margin="8,0,0,0" Content="{Binding [Local_Download], Source={x:Static l:Loc.Instance}}" Command="{Binding DownloadCommand}"
-                            IsVisible="{Binding !Installed}" AutomationProperties.Name="{Binding Label}" />
-                    <Button Grid.Column="2" Margin="8,0,0,0" Content="{Binding [Local_Delete], Source={x:Static l:Loc.Instance}}" Command="{Binding DeleteCommand}"
-                            IsVisible="{Binding Installed}" AutomationProperties.Name="{Binding Label}" />
-                  </Grid>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-          </ds:SettingRow>
+          <ds:HintRow TextKey="Local_ModelsMoved" Margin="14,4,14,10" />
           <ds:SettingRow Path="offline.accurate">
             <ToggleSwitch IsChecked="{Binding Local.Accurate}" OnContent="" OffContent="" />
           </ds:SettingRow>
@@ -108,11 +94,14 @@
             <ds:SettingRow Path="sttFallback.providerId">
               <ComboBox Classes="row" ItemsSource="{Binding Session.SttProviders}" SelectedItem="{Binding Session.SttFallbackProvider}" />
             </ds:SettingRow>
-            <ds:SettingRow Path="secrets.sttFallback" Stacked="True">
-              <v:KeyFieldView x:Name="SttFallbackKeyView" DataContext="{Binding Session.SttFallbackKey}" />
-            </ds:SettingRow>
+            <Panel IsVisible="{Binding !Session.SttFallbackUsesEntry}">
+              <ds:SettingRow Path="secrets.sttFallback" Stacked="True">
+                <v:KeyFieldView x:Name="SttFallbackKeyView" DataContext="{Binding Session.SttFallbackKey}" />
+              </ds:SettingRow>
+            </Panel>
+            <ds:HintRow TextKey="Key_AtEntry" IsVisible="{Binding Session.SttFallbackUsesEntry}" Margin="14,4,14,10" />
             <ds:SettingRow Path="sttFallback.model">
-              <ds:CustomChoiceBox DataContext="{Binding SttFallbackModel}" />
+              <vs:ModelPickerView DataContext="{Binding SttFallbackModelPicker}" />
             </ds:SettingRow>
             <Expander Classes="advanced" IsExpanded="{Binding FallbackAdvancedOpen}" Header="{Binding [Advanced], Source={x:Static l:Loc.Instance}}">
               <StackPanel>

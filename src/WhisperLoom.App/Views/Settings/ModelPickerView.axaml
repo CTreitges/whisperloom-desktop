@@ -1,0 +1,17 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:WhisperLoom.App.ViewModels.Settings"
+             xmlns:ds="using:WhisperLoom.App.Design"
+             xmlns:l="using:WhisperLoom.App.Localization"
+             x:Class="WhisperLoom.App.Views.Settings.ModelPickerView"
+             x:DataType="vm:ModelPickerViewModel">
+  <!-- Modellwahl (W2-LOCAL): Katalog, Serverliste und „Eigenes Modell …“, dazu „Vom Server laden“ und Ergebnis. -->
+  <StackPanel Spacing="6">
+    <ds:CustomChoiceBox x:Name="ChoiceBox" DataContext="{Binding Choice}" />
+    <StackPanel Orientation="Horizontal" Spacing="8">
+      <Button x:Name="LoadButton" Classes="link" Content="{Binding [Models_Load], Source={x:Static l:Loc.Instance}}" Command="{Binding LoadCommand}" />
+      <TextBlock x:Name="StatusText" Text="{Binding Status}" IsVisible="{Binding Status.Length}" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="240"
+                 FontSize="{DynamicResource Loom.Font.Caption}" Foreground="{DynamicResource Loom.TextSecondary}" Classes.error="{Binding StatusIsError}" />
+    </StackPanel>
+  </StackPanel>
+</UserControl>
