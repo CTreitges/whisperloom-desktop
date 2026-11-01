@@ -66,6 +66,17 @@ public sealed class ProviderDirectory(IReadOnlyList<IProviderSource> sources, IR
 /// <summary>Eigene Anbieter <c>custom:&lt;id&gt;</c> aus <c>providers.custom</c>.</summary>
 public sealed class CustomProviderSource(IEnumerable<CustomProvider> entries) : IProviderSource
 {
+    /// <summary>
+    /// Eine gemischte Liste (Erkennung + Text) nach Namen trennen, damit die Empfehlung der Text-Stufe nie ein
+    /// Erkennungsmodell ist (HIG-Review W2-LOCAL Nr. 3). Passt keins zur Art, gilt die ganze Liste. null = nicht trennen.
+    /// </summary>
+    private static List<ModelOption> Split(List<ModelOption> models, bool? stt)
+    {
+        if (stt is not { } wantStt) return models;
+        var part = models.Where(m => ModelListFilters.LooksLikeStt(m.Id) == wantStt).ToList();
+        return part.Count > 0 ? part : models;
+    }
+
     public string Prefix => ProvidersSettings.CustomPrefix;
 
     public IReadOnlyList<ProviderInfo> Providers { get; } = [.. entries.Select(ToProvider)];
@@ -92,8 +103,8 @@ public sealed class CustomProviderSource(IEnumerable<CustomProvider> entries) : 
             NeedsKey: !c.KeyOptional,
             AllowsHttp: true,
             DefaultReadTimeoutSec: catalog?.DefaultReadTimeoutSec ?? 90,
-            SttModels: c.HasStt ? models : null,
-            LlmModels: c.HasLlm ? models : null,
+            SttModels: c.HasStt ? Split(models, stt: c.HasLlm ? true : null) : null,
+            LlmModels: c.HasLlm ? Split(models, stt: c.HasStt ? false : null) : null,
             SttSendsPrompt: catalog?.SttSendsPrompt ?? true,
             SttSendsResponseFormat: catalog?.SttSendsResponseFormat ?? true,
             SttPathOverride: null,

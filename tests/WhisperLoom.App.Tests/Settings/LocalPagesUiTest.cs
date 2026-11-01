@@ -130,6 +130,11 @@ public sealed class LocalPagesUiTest
             vm.Local.SelectedModel = vm.Local.ModelChoices.Single(c => c.Value == "custom:ggml-mein");
             await vm.Pending;
             Assert.Equal("custom:ggml-mein", f.Controller.Settings.Offline.Model);
+            Assert.Null(vm.Local.SelectedModelError);
+            File.Delete(good); // Datei verschoben: Fehler direkt an der Modellwahl (HIG-Review Nr. 4)
+            vm.Local.SelectedModel = vm.Local.ModelChoices.Single(c => c.Value == "small");
+            vm.Local.SelectedModel = vm.Local.ModelChoices.Single(c => c.Value == "custom:ggml-mein");
+            Assert.NotNull(vm.Local.SelectedModelError);
 
             vm.Local.AddServerCommand.Execute(null);
             var server = Assert.Single(vm.Local.Servers);
@@ -143,6 +148,18 @@ public sealed class LocalPagesUiTest
             server.BaseUrl = "http://angreifer.example:1234/v1";
             Assert.NotEqual("", server.Error);
             Assert.Equal("http://127.0.0.1:1234/v1", LocalSettings.Of(f.Controller.Settings).Servers[0].BaseUrl);
+
+            // Screenreader-Name = sichtbares Verb + Eintrag (HIG-Review Nr. 1); Entfernen erst nach Rückfrage (Nr. 9).
+            Assert.Equal("Entfernen: LM Studio", server.RemoveName);
+            Assert.StartsWith("Laden: ", vm.Local.Models[0].DownloadName, StringComparison.Ordinal);
+            server.RemoveCommand.Execute(null);
+            Assert.True(server.RemovePending);
+            Assert.Single(vm.Local.Servers);
+            server.ConfirmRemoveCommand.Execute(null);
+            await vm.Pending;
+            Assert.Empty(vm.Local.Servers);
+            Assert.Empty(LocalSettings.Of(f.Controller.Settings).Servers);
+            Assert.DoesNotContain(vm.LlmProviders, c => c.Value == "local:LM Studio");
         }
         finally
         {

@@ -63,7 +63,7 @@
                 <StackPanel Orientation="Horizontal" Spacing="8" Margin="14,0,14,12" IsVisible="{Binding DeletePending}" HorizontalAlignment="Right">
                   <TextBlock Text="{Binding [Providers_DeleteConfirm], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="360" />
                   <Button Content="{Binding [Action_Cancel], Source={x:Static l:Loc.Instance}}" Command="{Binding CancelDeleteCommand}" />
-                  <Button Classes="accent" Content="{Binding [Providers_Delete], Source={x:Static l:Loc.Instance}}" Command="{Binding ConfirmDeleteCommand}" />
+                  <Button Content="{Binding [Providers_Delete], Source={x:Static l:Loc.Instance}}" Command="{Binding ConfirmDeleteCommand}" />
                 </StackPanel>
               </StackPanel>
             </Border>

@@ -22,9 +22,9 @@
                       <TextBlock Text="{Binding Status}" Foreground="{DynamicResource Loom.TextSecondary}" FontSize="{DynamicResource Loom.Font.Caption}" VerticalAlignment="Center" />
                     </StackPanel>
                     <Button Grid.Column="1" Margin="8,0,0,0" Content="{Binding [Local_Download], Source={x:Static l:Loc.Instance}}" Command="{Binding DownloadCommand}"
-                            IsVisible="{Binding !Installed}" AutomationProperties.Name="{Binding Label}" />
+                            IsVisible="{Binding !Installed}" AutomationProperties.Name="{Binding DownloadName}" />
                     <Button Grid.Column="2" Margin="8,0,0,0" Content="{Binding [Local_Delete], Source={x:Static l:Loc.Instance}}" Command="{Binding DeleteCommand}"
-                            IsVisible="{Binding Installed}" AutomationProperties.Name="{Binding Label}" />
+                            IsVisible="{Binding Installed}" AutomationProperties.Name="{Binding DeleteName}" />
                   </Grid>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
@@ -42,7 +42,7 @@
                         <TextBlock Text="{Binding Status}" IsVisible="{Binding Status.Length}" FontSize="{DynamicResource Loom.Font.Caption}" Foreground="{DynamicResource Loom.Error}" />
                       </StackPanel>
                       <Button Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center" Content="{Binding [Local_Remove], Source={x:Static l:Loc.Instance}}"
-                              Command="{Binding RemoveCommand}" AutomationProperties.Name="{Binding Name}" />
+                              Command="{Binding RemoveCommand}" AutomationProperties.Name="{Binding RemoveName}" />
                     </Grid>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
@@ -69,11 +69,11 @@
                       <TextBlock Text="{Binding Status}" IsVisible="{Binding Status.Length}" FontSize="{DynamicResource Loom.Font.Caption}" Foreground="{DynamicResource Loom.TextSecondary}" />
                     </StackPanel>
                     <Button Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center" Content="{Binding [Local_Download], Source={x:Static l:Loc.Instance}}"
-                            Command="{Binding DownloadCommand}" IsVisible="{Binding CanDownload}" AutomationProperties.Name="{Binding Label}" />
+                            Command="{Binding DownloadCommand}" IsVisible="{Binding CanDownload}" AutomationProperties.Name="{Binding DownloadName}" />
                     <Button Grid.Column="2" Margin="8,0,0,0" VerticalAlignment="Center" Content="{Binding [Action_Cancel], Source={x:Static l:Loc.Instance}}"
-                            Command="{Binding CancelCommand}" IsVisible="{Binding Status.Length}" AutomationProperties.Name="{Binding Label}" />
+                            Command="{Binding CancelCommand}" IsVisible="{Binding Status.Length}" AutomationProperties.Name="{Binding CancelName}" />
                     <Button Grid.Column="3" Margin="8,0,0,0" VerticalAlignment="Center" Content="{Binding [Local_Delete], Source={x:Static l:Loc.Instance}}"
-                            Command="{Binding DeleteCommand}" IsVisible="{Binding Installed}" AutomationProperties.Name="{Binding Label}" />
+                            Command="{Binding DeleteCommand}" IsVisible="{Binding Installed}" AutomationProperties.Name="{Binding DeleteName}" />
                   </Grid>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
@@ -110,9 +110,15 @@
                                PlaceholderText="{Binding [Server_ModelFirst], Source={x:Static l:Loc.Instance}}" AutomationProperties.Name="{Binding [Set_Model], Source={x:Static l:Loc.Instance}}" />
                       <TextBlock Grid.Row="4" Grid.ColumnSpan="2" Text="{Binding Error}" IsVisible="{Binding Error.Length}" Foreground="{DynamicResource Loom.Error}" TextWrapping="Wrap" />
                       <StackPanel Grid.Row="5" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8">
-                        <Button Content="{Binding [Key_Check], Source={x:Static l:Loc.Instance}}" Command="{Binding CheckCommand}" AutomationProperties.Name="{Binding Name}" />
-                        <Button Content="{Binding [Local_Remove], Source={x:Static l:Loc.Instance}}" Command="{Binding RemoveCommand}" AutomationProperties.Name="{Binding Name}" />
+                        <Button Content="{Binding [Key_Check], Source={x:Static l:Loc.Instance}}" Command="{Binding CheckCommand}" AutomationProperties.Name="{Binding CheckName}" />
+                        <Button Content="{Binding [Local_Remove], Source={x:Static l:Loc.Instance}}" Command="{Binding RemoveCommand}" AutomationProperties.Name="{Binding RemoveName}"
+                                IsVisible="{Binding !RemovePending}" />
                         <TextBlock Text="{Binding Status}" VerticalAlignment="Center" Foreground="{DynamicResource Loom.TextSecondary}" />
+                      </StackPanel>
+                      <StackPanel Grid.Row="5" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8" IsVisible="{Binding RemovePending}" HorizontalAlignment="Right">
+                        <TextBlock Text="{Binding [Server_RemoveConfirm], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
+                        <Button Content="{Binding [Action_Cancel], Source={x:Static l:Loc.Instance}}" Command="{Binding CancelRemoveCommand}" />
+                        <Button Content="{Binding [Local_Remove], Source={x:Static l:Loc.Instance}}" Command="{Binding ConfirmRemoveCommand}" AutomationProperties.Name="{Binding RemoveName}" />
                       </StackPanel>
                     </Grid>
                     </Border>

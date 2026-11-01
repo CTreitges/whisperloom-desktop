@@ -19,6 +19,11 @@ public sealed partial class LocalModelViewModel(OfflineModel model, LocalParts? 
 
     public bool Installed => parts?.Stt.Models.IsInstalled(Model) == true;
 
+    /// <summary>Screenreader-Namen: sichtbares Verb zuerst, dann der Eintrag (WCAG 2.5.3).</summary>
+    public string DownloadName => Loc.Instance.Format("A11y_ItemAction", Loc.Instance["Local_Download"], Model.Label);
+
+    public string DeleteName => Loc.Instance.Format("A11y_ItemAction", Loc.Instance["Local_Delete"], Model.Label);
+
     [ObservableProperty] private string _status = "";
 
     /// <summary>Lädt das Modell (Range-Fortsetzung, SHA256) und, falls nötig, den Begleitprozess.</summary>

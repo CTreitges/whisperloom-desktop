@@ -103,7 +103,6 @@
           <ds:HintRow x:Name="OllamaStatusText" Text="{Binding Local.OllamaStatus}" IsVisible="{Binding Local.OllamaStatus.Length}" Margin="14,0,14,10" />
           <SelectableTextBlock x:Name="OllamaLink" IsVisible="{Binding Local.OllamaMissing}" Text="{Binding Local.OllamaDownloadUrl}"
                                Foreground="{DynamicResource Loom.Accent}" Margin="14,0,14,10" />
-          </StackPanel>
           <Expander Classes="advanced" Header="{Binding [Advanced], Source={x:Static l:Loc.Instance}}">
             <StackPanel>
               <ds:SettingRow Path="local.ollamaUrl" Error="{Binding Session.Errors[local.ollamaUrl]}">
@@ -111,6 +110,7 @@
               </ds:SettingRow>
             </StackPanel>
           </Expander>
+          </StackPanel>
         </StackPanel>
       </ds:SettingsGroup>
 

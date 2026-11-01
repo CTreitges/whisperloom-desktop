@@ -17,6 +17,8 @@ public sealed partial class CustomWhisperRow(CustomWhisperModel model, Action<Cu
 
     public string Path => Model.Path;
 
+    public string RemoveName => Loc.Instance.Format("A11y_ItemAction", Loc.Instance["Local_Remove"], Name);
+
     /// <summary>Datei fehlt bzw. ist kein Modell: Hinweis an der Zeile.</summary>
     public string Status => WhisperModels.CheckFile(Model.Path) switch
     {
@@ -57,6 +59,16 @@ public sealed partial class LocalViewModel
     [ObservableProperty] private Choice _bundledModel = new("", "");
     [ObservableProperty] private Choice? _textServer;
     [ObservableProperty] private string _customModelError = "";
+
+    /// <summary>Gewählte eigene Whisper-Datei fehlt oder ist kein Modell: Fehler direkt an der Modellwahl („Erkennung“).</summary>
+    public string? SelectedModelError =>
+        SelectedModel?.Value is { } id && id.StartsWith(OfflineSettings.CustomModelPrefix, StringComparison.Ordinal) &&
+        _s.Offline.CustomModels.FirstOrDefault(m => OfflineSettings.CustomModelPrefix + m.Name == id) is { } m &&
+        WhisperModels.CheckFile(m.Path) != WhisperModels.FileCheck.Ok
+            ? Loc.Instance["Local_SelectedFileMissing"]
+            : null;
+
+    partial void OnSelectedModelChanged(Choice value) => OnPropertyChanged(nameof(SelectedModelError));
 
     public bool IsOllama => TextEngine.Value == LocalTextEngine.Ollama;
 

@@ -39,6 +39,13 @@ public sealed partial class LocalServerRow : ObservableObject
     [ObservableProperty] private string _error = "";
     [ObservableProperty] private string _status = "";
 
+    /// <summary>Rückfrage „Server entfernen?“ sichtbar.</summary>
+    [ObservableProperty] private bool _removePending;
+
+    public string CheckName => Loc.Instance.Format("A11y_ItemAction", Loc.Instance["Key_Check"], Server.Name);
+
+    public string RemoveName => Loc.Instance.Format("A11y_ItemAction", Loc.Instance["Local_Remove"], Server.Name);
+
     public string Name
     {
         get => Server.Name;
@@ -53,6 +60,8 @@ public sealed partial class LocalServerRow : ObservableObject
             Error = "";
             Server.Name = name;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(CheckName));
+            OnPropertyChanged(nameof(RemoveName));
             _changed();
         }
     }
@@ -110,7 +119,17 @@ public sealed partial class LocalServerRow : ObservableObject
     }
 
     [RelayCommand]
-    private void Remove() => _remove(this);
+    private void Remove() => RemovePending = true;
+
+    [RelayCommand]
+    private void ConfirmRemove()
+    {
+        RemovePending = false;
+        _remove(this);
+    }
+
+    [RelayCommand]
+    private void CancelRemove() => RemovePending = false;
 }
 
 /// <summary>Ein mitgeliefertes Textmodell mit Größe, Lizenz, RAM-Hinweis, Download (fortsetzbar, SHA-256) und Löschen.</summary>
@@ -130,6 +149,12 @@ public sealed partial class TextModelViewModel(TextModel model, LocalParts? part
     public bool Installed => parts?.Bundled.Models.IsInstalled(Model.File) == true;
 
     public bool CanDownload => !Installed && Fits;
+
+    public string DownloadName => Loc.Instance.Format("A11y_ItemAction", Loc.Instance["Local_Download"], Model.Label);
+
+    public string CancelName => Loc.Instance.Format("A11y_ItemAction", Loc.Instance["Action_Cancel"], Model.Label);
+
+    public string DeleteName => Loc.Instance.Format("A11y_ItemAction", Loc.Instance["Local_Delete"], Model.Label);
 
     [ObservableProperty] private string _status = "";
 

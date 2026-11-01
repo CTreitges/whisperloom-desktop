@@ -51,7 +51,7 @@
 
       <ds:SettingsGroup TitleKey="G_Local" FooterKey="G_Local_Footer">
         <StackPanel>
-          <ds:SettingRow Path="offline.model">
+          <ds:SettingRow Path="offline.model" Error="{Binding Local.SelectedModelError}">
             <ComboBox x:Name="ModelBox" Classes="row" ItemsSource="{Binding Local.ModelChoices}" SelectedItem="{Binding Local.SelectedModel}" />
           </ds:SettingRow>
           <ds:HintRow TextKey="Local_ModelsMoved" Margin="14,4,14,10" />

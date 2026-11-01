@@ -148,6 +148,19 @@ public class ProviderDirectoryTest
     }
 
     [Fact]
+    public void Mixed_model_list_of_an_entry_is_split_by_kind()
+    {
+        // HIG-Review W2-LOCAL Nr. 3: Die Text-Empfehlung war das Erkennungsmodell (erstes der gemischten Liste).
+        var s = new WhisperLoomSettings();
+        s.Providers.Custom.Add(new CustomProvider { Id = "mix", Name = "Mix", BaseUrl = "https://mix.example/v1", Models = ["whisper-large-v3", "qwen3-32b"] });
+        var p = ProviderDirectory.For(s).Find("custom:mix")!;
+
+        Assert.Equal("whisper-large-v3", p.DefaultSttModel);
+        Assert.Equal("qwen3-32b", p.DefaultLlmModel);
+        Assert.Equal(["qwen3-32b"], p.LlmModels!.Select(m => m.Id));
+    }
+
+    [Fact]
     public void Local_server_kind_limits_the_slots()
     {
         var s = WithEntries(servers: [
