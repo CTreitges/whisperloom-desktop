@@ -33,6 +33,25 @@ internal static class ImportProfiles
         return disabled;
     }
 
+    /// <summary>
+    /// <c>output.pressEnter</c> (W2, gilt für alle Profile mit „Erben“): <c>true</c> übernimmt ein Import nur, wenn es schon
+    /// <c>true</c> war; sonst wird es in <paramref name="incoming"/> auf <c>false</c> gesetzt.
+    /// </summary>
+    /// <returns>true, wenn ausgeschaltet wurde.</returns>
+    public static bool DisableNewGlobalEnter(JsonObject incoming, JsonObject current)
+    {
+        if (incoming["output"] is not JsonObject output || !PressesEnter(output)
+            || (current["output"] is JsonObject now && PressesEnter(now)))
+        {
+            return false;
+        }
+        foreach (var name in Names(output, "pressEnter"))
+        {
+            output[name] = false;
+        }
+        return true;
+    }
+
     private static JsonArray? Profiles(JsonObject root) =>
         root[SyncDocument.DesktopSection] is JsonObject desktop
             ? desktop.LastOrDefault(p => p.Key.Equals("profiles", StringComparison.OrdinalIgnoreCase)).Value as JsonArray

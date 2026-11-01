@@ -23,8 +23,11 @@ public sealed class AppProfile
     /// <summary>"paste", "type", "clipboard"; "" = Standard-Ausgabemodus.</summary>
     public string InsertMode { get; set; } = "";
 
-    /// <summary>Nach dem Einfügen Enter senden (wie Strg+Enter im Overlay).</summary>
-    public bool PressEnter { get; set; }
+    /// <summary>
+    /// Nach dem Einfügen Enter senden: null = Erben (<c>output.pressEnter</c>), true = An, false = Aus. Ältere Dateien
+    /// mit <c>false</c> bleiben „Aus“ — gleiches Verhalten wie bisher, weil <c>output.pressEnter</c> standardmäßig aus ist.
+    /// </summary>
+    public bool? PressEnter { get; set; }
 
     public bool Enabled { get; set; } = true;
 }

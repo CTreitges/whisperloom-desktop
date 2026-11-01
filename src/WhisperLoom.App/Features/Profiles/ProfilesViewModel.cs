@@ -21,7 +21,7 @@ public sealed partial class ProfileRowViewModel : ObservableObject
         _titlePattern = profile.TitlePattern;
         _stage = Pick(owner.Stages, profile.Stage);
         _insertMode = Pick(owner.InsertModes, profile.InsertMode);
-        _pressEnter = profile.PressEnter;
+        _pressEnter = profile.PressEnter ?? false; // Dreifach-Wahl Erben/An/Aus kommt mit der neuen Oberfläche (W2)
         _enabled = profile.Enabled;
     }
 
