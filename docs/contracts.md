@@ -27,7 +27,8 @@ Die Verträge trennen Core-Text, Core-API und App-Shell, damit diese Teile paral
   Falsche Argumente: `ArgumentException`-Familie.
 - **Datenschutz:** Meldungen und `ToString()` aller DTOs enthalten nie Diktattext, Keys oder Header
   (Längen statt Inhalt). Audio liegt nur im Speicher (`AudioBuffer`).
-- **Sprache:** `"auto"` oder ISO-Code. Die Prompt-Sprache folgt der Erkennungssprache: `de` → Deutsch, sonst Englisch.
+- **Sprache:** `"auto"`, ISO-Code oder `"de+en"` (Deutsch + Englisch, W2-PFIX). Die Prompt-Sprache folgt der wirksamen
+  Erkennungssprache (`DictationPipeline.EffectiveLanguage`, bei `"de+en"` nie selbst `"de+en"`): `de` → Deutsch, sonst Englisch.
 
 ## Interfaces
 
@@ -221,3 +222,14 @@ darf auf `key` enden, Test `KeinKeyFeldImSchema`); `local.servers[].kind` (`stt`
 | `status --json` | `input.selection` (`picker`, `pickerOpen`, `options`, `highlighted`, `button` [x, y], `buttonVisible`, `pickerRect`), `input.mouseHook`, `history.latest.source` |
 | App-Abschnitt `desktop.profiles[].floatingButton` | `null` = wie `selection.floatingButton`, `false` = hier nie |
 | `desktop.hotkeyRewrite` | entfällt; Migration nach `selection.hotkeyCombo` beim Laden (`SelectionMigration`) |
+
+### W2-PFIX: Android CTR-273 und TD-A4 (additiv)
+
+| Typ / Member | Inhalt |
+|---|---|
+| `WhisperLoomSettings.LanguageDeEn` (`"de+en"`) | Sprache „Deutsch + Englisch“: gpt-transcribe bekommt `languages[]=de` und `=en`, alle anderen Erkenner kein Sprachfeld (whisper.cpp `auto`); wirksam ist die erkannte Sprache, sonst `de` |
+| `ModelOption.KeywordsField` | optional (letzter Parameter, `null`): Multipart-Feld für das Vokabular als Einzelbegriffe zusätzlich zu `prompt` (gpt-transcribe `keywords[]`) |
+| `ProviderInfo.SttBiasField` | optional (letzter Parameter, `null`): Wortlisten-Feld statt `prompt` (Mistral `context_bias[]`, ≤ 100, mehrteilige Begriffe mit `_`) |
+| `TranscriptResult.DetectedLanguage` (unverändert) | kommt jetzt auch aus `languages[0].code` (gpt-transcribe), ISO 639-3 → 639-1 |
+| `SyncDocument.RetiredModels`, `ProvisioningPlan.RetiredFixed` | TD-A4: Pfade, deren abgeschaltetes OpenAI-Modell beim Lesen auf den Nachfolger ging (`ProviderCatalog.SuccessorOf`), bzw. die davon festen (Fest) — nur Pfade, kein Wert |
+

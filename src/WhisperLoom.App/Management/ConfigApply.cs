@@ -17,6 +17,9 @@ public sealed record ConfigPlan(WhisperLoomSettings? Settings, PolicySettings Po
 
     public IReadOnlyList<KeyDrop> DroppedKeys { get; init; } = [];
 
+    /// <summary>TD-A4: Fest-Pfade, deren abgeschaltetes Modell auf den Nachfolger ging (fürs Log, nur Pfade).</summary>
+    public IReadOnlyList<string> RetiredFixed { get; init; } = [];
+
     /// <summary>Verteilt-Modus: Key-Name → Ziel, für das der Firmen-Key bestimmt ist (Zugang bzw. eigener Anbieter).</summary>
     public IReadOnlyDictionary<string, KeyTarget> KeyTargets { get; init; } = new Dictionary<string, KeyTarget>();
 
@@ -115,7 +118,7 @@ public static class ConfigApply
             Locked = [.. plan.Policy.Locked.Concat(locked).Distinct(StringComparer.OrdinalIgnoreCase)],
             AllowedProviders = allowed,
         };
-        return new ConfigPlan(settings, policy, keyMode, keys, [], warnings) { DroppedKeys = plan.DroppedKeys, KeyTargets = targets };
+        return new ConfigPlan(settings, policy, keyMode, keys, [], warnings) { DroppedKeys = plan.DroppedKeys, KeyTargets = targets, RetiredFixed = plan.RetiredFixed };
     }
 
     /// <summary>Abschnitt der Einstellungen zu einem Zugangsnamen (<c>stt_fallback</c> → <c>sttFallback</c>).</summary>

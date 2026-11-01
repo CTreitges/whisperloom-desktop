@@ -13,7 +13,9 @@ public sealed class SyncFormatException(string message) : Exception(message);
 /// <param name="Settings">Einstellungen samt <c>desktop</c>, <c>android</c> und unbekannten Feldern der obersten Ebene.</param>
 /// <param name="Secrets">Provisioning: Anbieter-ID bzw. Zugangsname → Key; leer ohne <c>secrets</c>.</param>
 /// <param name="Policy">Provisioning: Abschnitt <c>policy</c> oder null.</param>
-public sealed record SyncDocument(JsonObject Settings, IReadOnlyDictionary<string, string> Secrets, JsonObject? Policy)
+/// <param name="RetiredModels">TD-A4 (additiv): Pfade, deren abgeschaltetes Modell beim Lesen auf den Nachfolger ging.</param>
+public sealed record SyncDocument(
+    JsonObject Settings, IReadOnlyDictionary<string, string> Secrets, JsonObject? Policy, IReadOnlyList<string>? RetiredModels = null)
 {
     public const string SecretsSection = "secrets";
     public const string PolicySection = "policy";
@@ -63,6 +65,7 @@ public sealed record SyncDocument(JsonObject Settings, IReadOnlyDictionary<strin
             throw new SyncFormatException("Die Datei muss ein JSON-Objekt sein.");
         }
         SyncMigration.Migrate(root);
+        var retired = WhisperLoom.Core.Settings.RetiredModels.Apply(root);
 
         var secrets = new Dictionary<string, string>(StringComparer.Ordinal);
         if (root[SecretsSection] is { } s)
@@ -91,6 +94,6 @@ public sealed record SyncDocument(JsonObject Settings, IReadOnlyDictionary<strin
         }
         root.Remove(SecretsSection);
         root.Remove(PolicySection);
-        return new SyncDocument(root, secrets, policy);
+        return new SyncDocument(root, secrets, policy, retired);
     }
 }

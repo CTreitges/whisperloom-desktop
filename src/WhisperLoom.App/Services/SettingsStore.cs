@@ -1,5 +1,7 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using WhisperLoom.Core.Contracts.Settings;
+using WhisperLoom.Core.Settings;
 
 namespace WhisperLoom.App.Services;
 
@@ -75,11 +77,19 @@ public sealed class SettingsStore
     /// <exception cref="JsonException">Datei ist kein gültiges JSON.</exception>
     public WhisperLoomSettings Load()
     {
-        var settings = File.Exists(FilePath) ? SettingsJson.Deserialize(File.ReadAllText(FilePath)) : new WhisperLoomSettings();
+        var settings = File.Exists(FilePath) ? Read(File.ReadAllText(FilePath)) : new WhisperLoomSettings();
         settings.Engine ??= "online";
         // W2-SEL: „Markierung umschreiben“ geht in „Markierung verarbeiten“ auf (desktop.hotkeyRewrite → selection.hotkeyCombo).
         Features.Selection.SelectionMigration.Apply(settings, combo => Platform.Windows.Input.Hotkey.Parse(combo) is not null);
         return settings;
+    }
+
+    /// <summary>TD-A4: abgeschaltete OpenAI-Modelle gehen beim Laden auf den Nachfolger (idempotent, <see cref="RetiredModels"/>).</summary>
+    internal static WhisperLoomSettings Read(string json)
+    {
+        if (JsonNode.Parse(json) is not JsonObject root) return SettingsJson.Deserialize(json);
+        RetiredModels.Apply(root);
+        return SettingsJson.Deserialize(root.ToJsonString());
     }
 
     public void Save(WhisperLoomSettings settings)

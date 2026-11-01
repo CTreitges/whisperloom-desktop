@@ -138,15 +138,15 @@ public sealed class SettingsAutoSaveTest
         Assert.Contains(picker.Items, c => c.Value == "gpt-transcribe");
         Assert.Equal(Loc.Instance["Model_Custom"], picker.Items[^1].Label);
 
-        picker.Selected = picker.Items.Single(c => c.Value == "whisper-1");
+        picker.Selected = picker.Items.Single(c => c.Value == "gpt-transcribe");
         await vm.Pending;
-        Assert.Equal("whisper-1", f.Controller.Settings.Stt.Model);
+        Assert.Equal("gpt-transcribe", f.Controller.Settings.Stt.Model);
 
         // „Eigenes Modell …“ leer = ungültig, nicht gespeichert; mit Namen gespeichert.
         picker.Selected = picker.Items[^1];
         Assert.NotEqual("", picker.Error);
         await vm.Pending;
-        Assert.Equal("whisper-1", f.Controller.Settings.Stt.Model);
+        Assert.Equal("gpt-transcribe", f.Controller.Settings.Stt.Model);
         picker.CustomText = "  mein-modell ";
         await vm.Pending;
         Assert.Equal("mein-modell", f.Controller.Settings.Stt.Model);

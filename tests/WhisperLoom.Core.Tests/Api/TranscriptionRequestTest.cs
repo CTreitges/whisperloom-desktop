@@ -50,10 +50,7 @@ public class TranscriptionRequestTest
     [Fact]
     public void AndereOpenAiModelleOhneKeywords()
     {
-        foreach (var model in new[] { "gpt-4o-transcribe", "gpt-4o-mini-transcribe", "whisper-1" })
-        {
-            Assert.DoesNotContain("keywords[]", Names(TranscriptionRequest.Fields(Stt("openai", model), "de", "Chris")));
-        }
+        Assert.DoesNotContain("keywords[]", Names(TranscriptionRequest.Fields(Stt("openai", "whisper-1"), "de", "Chris")));
         Assert.DoesNotContain("keywords[]", Names(TranscriptionRequest.Fields(Stt("groq"), "de", "Chris")));
     }
 
@@ -132,8 +129,8 @@ public class TranscriptionRequestTest
     [Fact]
     public void AltesOpenAiModellSendetLanguage() =>
         Assert.Equal(
-            [("model", "gpt-4o-transcribe"), ("response_format", "json"), ("language", "de")],
-            TranscriptionRequest.Fields(Stt("openai", "gpt-4o-transcribe"), "de", ""));
+            [("model", "whisper-1"), ("response_format", "json"), ("language", "de")],
+            TranscriptionRequest.Fields(Stt("openai", "whisper-1"), "de", ""));
 
     [Fact]
     public void GroqBekommtAlleFelder()

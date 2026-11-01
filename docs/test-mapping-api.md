@@ -1,6 +1,6 @@
 # Test-Mapping: Core-API und Pipeline (WLD-P1b)
 
-Zuordnung Kotlin-Testklasse (Android `main` 8e1caeb, nachgezogen auf c54344e/CTR-273 in W2-PFIX, `app/src/test*`) → C#-Testklasse, geprüft mit `tools/test_parity.py`.
+Zuordnung Kotlin-Testklasse (Android `main` 8e1caeb, nachgezogen auf c54344e/CTR-273 und 1e47667/TD-A4 in W2-PFIX, `app/src/test*`) → C#-Testklasse, geprüft mit `tools/test_parity.py`.
 `portiert` verlangt mindestens so viele aktive C#-Fälle wie Kotlin-`@Test` (Fälle mit `Skip` zählen nicht).
 Die Spalte „Begründung“ nennt bei portierten Klassen die Abbildung auf den Desktop.
 
@@ -13,7 +13,7 @@ Die Spalte „Begründung“ nennt bei portierten Klassen die Abbildung auf den 
 | TranscriptionRequestTest | WhisperLoom.Core.Tests.Api.TranscriptionRequestTest | portiert | CTR-273: `keywords[]`, `context_bias[]`, „Deutsch + Englisch“ (`de+en`). |
 | api/TranscriptionResponseTest | WhisperLoom.Core.Tests.Api.TranscriptionResponseTest | portiert | CTR-273: erkannte Sprache aus `languages[0].code` (`TranscriptionRequest.DetectedLanguage`); `org.json` → `System.Text.Json.Nodes`. |
 | ElevenLabsSttTest | WhisperLoom.Core.Tests.Api.ElevenLabsSttTest | portiert | Kappung über `Vocabulary.prompt` und der ElevenLabs-Teil (angeschnittenes Stück fällt weg) je als eigener Fall. |
-| ProviderCatalogTest | WhisperLoom.Core.Tests.Api.ProviderCatalogTest | portiert | Katalog aus `providers.json`; `Prefs.DEFAULT_*` → Standard-Anbieter der Einstellungen. |
+| ProviderCatalogTest | WhisperLoom.Core.Tests.Api.ProviderCatalogTest | portiert | Katalog aus `providers.json`; `Prefs.DEFAULT_*` → Standard-Anbieter der Einstellungen. TD-A4: die `PrefsTest.v8*`-Fälle (Migration auf den Nachfolger) stehen in `WhisperLoom.Core.Tests.Settings.RetiredModelsTest` (Migration auf dem Sync-JSON statt `PrefsMigration`). |
 | AccessResolverTest | WhisperLoom.Core.Tests.Api.AccessResolverTest | portiert | |
 | ApiErrorsTest | WhisperLoom.Core.Tests.Api.ApiErrorsTest | portiert | Java-Netzfehler → .NET (`HttpRequestError`, `TimeoutException`, `UriFormatException`); Android-Cleartext-Meldung entfällt. `detail`/`body` stehen nicht im Vertragstyp — `detail` steckt in der Meldung. |
 | RefinePipelineTest | WhisperLoom.Core.Tests.Pipeline.RefinePipelineTest | portiert | Prefs → `WhisperLoomSettings`, Robolectric-Netz → `NetworkCheck`, LiteRT-Fake → `ILocalRefiner`-Fake, Vorwärmen → `ShouldWarmUpLocalAsync`. Meist geprüft: Rohtext geht mit vollen Regeln an den Polisher; „Also hallo welt“ mit echten Regeln (`RealText`). |

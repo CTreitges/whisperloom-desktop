@@ -27,6 +27,9 @@ public sealed record ProvisioningPlan(
     /// </summary>
     public IReadOnlyList<KeyDrop> DroppedKeys { get; init; } = [];
 
+    /// <summary>TD-A4: feste (Fest-)Pfade, deren abgeschaltetes Modell auf den Nachfolger ging — fürs Log, nur Pfade.</summary>
+    public IReadOnlyList<string> RetiredFixed { get; init; } = [];
+
     /// <summary>Kurzbericht ohne Werte: geänderte Pfade, gesetzte Zugänge, Sperren.</summary>
     public IEnumerable<string> Summary()
     {
@@ -120,6 +123,10 @@ public static class Provisioning
             }
         }
 
+        // TD-A4: ein Fest-Wert mit abgeschaltetem Modell geht auf den Nachfolger, aber nicht still (nur Pfad, kein Wert).
+        var retiredFixed = (file.RetiredModels ?? []).Where(policy.IsLocked).ToList();
+        warnings.AddRange(retiredFixed.Select(p => $"{p}: festes Modell abgeschaltet, auf den Nachfolger umgestellt"));
+
         var secrets = preview.Settings is null ? new Dictionary<string, string>() : MapSecrets(preview.Settings, file.Secrets, errors, warnings);
         if (file.Policy?["lockSettings"]?.GetValueKind() is System.Text.Json.JsonValueKind.True && secrets.Count > 0)
         {
@@ -129,7 +136,11 @@ public static class Provisioning
         warnings.AddRange(drops.Select(d => d.EntryRemoved
             ? $"secrets.{d.Name}: Eintrag entfernt, gespeicherter Key wird gelöscht"
             : $"secrets.{d.Name}: Adresse geändert ({d.Target}), gespeicherter Key wird gelöscht"));
-        return new ProvisioningPlan(errors.Count == 0 ? preview.Settings : null, secrets, policy, preview.Changes, errors, warnings) { DroppedKeys = drops };
+        return new ProvisioningPlan(errors.Count == 0 ? preview.Settings : null, secrets, policy, preview.Changes, errors, warnings)
+        {
+            DroppedKeys = drops,
+            RetiredFixed = retiredFixed,
+        };
     }
 
     /// <summary>

@@ -13,6 +13,12 @@ Richtlinie), Modell `src/WhisperLoom.Core/Contracts/Settings/WhisperLoomSettings
 - JSON-Objekt, UTF-8, Feldnamen in camelCase. Kommentare und ein Komma am Ende sind beim Lesen erlaubt.
 - `schemaVersion` (Zahl) gibt das Schema an. Fehlt das Feld, gilt die Datei als Schema 0 und wird migriert.
   Eine Datei mit höherer Version als bekannt wird abgelehnt („Bitte WhisperLoom aktualisieren“).
+- **Abgeschaltete OpenAI-Modelle** (TD-A4, wie Android `PrefsMigration` v8): Beim Laden und beim Lesen jeder Import-,
+  Provisioning- oder Server-Datei gehen `stt.model`, `sttFallback.model`, `llm.model`, `llm.stageModels.*` und
+  `llmFallback.model` mit Anbieter `openai` von `gpt-5-mini` → `gpt-5.6-terra`, `gpt-5-nano` → `gpt-5.6-luna`,
+  `gpt-4o-transcribe`/`gpt-4o-mini-transcribe`/`whisper-1` → `gpt-transcribe` (auch datierte Snapshots). Idempotent, ohne
+  neue `schemaVersion`; andere Anbieter und eigene Server bleiben. Ein fest gesetzter (Fest) Wert geht ebenfalls auf den
+  Nachfolger, mit Warnung bzw. Log-Eintrag `management.retired_model` (nur Pfad).
 - **Teil-Dateien sind erlaubt.** Beim Import ersetzen die Felder der Datei die aktuellen Werte, fehlende Felder bleiben,
   wie sie sind. Objekte werden feldweise gemischt, Listen und einzelne Werte ganz ersetzt.
 - **Keys stehen nie in Einstellungen oder Exporten.** Nur Provisioning-Dateien dürfen `secrets` enthalten.

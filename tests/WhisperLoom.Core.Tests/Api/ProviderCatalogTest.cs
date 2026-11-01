@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using WhisperLoom.Core.Api;
 using WhisperLoom.Core.Contracts;
 using WhisperLoom.Core.Contracts.Settings;
@@ -93,12 +94,57 @@ public class ProviderCatalogTest
     public void GptTranscribeSendetLanguagesArray()
     {
         Assert.Equal("languages[]", ProviderCatalog.OpenAi.SttModel("gpt-transcribe")!.LanguageField);
-        Assert.Equal("language", ProviderCatalog.OpenAi.SttModel("gpt-4o-transcribe")!.LanguageField);
     }
 
     [Fact]
-    public void AltesDefaultModellIstAlsAuslaufGekennzeichnet() =>
-        Assert.Contains("Auslauf", ProviderCatalog.OpenAi.SttModel("gpt-4o-transcribe")!.Label, StringComparison.Ordinal);
+    public void KeinKatalogModellLaeuftVorMaerz2027Aus()
+    {
+        // TD-A4: was vor 2027-03-01 abgeschaltet wird, steht nicht mehr zur Wahl (Datum aus der Notiz).
+        foreach (var p in ProviderCatalog.Providers)
+        {
+            foreach (var m in (p.SttModels ?? []).Concat(p.LlmModels ?? []))
+            {
+                var date = Regex.Match(m.Note, @"Shutdown (\d{4}-\d{2}-\d{2})");
+                if (date.Success) Assert.True(string.CompareOrdinal(date.Groups[1].Value, "2027-03-01") >= 0, $"{p.Id}/{m.Id} {date.Groups[1].Value}");
+            }
+        }
+        foreach (var id in new[] { "gpt-5-mini", "gpt-5-nano", "gpt-4o-transcribe", "gpt-4o-mini-transcribe", "whisper-1" })
+        {
+            Assert.Null(ProviderCatalog.OpenAi.SttModel(id) ?? ProviderCatalog.OpenAi.LlmModel(id));
+        }
+    }
+
+    /// <summary>Nachfolger laut developers.openai.com/api/docs/deprecations (2026-11-01); sie stehen im Katalog (TD-A4).</summary>
+    [Fact]
+    public void AbgeschalteteOpenAiModelleHabenEinenNachfolgerImKatalog()
+    {
+        var expected = new Dictionary<string, string>
+        {
+            ["gpt-5-mini"] = "gpt-5.6-terra",
+            ["gpt-5-nano"] = "gpt-5.6-luna",
+            ["gpt-4o-transcribe"] = "gpt-transcribe",
+            ["gpt-4o-mini-transcribe"] = "gpt-transcribe",
+            ["whisper-1"] = "gpt-transcribe",
+        };
+        foreach (var (retired, successor) in expected)
+        {
+            Assert.Equal(successor, ProviderCatalog.SuccessorOf("openai", retired));
+            Assert.NotNull(ProviderCatalog.OpenAi.SttModel(successor) ?? ProviderCatalog.OpenAi.LlmModel(successor));
+        }
+        // Datierter Snapshot endet mit seinem Modell.
+        Assert.Equal("gpt-5.6-terra", ProviderCatalog.SuccessorOf("openai", " gpt-5-mini-2025-08-07 "));
+        Assert.Equal("gpt-transcribe", ProviderCatalog.SuccessorOf("openai", "gpt-4o-mini-transcribe-2025-12-15"));
+        // Nur OpenAI selbst: ein eigener Server oder Groq darf "whisper-1" weiter nutzen.
+        Assert.Null(ProviderCatalog.SuccessorOf("custom", "whisper-1"));
+        Assert.Null(ProviderCatalog.SuccessorOf("groq", "whisper-1"));
+        Assert.Null(ProviderCatalog.SuccessorOf("openai", "gpt-6-luna"));
+        Assert.Null(ProviderCatalog.SuccessorOf("openai", "gpt-5-mini-latest"));
+        Assert.Null(ProviderCatalog.SuccessorOf("openai", ""));
+        // Terra wie die anderen gpt-5.6: kein temperature, effort none (kein minimal mehr).
+        var terra = ProviderCatalog.OpenAi.LlmModel("gpt-5.6-terra")!;
+        Assert.False(terra.TemperatureSupported);
+        Assert.Equal("none", terra.ReasoningEffort);
+    }
 
     [Fact]
     public void ReasoningModelleOhneTemperatureHabenEinenEffort()

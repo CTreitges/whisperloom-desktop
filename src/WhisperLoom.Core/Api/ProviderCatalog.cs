@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using WhisperLoom.Core.Contracts;
 
 namespace WhisperLoom.Core.Api;
@@ -9,7 +10,7 @@ namespace WhisperLoom.Core.Api;
 /// Reihenfolge = Reihenfolge im Dropdown; das erste Modell je Liste ist der Standard (beim Textmodell die Empfehlung zum
 /// Glätten, <see cref="ProviderInfo.RewriteLlmModel"/> die zum Umformulieren).
 /// </summary>
-public static class ProviderCatalog
+public static partial class ProviderCatalog
 {
     public const string CustomId = "custom";
     public const string OpenAiId = "openai";
@@ -39,6 +40,33 @@ public static class ProviderCatalog
 
     /// <summary>Unbekannte oder leere ID → OpenAI (wie Android: Bestandsnutzer ohne gespeicherten Anbieter).</summary>
     public static ProviderInfo ById(string id) => Find(id) ?? OpenAi;
+
+    /// <summary>
+    /// Aus dem Katalog genommene OpenAI-Modelle (Abschaltung vor 2027-03-01) → empfohlener Nachfolger (Port von
+    /// <c>ProviderCatalog.retiredOpenAiModels</c>, TD-A4; Quelle dort: developers.openai.com/api/docs/deprecations, 2026-11-01).
+    /// </summary>
+    private static readonly Dictionary<string, string> RetiredOpenAiModels = new(StringComparer.Ordinal)
+    {
+        ["gpt-5-mini"] = "gpt-5.6-terra", // Shutdown 2026-12-11
+        ["gpt-5-nano"] = "gpt-5.6-luna", // Shutdown 2026-12-11
+        ["gpt-4o-transcribe"] = "gpt-transcribe", // Shutdown 2027-02-26
+        ["gpt-4o-mini-transcribe"] = "gpt-transcribe", // Shutdown 2027-02-26
+        ["whisper-1"] = "gpt-transcribe", // Shutdown 2027-02-26
+    };
+
+    [GeneratedRegex(@"-\d{4}-\d{2}-\d{2}$")]
+    private static partial Regex SnapshotSuffix();
+
+    /// <summary>
+    /// Nachfolger für ein abgeschaltetes Modell von <paramref name="providerId"/>, sonst null. Gilt nur für OpenAI selbst
+    /// (ein eigener Server darf „whisper-1“ weiter so nennen); datierte Snapshots enden mit ihrem Modell.
+    /// </summary>
+    public static string? SuccessorOf(string providerId, string model)
+    {
+        if (providerId != OpenAiId) return null;
+        var id = model.Trim();
+        return RetiredOpenAiModels.TryGetValue(id, out var s) || RetiredOpenAiModels.TryGetValue(SnapshotSuffix().Replace(id, ""), out s) ? s : null;
+    }
 
     private static (string, IReadOnlyList<ProviderInfo>) Load()
     {
