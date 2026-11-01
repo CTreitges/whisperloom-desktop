@@ -33,12 +33,13 @@ REPO = Path(__file__).resolve().parent.parent
 PROVIDER_DEFAULTS: dict[str, Any] = {
     "needsKey": True, "keyUrl": "", "allowsHttp": False, "defaultReadTimeoutSec": 90, "sttModels": [], "llmModels": [],
     "sttSendsPrompt": True, "sttSendsResponseFormat": True, "sttPathOverride": None, "sttMaxBytes": None,
-    "api": "OPENAI", "notes": "", "rewriteLlmModel": "",
+    "api": "OPENAI", "notes": "", "rewriteLlmModel": "", "sttBiasField": None,
 }
 PROVIDER_FIELDS = ["id", "name", "baseUrl", *PROVIDER_DEFAULTS]
-MODEL_PARAMS = ["id", "label", "note", "temperatureSupported", "reasoningEffort", "languageField", "thinkingType"]
+MODEL_PARAMS = ["id", "label", "note", "temperatureSupported", "reasoningEffort", "languageField", "thinkingType", "keywordsField"]
 MODEL_DEFAULTS: dict[str, Any] = {
     "note": "", "temperatureSupported": True, "reasoningEffort": None, "languageField": "language", "thinkingType": None,
+    "keywordsField": None,
 }
 
 TOKEN = re.compile(

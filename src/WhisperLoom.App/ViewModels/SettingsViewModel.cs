@@ -24,7 +24,17 @@ public sealed record Choice(string Value, string Label)
 /// </summary>
 public sealed partial class SettingsViewModel : ObservableObject
 {
-    public static readonly IReadOnlyList<string> RecognitionLanguages = ["auto", "de", "en", "fr", "es", "it", "nl", "pl", "pt", "tr"];
+    /// <summary>Auswahl „Sprache“; <see cref="WhisperLoomSettings.LanguageDeEn"/> nach Englisch wie auf Android (CTR-273).</summary>
+    public static readonly IReadOnlyList<string> RecognitionLanguages =
+        ["auto", "de", "en", WhisperLoomSettings.LanguageDeEn, "fr", "es", "it", "nl", "pl", "pt", "tr"];
+
+    /// <summary>Anzeige einer Erkennungssprache: „Automatisch“, „Deutsch + Englisch“, sonst der Code in Großbuchstaben.</summary>
+    public static string LanguageLabel(string code) => code switch
+    {
+        "auto" => Loc.Instance["Language_auto"],
+        WhisperLoomSettings.LanguageDeEn => Loc.Instance["Language_deEn"],
+        _ => code.ToUpperInvariant(),
+    };
 
     private readonly DictationController _controller;
     private readonly WhisperLoomSettings _s;
@@ -57,7 +67,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         EnsureChoice(SttProviders, _s.SttFallback.ProviderId);
         EnsureChoice(LlmProviders, _s.Llm.ProviderId);
         EnsureChoice(LlmFallbackProviders, _s.LlmFallback.ProviderId);
-        Languages = [.. RecognitionLanguages.Select(l => new Choice(l, l == "auto" ? loc["Language_auto"] : l.ToUpperInvariant()))];
+        Languages = [.. RecognitionLanguages.Select(l => new Choice(l, LanguageLabel(l)))];
         Stages = [.. RefineModes.SettingsFor(true).Select(m => new Choice(m.Key(), loc["Stage_" + m.Key()]))];
         ProxyModes = [.. new[] { "system", "off", "manual" }.Select(m => new Choice(m, loc["Proxy_" + m]))];
         HistorySizes = [.. HistorySettings.Sizes];

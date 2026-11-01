@@ -46,6 +46,7 @@ public sealed partial class AppHost
         Policies = new PolicyStore(options.DataDir);
         var policy = LoadPolicy();
         settings = EnforceFixed(settings, policy);
+        policy = RetireDefaults(policy, settings);
         policy.Enforce(settings);
         History = new FileHistoryStore(Path.Combine(options.DataDir, "history"), () => Controller!.Settings.History);
         var dictation = pipeline(() => Controller!.Settings);
@@ -90,12 +91,36 @@ public sealed partial class AppHost
     /// <summary>Werte fester Pfade aus policy-fixed.json wieder einsetzen (lokal geänderte settings.json, auch offline).</summary>
     private WhisperLoomSettings EnforceFixed(WhisperLoomSettings settings, PolicySettings policy)
     {
-        var (enforced, changed) = Policies.EnforceFixed(settings, policy);
+        var (enforced, changed, retired) = Policies.EnforceFixed(settings, policy);
+        foreach (var path in retired)
+        {
+            // TD-A4: festes Modell der Firma abgeschaltet und auf den Nachfolger umgestellt — nur der Pfad, kein Wert.
+            Log.Event("management.retired_model", ("path", path), ("level", "fixed"));
+        }
         if (changed != 0)
         {
             Log.Event("policy.fixed", ("restored", changed));
         }
         return enforced;
+    }
+
+    /// <summary>
+    /// TD-A4: Vorgaben der Firma mit abgeschaltetem OpenAI-Modell gehen auf den Nachfolger und werden gespeichert, sonst
+    /// setzte „Auf Firmenvorgabe zurücksetzen“ das alte Modell zurück. Log nur mit Pfad.
+    /// </summary>
+    private PolicySettings RetireDefaults(PolicySettings policy, WhisperLoomSettings settings)
+    {
+        var (migrated, changed) = RetiredModels.ApplyDefaults(policy, settings);
+        if (changed.Count == 0)
+        {
+            return policy;
+        }
+        Policies.Save(migrated);
+        foreach (var path in changed)
+        {
+            Log.Event("management.retired_model", ("path", path), ("level", "default"));
+        }
+        return migrated;
     }
 
     /// <summary>Eine kaputte policy.json gilt als keine Richtlinie (geloggt), statt den Start zu verhindern.</summary>
@@ -120,6 +145,7 @@ public sealed partial class AppHost
             var settings = Store.Load();
             var policy = LoadPolicy();
             settings = EnforceFixed(settings, policy);
+            policy = RetireDefaults(policy, settings);
             policy.Enforce(settings);
             Controller.Policy = policy;
             await Controller.ApplySettingsAsync(settings);

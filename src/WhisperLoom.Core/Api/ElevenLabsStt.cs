@@ -1,5 +1,7 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
+using WhisperLoom.Core.Contracts.Settings;
+using WhisperLoom.Core.Text;
 
 namespace WhisperLoom.Core.Api;
 
@@ -25,10 +27,6 @@ public static partial class ElevenLabsStt
     [GeneratedRegex(@"[<>{}\[\]\\]")]
     private static partial Regex Forbidden();
 
-    /// <summary>Endet ein Stück auf ein Satzzeichen, ist es ein Satz(teil), kein Begriff (auch das „…“ der Kappung).</summary>
-    [GeneratedRegex("[.!?:;…]$")]
-    private static partial Regex SentenceEnd();
-
     [GeneratedRegex(@"\s+")]
     private static partial Regex Whitespace();
 
@@ -41,14 +39,15 @@ public static partial class ElevenLabsStt
     public static string Url(ApiAccess access) => Http.Endpoint(access.BaseUrl, Path);
 
     /// <summary>
-    /// Textfelder in Sendereihenfolge (die Datei kommt zuletzt): keine Sprache bei "auto", keine Audio-Ereignisse
-    /// („(Lachen)“), keine Wort-Zeiten, kein <c>enable_logging</c>, Vokabular als <c>keyterms</c>.
+    /// Textfelder in Sendereihenfolge (die Datei kommt zuletzt): keine Sprache bei "auto" und „Deutsch + Englisch“
+    /// (ElevenLabs erkennt selbst und kennt nur einen Code), keine Audio-Ereignisse („(Lachen)“), keine Wort-Zeiten,
+    /// kein <c>enable_logging</c>, Vokabular als <c>keyterms</c>.
     /// </summary>
     public static IReadOnlyList<(string Name, string Value)> Fields(ApiAccess access, string language, string prompt)
     {
         var fields = new List<(string Name, string Value)> { ("model_id", access.Model) };
         var lang = language.Trim();
-        if (lang.Length > 0 && lang != "auto") fields.Add(("language_code", lang));
+        if (lang.Length > 0 && lang != "auto" && lang != WhisperLoomSettings.LanguageDeEn) fields.Add(("language_code", lang));
         fields.Add(("tag_audio_events", "false"));
         fields.Add(("timestamps_granularity", "none"));
         fields.Add(("file_format", FileFormat));
@@ -60,19 +59,11 @@ public static partial class ElevenLabsStt
     /// Vokabular (kommagetrennt) als keyterms: was ElevenLabs ablehnen würde, fällt weg, statt das Diktat zu kippen;
     /// ebenso Satzstücke. Von mehr als <see cref="MaxKeyterms"/> bleiben die letzten — dort stehen die eigenen Begriffe.
     /// </summary>
-    public static IReadOnlyList<string> Keyterms(string prompt)
-    {
-        var terms = prompt.Split(',')
-            .Select(t => t.Trim())
-            .Where(t => t.Length > 0 &&
-                t.Length <= MaxKeytermChars &&
-                Whitespace().Split(t).Length <= MaxKeytermWords &&
-                !Forbidden().IsMatch(t) &&
-                !SentenceEnd().IsMatch(t))
-            .Distinct()
-            .ToList();
-        return terms.Count > MaxKeyterms ? terms[^MaxKeyterms..] : terms;
-    }
+    public static IReadOnlyList<string> Keyterms(string prompt) =>
+        Vocabulary.Terms(prompt, MaxKeyterms, accept: t =>
+            t.Length <= MaxKeytermChars &&
+            Whitespace().Split(t).Length <= MaxKeytermWords &&
+            !Forbidden().IsMatch(t));
 
     /// <summary>Erkannte Sprache 2- oder 3-stellig ("de"/"deu") → ISO 639-1; Unbekanntes bleibt.</summary>
     public static string IsoLanguage(string code)

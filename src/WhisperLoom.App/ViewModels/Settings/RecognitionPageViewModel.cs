@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using WhisperLoom.App.Design;
 using WhisperLoom.Core.Api;
+using WhisperLoom.Core.Contracts.Settings;
 
 namespace WhisperLoom.App.ViewModels.Settings;
 
@@ -24,7 +25,15 @@ public sealed class RecognitionPageViewModel : SettingsPageViewModel
         AdvancedOpen = NeedsUrl(session.SttProvider.Value);
         FallbackAdvancedOpen = NeedsUrl(session.SttFallbackProvider.Value);
         session.PropertyChanged += OnSessionChanged;
+        Local.PropertyChanged += OnLocalChanged;
     }
+
+    /// <summary>
+    /// Hinweis unter „Sprache“ bei „Deutsch + Englisch“ (CTR-273): online, wer beide Sprachen bekommt; lokal, dass das
+    /// Modell nur eine Sprache je Diktat erkennt. null = kein Hinweis.
+    /// </summary>
+    public string? LanguageHint => Session.Language.Value != WhisperLoomSettings.LanguageDeEn ? null
+        : Local.Engine.Value == "offline" ? "Language_deEnOffline" : "Language_deEnHint";
 
     public LocalViewModel Local => Session.Local;
 
@@ -58,12 +67,17 @@ public sealed class RecognitionPageViewModel : SettingsPageViewModel
     public override void Dispose()
     {
         Session.PropertyChanged -= OnSessionChanged;
+        Local.PropertyChanged -= OnLocalChanged;
         base.Dispose();
     }
 
     private void OnSessionChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(SettingsViewModel.SttProvider))
+        if (e.PropertyName == nameof(SettingsViewModel.Language))
+        {
+            OnPropertyChanged(nameof(LanguageHint));
+        }
+        else if (e.PropertyName == nameof(SettingsViewModel.SttProvider))
         {
             SttModelPicker.Refresh();
         }
@@ -71,6 +85,11 @@ public sealed class RecognitionPageViewModel : SettingsPageViewModel
         {
             SttFallbackModelPicker.Refresh();
         }
+    }
+
+    private void OnLocalChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(LocalViewModel.Engine)) OnPropertyChanged(nameof(LanguageHint));
     }
 
     private IEnumerable<Choice> SttOptions(string slot, string providerId)

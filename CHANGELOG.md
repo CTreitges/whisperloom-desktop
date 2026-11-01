@@ -6,6 +6,13 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Language „German + English“** (`de+en`, Android CTR-273): GPT Transcribe gets both languages (`languages[]`), all
+  other services and the local model detect the language themselves; the detected language counts, otherwise German.
+  Hint below the language choice, a separate one for the local model.
+- **Vocabulary as word lists**: GPT Transcribe additionally gets `keywords[]` (terms with `<`, `>` or line breaks are
+  dropped), Mistral gets `context_bias[]` (up to 100 terms, multi-word terms joined with `_`); free text is no keyword.
+- With *Automatic*, the language detected by GPT Transcribe (`languages[0].code`, ISO 639-3 mapped to 639-1) now picks
+  filler words and the refinement prompt; before, „auto“ stayed in effect.
 - **Setup wizard** on first start: language, microphone with level test, recognition (cloud with key and
   *Check access*, or local with model download), stage, shortcut test (Windows) or desktop-shortcut guide (Linux),
   autostart, done. Skippable; run it again from the tray (*Setup …*) or with `WhisperLoom setup`. Steps locked by an
@@ -32,6 +39,14 @@ versions follow [Semantic Versioning](https://semver.org/).
   downloads with resume and SHA256 check, Ollama for local text refinement, `bench` verb.
 - Settings sync v1 (export/import compatible with Android) and IT provisioning with policy (`provision`, `import`,
   `export`).
+
+### Changed
+- **Retiring OpenAI models removed** (Android TD-A4): gpt-5-mini, gpt-5-nano (shutdown 2026-12-11), gpt-4o-transcribe,
+  gpt-4o-mini-transcribe and whisper-1 (shutdown 2027-02-26) are no longer offered; new: GPT-5.6 Terra. Saved, imported,
+  provisioned and company-set selections move to the successor when loaded (gpt-5.6-terra, gpt-5.6-luna, gpt-transcribe);
+  other providers and own servers are left alone. A fixed company value is moved too and logged (path only).
+- „German + English“ (`de+en`) is a new value of `language`: an older WhisperLoom rejects such a settings file on
+  import and, if downgraded, would send `de+en` to the provider. Pick another language before downgrading.
 
 ## [0.1.0-demo.1] – 2026-10-31 (demo pre-release)
 

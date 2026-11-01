@@ -297,6 +297,11 @@ public sealed class ManagementService(IManagedTarget target, ISecretStore user, 
             log?.Event("management.config", ("status", "invalid"), ("errors", plan.Errors.Count));
             return SyncOutcome.Failed;
         }
+        foreach (var path in plan.RetiredFixed)
+        {
+            // TD-A4: festes Modell der Firma abgeschaltet und auf den Nachfolger umgestellt — nur der Pfad, kein Wert.
+            log?.Event("management.retired_model", ("path", path), ("level", "fixed"));
+        }
         // Erst die Keys: scheitert die Ablage, bleiben Werte und Richtlinie wie vorher.
         foreach (var name in CompanyKeyNames().Concat(plan.CompanyKeys.Keys).Distinct(StringComparer.Ordinal))
         {

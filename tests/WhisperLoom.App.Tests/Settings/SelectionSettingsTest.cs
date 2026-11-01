@@ -155,7 +155,7 @@ public sealed class SelectionSettingsTest
         // Auch eine lokal wieder eingeschaltete settings.json setzt Fest nicht außer Kraft (EnforceFixed beim Laden).
         var tampered = r.F.Store.Load();
         tampered.Selection.FloatingButton = true;
-        var (enforced, _) = r.Policies.EnforceFixed(tampered, r.Policies.Load());
+        var (enforced, _, _) = r.Policies.EnforceFixed(tampered, r.Policies.Load());
 
         var created = 0;
         using var mouse = new MouseHookSwitch(() =>

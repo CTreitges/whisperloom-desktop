@@ -19,6 +19,7 @@
           <ds:SettingRow Path="language">
             <ComboBox x:Name="LanguageBox" Classes="row" ItemsSource="{Binding Session.Languages}" SelectedItem="{Binding Session.Language}" />
           </ds:SettingRow>
+          <ds:HintRow x:Name="LanguageHintRow" TextKey="{Binding LanguageHint}" IsVisible="{Binding LanguageHint, Converter={x:Static ObjectConverters.IsNotNull}}" Margin="14,4,14,10" />
         </StackPanel>
       </ds:SettingsGroup>
 

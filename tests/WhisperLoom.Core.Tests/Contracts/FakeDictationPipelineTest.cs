@@ -25,6 +25,17 @@ public class FakeDictationPipelineTest
         Assert.Equal(1, fake.Runs);
     }
 
+    /// <summary>W2-PFIX-Review: „Deutsch + Englisch“ ist nie selbst die wirksame Sprache (sonst stünde "de+en" im Verlauf).</summary>
+    [Theory]
+    [InlineData("auto", "de")]
+    [InlineData("de+en", "de")]
+    [InlineData("en", "en")]
+    public async Task WirksameSpracheWieDieEchtePipeline(string configured, string effective)
+    {
+        var result = await new FakeDictationPipeline().RunAsync(Request(RefineMode.Polish, configured), TestContext.Current.CancellationToken);
+        Assert.Equal(effective, result.Language);
+    }
+
     [Fact]
     public async Task StufeAusGibtRohtextOhneModell()
     {

@@ -21,6 +21,9 @@ public sealed record ImportPreview(
     /// <summary>Gespeicherte Keys, die beim Übernehmen gelöscht werden: Der Import lenkte sie an ein neues Ziel.</summary>
     public IReadOnlyList<KeyDrop> DroppedKeys { get; init; } = [];
 
+    /// <summary>TD-A4: Pfade, deren abgeschaltetes OpenAI-Modell auf dem zusammengeführten Stand zum Nachfolger wurde.</summary>
+    public IReadOnlyList<string> RetiredModels { get; init; } = [];
+
     /// <summary>
     /// App-Profile (<c>desktop.profiles</c>, Anzeige: Name bzw. Prozess), bei denen der Import „Enter danach“ ausgeschaltet
     /// hat: Enter in eine Konsole ist ein Befehl — das bestätigt der Nutzer im Profil selbst.
@@ -150,6 +153,8 @@ public static class SyncImport
         var incoming = (JsonObject)file.Settings.DeepClone();
         incoming.Remove("schemaVersion");
         SyncTree.Merge(after, incoming, "", locked, skipped);
+        // TD-A4: erst hier ist der wirksame Anbieter bekannt (Teil-Dateien ohne providerId → Anbieter des Geräts).
+        var retired = RetiredModels.ApplyFull(after);
 
         WhisperLoomSettings merged;
         try
@@ -171,7 +176,7 @@ public static class SyncImport
         changes.AddRange(skipped.Where(p => !IsAndroid(p)).Select(p =>
             new SettingsChange(p, SyncTree.Show(oldLeaves.GetValueOrDefault(p)), SyncTree.Show(newLeaves.GetValueOrDefault(p)), Locked: true)));
         changes.Sort((a, b) => string.CompareOrdinal(a.Path, b.Path));
-        return new ImportPreview(errors.Count == 0 ? merged : null, changes, errors, warnings);
+        return new ImportPreview(errors.Count == 0 ? merged : null, changes, errors, warnings) { RetiredModels = retired };
     }
 
     /// <summary>Geänderte Blätter (ohne den Abschnitt <c>android</c>), sortiert nach Pfad.</summary>

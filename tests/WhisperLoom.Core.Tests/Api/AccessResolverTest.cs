@@ -26,11 +26,11 @@ public class AccessResolverTest
     [Fact]
     public void BestandsnutzerBehaeltAltesModellUndUrl()
     {
-        var a = ResolveStt("", "https://api.openai.com/v1", SttKey, "gpt-4o-transcribe", 0);
+        // Der Resolver schreibt nichts um — abgeschaltete Modelle ersetzt RetiredModels beim Laden (TD-A4).
+        var a = ResolveStt("", "https://api.openai.com/v1", SttKey, "whisper-1", 0);
         Assert.Equal("openai", a.Provider.Id);
-        Assert.Equal("gpt-4o-transcribe", a.Model);
-        Assert.Contains("Auslauf", a.ModelOption!.Label, StringComparison.Ordinal);
-        Assert.Equal("language", a.ModelOption!.LanguageField);
+        Assert.Equal("whisper-1", a.Model);
+        Assert.Equal("https://api.openai.com/v1", a.BaseUrl);
     }
 
     [Fact]
