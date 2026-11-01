@@ -155,6 +155,22 @@ def test_nur_password_ohne_einrichtungsseite(tmp_path, uhr):
         assert HINWEIS_DE in c.get("/").text
 
 
+def test_instanz_admin_braucht_zwei_faktor(tmp_path, uhr):
+    """Review-Befund: Der Instanz-Admin (ohne Firma) darf nicht überspringen, sobald die Instanz TOTP anbietet."""
+    einst = neue_einst(tmp_path, uhr, anmeldearten=BEIDE)
+    with TestClient(create_app(einst), base_url=BASIS) as c:
+        neuer_admin(einst, None, "root", rolle="instance", mit_totp=False)
+        assert passwort_login(c, "root").headers["location"] == "/login/totp-einrichten"
+        html = c.get("/login/totp-einrichten").text
+        assert "/login/totp-spaeter" not in html
+        assert _spaeter(c, html).status_code == 403
+        assert c.get("/instanz", follow_redirects=False).headers["location"] == "/login"
+    nur_passwort = neue_einst(tmp_path / "zwei", uhr, anmeldearten=("password",))
+    with TestClient(create_app(nur_passwort), base_url=BASIS) as c:
+        neuer_admin(nur_passwort, None, "root", rolle="instance", mit_totp=False)
+        assert passwort_login(c, "root").headers["location"] == "/"  # Instanz bietet kein TOTP an: wie bisher
+
+
 def test_texte_de_und_en():
     ordner = Path(firmen.__file__).parent / "texte"
     for sprache in ("de", "en"):

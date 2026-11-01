@@ -173,8 +173,8 @@ CREATE TABLE preis (
 );
 """
 
-# W2-SFIX: Zeitpunkt, zu dem ein Admin die TOTP-Einrichtung beim Login übersprungen hat (0 = nie). Firmen bleiben
-# unverändert (keine stille Migration ihrer Anmeldearten).
+# W2-SFIX: Zeitpunkt, zu dem ein Admin die TOTP-Einrichtung beim Login übersprungen hat (0 = nie). Die Firmen-Zeilen
+# bleiben unverändert; Firmen ohne eigene Einschränkung folgen dem neuen Instanz-Standard (README „Update-Hinweis“).
 _V3 = """
 ALTER TABLE admin ADD COLUMN totp_spaeter_ms INTEGER NOT NULL DEFAULT 0;
 """

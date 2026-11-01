@@ -137,6 +137,7 @@ Admins, indem er auf der Seite „Firma“ nur „Passwort und Zwei-Faktor“ an
 lehnt ein Überspringen ab (403), und Sitzungen ohne zweiten Faktor enden. Firmen, die schon so eingestellt sind, bleiben
 unverändert. **Update-Hinweis:** Wer `WL_AUTH_MODES` bisher nicht gesetzt hatte, bekam Pflicht-TOTP; Firmen ohne eigene
 Einschränkung erlauben nach dem Update beide Arten. Pflicht für die ganze Instanz behalten: `WL_AUTH_MODES=password_totp`.
+Der Instanz-Admin muss TOTP immer einrichten, sobald die Instanz `password_totp` anbietet (kein „Später einrichten“).
 
 | Art | Verhalten | Beispiel |
 |---|---|---|
@@ -245,7 +246,9 @@ genau diesen Port; ohne Port in der Basis-URL zählt der Standard-Port des Schem
 **Warnung:** Eine Freigabe ohne Port (z. B. `10.20.3.4` oder `127.0.0.2/32`) gilt wie bisher für alle Ports dieser
 Adresse – damit erreicht ein Firmen-Admin per POST auch andere Dienste dort (sshd, Datenbanken, Dev-Server, Reverse
 Proxy). Cloud-Metadaten (`169.254.169.254` u. a.) bleiben immer gesperrt. In einer Mehrmandanten-Instanz gilt die
-Freigabe für alle Firmen – dort nur Ziele freigeben, die jede Firma erreichen darf.
+Freigabe für alle Firmen – dort nur Ziele freigeben, die jede Firma erreichen darf. Nur eigenständige Dienste freigeben,
+keinen Reverse Proxy mit mehreren virtuellen Hosts: Der Proxy schickt den Namen aus der Basis-URL als Host-Header und
+TLS-SNI.
 
 ### Nutzung und Budget
 
@@ -369,7 +372,8 @@ time under Admins → “My account”. An owner requires two-factor for all adm
 on the page “Company”; then there is no button, the server rejects skipping (403) and sessions without a second factor
 end. Companies already set up that way stay unchanged. **Upgrade note:** instances that did not set `WL_AUTH_MODES`
 used to require TOTP; companies without their own restriction allow both methods after the update. To keep TOTP
-mandatory for the whole instance, set `WL_AUTH_MODES=password_totp`.
+mandatory for the whole instance, set `WL_AUTH_MODES=password_totp`. The instance admin always has to set up TOTP as
+soon as the instance offers `password_totp` (no “Set up later”).
 
 ### Policy, keys, master key
 
@@ -434,7 +438,8 @@ allows exactly that port; a base URL without a port uses the scheme's default po
 **Warning:** an entry without a port (e.g. `10.20.3.4` or `127.0.0.2/32`) still allows every port of that address –
 a company admin can then reach other services there via POST (sshd, databases, dev servers, reverse proxy). Cloud
 metadata (`169.254.169.254` and others) always stays blocked. In a multi-tenant instance the allowance applies to every
-company – only allow targets every company may reach.
+company – only allow targets every company may reach. Allow standalone services only, not a reverse proxy with several
+virtual hosts: the proxy sends the host name from the base URL as Host header and TLS SNI.
 
 ### Usage and budget
 

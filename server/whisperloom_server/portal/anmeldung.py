@@ -41,6 +41,10 @@ AUSSTELLER = "WhisperLoom"
 def _arten(request: Request, con: sqlite3.Connection, admin) -> tuple[str, ...]:
     einst = request.app.state.einst
     if admin["firma_id"] is None:
+        # Instanz-Admin (W2-SFIX-Review): bietet die Instanz TOTP an, ist es für ihn Pflicht – auch beim Standard
+        # password_totp,password. Ohne password_totp in der Instanz bleibt es beim Passwort.
+        if "password_totp" in einst.anmeldearten:
+            return tuple(a for a in einst.anmeldearten if a != "password")
         return einst.anmeldearten
     return firmen.anmeldearten(con.execute("SELECT * FROM firma WHERE id = ?", (admin["firma_id"],)).fetchone(),
                                einst.anmeldearten)
