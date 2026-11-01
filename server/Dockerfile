@@ -1,6 +1,8 @@
 # WhisperLoom Firmen-Manager. Nicht-root, Daten unter /data (Volume), Healthcheck /healthz.
 # Doku: https://docs.docker.com/reference/dockerfile/ (HEALTHCHECK, USER; abgerufen 2026-11-01)
-FROM python:3.12-slim
+# Basis per Digest (Review N-16; ermittelt 2026-11-01 per `docker buildx imagetools inspect python:3.12-slim` und
+# Registry-API, Index-Digest für alle Plattformen). Aktualisieren: Digest neu ermitteln, Image bauen, Tests.
+FROM python:3.12-slim@sha256:aa943ce411423c7582288f18707ff66eddcbaeb510502d747a72aeb34f30d159
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -13,8 +15,8 @@ RUN groupadd --system --gid 10001 whisperloom \
  && mkdir -p /data && chown whisperloom:whisperloom /data && chmod 700 /data
 
 WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
+COPY requirements-hashes.txt .
+RUN pip install --require-hashes --no-deps -r requirements-hashes.txt
 COPY whisperloom_server ./whisperloom_server
 
 USER whisperloom

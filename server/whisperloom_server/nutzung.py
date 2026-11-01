@@ -9,7 +9,8 @@ import sqlite3
 import time
 from decimal import Decimal, InvalidOperation
 
-KLASSEN = ("upstream_error", "upstream_timeout", "budget", "invalid_request")
+# no_price (W2-FIXS, Review N-15): Kostendeckel aktiv, Modell ohne Preiseintrag → abgelehnt wie budget_exhausted.
+KLASSEN = ("upstream_error", "upstream_timeout", "budget", "no_price", "invalid_request")
 MIKRO = 1_000_000
 _SUMMEN = ("COALESCE(SUM(anfragen), 0) AS anfragen, COALESCE(SUM(audio_ms), 0) AS audio_ms, "
            "COALESCE(SUM(tokens_ein), 0) AS tokens_ein, COALESCE(SUM(tokens_aus), 0) AS tokens_aus, "

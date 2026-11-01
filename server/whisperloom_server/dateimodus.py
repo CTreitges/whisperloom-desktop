@@ -152,6 +152,16 @@ def anwenden(einst: Einstellungen, kry: Krypto, eintraege: list[dict]) -> int:
     return len(ids)
 
 
+def fehlertext(ex: Exception) -> str:
+    """Startfehler ohne Dateiinhalt (Review N-12): YAML- und JSON-Parser zitieren die fehlerhafte Zeile, auch einen
+    Klartext-Key. Nach außen gehen nur die eigenen Texte (Pfade, Feldnamen, Hinweis-Schlüssel) bzw. Klasse und Zeile."""
+    if isinstance(ex, DateiFehler):
+        return str(ex)
+    mark = getattr(ex, "problem_mark", None) or getattr(ex, "context_mark", None)
+    zeile = mark.line + 1 if mark is not None else getattr(ex, "lineno", None)
+    return type(ex).__name__ + (f" in Zeile {zeile}" if isinstance(zeile, int) else "")
+
+
 class Beobachter:
     def __init__(self, einst: Einstellungen, kry: Krypto, intervall_s: float = 2.0):
         self.einst, self.kry, self.intervall_s = einst, kry, intervall_s
@@ -168,7 +178,7 @@ class Beobachter:
         except Exception as ex:  # noqa: BLE001 — auch sqlite3/Typfehler aus der Datei: Stand bleibt, Dienst läuft weiter
             ereignis("datei fehler", fehler=type(ex).__name__)
             if streng:
-                raise DateiFehler(f"{pfad}: {ex}") from ex
+                raise DateiFehler(f"{pfad}: {fehlertext(ex)}") from None
             return False
         ereignis("datei geladen", status=anzahl)
         return True

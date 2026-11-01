@@ -70,6 +70,8 @@ def budget_seite(request: Request, wer: Wer = Depends(in_firma), con: sqlite3.Co
         "geraete": con.execute("SELECT id, name FROM geraet WHERE firma_id = ? AND status = 'approved' ORDER BY name",
                                (wer.firma_id,)).fetchall(),
         "betrag": nutzung.betrag_zeigen,
+        # Review N-14: unter Auto-Freigabe holt sich ein Gerät per Verlassen und Neu-Verbinden ein frisches Budget.
+        "auto_freigabe": bool(con.execute("SELECT auto_freigabe FROM firma WHERE id = ?", (wer.firma_id,)).fetchone()[0]),
     }, wer=wer, con=con)
 
 
