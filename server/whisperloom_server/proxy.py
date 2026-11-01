@@ -14,10 +14,11 @@ import math
 import sqlite3
 import time
 import wave
+from email import policy as email_policy
+from email.parser import BytesParser
 
 import httpx
 from fastapi import APIRouter, Depends, Request
-from starlette.datastructures import UploadFile
 
 from . import budget, nutzung, schluessel, ssrf, upstream
 from .abhaengig import jetzt, verbindung
@@ -188,23 +189,40 @@ def audio_dauer_ms(wav: bytes) -> int:
         return len(wav) * 1000 // 32_000
 
 
+def multipart_lesen(typ: str, body: bytes) -> tuple[dict[str, str], bytes]:
+    """multipart/form-data im Arbeitsspeicher zerlegen (request.form() spoolt Dateien ab 1 MiB auf die Platte; Audio
+    darf nie auf die Platte). Nur STT_FELDER, jedes Feld höchstens einmal, genau eine Datei `file`. Sonst ValueError.
+    Doku: https://docs.python.org/3/library/email.parser.html (BytesParser, policy HTTP; abgerufen 2026-11-01)"""
+    if not typ.lower().startswith("multipart/form-data") or "boundary=" not in typ.lower():
+        raise ValueError("typ")
+    nachricht = BytesParser(policy=email_policy.HTTP).parsebytes(b"Content-Type: " + typ.encode("latin-1") + b"\r\n\r\n" + body)
+    if not nachricht.is_multipart():
+        raise ValueError("kein multipart")
+    felder: dict[str, str] = {}
+    datei: bytes | None = None
+    for teil in nachricht.iter_parts():
+        name = teil.get_param("name", header="content-disposition")
+        if name not in STT_FELDER or name in felder or (name == "file" and datei is not None):
+            raise ValueError("feld")
+        inhalt = teil.get_payload(decode=True) or b""
+        if name == "file":
+            datei = inhalt
+        elif len(inhalt) > 4000:
+            raise ValueError("lang")
+        else:
+            felder[name] = inhalt.decode("utf-8")
+    if not datei:
+        raise ValueError("datei")
+    return felder, datei
+
+
 @router.post("/audio/transcriptions")
 async def transkription(request: Request, g=Depends(geraet_aus_token), con: sqlite3.Connection = Depends(verbindung)):
     _zulassen(g)
-    formular = await request.form(max_files=1, max_fields=len(STT_FELDER))
-    felder: dict[str, str] = {}
-    datei = formular.get("file")
-    if set(formular.keys()) - STT_FELDER or not isinstance(datei, UploadFile):
-        raise _ungueltig(con, g, request)
-    for name, wert in formular.multi_items():
-        if name == "file":
-            continue
-        if not isinstance(wert, str) or len(wert) > 4000 or name in felder:
-            raise _ungueltig(con, g, request)
-        felder[name] = wert
-    wav = await datei.read(MAX_AUDIO + 1)
-    if not wav:
-        raise _ungueltig(con, g, request)
+    try:
+        felder, wav = multipart_lesen(request.headers.get("content-type", ""), await request.body())
+    except (ValueError, UnicodeError):
+        raise _ungueltig(con, g, request) from None
     if len(wav) > MAX_AUDIO:
         raise ApiFehler("payload_too_large")
     felder["response_format"] = "json"  # Der Proxy antwortet immer als JSON {"text": …}

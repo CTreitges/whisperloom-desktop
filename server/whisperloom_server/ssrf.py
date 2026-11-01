@@ -52,7 +52,8 @@ def adresse_verboten(ip: ipaddress.IPv4Address | ipaddress.IPv6Address, erlaubt:
         ip = ip.ipv4_mapped
     if any(ip.version == n.version and ip in n for n in erlaubt):
         return False
-    return ip in METADATEN or not ip.is_global
+    # is_global gilt in Python auch für Multicast (224.0.0.0/4, ff00::/8) – deshalb eigens ausschließen.
+    return ip in METADATEN or ip.is_multicast or not ip.is_global
 
 
 def pruefen(url: str, erlaubt: tuple[Netz, ...], aufloeser: Aufloeser) -> Ziel:
