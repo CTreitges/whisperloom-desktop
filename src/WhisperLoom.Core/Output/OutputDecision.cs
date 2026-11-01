@@ -86,6 +86,16 @@ public static class OutputDecision
         return BrowserProcesses.Contains(name, StringComparer.OrdinalIgnoreCase);
     }
 
+    /// <summary>Fensterklasse der Chromium-Fenster; Electron-Apps (Slack, Discord, VS Code …) haben sie mit eigenem Prozessnamen.</summary>
+    public const string ChromiumWindowClass = "Chrome_WidgetWin_1";
+
+    /// <summary>
+    /// „Vorsichtig“ einfügen? Browser (<see cref="IsBrowser"/>) und Electron-Apps (Fensterklasse <see cref="ChromiumWindowClass"/>,
+    /// Entscheidung Christof 2026-11-01): Webinhalt meldet sich per UIA nur als „Pane“, Passwortfelder sind dort nicht erkennbar.
+    /// </summary>
+    public static bool IsCautious(string? process, string? windowClass) =>
+        IsBrowser(process) || string.Equals(windowClass, ChromiumWindowClass, StringComparison.OrdinalIgnoreCase);
+
     /// <param name="browser">
     /// Ziel ist ein Browser (<see cref="IsBrowser"/>). Entscheidung Christof 2026-11-01 „Vorsichtig im Browser“: bei unbekanntem
     /// Fokus einfügen, danach die vorherige Zwischenablage wiederherstellen – ein Diktat in ein Web-Passwortfeld bleibt so nicht in
