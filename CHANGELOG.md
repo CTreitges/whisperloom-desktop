@@ -5,7 +5,22 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.0] – 2026-11-01
+
 ### Added
+- **Company manager** (`server/`, self-hosted, Docker or systemd): multi-tenant web portal with device approval by
+  company code, groups, a three-level policy per setting (Fixed / Default / Free), provider keys (distributed or proxy
+  only), usage statistics and budget limits (`403 budget_exhausted`, no silent fallback), admins with optional
+  two-factor sign-in (can be skipped and turned on later; an owner can require it), trusted-header sign-in, file mode,
+  SSRF protection with port-exact allow list. Client API: `docs/server-api.md`.
+- **Company connection in the app**: join by company code, link or provisioning file, config sync, the three policy
+  levels in the settings UI, proxy access through the server; leaving drops all own keys pointed at the company.
+- **New settings UI** after the Apple HIG design system, built-in **help** with illustrations and screenshots (F1, „?“).
+- **Own providers and local models**: own OpenAI-compatible servers, local servers (LM Studio, llama.cpp,
+  faster-whisper-server), own Whisper files, bundled llama.cpp text model.
+- **Process the selection**: stage picker at the cursor, hotkey, button, Ctrl+right-click, tray, Linux verb.
+- **Output and history**: reliable paste with clipboard restore in browsers/Electron, stage picker, Enter after insert
+  as a setting.
 - **Language „German + English“** (`de+en`, Android CTR-273): GPT Transcribe gets both languages (`languages[]`), all
   other services and the local model detect the language themselves; the detected language counts, otherwise German.
   Hint below the language choice, a separate one for the local model.
@@ -58,5 +73,6 @@ versions follow [Semantic Versioning](https://semver.org/).
   masked keys in the OS keyring, proxy, history, metadata-only logs, audio kept in memory only.
 - CI build of `whisper-server` (whisper.cpp `b5454`) for win-x64 and linux-x64, Vulkan and CPU.
 
-[Unreleased]: https://github.com/CTreitges/whisperloom-desktop/compare/v0.1.0-demo.1...HEAD
+[Unreleased]: https://github.com/CTreitges/whisperloom-desktop/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/CTreitges/whisperloom-desktop/compare/v0.1.0-demo.1...v1.0.0
 [0.1.0-demo.1]: https://github.com/CTreitges/whisperloom-desktop/releases/tag/v0.1.0-demo.1

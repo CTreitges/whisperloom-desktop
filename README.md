@@ -84,6 +84,31 @@ llama.cpp und eigene Anbieter-Einträge: [`docs/local-models.md`](docs/local-mod
   Format: [`docs/settings-format.md`](docs/settings-format.md).
 - **Signatur** der Builds durch die Firma, Verteilung der portablen ZIP: [`docs/signing.md`](docs/signing.md).
 
+### Firmen-Manager (selbst hosten)
+Der Firmen-Manager (`server/`) ist ein selbst hostbarer Dienst mit Web-Portal, über den eine Firma WhisperLoom zentral
+verwaltet: Geräte-Freigabe per Firmencode, Gruppen, Richtlinie mit drei Stufen je Einstellung (Fest / Vorgabe / Frei),
+Anbieter-Keys (verteilen oder nur über den Proxy des Servers nutzen), Nutzungsstatistik und Budget-Grenzen, Admins mit
+optionaler Zwei-Faktor-Anmeldung. Mehrere Firmen je Instanz sind möglich.
+
+Schnellstart mit Docker:
+
+```sh
+git clone https://github.com/CTreitges/whisperloom-desktop && cd whisperloom-desktop/server
+# in docker-compose.yml WL_BASE_URL auf die eigene Adresse setzen, z. B. https://wl.firma.de
+docker compose up -d        # lauscht nur auf 127.0.0.1:8080
+docker compose exec whisperloom-server python -m whisperloom_server tenant-create firma "Firma GmbH" --owner chef --show
+```
+
+Die Ausgabe nennt den Firmencode und einen Einladungs-Link (einmalig, 72 h) für den ersten owner. Davor gehört ein
+Reverse-Proxy mit HTTPS (Caddy oder nginx). Den Hauptschlüssel `master.key` getrennt von der Datenbank sichern
+(`WL_MASTER_KEY_FILE` bzw. systemd `LoadCredential`), sonst entschlüsselt jedes DB-Backup auch Keys und Firmencodes.
+Mitarbeiter verbinden die App unter Einstellungen → **Firma** mit Server-Adresse und Firmencode (oder per
+Provisioning-Datei); Admins geben die Geräte im Portal frei.
+
+Installation ohne Docker (systemd), Umgebungsvariablen, Anmeldearten (Passwort, Zwei-Faktor, Authelia/oauth2-proxy),
+SSRF-Schutz für interne Erkennungs-Server, Backup und Betrieb: [`server/README.md`](server/README.md);
+Client-API: [`docs/server-api.md`](docs/server-api.md); Beispiel-Deployment: [`server/deploy/README.md`](server/deploy/README.md).
+
 ### Aus dem Quellcode bauen
 Voraussetzung: .NET SDK 10 (`global.json`).
 
@@ -167,6 +192,30 @@ More verbs: `start`, `stop`, `cancel`, `pause`, `resume`, `show`, `setup`, `stat
 - **IT provisioning** (providers, keys, locked fields, history, updates): [`docs/provisioning.md`](docs/provisioning.md),
   format: [`docs/settings-format.md`](docs/settings-format.md).
 - **Code signing** by the company, rolling out the portable ZIP: [`docs/signing.md`](docs/signing.md).
+
+### Company manager (self-hosted)
+The company manager (`server/`) is a self-hostable service with a web portal for managing WhisperLoom centrally:
+device approval by company code, groups, a policy with three levels per setting (Fixed / Default / Free), provider
+keys (distributed or used only through the server's proxy), usage statistics and budget limits, admins with optional
+two-factor sign-in. One instance can host several companies.
+
+Quick start with Docker:
+
+```sh
+git clone https://github.com/CTreitges/whisperloom-desktop && cd whisperloom-desktop/server
+# set WL_BASE_URL in docker-compose.yml to your address, e.g. https://wl.example.com
+docker compose up -d        # listens on 127.0.0.1:8080 only
+docker compose exec whisperloom-server python -m whisperloom_server tenant-create acme "ACME Ltd" --owner boss --show
+```
+
+The output shows the company code and a one-time invitation link (72 h) for the first owner. Put a reverse proxy with
+HTTPS (Caddy or nginx) in front. Keep the master key `master.key` apart from the database (`WL_MASTER_KEY_FILE` or
+systemd `LoadCredential`); otherwise every DB backup also decrypts keys and company codes. Users connect the app under
+Settings → **Company** with server address and company code (or a provisioning file); admins approve devices in the portal.
+
+Install without Docker (systemd), environment variables, sign-in modes (password, two-factor, Authelia/oauth2-proxy),
+SSRF protection for internal recognition servers, backup and operation: [`server/README.md`](server/README.md);
+client API: [`docs/server-api.md`](docs/server-api.md); example deployment: [`server/deploy/README.md`](server/deploy/README.md).
 
 ### Build from source
 Requires the .NET 10 SDK (`global.json`).
