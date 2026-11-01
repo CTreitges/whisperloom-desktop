@@ -23,8 +23,16 @@ public sealed class AppProfile
     /// <summary>"paste", "type", "clipboard"; "" = Standard-Ausgabemodus.</summary>
     public string InsertMode { get; set; } = "";
 
-    /// <summary>Nach dem Einfügen Enter senden (wie Strg+Enter im Overlay).</summary>
-    public bool PressEnter { get; set; }
+    /// <summary>
+    /// Nach dem Einfügen Enter senden: null = Erben (<c>output.pressEnter</c>), true = An, false = Aus. Ältere Dateien
+    /// mit <c>false</c> bleiben „Aus“ — gleiches Verhalten wie bisher, weil <c>output.pressEnter</c> standardmäßig aus ist.
+    /// </summary>
+    /// <remarks>
+    /// Erben wird nicht geschrieben (fehlt = Erben): Ältere Versionen lesen <c>pressEnter</c> als bool und verwürfen bei
+    /// <c>null</c> den ganzen desktop-Abschnitt (Review W2-C0 R2).
+    /// </remarks>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public bool? PressEnter { get; set; }
 
     public bool Enabled { get; set; } = true;
 }

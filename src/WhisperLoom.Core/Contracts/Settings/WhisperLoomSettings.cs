@@ -45,6 +45,18 @@ public sealed class WhisperLoomSettings
     /// <summary>Modellwahl mit der aktuellen Liste des Anbieters statt der Katalog-Empfehlungen.</summary>
     public bool ServerModelsEnabled { get; set; }
 
+    /// <summary>Ausgabe: immer kopieren, Enter danach (W2).</summary>
+    public OutputSettings Output { get; set; } = new();
+
+    /// <summary>Markierten Text verarbeiten: Tastenkombi, schwebender Knopf, Strg+Rechtsklick (W2).</summary>
+    public SelectionSettings Selection { get; set; } = new();
+
+    /// <summary>Eigene Anbieter-Einträge (W2).</summary>
+    public ProvidersSettings Providers { get; set; } = new();
+
+    /// <summary>Firmen-Anbindung und User-Overrides (W2): nie exportiert, nie importiert.</summary>
+    public ManagementSettings Management { get; set; } = new();
+
     /// <summary>
     /// Unbekannte Felder der obersten Ebene (z. B. ein <c>android</c>-Abschnitt oder Abschnitte einer neueren
     /// Desktop-Version): bleiben beim Speichern erhalten. Unbekannte Felder innerhalb bekannter Abschnitte gehen
@@ -171,7 +183,7 @@ public sealed class PolishSettings
 
 public sealed class OfflineSettings
 {
-    /// <summary>Modell-ID der lokalen Erkennung (tiny/base/small/large-v3-turbo).</summary>
+    /// <summary>Modell-ID der lokalen Erkennung (tiny/base/small/large-v3-turbo) oder <c>"custom:&lt;name&gt;"</c>.</summary>
     public string Model { get; set; } = "small";
 
     /// <summary>Beam-Search (genauer, langsamer) statt Greedy.</summary>
@@ -182,6 +194,12 @@ public sealed class OfflineSettings
 
     /// <summary>Lokales Textmodell. Android: LiteRT-ID (gemma4_e2b); Desktop nutzt Ollama (Phase 4).</summary>
     public string LocalLlmModel { get; set; } = "gemma4_e2b";
+
+    /// <summary>Präfix für <see cref="Model"/>, das eine eigene Whisper-Datei nennt: <c>"custom:&lt;name&gt;"</c>.</summary>
+    public const string CustomModelPrefix = "custom:";
+
+    /// <summary>Eigene Whisper-Dateien (W2); Auswahl über <see cref="Model"/> = <c>"custom:&lt;name&gt;"</c>.</summary>
+    public List<CustomWhisperModel> CustomModels { get; set; } = [];
 }
 
 public sealed class HistorySettings

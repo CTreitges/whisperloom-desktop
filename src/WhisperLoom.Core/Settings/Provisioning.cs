@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using WhisperLoom.Core.Api;
 using WhisperLoom.Core.Contracts;
 using WhisperLoom.Core.Contracts.Settings;
@@ -34,6 +35,10 @@ public sealed record ProvisioningPlan(
         {
             yield return $"locked {path}";
         }
+        foreach (var path in (Policy.Defaults?.Keys ?? []).Order(StringComparer.Ordinal))
+        {
+            yield return $"default {path}";
+        }
         if (Policy.HistoryEnabled is { } h)
         {
             yield return $"policy historyEnabled={h.ToString().ToLowerInvariant()}";
@@ -60,24 +65,37 @@ public static class Provisioning
     public static ProvisioningPlan Plan(WhisperLoomSettings current, SyncDocument file)
     {
         var errors = new List<string>();
+        var warnings = new List<string>();
         PolicySettings policy;
-        var provisioned = SyncTree.Leaves(file.Settings).Keys.Where(p => p != "schemaVersion").ToList();
+        file = file with { Settings = ManagementInput(file.Settings, warnings) };
         try
         {
             // Die Key-Pfade kommen erst nach der Zuordnung dazu (unten).
-            policy = file.Policy is null ? PolicySettings.None : PolicySettings.FromProvisioning(file.Policy, provisioned);
+            policy = file.Policy is null ? PolicySettings.None : PolicySettings.FromProvisioning(file.Policy, file.Settings, warnings);
         }
         catch (SyncFormatException e)
         {
             return new ProvisioningPlan(null, new Dictionary<string, string>(), PolicySettings.None, [], [e.Message], []);
         }
 
-        var warnings = new List<string>();
-        var preview = SyncImport.Merge(current, file, policy, _ => false, warnings);
+        // Vorgaben fahren nicht über Änderungen des Nutzers (User-Override).
+        var preview = SyncImport.Merge(current, file, policy,
+            p => policy.StateOf(p) == ManagedState.Default && ManagedDefaults.IsOverridden(current, p), warnings);
         errors.AddRange(preview.Errors);
         foreach (var path in policy.Locked.Where(p => !KnownPath(p)))
         {
             errors.Add($"policy.lockSettings: Pfad unbekannt: {path}");
+        }
+        if (file.Policy?[PolicyLevels.LevelsField] is JsonObject levels)
+        {
+            foreach (var path in levels.Select(l => l.Key).Where(p => !KnownPath(p)))
+            {
+                errors.Add($"policy.levels: Pfad unbekannt: {path}");
+            }
+        }
+        if (preview.Settings is not null)
+        {
+            ManagedDefaults.TrackOverrides(preview.Settings, policy);
         }
         foreach (var id in policy.AllowedProviders ?? [])
         {
@@ -129,11 +147,29 @@ public static class Provisioning
         return byAccess;
     }
 
+    /// <summary>Felder unter <c>management</c>, die eine Datei bzw. der Server setzen darf; der Rest ist Gerätezustand.</summary>
+    private static readonly string[] ManagementInputs = ["serverUrl", "code", "allowLeave"];
+
+    /// <summary>Entfernt Gerätezustand (<c>management.deviceId</c>, <c>state</c>, <c>overrides</c>, …) aus der Datei, mit Warnung.</summary>
+    private static JsonObject ManagementInput(JsonObject settings, List<string> warnings)
+    {
+        var copy = (JsonObject)settings.DeepClone();
+        foreach (var section in copy.Where(p => p.Key.Equals(ManagedPaths.ManagementSection, StringComparison.OrdinalIgnoreCase)).Select(p => p.Value).OfType<JsonObject>())
+        {
+            foreach (var name in section.Select(p => p.Key).Where(k => !ManagementInputs.Contains(k, StringComparer.OrdinalIgnoreCase)).ToList())
+            {
+                section.Remove(name);
+                warnings.Add($"management.{name}: Gerätezustand, von der Datei nicht setzbar; ignoriert");
+            }
+        }
+        return copy;
+    }
+
     /// <summary>Pfad der Einstellungen (Abschnitt oder Feld), ein Key-Pfad oder etwas in desktop/android.</summary>
     private static bool KnownPath(string path)
     {
-        if (path is SyncDocument.DesktopSection or SyncDocument.AndroidSection || path.StartsWith("desktop.", StringComparison.Ordinal)
-            || path.StartsWith("android.", StringComparison.Ordinal) || path.StartsWith("llm.stageModels.", StringComparison.Ordinal))
+        if (ManagedPaths.IsAtOrBelow(path, SyncDocument.DesktopSection) || ManagedPaths.IsAtOrBelow(path, SyncDocument.AndroidSection)
+            || ManagedPaths.IsAtOrBelow(path, "local") || path.StartsWith("llm.stageModels.", StringComparison.Ordinal))
         {
             return true;
         }

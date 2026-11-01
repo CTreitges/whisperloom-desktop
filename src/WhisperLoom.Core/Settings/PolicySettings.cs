@@ -27,12 +27,33 @@ public sealed record PolicySettings
     /// <summary>Erlaubte Anbieter-IDs; null = alle.</summary>
     public IReadOnlyList<string>? AllowedProviders { get; init; }
 
-    [System.Text.Json.Serialization.JsonIgnore]
-    public bool IsActive => Locked.Count > 0 || HistoryEnabled is not null || UpdatesEnabled is not null || AllowedProviders is not null;
+    /// <summary>
+    /// Vorgaben (Stufe <see cref="ManagedState.Default"/>): Blatt-Pfad → Firmenwert. Der Nutzer darf ändern; seine
+    /// Änderung steht in <see cref="ManagementSettings.Overrides"/> (<see cref="ManagedDefaults"/>). null = keine.
+    /// </summary>
+    public IReadOnlyDictionary<string, JsonElement>? Defaults { get; init; }
 
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IsActive => Locked.Count > 0 || HistoryEnabled is not null || UpdatesEnabled is not null || AllowedProviders is not null
+        || Defaults is { Count: > 0 };
+
+    /// <summary>Stufe eines Pfads (Blatt oder Abschnitt): Fest vor Vorgabe vor Frei.</summary>
+    public ManagedState StateOf(string path) =>
+        IsLocked(path) ? ManagedState.Fixed
+        : (Defaults ?? EmptyDefaults).Keys.Any(k => ManagedPaths.IsAtOrBelow(path, k) || ManagedPaths.IsAtOrBelow(k, path)) ? ManagedState.Default
+        : ManagedState.Free;
+
+    private static readonly Dictionary<string, JsonElement> EmptyDefaults = [];
+
+    /// <summary>
+    /// Ist der Pfad Fest? Ohne Rücksicht auf Groß-/Kleinschreibung, weil die App <c>desktop</c> und <c>local</c> so liest
+    /// (sonst umginge <c>desktop.ProxyMode</c> die Sperre <c>desktop.proxyMode</c>). Tastenkürzel und <c>management.*</c>
+    /// (außer <c>management.allowLeave</c>) sind nie Fest (<see cref="ManagedPaths.CanBeFixed"/>).
+    /// </summary>
     public bool IsLocked(string path) =>
-        Locked.Any(l => path == l || path.StartsWith(l + ".", StringComparison.Ordinal))
-        || (HistoryEnabled is not null && path == "history.enabled");
+        ManagedPaths.CanBeFixed(path) &&
+        (Locked.Any(l => ManagedPaths.IsAtOrBelow(path, l))
+         || (HistoryEnabled is not null && path.Equals("history.enabled", StringComparison.OrdinalIgnoreCase)));
 
     /// <summary>„wie Erkennung“ (<see cref="LlmSettings.Same"/>) ist immer erlaubt, es nutzt den erlaubten Erkennungs-Anbieter.</summary>
     public bool IsProviderAllowed(string providerId) =>
@@ -125,6 +146,18 @@ public sealed record PolicySettings
                 _ => throw new SyncFormatException("policy.allowedProviders: Liste von Anbieter-IDs"),
             },
         };
+    }
+
+    /// <summary>
+    /// Wie <see cref="FromProvisioning(JsonObject, IEnumerable{string})"/>, dazu die drei Stufen aus <c>policy.levels</c>
+    /// (<see cref="PolicyLevels"/>); Vorgabe-Werte kommen aus <paramref name="settings"/> der Datei bzw. Server-Antwort.
+    /// </summary>
+    /// <param name="warnings">Ignorierte Wünsche (Tastenkürzel Fest, <c>management.*</c>).</param>
+    /// <exception cref="SyncFormatException">Falscher Typ eines Feldes, unbekannte Stufe, Vorgabe ohne Wert.</exception>
+    public static PolicySettings FromProvisioning(JsonObject policy, JsonObject settings, ICollection<string> warnings)
+    {
+        var provisioned = SyncTree.Leaves(settings).Keys.Where(p => p != "schemaVersion");
+        return PolicyLevels.Resolve(FromProvisioning(policy, provisioned), policy, settings, warnings);
     }
 
     private static bool? Bool(JsonObject o, string name) => o[name] switch
