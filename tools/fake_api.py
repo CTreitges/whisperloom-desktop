@@ -12,7 +12,7 @@
   GET /_requests → aufgezeichnete Anfragen (nur Metadaten: Pfad, Felder language/model, Prompt-Anfang,
   ob ein Key kam, ob über den Proxy) · POST /_reset
 
-Aufruf: py -3 -X utf8 tools/fake_api.py [--port 0] [--proxy-port 0] [--host 127.0.0.1]  (nur Loopback)
+Aufruf: py -3 -X utf8 tools/fake_api.py [--port 0] [--proxy-port 0 | --no-proxy] [--host 127.0.0.1]  (nur Loopback)
 Erste Ausgabezeile: FAKE-API port=<n> proxy=<m> (Port 0 = frei gewählt).
 """
 from __future__ import annotations
@@ -235,15 +235,18 @@ def loopback_host(host: str) -> str:
     raise argparse.ArgumentTypeError(f"nur Loopback-Adressen erlaubt: {host}")
 
 
-def serve(port: int = 0, proxy_port: int = 0, host: str = "127.0.0.1") -> tuple[ThreadingHTTPServer, ThreadingHTTPServer, State]:
+def serve(port: int = 0, proxy_port: int = 0, host: str = "127.0.0.1",
+          with_proxy: bool = True) -> tuple[ThreadingHTTPServer, ThreadingHTTPServer | None, State]:
     """Startet API und Proxy in Hintergrund-Threads (für Tests). host: eigene Loopback-Adresse, z. B. 127.0.0.2 für eine
-    Demo-Instanz, deren SSRF-Freigabe (WL_UPSTREAM_ALLOW) dann genau diese Adresse statt ganz 127.0.0.1 umfasst."""
+    Demo-Instanz, deren SSRF-Freigabe (WL_UPSTREAM_ALLOW) dann genau diese Adresse statt ganz 127.0.0.1 umfasst.
+    with_proxy=False: kein Forward-Proxy (Dauerbetrieb der Demo braucht ihn nicht), dann ist der zweite Wert None."""
     state = State()
     host = loopback_host(host)
     api = QuietServer((host, port), make_handler(state))
-    proxy = QuietServer((host, proxy_port), make_proxy_handler(state))
+    proxy = QuietServer((host, proxy_port), make_proxy_handler(state)) if with_proxy else None
     for server in (api, proxy):
-        threading.Thread(target=server.serve_forever, daemon=True).start()
+        if server is not None:
+            threading.Thread(target=server.serve_forever, daemon=True).start()
     return api, proxy, state
 
 
@@ -252,9 +255,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--port", type=int, default=0)
     parser.add_argument("--proxy-port", type=int, default=0)
     parser.add_argument("--host", type=loopback_host, default="127.0.0.1", help="Loopback-Adresse (127.0.0.0/8 oder ::1)")
+    parser.add_argument("--no-proxy", action="store_true", help="ohne Forward-Proxy (Demo-Dauerbetrieb)")
     args = parser.parse_args(argv)
-    api, proxy, _ = serve(args.port, args.proxy_port, args.host)
-    print(f"FAKE-API port={api.server_address[1]} proxy={proxy.server_address[1]}", flush=True)
+    api, proxy, _ = serve(args.port, args.proxy_port, args.host, with_proxy=not args.no_proxy)
+    print(f"FAKE-API port={api.server_address[1]} proxy={proxy.server_address[1] if proxy else 'aus'}", flush=True)
     try:
         threading.Event().wait()
     except KeyboardInterrupt:

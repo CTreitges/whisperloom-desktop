@@ -21,6 +21,7 @@ import secrets
 import shlex
 import struct
 import subprocess
+import sys
 import time
 import urllib.parse
 import urllib.request
@@ -81,14 +82,22 @@ class RemoteServer(se.LocalServer):
             raise RuntimeError(f"{self.base}/healthz: HTTP {status}")
         return self
 
-    def __exit__(self, *exc) -> None:
-        if self.created:
+    def __exit__(self, exc_type, exc, tb) -> None:
+        if not self.created:
+            return
+        self.created = False
+        try:
             self.cli("tenant-delete", self.slug, "--confirm", self.slug)
-            self.created = False
+        except (RuntimeError, OSError, subprocess.TimeoutExpired) as e:
+            if exc_type is None:
+                raise
+            # Ursprünglichen Fehler nicht überdecken; die Firma gibt es evtl. gar nicht (tenant-create scheiterte).
+            print(f"SMOKE cleanup WARN Testfirma {self.slug} (falls angelegt) nicht gelöscht: {e}", file=sys.stderr)
 
     def tenant(self) -> str:
-        out = self.cli("tenant-create", self.slug, se.TENANT, "--owner", self.owner, "--show")
+        # Vor dem Aufruf merken: Läuft die CLI in einen Timeout, nachdem die Firma schon angelegt ist, räumt __exit__ auf.
         self.created = True
+        out = self.cli("tenant-create", self.slug, se.TENANT, "--owner", self.owner, "--show")
         code = re.search(r"Firmencode: (\S+)", out).group(1)
         invite = re.search(r"(/einladung/\S+)", out)
         if not invite:

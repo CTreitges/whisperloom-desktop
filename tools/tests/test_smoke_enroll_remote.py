@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
+import io
 import os
 import shlex
 import subprocess
@@ -103,6 +105,39 @@ class RemoteServerCliTest(unittest.TestCase):
         cli.assert_called_once_with("tenant-delete", live.slug, "--confirm", live.slug)
         self.assertFalse(live.created)
 
+    def test_timeout_after_tenant_create_still_cleans_up(self):
+        """D4: Die Firma kann angelegt sein, auch wenn die CLI-Antwort (ssh) ausbleibt."""
+        live = remote.RemoteServer("https://wl.example", "ssh host wl", "T")
+        calls: list[tuple] = []
+
+        def cli(*args, **kwargs):
+            calls.append(args)
+            if args[0] == "tenant-create":
+                raise subprocess.TimeoutExpired("ssh", 90)
+            return "gelöscht"
+
+        with mock.patch.object(live, "cli", side_effect=cli), mock.patch.object(live, "request", return_value=(200, b"")):
+            with self.assertRaises(subprocess.TimeoutExpired), live:
+                live.tenant()
+        self.assertEqual(("tenant-delete", live.slug, "--confirm", live.slug), calls[-1])
+
+    def test_failing_cleanup_does_not_hide_the_original_error(self):
+        live = remote.RemoteServer("https://wl.example", "ssh host wl", "T")
+        with mock.patch.object(live, "cli", side_effect=RuntimeError("Admin-CLI tenant-delete: rc=1")), \
+                mock.patch.object(live, "request", return_value=(200, b"")), \
+                contextlib.redirect_stderr(io.StringIO()) as err:
+            with self.assertRaisesRegex(ValueError, "Prüfung"), live:
+                live.created = True
+                raise ValueError("Prüfung fehlgeschlagen")
+        self.assertIn("cleanup WARN", err.getvalue())
+
+    def test_failing_cleanup_after_success_is_an_error(self):
+        live = remote.RemoteServer("https://wl.example", "ssh host wl", "T")
+        with mock.patch.object(live, "cli", side_effect=RuntimeError("Admin-CLI tenant-delete: rc=1")), \
+                mock.patch.object(live, "request", return_value=(200, b"")):
+            with self.assertRaises(RuntimeError), live:
+                live.created = True
+
 
 class RunArgsTest(unittest.TestCase):
     def test_server_without_admin_cli_fails(self):
@@ -124,11 +159,17 @@ class RemoteServerAgainstLocalInstanceTest(unittest.TestCase):
     """Echter Server mit password_totp auf Loopback; die Admin-CLI ist hier der lokale Python statt ssh."""
 
     def test_invite_totp_portal_and_cleanup(self):
+        # password_totp = Zwei-Faktor Pflicht; password_totp,password = Demo-Stand seit W2-SFIX (überspringbar).
+        for modes in ("password_totp", "password_totp,password"):
+            with self.subTest(modes=modes):
+                self.run_against_local(modes)
+
+    def run_against_local(self, modes: str) -> None:
         py = str(SERVER_PY[0])
         # Windows: server.log ist nach dem Beenden des venv-Launchers kurz noch offen → Aufräumfehler ignorieren.
         with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
             srv = se.LocalServer(py, Path(d) / "daten")
-            srv.env["WL_AUTH_MODES"] = "password_totp"
+            srv.env["WL_AUTH_MODES"] = modes
             with srv, mock.patch.dict(os.environ, srv.env):
                 admin_cli = shlex.join([py, "-m", "whisperloom_server"])
                 with remote.RemoteServer(srv.base, admin_cli, "T-1") as live:

@@ -3,7 +3,6 @@
 """
 
 import asyncio
-import ipaddress
 
 import httpx
 import pytest
@@ -172,7 +171,7 @@ def test_minuten_reservierung(pein, pclient, papp, fake):
 @pytest.mark.parametrize("adresse", ["169.254.169.254", "fd00:ec2::254", "100.100.100.200", "169.254.170.2",
                                      "::ffff:169.254.169.254"])
 def test_metadaten_trotz_freigabe_gesperrt(adresse):
-    alles = (ipaddress.ip_network("0.0.0.0/0"), ipaddress.ip_network("::/0"))
+    alles = ssrf.freigaben_lesen("0.0.0.0/0, ::/0")
     with pytest.raises(ssrf.ZielVerboten):
         ssrf.pruefen("http://meta.example/latest", alles, lambda _h, _p: [adresse])
     assert ssrf.pruefen("http://intern.example/v1", alles, lambda _h, _p: ["169.254.10.10"])  # übriges link-local frei

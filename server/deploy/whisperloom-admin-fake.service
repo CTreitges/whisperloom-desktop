@@ -4,13 +4,24 @@ After=network.target
 
 [Service]
 Type=exec
-# Eigene Loopback-Adresse: die SSRF-Freigabe der Demo (WL_UPSTREAM_ALLOW) umfasst nur 127.0.0.2/32.
+# Eigene Loopback-Adresse: die SSRF-Freigabe der Demo (WL_UPSTREAM_ALLOW) umfasst nur 127.0.0.2:8100.
 # -I: nur Standardbibliothek, kein Import aus dem Arbeitsordner oder PYTHON*-Umgebung.
-ExecStart=/usr/bin/python3 -I %h/whisperloom-admin/app/tools/fake_api.py --host 127.0.0.2 --port 8100 --proxy-port 8101
-UMask=0077
-NoNewPrivileges=true
+# --no-proxy: Der Forward-Proxy des Fakes (für lokale App-Smokes) wird in der Demo nicht gebraucht.
+ExecStart=/usr/bin/python3 -I %h/whisperloom-admin/app/tools/fake_api.py --host 127.0.0.2 --port 8100 --no-proxy
 Restart=on-failure
 RestartSec=3
+# Härtung wie whisperloom-admin.service (nur seccomp-Optionen wirken in User-Units).
+UMask=0077
+NoNewPrivileges=true
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
 
 [Install]
 WantedBy=default.target

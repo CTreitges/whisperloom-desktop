@@ -49,9 +49,9 @@ def netze_lesen(text: str) -> tuple[Netz, ...]:
         raise KonfigFehler(f"WL_TRUSTED_PROXIES: {e}") from e
 
 
-def upstream_netze_lesen(text: str) -> tuple[Netz, ...]:
+def upstream_netze_lesen(text: str) -> tuple[ssrf.Freigabe, ...]:
     try:
-        return ssrf.netze_lesen(text)
+        return ssrf.freigaben_lesen(text)
     except ValueError as e:
         raise KonfigFehler(f"WL_UPSTREAM_ALLOW: {e}") from e
 
@@ -66,8 +66,9 @@ class Einstellungen:
     konfig_datei: Path | None = None
     master_hex: str | None = None
     min_app_version: str = ""
-    # Proxy (W2-SRV2): interne Ziele, die der Instanz-Admin für Anbieter-URLs freigibt (ssrf.py), und DNS-Auflösung.
-    upstream_erlaubt: tuple[Netz, ...] = ()
+    # Proxy (W2-SRV2): interne Ziele, die der Instanz-Admin für Anbieter-URLs freigibt (ssrf.py, mit Port ab W2-SFIX),
+    # und DNS-Auflösung.
+    upstream_erlaubt: tuple[ssrf.Freigabe, ...] = ()
     uhr: Callable[[], int] = field(default=jetzt_ms)
     aufloeser: ssrf.Aufloeser = field(default=ssrf.system_aufloesen)
 
@@ -104,7 +105,8 @@ class Einstellungen:
         e = cls(
             daten=Path(daten),
             basis_url=env.get("WL_BASE_URL", cls.basis_url).rstrip("/"),
-            anmeldearten=anmeldearten_lesen(env.get("WL_AUTH_MODES", "password_totp")),
+            # Standard (Christof-Entscheidung 2026-11-01): Zwei-Faktor optional, beim ersten Login überspringbar.
+            anmeldearten=anmeldearten_lesen(env.get("WL_AUTH_MODES", "password_totp,password")),
             vertraute_proxies=netze_lesen(env.get("WL_TRUSTED_PROXIES", "")),
             header_benutzer=env.get("WL_TRUSTED_HEADER", cls.header_benutzer),
             konfig_datei=Path(datei) if datei else None,

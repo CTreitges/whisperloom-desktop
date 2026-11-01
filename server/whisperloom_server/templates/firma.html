@@ -24,6 +24,7 @@
   <fieldset class="gruppe-box"{% if not wer.owner %} disabled{% endif %}>
     <legend>{{ t('p.anmeldearten') }}</legend>
     <p class="klein">{{ t('p.anmeldearten_text') }}</p>
+    {% if 'password_totp' in instanz_arten and 'password' in instanz_arten %}<p class="klein">{{ t('p.zwei_faktor_verlangen') }}</p>{% endif %}
     {% for a in instanz_arten %}
     <label class="wahl"><input type="checkbox" name="art:{{ a }}"{% if a in firma_arten %} checked{% endif %}>
       <span><strong>{{ t('art.' ~ a) }}</strong><span class="klein">{{ t('art.' ~ a ~ '_text') }}</span></span></label>

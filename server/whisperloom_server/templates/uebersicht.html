@@ -2,6 +2,7 @@
 {% block titel %}{{ t('nav.uebersicht') }}{% endblock %}
 {% block inhalt %}
 <h1>{{ t('nav.uebersicht') }}</h1>
+{% if totp_fehlt %}<p class="meldung info">{{ t('p.totp_hinweis') }} <a href="/admins#t-konto">{{ t('p.totp_hinweis_link') }}</a></p>{% endif %}
 <section class="gruppe-box" aria-labelledby="t-wartend">
   <h2 id="t-wartend">{{ t('p.wartend_titel') }}</h2>
   {% if wartend %}

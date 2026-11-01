@@ -160,6 +160,18 @@ class FakeApiHostTest(unittest.TestCase):
                 s.shutdown()
                 s.server_close()
 
+    def test_without_proxy_only_the_api_listens(self):
+        """D3: Demo-Dauerbetrieb ohne Forward-Proxy."""
+        api, proxy, _ = fake_api.serve(host="127.0.0.2", with_proxy=False)
+        try:
+            self.assertIsNone(proxy)
+            opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+            with opener.open(f"http://127.0.0.2:{api.server_address[1]}/_requests", timeout=5) as r:
+                self.assertEqual(200, r.status)
+        finally:
+            api.shutdown()
+            api.server_close()
+
     def test_recording_is_bounded_for_long_running_demo(self):
         state = fake_api.State()
         for i in range(fake_api.MAX_RECORDED + 10):
