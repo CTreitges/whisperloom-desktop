@@ -31,7 +31,7 @@ public sealed class WindowsInput : IDisposable
         Flow = new InputFlow(controller, sink, new InputPresenter(TargetCenter), windows.Foreground,
             active => _hook!.Update(m => m.OverlayKeysActive = active),
             w => new Features.Profiles.WindowInfo(windows.ProcessName(w), Win32Windows.Title(w)),
-            new Features.Rewrite.SelectionCapture(new Win32TextClipboard(), new Win32KeySender()));
+            new Features.Rewrite.SelectionCapture(new Win32TextClipboard(), new Win32KeySender(), windows));
         Flow.FallbackToast += outcome => Dispatcher.UIThread.Post(() => Flow.ShowFallback(outcome));
         // Log nur Metadaten: Ergebnis, Prozess und Fokus-Klasse des Fensters, das die Eingabe bekam — nie Text.
         sink.Inserted += outcome => Dispatcher.UIThread.Post(() => _log.Event(

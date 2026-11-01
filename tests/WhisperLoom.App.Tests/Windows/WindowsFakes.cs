@@ -41,9 +41,17 @@ internal sealed class FakeClipboard(Steps steps) : IClipboardAdapter
         SequenceNumber++;
     }
 
+    /// <summary>So oft scheitert Restore noch (Zwischenablage belegt).</summary>
+    public int FailRestores { get; set; }
+
     public void Restore(ClipboardSnapshot snapshot)
     {
         steps.Add("restore");
+        if (FailRestores > 0)
+        {
+            FailRestores--;
+            throw new IOException("belegt");
+        }
         Text = snapshot.Items.Count == 0 ? null : System.Text.Encoding.Unicode.GetString(snapshot.Items[0].Data);
         Private = true;
         SequenceNumber++;

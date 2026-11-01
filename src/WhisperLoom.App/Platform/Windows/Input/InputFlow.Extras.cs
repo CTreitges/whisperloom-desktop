@@ -68,24 +68,25 @@ public sealed partial class InputFlow
             Toast("Rewrite_Locked");
             return;
         }
-        string? selection;
+        Capture capture;
         _busy = true;
         try
         {
-            selection = await _capture.CaptureAsync(_describe is not null && SelectionCapture.IsConsole(_describe(target).Process), CancellationToken.None);
+            var console = _describe is not null && SelectionCapture.IsConsole(_describe(target).Process);
+            capture = await _capture.CaptureAsync(target, console, CancellationToken.None);
         }
         catch (IOException)
         {
-            selection = null;
+            capture = Capture.Nothing;
         }
         finally
         {
             _busy = false;
         }
-        if (selection is null)
+        if (capture.Text is not { } selection)
         {
             _target = target;
-            Toast("Rewrite_NothingSelected");
+            Toast(capture.ToastKey);
             return;
         }
         if (_controller.State != DictationState.Idle || _mode != Mode.None || !Begin(Mode.Rewrite, target))

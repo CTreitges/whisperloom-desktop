@@ -53,6 +53,28 @@ public sealed class AppHost
             Rewriter = dictation as Features.Rewrite.ISelectionRewriter,
         };
         Loc.Instance.SetLanguage(SettingsStore.Desktop(settings).UiLanguage);
+        ClearHistoryIfDisabled(settings);
+    }
+
+    /// <summary>
+    /// Verlauf aus (Einstellung oder Richtlinie, auch bei geschlossener App gesetzt): alte Diktate löschen, wie beim Ausschalten
+    /// im laufenden Betrieb (<see cref="DictationController.ApplySettingsAsync"/>). Ein Fehler verhindert den Start nicht.
+    /// </summary>
+    private void ClearHistoryIfDisabled(WhisperLoomSettings settings)
+    {
+        if (settings.History.Enabled)
+        {
+            return;
+        }
+        try
+        {
+            History.ClearAsync(CancellationToken.None).GetAwaiter().GetResult();
+            Log.Event("history.cleared", ("reason", "disabled-at-start"));
+        }
+        catch (IOException e)
+        {
+            Log.Event("history.cleared", ("status", "error"), ("errorClass", e.GetType().Name));
+        }
     }
 
     public PolicyStore Policies { get; }
@@ -297,7 +319,7 @@ public sealed class AppHost
             }
             keys[name] = present;
         }
-        var history = await History.ListAsync(CancellationToken.None);
+        var history = await Controller.HistoryIfEnabledAsync();
         var latest = history.Count > 0 ? history[0] : null;
         var c = Controller;
         return new JsonObject

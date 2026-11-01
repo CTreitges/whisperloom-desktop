@@ -21,8 +21,8 @@ public sealed record HistoryItem(HistoryEntry Entry)
 /// <summary>Verlauf (nur Text): neueste zuerst, Kopieren, Löschen, Leeren, neu verarbeiten mit anderer Stufe (WLD-P5b).</summary>
 /// <param name="reprocess">Eintrag mit Stufen-Schlüssel neu verarbeiten (<see cref="Services.DictationController.ReprocessAsync"/>); null = aus
 /// (auch bei einer IT-Sperre der Stufe).</param>
-/// <param name="changed">Nach Löschen, Leeren, Neu verarbeiten (Tray-Liste neu aufbauen).</param>
-public sealed partial class HistoryViewModel(IHistoryStore store, Func<HistoryEntry, string, Task<string>>? reprocess = null, Action? changed = null)
+/// <param name="changed">Nach Löschen bzw. Leeren (true) — Tray-Liste neu aufbauen, beim Leeren auch das letzte Ergebnis vergessen.</param>
+public sealed partial class HistoryViewModel(IHistoryStore store, Func<HistoryEntry, string, Task<string>>? reprocess = null, Action<bool>? changed = null)
     : ObservableObject
 {
     public ObservableCollection<HistoryItem> Items { get; } = [];
@@ -78,7 +78,7 @@ public sealed partial class HistoryViewModel(IHistoryStore store, Func<HistoryEn
         if (item is not null && await store.DeleteAsync(item.Entry.Id, CancellationToken.None))
         {
             Items.Remove(item);
-            changed?.Invoke();
+            changed?.Invoke(false);
         }
     }
 
@@ -87,6 +87,6 @@ public sealed partial class HistoryViewModel(IHistoryStore store, Func<HistoryEn
     {
         await store.ClearAsync(CancellationToken.None);
         Items.Clear();
-        changed?.Invoke();
+        changed?.Invoke(true);
     }
 }

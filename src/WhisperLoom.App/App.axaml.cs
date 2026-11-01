@@ -141,7 +141,7 @@ public partial class App : Application
                 {
                     var c = host.Controller;
                     var vm = new HistoryViewModel(host.History,
-                        c.StageLocked ? null : (entry, stage) => c.ReprocessAsync(stage, entry.Id), c.NotifyHistoryChanged);
+                        c.StageLocked ? null : (entry, stage) => c.ReprocessAsync(stage, entry.Id), cleared => c.NotifyHistoryChanged(cleared));
                     _historyWindow = new HistoryWindow(vm);
                     _historyWindow.Closed += (_, _) => _historyWindow = null;
                     _ = vm.LoadAsync();

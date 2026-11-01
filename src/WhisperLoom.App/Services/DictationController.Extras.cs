@@ -26,7 +26,16 @@ public sealed partial class DictationController
     public bool RewriteBlocked => StageLocked && Stage == RefineMode.Off;
 
     /// <summary>Verlauf geändert (gelöscht, geleert, ausgeschaltet): Tray-Liste neu aufbauen.</summary>
-    public void NotifyHistoryChanged() => HistoryChanged?.Invoke();
+    /// <param name="cleared">Ganz geleert: auch das letzte Ergebnis der Sitzung vergessen (kein „erneut einfügen“ mehr).</param>
+    public void NotifyHistoryChanged(bool cleared = false)
+    {
+        if (cleared)
+        {
+            LastRaw = "";
+            LastResult = "";
+        }
+        HistoryChanged?.Invoke();
+    }
 
     /// <summary>Stufe des laufenden Diktats: die des aktiven Profils, sonst die Standard-Stufe.</summary>
     public RefineMode EffectiveStage => ActiveProfile is { } m ? ProfileStage(m.Profile) : Stage;
@@ -64,8 +73,15 @@ public sealed partial class DictationController
 
     /// <summary>Die letzten Einträge fürs Tray (<see cref="RecentHistory"/>).</summary>
     /// <exception cref="IOException">Verlauf nicht lesbar.</exception>
-    public async Task<IReadOnlyList<HistoryEntry>> RecentAsync() =>
-        RecentHistory.Take(await _history.ListAsync(CancellationToken.None));
+    public async Task<IReadOnlyList<HistoryEntry>> RecentAsync() => RecentHistory.Take(await HistoryIfEnabledAsync());
+
+    /// <summary>
+    /// Verlauf nur, wenn er an ist: alte Dateien (z. B. vor einer Richtlinie „Verlauf aus“) sind dann weder im Tray noch
+    /// zum erneuten Einfügen oder Neu verarbeiten zu sehen.
+    /// </summary>
+    /// <exception cref="IOException">Verlauf nicht lesbar.</exception>
+    public async Task<IReadOnlyList<HistoryEntry>> HistoryIfEnabledAsync() =>
+        Settings.History.Enabled ? await _history.ListAsync(CancellationToken.None) : [];
 
     /// <summary>Text fürs erneute Einfügen: letztes Ergebnis dieser Sitzung, sonst der neueste Verlaufseintrag.</summary>
     public async Task<string?> LatestTextAsync()
@@ -76,7 +92,7 @@ public sealed partial class DictationController
         }
         try
         {
-            var history = await _history.ListAsync(CancellationToken.None);
+            var history = await HistoryIfEnabledAsync();
             return history.Count > 0 ? history[0].Text : null;
         }
         catch (IOException)
@@ -110,7 +126,9 @@ public sealed partial class DictationController
         HistoryEntry? entry;
         try
         {
-            entry = id is null ? (await _history.ListAsync(CancellationToken.None)).FirstOrDefault() : await _history.GetAsync(id, CancellationToken.None);
+            entry = !Settings.History.Enabled ? null
+                : id is null ? (await _history.ListAsync(CancellationToken.None)).FirstOrDefault()
+                : await _history.GetAsync(id, CancellationToken.None);
         }
         catch (IOException)
         {

@@ -9,14 +9,14 @@ public sealed class SelectionCaptureTest
 {
     private readonly InsertRig _rig = new();
 
-    private SelectionCapture Capture() => new(_rig.Clipboard, _rig.Keys, TimeSpan.Zero);
+    private SelectionCapture Capture() => new(_rig.Clipboard, _rig.Keys, _rig.Windows, TimeSpan.Zero);
 
     [Fact]
     public async Task Copies_the_selection_and_restores_the_clipboard()
     {
         _rig.Keys.Selection = "Markierter Text";
 
-        Assert.Equal("Markierter Text", await Capture().CaptureAsync(false, CancellationToken.None));
+        Assert.Equal("Markierter Text", (await Capture().CaptureAsync(42, false, CancellationToken.None)).Text);
 
         Assert.Equal("alt", _rig.Clipboard.Text);
         Assert.Equal(["wait-modifiers", "save", "ctrl-c", "get-text", "restore"], _rig.Steps);
@@ -25,7 +25,7 @@ public sealed class SelectionCaptureTest
     [Fact]
     public async Task Nothing_selected_gives_null_and_leaves_the_clipboard_alone()
     {
-        Assert.Null(await Capture().CaptureAsync(false, CancellationToken.None));
+        Assert.Null((await Capture().CaptureAsync(42, false, CancellationToken.None)).Text);
 
         Assert.Equal("alt", _rig.Clipboard.Text);
         Assert.DoesNotContain("restore", _rig.Steps);
@@ -37,7 +37,7 @@ public sealed class SelectionCaptureTest
     {
         _rig.Keys.Selection = " \r\n ";
 
-        Assert.Null(await Capture().CaptureAsync(false, CancellationToken.None));
+        Assert.Null((await Capture().CaptureAsync(42, false, CancellationToken.None)).Text);
 
         Assert.Equal("alt", _rig.Clipboard.Text);
         Assert.Contains("restore", _rig.Steps);
@@ -49,7 +49,7 @@ public sealed class SelectionCaptureTest
         _rig.Clipboard.Text = null;
         _rig.Keys.Selection = "x";
 
-        Assert.Equal("x", await Capture().CaptureAsync(false, CancellationToken.None));
+        Assert.Equal("x", (await Capture().CaptureAsync(42, false, CancellationToken.None)).Text);
 
         Assert.Null(_rig.Clipboard.Text);
     }
@@ -59,7 +59,7 @@ public sealed class SelectionCaptureTest
     {
         _rig.Keys.Selection = "ls -la";
 
-        Assert.Equal("ls -la", await Capture().CaptureAsync(true, CancellationToken.None));
+        Assert.Equal("ls -la", (await Capture().CaptureAsync(42, true, CancellationToken.None)).Text);
 
         Assert.Contains("ctrl-insert", _rig.Steps);
         Assert.DoesNotContain("ctrl-c", _rig.Steps);

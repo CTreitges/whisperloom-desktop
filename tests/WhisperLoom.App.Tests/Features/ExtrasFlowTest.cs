@@ -62,7 +62,7 @@ public sealed class ExtrasFlowTest : IDisposable
         _f.Controller.Rewriter = _rewriter;
         _rig.Windows.Alive.Add(7);
         _flow = new InputFlow(_f.Controller, Sink, _ui, () => _rig.Windows.Current, _ => { },
-            w => _windows.GetValueOrDefault(w, new WindowInfo("", "")), new SelectionCapture(_rig.Clipboard, _rig.Keys, TimeSpan.Zero));
+            w => _windows.GetValueOrDefault(w, new WindowInfo("", "")), new SelectionCapture(_rig.Clipboard, _rig.Keys, _rig.Windows, TimeSpan.Zero));
     }
 
     private InsertOutputSink Sink { get; }

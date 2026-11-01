@@ -37,7 +37,7 @@ public sealed class ReviewFixesTest : IDisposable
         _f = new ControllerFixture(new WhisperLoomSettings { Refine = new RefineSettings { Stage = "off" } }, Sink);
         _f.Pipeline.RawText = "Hallo Welt";
         _flow = new InputFlow(_f.Controller, Sink, _ui, () => _rig.Windows.Current, _ => { },
-            _ => new WindowInfo("notepad", ""), new SelectionCapture(_rig.Clipboard, _rig.Keys, TimeSpan.Zero));
+            _ => new WindowInfo("notepad", ""), new SelectionCapture(_rig.Clipboard, _rig.Keys, _rig.Windows, TimeSpan.Zero));
     }
 
     private InsertOutputSink Sink { get; }
