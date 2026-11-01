@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block titel %}{{ t('nav.instanz') }}{% endblock %}
+{% block inhalt %}
+<h1>{{ t('nav.instanz') }}</h1>
+<p class="untertitel">{{ t('p.instanz_text') }}</p>
+{% if neu %}
+<section class="gruppe-box hervor" role="status" aria-labelledby="t-neu-ok">
+  <h2 id="t-neu-ok">{{ t('p.firma_angelegt') }}: {{ neu.name }}</h2>
+  <p>{{ t('p.firmencode') }}: <code id="neu-code">{{ neu.code }}</code>
+    <button type="button" class="knopf leise klein-knopf" data-kopieren="neu-code" data-kopiert="{{ t('p.kopiert') }}">{{ t('p.kopieren') }}</button></p>
+  {% if neu.link %}<p class="geheimnis">{{ t('p.einladung_owner') }}: <code id="neu-link">{{ neu.link }}</code>
+    <button type="button" class="knopf leise klein-knopf" data-kopieren="neu-link" data-kopiert="{{ t('p.kopiert') }}">{{ t('p.kopieren') }}</button></p>{% endif %}
+</section>
+{% endif %}
+<section class="gruppe-box" aria-labelledby="t-firmen">
+  <h2 id="t-firmen">{{ t('p.firmen') }}</h2>
+  {% if not firmen %}<p class="leer">{{ t('p.firmen_leer') }}</p>{% endif %}
+  <ul class="liste">
+  {% for f in firmen %}
+    <li class="zeile">
+      <span class="zeile-text"><strong>{{ f.name }}</strong><span class="klein">{{ f.slug }} · {{ f.geraete }} {{ t('p.geraete_anzahl') }} · {{ f.admins }} {{ t('p.admins_anzahl') }}{% if f.gesperrt %} · {{ t('status.blocked') }}{% endif %}</span></span>
+      <span class="aktionen">
+        {% if wer.art == 'lokal' %}<form method="post" action="/instanz/firmen/{{ f.id }}/oeffnen"><input type="hidden" name="csrf" value="{{ wer.csrf }}"><button class="knopf">{{ t('p.oeffnen') }}</button></form>{% endif %}
+        <form method="post" action="/instanz/firmen/{{ f.id }}/{{ 'entsperren' if f.gesperrt else 'sperren' }}"><input type="hidden" name="csrf" value="{{ wer.csrf }}"><button class="knopf leise">{{ t('p.entsperren') if f.gesperrt else t('p.sperren') }}</button></form>
+      </span>
+    </li>
+  {% endfor %}
+  </ul>
+</section>
+<section class="gruppe-box" aria-labelledby="t-neu">
+  <h2 id="t-neu">{{ t('p.firma_neu') }}</h2>
+  <form method="post" action="/instanz/firmen" class="formular">
+    <input type="hidden" name="csrf" value="{{ wer.csrf }}">
+    <label for="name">{{ t('p.firmenname') }}</label><input id="name" name="name" maxlength="80" required>
+    <label for="slug">{{ t('p.kurzname') }}</label><input id="slug" name="slug" maxlength="40" pattern="[a-z0-9-]{2,40}" required aria-describedby="slug-text" autocapitalize="none">
+    <p id="slug-text" class="klein">{{ t('p.kurzname_text') }}</p>
+    <label for="owner">{{ t('p.erster_owner') }}</label><input id="owner" name="owner" maxlength="64" autocapitalize="none">
+    <button type="submit" class="knopf haupt">{{ t('p.anlegen') }}</button>
+  </form>
+</section>
+{% endblock %}

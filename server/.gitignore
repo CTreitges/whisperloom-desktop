@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.db
+*.db-wal
+*.db-shm
+master.key
+.env
+ausgabe/
+daten/
+*.egg-info/
+build/

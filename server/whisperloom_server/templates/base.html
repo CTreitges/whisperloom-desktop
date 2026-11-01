@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="{{ sprache }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>{% block titel %}{% endblock %} · WhisperLoom</title>
+<link rel="stylesheet" href="/static/portal.css">
+<script src="/static/app.js" defer></script>
+</head>
+<body>
+<a class="sprung" href="#inhalt">{{ t('p.zum_inhalt') }}</a>
+{% set mit_leiste = navigation or (wer and wer.instanz) %}
+<div class="rahmen{% if mit_leiste %} mit-leiste{% endif %}">
+{% if mit_leiste %}
+<nav class="leiste" aria-label="{{ t('p.hauptmenue') }}">
+  <p class="marke">WhisperLoom</p>
+  {% if firma_name %}<p class="firma">{{ firma_name }}</p>{% endif %}
+  <ul>
+    {% for href, name in navigation %}
+    <li><a href="{{ href }}"{% if aktiv == name %} aria-current="page"{% endif %}>{{ t('nav.' ~ name) }}</a></li>
+    {% endfor %}
+    {% if wer.instanz %}
+    <li><a href="/instanz"{% if aktiv == 'instanz' %} aria-current="page"{% endif %}>{{ t('nav.instanz') }}</a></li>
+    {% endif %}
+  </ul>
+  <div class="leiste-fuss">
+    <p class="klein">{{ t('p.angemeldet_als') }} <strong>{{ wer.benutzer }}</strong></p>
+    {% if wer.art == 'sitzung' %}
+    <form method="post" action="/logout"><input type="hidden" name="csrf" value="{{ csrf or wer.csrf }}"><button class="knopf leise klein-knopf" type="submit">{{ t('p.abmelden') }}</button></form>
+    {% endif %}
+    <p class="sprachwahl klein"><a href="/sprache/de" lang="de"{% if sprache == 'de' %} aria-current="true"{% endif %}>Deutsch</a> · <a href="/sprache/en" lang="en"{% if sprache == 'en' %} aria-current="true"{% endif %}>English</a></p>
+  </div>
+</nav>
+{% endif %}
+<main id="inhalt" class="{% if not mit_leiste %}schmal{% endif %}">
+  {% if not mit_leiste %}<p class="marke mitte">WhisperLoom</p>{% endif %}
+  {% if ok_text %}<p class="meldung ok" role="status">{{ ok_text }}</p>{% endif %}
+  {% if hinweis_text %}<p class="meldung hinweis" role="alert">{{ hinweis_text }}</p>{% endif %}
+  {% block inhalt %}{% endblock %}
+  {% if not mit_leiste %}
+  <p class="sprachwahl klein mitte"><a href="/sprache/de" lang="de">Deutsch</a> · <a href="/sprache/en" lang="en">English</a></p>
+  {% endif %}
+</main>
+</div>
+</body>
+</html>

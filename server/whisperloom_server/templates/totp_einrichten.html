@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block titel %}{{ t('p.totp_einrichten_titel') }}{% endblock %}
+{% block inhalt %}
+<section class="karte">
+  <h1>{{ t('p.totp_einrichten_titel') }}</h1>
+  <ol class="schritte">
+    <li>{{ t('p.totp_schritt1') }}</li>
+    <li>{{ t('p.totp_schritt2') }}
+      <p class="geheimnis"><code id="totp-geheimnis">{{ geheimnis }}</code>
+        <button type="button" class="knopf leise klein-knopf" data-kopieren="totp-geheimnis" data-kopiert="{{ t('p.kopiert') }}">{{ t('p.kopieren') }}</button></p>
+      <p class="klein"><a href="{{ uri }}">{{ t('p.totp_link') }}</a></p>
+    </li>
+    <li>{{ t('p.totp_schritt3') }}</li>
+  </ol>
+  {% if fehler %}<p class="meldung fehler" role="alert">{{ t(fehler) }}</p>{% endif %}
+  <form method="post" action="/login/totp-einrichten" class="formular">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    {% if passwort_noetig %}
+    <input type="text" name="benutzer" value="{{ wer.benutzer if wer else '' }}" autocomplete="username" hidden>
+    <label for="passwort">{{ t('p.passwort_alt') }}</label>
+    <input id="passwort" name="passwort" type="password" autocomplete="current-password" required>
+    {% endif %}
+    <label for="code">{{ t('p.totp_code') }}</label>
+    <input id="code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" required class="code-feld">
+    <button type="submit" class="knopf haupt">{{ t('p.totp_einschalten') }}</button>
+  </form>
+</section>
+{% endblock %}

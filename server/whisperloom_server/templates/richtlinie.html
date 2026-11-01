@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block titel %}{{ t('nav.richtlinie') }}{% endblock %}
+{% macro wert_anzeige(e, wert) -%}
+{%- if wert is none -%}–{%- elif e.typ == 'bool' -%}{{ t('p.an') if wert else t('p.aus') }}{%- elif e.typ == 'liste' -%}{{ wert | join(', ') or '–' }}{%- elif e.typ == 'wahl' -%}{{ opt(e.pfad, wert) }}{%- else -%}{{ wert if wert != '' else '–' }}{%- endif -%}
+{%- endmacro %}
+{% block inhalt %}
+<h1>{{ t('nav.richtlinie') }}</h1>
+<p class="untertitel">{{ t('p.richtlinie_text') }}</p>
+<nav class="segmente" aria-label="{{ t('p.geltungsbereich') }}">
+  <a href="/richtlinie"{% if not gruppe %} aria-current="page"{% endif %}>{{ t('p.ganze_firma') }}</a>
+  {% for g in gruppen %}<a href="/richtlinie?gruppe={{ g.id }}"{% if gruppe and gruppe.id == g.id %} aria-current="page"{% endif %}>{{ g.name }}</a>{% endfor %}
+</nav>
+<dl class="legende klein">
+  <div><dt>{{ t('stufe.fixed') }}</dt><dd>{{ t('stufe.fixed_text') }}</dd></div>
+  <div><dt>{{ t('stufe.default') }}</dt><dd>{{ t('stufe.default_text') }}</dd></div>
+  <div><dt>{{ t('stufe.free') }}</dt><dd>{{ t('stufe.free_text') }}</dd></div>
+  {% if gruppe %}<div><dt>{{ t('stufe.inherit') }}</dt><dd>{{ t('stufe.inherit_text') }}</dd></div>{% endif %}
+</dl>
+{% if fehler %}<p class="meldung fehler" role="alert">{{ t('h.richtlinie_fehler') }}</p>{% endif %}
+<form method="post" action="/richtlinie" class="richtlinie">
+  <input type="hidden" name="csrf" value="{{ wer.csrf }}">
+  <input type="hidden" name="gruppe" value="{{ gruppe.id if gruppe else '' }}">
+  {% for a in abschnitte %}
+  <section class="gruppe-box" aria-labelledby="ab-{{ a.name }}">
+    <h2 id="ab-{{ a.name }}">{{ t('g.' ~ a.name) }}</h2>
+    {% if a.name == 'kuerzel' %}<p class="klein">{{ t('p.kuerzel_hinweis') }}</p>{% endif %}
+    <ul class="liste">
+    {% for z in a.zeilen %}{% set e = z.e %}{% set id = e.pfad | replace('.', '-') %}
+      <li class="einstellung{% if fehler.get(e.pfad) %} mit-fehler{% endif %}">
+        <div class="einstellung-name">
+          <label for="w-{{ id }}">{{ t('s.' ~ e.pfad) }}</label>
+          {% if gruppe and z.geerbt %}<span class="klein">{{ t('p.firma_sagt') }}: {{ t('stufe.' ~ z.geerbt[0]) }}{% if z.geerbt[0] != 'free' %} · {{ wert_anzeige(e, z.geerbt[1]) }}{% endif %}</span>{% endif %}
+          {% if fehler.get(e.pfad) %}<span class="feld-fehler" role="alert">{{ t(fehler[e.pfad]) }}</span>{% endif %}
+        </div>
+        <select name="s:{{ e.pfad }}" aria-label="{{ t('p.stufe_fuer') }} {{ t('s.' ~ e.pfad) }}" class="stufe">
+          {% for st in z.stufen %}<option value="{{ st }}"{% if st == z.stufe %} selected{% endif %}>{{ t('stufe.' ~ st) }}</option>{% endfor %}
+        </select>
+        <div class="einstellung-wert">
+        {% if e.typ == 'bool' %}
+          <input type="checkbox" class="schalter" id="w-{{ id }}" name="w:{{ e.pfad }}"{% if z.wert %} checked{% endif %}>
+        {% elif e.typ == 'wahl' or (e.typ == 'zahl' and e.optionen) %}
+          <select id="w-{{ id }}" name="w:{{ e.pfad }}">
+            {% for o in e.optionen %}<option value="{{ o }}"{% if o == z.wert %} selected{% endif %}>{{ opt(e.pfad, o) }}</option>{% endfor %}
+          </select>
+        {% elif e.typ == 'liste' %}
+          <textarea id="w-{{ id }}" name="w:{{ e.pfad }}" rows="2" placeholder="{{ t('p.ein_wert_je_zeile') }}">{{ (z.wert or []) | join('\n') if z.wert is not string else z.wert }}</textarea>
+        {% elif e.max_laenge > 200 %}
+          <textarea id="w-{{ id }}" name="w:{{ e.pfad }}" rows="3" maxlength="{{ e.max_laenge }}">{{ z.wert or '' }}</textarea>
+        {% else %}
+          <input id="w-{{ id }}" name="w:{{ e.pfad }}" value="{{ z.wert if z.wert is not none else '' }}" maxlength="{{ e.max_laenge }}">
+        {% endif %}
+        </div>
+      </li>
+    {% endfor %}
+    </ul>
+  </section>
+  {% endfor %}
+  <div class="leiste-unten"><button type="submit" class="knopf haupt">{{ t('p.speichern') }}</button></div>
+</form>
+{% endblock %}

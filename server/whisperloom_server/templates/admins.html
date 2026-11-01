@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block titel %}{{ t('nav.admins') }}{% endblock %}
+{% block inhalt %}
+<h1>{{ t('nav.admins') }}</h1>
+{% if einladung %}
+<section class="gruppe-box hervor" aria-labelledby="t-link" role="status">
+  <h2 id="t-link">{{ t('p.einladung_erstellt') }}</h2>
+  <p>{{ t('p.einladung_fuer') }} <strong>{{ einladung.benutzer }}</strong> · {{ t('p.gueltig_bis') }} {{ einladung.ablauf | zeit }}</p>
+  <p class="geheimnis"><code id="einladung-link">{{ einladung.link }}</code>
+    <button type="button" class="knopf leise klein-knopf" data-kopieren="einladung-link" data-kopiert="{{ t('p.kopiert') }}">{{ t('p.kopieren') }}</button></p>
+  <p class="klein">{{ t('p.einladung_einmal') }}</p>
+</section>
+{% endif %}
+<section class="gruppe-box" aria-labelledby="t-admins">
+  <h2 id="t-admins">{{ t('p.admins_der_firma') }}</h2>
+  <ul class="liste">
+  {% for a in admins %}
+    <li class="zeile">
+      <span class="zeile-text"><strong>{{ a.benutzer }}</strong>
+        <span class="klein">{{ t('rolle.' ~ a.rolle) }} · {{ t('p.zwei_faktor') }}: {{ t('p.an') if a.totp else t('p.aus') }}{% if not a.aktiv %} · {{ t('p.einladung_offen') }}{% endif %}{% if a.gesperrt %} · {{ t('status.blocked') }}{% endif %}</span></span>
+      {% if wer.owner %}
+      <details class="mehr rechts">
+        <summary>{{ t('p.bearbeiten') }}</summary>
+        <div class="aktionen spalte">
+          <form method="post" action="/admins/{{ a.id }}/rolle" class="formular reihe"><input type="hidden" name="csrf" value="{{ wer.csrf }}">
+            <label for="r-{{ a.id }}">{{ t('p.rolle') }}</label>
+            <select id="r-{{ a.id }}" name="rolle">{% for r in ('owner', 'admin') %}<option value="{{ r }}"{% if r == a.rolle %} selected{% endif %}>{{ t('rolle.' ~ r) }}</option>{% endfor %}</select>
+            <button class="knopf leise">{{ t('p.speichern') }}</button></form>
+          <form method="post" action="/admins/{{ a.id }}/einladung"><input type="hidden" name="csrf" value="{{ wer.csrf }}"><button class="knopf leise">{{ t('p.neuer_link') }}</button></form>
+          {% if a.totp %}<form method="post" action="/admins/{{ a.id }}/totp_zuruecksetzen"><input type="hidden" name="csrf" value="{{ wer.csrf }}"><button class="knopf leise">{{ t('p.totp_zuruecksetzen') }}</button></form>{% endif %}
+          {% if a.gesperrt %}
+          <form method="post" action="/admins/{{ a.id }}/entsperren"><input type="hidden" name="csrf" value="{{ wer.csrf }}"><button class="knopf leise">{{ t('p.entsperren') }}</button></form>
+          {% else %}
+          <form method="post" action="/admins/{{ a.id }}/sperren"><input type="hidden" name="csrf" value="{{ wer.csrf }}"><button class="knopf leise">{{ t('p.sperren') }}</button></form>
+          {% endif %}
+          <form method="post" action="/admins/{{ a.id }}/loeschen"><input type="hidden" name="csrf" value="{{ wer.csrf }}"><button class="knopf gefahr">{{ t('p.admin_loeschen') }}</button></form>
+        </div>
+      </details>
+      {% endif %}
+    </li>
+  {% endfor %}
+  </ul>
+</section>
+{% if wer.owner %}
+<section class="gruppe-box" aria-labelledby="t-neu">
+  <h2 id="t-neu">{{ t('p.admin_einladen') }}</h2>
+  <form method="post" action="/admins" class="formular reihe">
+    <input type="hidden" name="csrf" value="{{ wer.csrf }}">
+    <label for="benutzer">{{ t('p.benutzername') }}</label>
+    <input id="benutzer" name="benutzer" maxlength="64" required autocapitalize="none" placeholder="vorname.nachname">
+    <label for="rolle">{{ t('p.rolle') }}</label>
+    <select id="rolle" name="rolle"><option value="admin">{{ t('rolle.admin') }}</option><option value="owner">{{ t('rolle.owner') }}</option></select>
+    <button type="submit" class="knopf haupt">{{ t('p.einladen') }}</button>
+  </form>
+  <p class="klein">{{ t('p.rollen_text') }}</p>
+</section>
+{% endif %}
+{% if wer.admin_id %}
+<section class="gruppe-box" aria-labelledby="t-konto">
+  <h2 id="t-konto">{{ t('p.mein_konto') }}</h2>
+  {% if wer.art == 'sitzung' %}
+  <details class="mehr">
+    <summary>{{ t('p.passwort_aendern') }}</summary>
+    <form method="post" action="/konto/passwort" class="formular">
+      <input type="hidden" name="csrf" value="{{ wer.csrf }}">
+      <input type="text" name="benutzer" value="{{ wer.benutzer }}" autocomplete="username" hidden>
+      <label for="alt">{{ t('p.passwort_alt') }}</label><input id="alt" name="alt" type="password" autocomplete="current-password" required>
+      <label for="neu">{{ t('p.neues_passwort') }}</label><input id="neu" name="neu" type="password" autocomplete="new-password" minlength="12" required>
+      <label for="neu2">{{ t('p.passwort_wiederholen') }}</label><input id="neu2" name="neu2" type="password" autocomplete="new-password" minlength="12" required>
+      <button class="knopf">{{ t('p.passwort_aendern') }}</button>
+    </form>
+  </details>
+  <p>{{ t('p.zwei_faktor') }}: {{ t('p.an') if ich_totp else t('p.aus') }}</p>
+  <div class="aktionen">
+    {% if not ich_totp %}<a class="knopf" href="/login/totp-einrichten">{{ t('p.totp_einschalten') }}</a>{% endif %}
+    {% if ich_totp and totp_abschaltbar %}
+    <details class="mehr">
+      <summary>{{ t('p.totp_ausschalten') }}</summary>
+      <form method="post" action="/konto/totp-aus" class="formular">
+        <input type="hidden" name="csrf" value="{{ wer.csrf }}">
+        <input type="text" name="benutzer" value="{{ wer.benutzer }}" autocomplete="username" hidden>
+        <label for="totp-aus-pw">{{ t('p.passwort_alt') }}</label>
+        <input id="totp-aus-pw" name="passwort" type="password" autocomplete="current-password" required>
+        <button class="knopf gefahr">{{ t('p.totp_ausschalten') }}</button>
+      </form>
+    </details>
+    {% endif %}
+  </div>
+  {% else %}
+  <p class="klein">{{ t('p.konto_extern') }}</p>
+  {% endif %}
+</section>
+{% endif %}
+<section class="gruppe-box" aria-labelledby="t-protokoll">
+  <h2 id="t-protokoll">{{ t('p.protokoll') }}</h2>
+  {% if not protokoll %}<p class="leer">{{ t('p.protokoll_leer') }}</p>{% else %}
+  <div class="tabelle-rahmen"><table>
+    <thead><tr><th scope="col">{{ t('p.zeit') }}</th><th scope="col">{{ t('p.wer') }}</th><th scope="col">{{ t('p.aktion') }}</th><th scope="col">{{ t('p.objekt') }}</th></tr></thead>
+    <tbody>{% for p in protokoll %}<tr><td>{{ p.zeit_ms | zeit }}</td><td>{{ p.akteur }}</td><td>{{ t('a.' ~ p.aktion) }}</td><td><code>{{ p.ziel }}</code></td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% endif %}
+</section>
+{% endblock %}
