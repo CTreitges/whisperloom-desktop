@@ -8,6 +8,7 @@ import re
 from pathlib import Path
 
 import pytest
+from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
 from whisperloom_server import auth, cli, db, firmen, konten, krypto, totp
@@ -155,3 +156,14 @@ def freies_geraet(client: TestClient, einst: Einstellungen, code: str, **werte) 
     g = enroll(client, code)
     geraet_setzen(einst, g["deviceId"], status="approved", **werte)
     return g
+
+
+def alle_routen(routen) -> list[APIRoute]:
+    """APIRoutes rekursiv (FastAPI 0.16x legt eingebundene Router als _IncludedRouter ab, nicht flach)."""
+    gefunden = []
+    for r in routen:
+        if isinstance(r, APIRoute):
+            gefunden.append(r)
+        elif getattr(r, "original_router", None) is not None:
+            gefunden += alle_routen(r.original_router.routes)
+    return gefunden

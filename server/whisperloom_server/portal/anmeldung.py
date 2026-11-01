@@ -25,6 +25,7 @@ from .basis import (
     cookie_setzen,
     csrf_pruefen,
     fehlerseite,
+    herkunft_ok,
     seite,
     verboten,
     vor_csrf,
@@ -140,7 +141,7 @@ def totp_login(request: Request, code: str = Form(""), csrf: str = Form(""), con
     s = _zwischen(request, con, "totp")
     if s is None:
         return RedirectResponse("/login", status_code=303)
-    if not krypto.gleich(s["csrf"], csrf):
+    if not (herkunft_ok(request) and krypto.gleich(s["csrf"], csrf)):
         return verboten(request)
     if not _totp_versuch(request, s):
         auth.sitzung_loeschen(con, _sitzung(request))
@@ -187,7 +188,7 @@ def totp_einrichten(request: Request, code: str = Form(""), csrf: str = Form("")
     s = _einrichten_sitzung(request, con)
     if s is None:
         return RedirectResponse("/login", status_code=303)
-    if not krypto.gleich(s["csrf"], csrf):
+    if not (herkunft_ok(request) and krypto.gleich(s["csrf"], csrf)):
         return verboten(request)
     if not _totp_versuch(request, s):
         return seite(request, "totp_einrichten.html", {**_einrichten_ctx(request, con, s), "fehler": "h.zu_oft"}, 429)
