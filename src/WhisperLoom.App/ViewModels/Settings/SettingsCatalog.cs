@@ -91,7 +91,10 @@ public static class SettingsCatalog
         new("desktop.hotkeyToggle", "hotkeys", "G_Actions", "Hotkey_Toggle"),
         new("desktop.hotkeyStage", "hotkeys", "G_Actions", "Hotkey_Stage"),
         new("desktop.hotkeyReinsert", "hotkeys", "G_Actions", "Hotkey_Reinsert"),
-        new("desktop.hotkeyRewrite", "hotkeys", "G_Actions", "Hotkey_Rewrite"),
+        // Markierung verarbeiten (W2-SEL): alle drei Starter in einer Gruppe; Tray-Eintrag ist immer da.
+        new("selection.hotkeyCombo", "hotkeys", "G_Selection", "Hotkey_Selection", "Set_SelectionHotkey_Desc"),
+        new("selection.floatingButton", "hotkeys", "G_Selection", "Set_FloatingButton", "Set_FloatingButton_Desc"),
+        new("selection.ctrlRightClick", "hotkeys", "G_Selection", "Set_CtrlRightClick", "Set_CtrlRightClick_Desc"),
         // Datenschutz
         new("history.enabled", "privacy", "G_History", "Set_HistoryEnabled", "Set_HistoryEnabled_Desc"),
         new("history.size", "privacy", "G_History", "Settings_HistorySize"),
@@ -111,11 +114,6 @@ public static class SettingsCatalog
         ["offline.localLlmModel"] = "LiteRT-Modell der Android-App; der Desktop nutzt local.ollamaModel",
         ["serverModelsEnabled"] = "Vom Desktop nicht ausgewertet; Modelllisten vom Server kommen mit W2-LOCAL",
         ["desktop.output"] = "Nur ein Wert (clipboard); die Ausgabe-Art steht in desktop.insertMode",
-        // Neue Schlüssel aus W2-C0: Verhalten und Bedienung bauen die Folge-Issues auf diesem Designsystem.
-        // Ein Schalter ohne Wirkung wäre irreführend (W2-UI1: kein neues Verhalten außer UI).
-        ["selection.hotkeyCombo"] = "W2-SEL (Markierung verarbeiten) – Seite „Tastenkürzel“",
-        ["selection.floatingButton"] = "W2-SEL (schwebender Knopf) – Seite „Ausgabe“",
-        ["selection.ctrlRightClick"] = "W2-SEL (Strg+Rechtsklick) – Seite „Ausgabe“",
     };
 
     public static SettingEntry? Find(string path) =>

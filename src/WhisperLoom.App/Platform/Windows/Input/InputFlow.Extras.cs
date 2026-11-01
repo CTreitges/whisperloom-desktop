@@ -1,5 +1,4 @@
 using WhisperLoom.App.Features.Profiles;
-using WhisperLoom.App.Features.Rewrite;
 using WhisperLoom.App.Localization;
 using WhisperLoom.App.Platform.Windows.TextOutput;
 using WhisperLoom.App.Services;
@@ -8,8 +7,7 @@ using WhisperLoom.Core.Contracts;
 namespace WhisperLoom.App.Platform.Windows.Input;
 
 /// <summary>
-/// Extras des Tastenkürzel-Ablaufs (WLD-P5b): erneut einfügen, Tray-Verlauf, Markierung umschreiben und App-Profile des
-/// Zielfensters. Während einer Erfassung bzw. eines Einfügens (<see cref="_busy"/>) startet kein zweiter Ablauf.
+/// Extras des Tastenkürzel-Ablaufs (WLD-P5b): erneut einfügen, Tray-Verlauf und App-Profile des Zielfensters. Während einer Erfassung bzw. eines Einfügens (<see cref="_busy"/>) startet kein zweiter Ablauf.
 /// </summary>
 public sealed partial class InputFlow
 {
@@ -59,49 +57,6 @@ public sealed partial class InputFlow
     /// wiederhergestellt). Kein Eingabefeld → nur Zwischenablage mit Hinweis.
     /// </summary>
     public Task<string> InsertRecentAsync(string text) => InsertTextAsync(_sink.LastTarget, text, keepCopy: true);
-
-    /// <summary>Markierung holen (Zwischenablage gesichert und wiederhergestellt), dann die Anweisung im Overlay aufnehmen.</summary>
-    private async Task BeginRewriteAsync()
-    {
-        if (_capture is null)
-        {
-            return;
-        }
-        var target = _foreground();
-        if (_controller.RewriteBlocked)
-        {
-            _target = target;
-            Toast("Rewrite_Locked");
-            return;
-        }
-        Capture capture;
-        _busy = true;
-        try
-        {
-            var console = _describe is not null && SelectionCapture.IsConsole(_describe(target).Process);
-            capture = await _capture.CaptureAsync(target, console, CancellationToken.None);
-        }
-        catch (IOException)
-        {
-            capture = Capture.Nothing;
-        }
-        finally
-        {
-            _busy = false;
-        }
-        if (capture.Text is not { } selection)
-        {
-            _target = target;
-            Toast(capture.ToastKey);
-            return;
-        }
-        if (_controller.State != DictationState.Idle || _mode != Mode.None || !Begin(Mode.Rewrite, target))
-        {
-            return;
-        }
-        _selection = selection;
-        OpenOverlay(Loc.Instance["Rewrite_Label"]);
-    }
 
     /// <summary>Hotkey bzw. CLI „erneut einfügen“ ins Vordergrundfenster.</summary>
     /// <returns>Ergebnis des Einfügens, "no-entry" (Toast) oder "busy".</returns>

@@ -79,7 +79,15 @@ public partial class App : Application
     {
         try
         {
-            var menu = new TrayMenu(host.Controller, Open, entry => host.InsertRecentTextAsync(entry.Text));
+            var menu = new TrayMenu(host.Controller, Open, entry => host.InsertRecentTextAsync(entry.Text),
+                async () =>
+                {
+                    // „Markierung verarbeiten …“ (W2-SEL); ohne Windows-Bedienung bzw. Linux-Weg nichts.
+                    if (host.ProcessSelection is { } process)
+                    {
+                        await process(null, true);
+                    }
+                });
             _ = menu.ReloadRecentAsync();
             _tray = new TrayIcon
             {
@@ -141,7 +149,15 @@ public partial class App : Application
         {
             StartWindowsInput(host, sink);
         }
-        else if (OperatingSystem.IsLinux() && host.Options.OutputFile is null)
+        if (OperatingSystem.IsLinux())
+        {
+            // Markierung verarbeiten (W2-SEL): Primärauswahl → Wähler-Fenster → Zwischenablage; auch mit --output-file (Smoke).
+            var flow = new Features.Selection.LinuxSelectionFlow(host.Controller,
+                new Platform.Linux.PrimarySelection(Secrets.ProcessRunner.Instance, Environment.GetEnvironmentVariable),
+                Features.Selection.LinuxSelectionFlow.PickInWindowAsync, text => _ = Output.DesktopNotify.ShowAsync(text));
+            host.ProcessSelection = (stage, _) => flow.RunAsync(stage);
+        }
+        if (OperatingSystem.IsLinux() && host.Options.OutputFile is null)
         {
             // Linux: Hinweis „Kopiert – Strg+V“ als Desktop-Benachrichtigung (W2-OUT); fehlt notify-send, bleibt es beim Status.
             host.HintPresenter = hint => _ = Output.DesktopNotify.ShowAsync(Localization.Loc.Instance[Output.OutputHints.Key(hint)]);
@@ -168,10 +184,12 @@ public partial class App : Application
             {
                 var status = input.Flow.Status();
                 status["hook"] = input.HookRunning;
+                status["mouseHook"] = input.MouseHookRunning;
                 return status;
             };
             RecordHotkey = async () => (await input.RecordAsync())?.ToString();
             host.InsertRecent = input.Flow.InsertRecentAsync;
+            host.ProcessSelection = (stage, tray) => tray ? input.Flow.ProcessSelectionFromTrayAsync() : input.Flow.ProcessSelectionFromCliAsync(stage);
             host.Reinsert = input.Flow.ReinsertAsync;
             // Hinweise (W2-OUT): Einfügen per Tastenkürzel zeigt seinen Toast selbst, hier nur merken; Tray/CLI zeigen ihn hier.
             sink.Inserted += outcome => host.RecordHint(Platform.Windows.TextOutput.InsertModes.Hint(outcome));

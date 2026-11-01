@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.Text.Json.Nodes;
 using WhisperLoom.App.Features.Profiles;
-using WhisperLoom.App.Features.Rewrite;
+using WhisperLoom.App.Features.Selection;
 using WhisperLoom.App.Localization;
 using WhisperLoom.App.Platform.Windows.Overlay;
 using WhisperLoom.App.Platform.Windows.TextOutput;
@@ -32,8 +32,8 @@ public interface IInputPresenter
 
 /// <summary>
 /// Ablauf der Tastenkürzel auf dem UI-Thread: Halten (Pille), Umschalten (Overlay mit Enter/Rücktaste, Knöpfen und
-/// Stufen-Wähler), Stufe (Hinweis), dazu die Extras (WLD-P5b): erneut einfügen, Markierung umschreiben (Overlay nimmt die
-/// Anweisung auf) und App-Profile des Zielfensters. Das Zielfenster wird beim Start gemerkt und an die
+/// Stufen-Wähler), Stufe (Hinweis), dazu die Extras (WLD-P5b): erneut einfügen, App-Profile des Zielfensters und „Markierung
+/// verarbeiten“ (W2-SEL, <c>InputFlow.Selection.cs</c>; „Nach Anweisung umschreiben“ nimmt die Anweisung im Overlay auf). Das Zielfenster wird beim Start gemerkt und an die
 /// <see cref="InsertOutputSink"/> gegeben.
 /// </summary>
 public sealed partial class InputFlow
@@ -48,7 +48,6 @@ public sealed partial class InputFlow
     private readonly Func<IntPtr> _foreground;
     private readonly Action<bool> _overlayKeys;
     private readonly Func<IntPtr, WindowInfo>? _describe;
-    private readonly SelectionCapture? _capture;
     private Mode _mode;
     private IntPtr _target;
     private string _selection = "";
@@ -60,19 +59,20 @@ public sealed partial class InputFlow
         Hold,
         Toggle,
         Rewrite,
+
+        /// <summary>Stufen-Wähler der Markierung offen (W2-SEL).</summary>
+        Picker,
     }
 
     /// <param name="overlayKeys">Schaltet im Hook Enter/Rücktaste ans Overlay (true) bzw. wieder frei.</param>
     /// <param name="describe">Prozess und Titel eines Fensters für die App-Profile; null = keine Profile.</param>
-    /// <param name="capture">Markierung holen (Umschreiben); null = nicht verfügbar.</param>
     public InputFlow(
         DictationController controller,
         InsertOutputSink sink,
         IInputPresenter ui,
         Func<IntPtr> foreground,
         Action<bool> overlayKeys,
-        Func<IntPtr, WindowInfo>? describe = null,
-        SelectionCapture? capture = null)
+        Func<IntPtr, WindowInfo>? describe = null)
     {
         _controller = controller;
         _sink = sink;
@@ -80,7 +80,6 @@ public sealed partial class InputFlow
         _foreground = foreground;
         _overlayKeys = overlayKeys;
         _describe = describe;
-        _capture = capture;
         Overlay = new OverlayViewModel(PauseResume, Discard, () => _ = SendAsync()) { Retry = () => _ = RetryFromOverlayAsync() };
         controller.PropertyChanged += OnControllerChanged;
         sink.Inserted += outcome =>
@@ -105,7 +104,11 @@ public sealed partial class InputFlow
     public async Task HandleAsync(HotkeyAction action)
     {
         // Während Erfassung bzw. Einfügen (await) startet kein zweiter Ablauf mit eigener Zwischenablage-Sicherung.
-        if (_busy && action is HotkeyAction.HoldStart or HotkeyAction.Toggle or HotkeyAction.Rewrite or HotkeyAction.Reinsert)
+        if (_busy && action is HotkeyAction.HoldStart or HotkeyAction.Toggle or HotkeyAction.Selection or HotkeyAction.Reinsert)
+        {
+            return;
+        }
+        if (OnSelectionKey(action))
         {
             return;
         }
@@ -145,7 +148,7 @@ public sealed partial class InputFlow
                 _ui.HidePill();
                 break;
             case HotkeyAction.Toggle when _mode == Mode.Toggle && _controller.IsRecording:
-            case HotkeyAction.Rewrite when _mode == Mode.Rewrite && _controller.IsRecording:
+            case HotkeyAction.Selection when _mode == Mode.Rewrite && _controller.IsRecording:
                 await SendAsync();
                 break;
             case HotkeyAction.Toggle when _controller.State == DictationState.Idle:
@@ -154,8 +157,8 @@ public sealed partial class InputFlow
                     OpenOverlay(StageLabel());
                 }
                 break;
-            case HotkeyAction.Rewrite when _controller.State == DictationState.Idle && _mode == Mode.None:
-                await BeginRewriteAsync();
+            case HotkeyAction.Selection when _controller.State == DictationState.Idle && _mode == Mode.None:
+                await StartSelectionAsync(SelectionTrigger.Hotkey, _foreground(), null);
                 break;
             case HotkeyAction.Reinsert when _controller.State == DictationState.Idle && _mode == Mode.None:
                 await ReinsertAsync();
@@ -182,6 +185,7 @@ public sealed partial class InputFlow
             _ui.SetPill(_controller.Level, processing: false);
         }
         LengthTick();
+        SelectionTick();
     }
 
     public JsonObject Status()
@@ -190,6 +194,7 @@ public sealed partial class InputFlow
         status["mode"] = ModeName;
         status["overlayState"] = Overlay.State.ToString().ToLowerInvariant();
         status["overlayStage"] = Overlay.Stage;
+        status["selection"] = SelectionStatus();
         status["profile"] = _controller.ActiveProfile is { } m ? AppProfiles.DisplayName(m.Profile) : null;
         status["lastInsert"] = _sink.LastOutcome?.ToString();
         status["lastFocus"] = _sink.LastFocus?.ToString();

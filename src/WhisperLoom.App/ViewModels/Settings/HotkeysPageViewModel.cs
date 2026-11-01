@@ -9,4 +9,9 @@ public sealed class HotkeysPageViewModel(SettingsViewModel session, string toggl
 
     /// <summary>Befehl für ein Kürzel der Desktop-Umgebung (Linux).</summary>
     public string ToggleCommand { get; } = toggleCommand;
+
+    /// <summary>Befehl „Markierung verarbeiten“ für ein Kürzel der Desktop-Umgebung (Linux, W2-SEL).</summary>
+    public string SelectionCommand => ToggleCommand.EndsWith(" toggle", StringComparison.Ordinal)
+        ? ToggleCommand[..^" toggle".Length] + " process-selection"
+        : "WhisperLoom process-selection";
 }

@@ -114,7 +114,7 @@ public sealed class KeyboardHook : IDisposable
         }
         if (decision.Action != HotkeyAction.None)
         {
-            _onAction(decision.Action, decision.Recorded);
+            _onAction(decision.Action, decision.Recorded ?? decision.PickerKey);
         }
         if (decision.ReplayWinUpMasked)
         {

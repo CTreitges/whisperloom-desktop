@@ -70,11 +70,11 @@ public sealed class SelectionCaptureTest
     }
 
     [Fact]
-    public void Reinsert_and_rewrite_combos_fire_and_swallow_their_key()
+    public void Reinsert_and_selection_combos_fire_and_swallow_their_key()
     {
-        var m = new HotkeyStateMachine(null, null, null) { Reinsert = Hotkey.DefaultReinsert, Rewrite = Hotkey.DefaultRewrite };
+        var m = new HotkeyStateMachine(null, null, null) { Reinsert = Hotkey.DefaultReinsert, Selection = Hotkey.Parse("Ctrl+Alt+Shift+R") };
         Assert.Equal("Ctrl+Alt+Shift+V", Hotkey.DefaultReinsert.ToString());
-        Assert.Equal(Hotkey.DefaultRewrite, Hotkey.Parse("Ctrl+Alt+Shift+R"));
+        Assert.Equal(Hotkey.DefaultSelection, Hotkey.Parse("Ctrl+Alt+Shift+S"));
 
         foreach (var vk in new[] { Hotkey.VkLControl, Hotkey.VkLMenu, Hotkey.VkLShift })
         {
@@ -82,7 +82,7 @@ public sealed class SelectionCaptureTest
         }
         Assert.Equal(new HookDecision(true, HotkeyAction.Reinsert), m.OnKey(new KeyInput('V', true)));
         Assert.True(m.OnKey(new KeyInput('V', false)).Swallow);
-        Assert.Equal(new HookDecision(true, HotkeyAction.Rewrite), m.OnKey(new KeyInput('R', true)));
+        Assert.Equal(new HookDecision(true, HotkeyAction.Selection), m.OnKey(new KeyInput('R', true)));
         // Ohne Umschalt ist es eine andere Kombi.
         m.OnKey(new KeyInput('R', false));
         m.OnKey(new KeyInput(Hotkey.VkLShift, false));
