@@ -3,8 +3,10 @@
 Ablauf: init → Firma per CLI (mit erstem owner) → Server starten → Einladung annehmen → TOTP aus dem angezeigten
 Test-Geheimnis einrichten → abmelden → Login mit Passwort + TOTP → Gerät per API enrollen → im Portal freigeben →
 Konfiguration abrufen (200, dann 304) → Prozess über die gespeicherte PID beenden. Letzte Zeile: SERVER SMOKE OK.
+Mit --proxy zusätzlich (W2-SRV2): lokaler Fake-Anbieter (fake_upstream.py, eigener Prozess, Freigabe per
+WL_UPSTREAM_ALLOW=127.0.0.1/32), Erkennung und Text über den Proxy, Nutzung, CSV, Budget (smoke_proxy.py).
 
-Aufruf: py -3 -X utf8 server/tools/smoke_server.py [--python <venv-python>] [--keep]
+Aufruf: py -3 -X utf8 server/tools/smoke_server.py [--python <venv-python>] [--keep] [--proxy]
 """
 
 import argparse
@@ -27,6 +29,9 @@ SERVER = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(SERVER))
 from whisperloom_server import totp  # noqa: E402 (nur stdlib)
 
+sys.path.insert(0, str(SERVER / "tools"))
+import smoke_proxy  # noqa: E402 (nur stdlib)
+
 PASSWORT = "smoke-passwort-nicht-echt-1"
 
 
@@ -42,8 +47,8 @@ class Sitzung:
         self.opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(self.jar), OhneWeiterleitung)
 
     def anfrage(self, methode: str, pfad: str, formular: dict | None = None, json_body: dict | None = None,
-                headers: dict | None = None) -> tuple[int, dict, bytes]:
-        daten, kopf = None, dict(headers or {})
+                headers: dict | None = None, daten: bytes | None = None) -> tuple[int, dict, bytes]:
+        kopf = dict(headers or {})
         if methode == "POST":
             kopf.setdefault("Origin", self.basis)  # wie ein Browser; die Portal-Formulare prüfen die Herkunft
         if formular is not None:
@@ -87,6 +92,7 @@ def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--python", default=None, help="Python der Server-venv (Standard: server/.venv)")
     p.add_argument("--keep", action="store_true", help="Datenordner nicht löschen")
+    p.add_argument("--proxy", action="store_true", help="zusätzlich Proxy, Nutzung und Budget gegen einen Fake-Anbieter")
     a = p.parse_args()
     py = a.python or venv_python()
     port = freier_port()
@@ -94,8 +100,15 @@ def main() -> int:
     basis = f"http://127.0.0.1:{port}"
     env = {**os.environ, "WL_DATA_DIR": str(daten), "WL_BASE_URL": basis, "WL_AUTH_MODES": "password_totp",
            "PYTHONIOENCODING": "utf-8"}
-    for k in ("WL_MASTER_KEY", "WL_MASTER_KEY_FILE", "WL_CONFIG_FILE", "WL_TRUSTED_PROXIES"):
+    for k in ("WL_MASTER_KEY", "WL_MASTER_KEY_FILE", "WL_CONFIG_FILE", "WL_TRUSTED_PROXIES", "WL_UPSTREAM_ALLOW"):
         env.pop(k, None)
+    fake = None
+    if a.proxy:
+        env["WL_UPSTREAM_ALLOW"] = "127.0.0.1/32"  # der Fake-Anbieter lauscht lokal (README „SSRF-Schutz“)
+        fake_port = freier_port()
+        fake = subprocess.Popen([sys.executable, str(SERVER / "tools" / "fake_upstream.py"), "--port", str(fake_port),
+                                 "--key", smoke_proxy.FAKE_KEY, "--name", "smoke-fake"], stdout=subprocess.DEVNULL)
+        (daten / "fake.pid").write_text(str(fake.pid), encoding="ascii")
 
     def cli(*args: str) -> str:
         r = subprocess.run([py, "-m", "whisperloom_server", *args], cwd=SERVER, env=env, capture_output=True, timeout=60)
@@ -160,8 +173,22 @@ def main() -> int:
         pruefe(st == 200 and k["keyMode"] == "proxy" and k["tenantName"] == "Smoke GmbH", "Konfiguration abgerufen")
         st, _, _ = api.anfrage("GET", "/api/v1/config", headers={**h, "If-None-Match": kopf["etag"]})
         pruefe(st == 304, "ETag → 304")
+        if fake is not None:
+            fake_basis = f"http://127.0.0.1:{fake_port}"
+            for _ in range(100):
+                try:
+                    if Sitzung(fake_basis).anfrage("GET", "/healthz")[0] == 200:
+                        break
+                except OSError:
+                    time.sleep(0.1)
+            pruefe(fake.poll() is None, f"Fake-Anbieter läuft (PID {fake.pid}, Port {fake_port})")
+            smoke_proxy.pruefen(s, api, g["deviceToken"], fake_basis, pruefe, csrf)
     finally:
-        # Nur den eigenen Prozess über die gespeicherte PID beenden (AP8).
+        # Nur die eigenen Prozesse über die gespeicherte PID beenden (AP8).
+        if fake is not None and fake.poll() is None:
+            fake.terminate()
+            fake.wait(timeout=10)
+            print(f"ok  Fake-Anbieter {int((daten / 'fake.pid').read_text())} beendet")
         if proc.poll() is None:
             proc.terminate()
             try:

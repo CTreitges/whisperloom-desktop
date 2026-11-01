@@ -126,7 +126,54 @@ CREATE TABLE audit (
 CREATE INDEX audit_firma_zeit ON audit(firma_id, zeit_ms);
 """
 
-MIGRATIONEN: list[str] = [_V1]
+# W2-SRV2: Modell je Zugang (Proxy), Nutzung je Gerät/Gruppe/Monat (nur Zähler), Fehler je Klasse, Budgets, Preise.
+# nutzung.geraet_id ohne Fremdschlüssel: Zähler gelöschter Geräte bleiben in den Summen der Firma.
+_V2 = """
+ALTER TABLE schluessel ADD COLUMN modell TEXT NOT NULL DEFAULT '';
+CREATE TABLE nutzung (
+    firma_id TEXT NOT NULL REFERENCES firma(id) ON DELETE CASCADE,
+    geraet_id TEXT NOT NULL,
+    gruppe_id TEXT NOT NULL DEFAULT '',
+    monat TEXT NOT NULL,
+    anfragen INTEGER NOT NULL DEFAULT 0,
+    audio_ms INTEGER NOT NULL DEFAULT 0,
+    tokens_ein INTEGER NOT NULL DEFAULT 0,
+    tokens_aus INTEGER NOT NULL DEFAULT 0,
+    kosten_mikro INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (firma_id, geraet_id, gruppe_id, monat)
+);
+CREATE INDEX nutzung_monat ON nutzung(firma_id, monat);
+CREATE TABLE nutzung_fehler (
+    firma_id TEXT NOT NULL REFERENCES firma(id) ON DELETE CASCADE,
+    geraet_id TEXT NOT NULL,
+    gruppe_id TEXT NOT NULL DEFAULT '',
+    monat TEXT NOT NULL,
+    klasse TEXT NOT NULL,
+    anzahl INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (firma_id, geraet_id, gruppe_id, monat, klasse)
+);
+CREATE TABLE budget (
+    firma_id TEXT NOT NULL REFERENCES firma(id) ON DELETE CASCADE,
+    ebene TEXT NOT NULL CHECK (ebene IN ('firma', 'gruppe', 'geraet')),
+    ziel_id TEXT NOT NULL DEFAULT '',
+    max_anfragen INTEGER,
+    max_audio_min INTEGER,
+    max_tokens INTEGER,
+    max_kosten_mikro INTEGER,
+    warn_prozent INTEGER NOT NULL DEFAULT 80,
+    PRIMARY KEY (firma_id, ebene, ziel_id)
+);
+CREATE TABLE preis (
+    firma_id TEXT NOT NULL REFERENCES firma(id) ON DELETE CASCADE,
+    modell TEXT NOT NULL,
+    minute_mikro INTEGER NOT NULL DEFAULT 0,
+    mio_ein_mikro INTEGER NOT NULL DEFAULT 0,
+    mio_aus_mikro INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (firma_id, modell)
+);
+"""
+
+MIGRATIONEN: list[str] = [_V1, _V2]
 SCHEMA_VERSION = len(MIGRATIONEN)
 
 

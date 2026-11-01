@@ -1,7 +1,7 @@
 """App-Fabrik. Start: `python -m whisperloom_server serve` bzw. `uvicorn --factory whisperloom_server.app:create_app`.
 
 Basis: whisperloom-android feat/simple-portal server/simple-whisper/app.py
-Erweiterung (W2-SRV2): weitere Router in ROUTER bzw. nach create_app per app.include_router einhängen.
+Proxy (W2-SRV2): proxy.router, auch im Datei-Modus.
 """
 
 from contextlib import asynccontextmanager
@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from . import api_v1, dateimodus, db, fehler, log
+from . import api_v1, dateimodus, db, fehler, log, proxy
 from .config import Einstellungen, lade_master
 from .krypto import Krypto
 from .ratelimit import Begrenzer
@@ -62,6 +62,7 @@ def create_app(einst: Einstellungen | None = None) -> FastAPI:
         return JSONResponse({"status": "ok"})
 
     app.include_router(api_v1.router)
+    app.include_router(proxy.router)
     if einst.datei_modus:
         app.state.datei = dateimodus.Beobachter(einst, app.state.krypto)
         app.state.datei.laden(streng=True)

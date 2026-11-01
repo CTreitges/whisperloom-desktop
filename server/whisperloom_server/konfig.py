@@ -40,6 +40,12 @@ def bauen(con: sqlite3.Connection, kry: Krypto, basis_url: str, firma: sqlite3.R
         _fest(settings, levels, "llm.providerId", "same")
         _fest(settings, levels, "sttFallback.enabled", False)
         _fest(settings, levels, "llmFallback.enabled", False)
+        # Legt ein Zugang das Modell fest, nimmt der Proxy genau dieses (W2-SRV2); die App soll es auch anzeigen.
+        modelle = schluessel.modelle(con, firma["id"])
+        if "stt" in modelle:
+            _fest(settings, levels, "stt.model", modelle["stt"])
+        if "llm" in modelle:
+            _fest(settings, levels, "llm.model", modelle["llm"])
         if "allowedProviders" in policy and "custom" not in policy["allowedProviders"]:
             policy["allowedProviders"] = [*policy["allowedProviders"], "custom"]
     else:
