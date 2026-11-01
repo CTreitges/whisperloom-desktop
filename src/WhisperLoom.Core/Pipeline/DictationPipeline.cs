@@ -27,6 +27,9 @@ public sealed class DictationPipelineOptions
 
     /// <summary>Kontext-Wörter für die Erkennung, bei jedem Diktat neu (WLD-P1a: <c>Vocabulary</c>; verdrahtet WLD-INT).</summary>
     public Func<WhisperLoomSettings, string>? VocabularyPrompt { get; init; }
+
+    /// <summary>Nacharbeit der Modell-Antwort; Standard <see cref="TextCleanup.For"/> (Desktop-Umschreiben: <see cref="TextCleanup.ForRewrite"/>).</summary>
+    public TextCleanup? Cleanup { get; init; }
 }
 
 /// <summary>
@@ -44,7 +47,7 @@ public sealed class DictationPipeline(
 {
     private readonly DictationPipelineOptions _options = options ?? new DictationPipelineOptions();
     private readonly ModelCache _cache = options?.ModelCache ?? new ModelCache();
-    private readonly TextCleanup _cleanup = TextCleanup.For(polisher);
+    private readonly TextCleanup _cleanup = options?.Cleanup ?? TextCleanup.For(polisher);
 
     public Task<DictationResult> RunAsync(DictationRequest request, CancellationToken ct) => RunAsync(request, null, null, ct);
 

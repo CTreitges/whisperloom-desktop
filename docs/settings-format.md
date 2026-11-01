@@ -67,7 +67,27 @@ Richtlinie), Modell `src/WhisperLoom.Core/Contracts/Settings/WhisperLoomSettings
 
 | Abschnitt | Gehört | Andere App |
 |---|---|---|
-| `desktop` | Desktop: `uiLanguage` (`""`/`de`/`en`), `output`, `microphone` (gerätebezogen), `stageFontSize`, `proxyMode` (`system`/`off`/`manual`), `proxyUrl` (ein manueller Proxy bekommt nie die Windows-Anmeldung NTLM/Kerberos, nur der System-Proxy); später Hotkeys und App-Profile (P3, P5b) | Android liest ihn nicht, speichert ihn beim Import und gibt ihn beim Export unverändert zurück |
+
+| `desktop` | Desktop: `uiLanguage` (`""`/`de`/`en`), `output`, `microphone` (gerätebezogen), `stageFontSize`, `proxyMode` (`system`/`off`/`manual`), `proxyUrl` (ein manueller Proxy bekommt nie die Windows-Anmeldung NTLM/Kerberos, nur der System-Proxy); Windows: `hotkeysEnabled`, `hotkeyHold`, `hotkeyToggle`, `hotkeyStage`, `hotkeyReinsert` (`Ctrl+Alt+Shift+V`), `hotkeyRewrite` (`Ctrl+Alt+Shift+R`), `insertMode` (`paste`/`type`/`clipboard`), `profiles` (App-Profile, siehe unten) | Android liest ihn nicht, speichert ihn beim Import und gibt ihn beim Export unverändert zurück |
+
+### App-Profile (`desktop.profiles`, Windows)
+
+Liste von Objekten; gilt für Diktate per Tastenkürzel ins Zielfenster.
+
+| Feld | Typ | Standard | Bedeutung |
+|---|---|---|---|
+| `name` | Text | `""` | Anzeige im Hinweis „Profil · Stufe“; `""` = Prozessname |
+| `process` | Text | `""` | Prozessname mit oder ohne `.exe`, Groß-/Kleinschreibung egal (`OUTLOOK.EXE`); leer = Profil greift nie |
+| `titlePattern` | Text | `""` | Regex auf den Fenstertitel (ohne Groß-/Kleinschreibung); `""` = jeder Titel; ungültig = Profil greift nie |
+| `stage` | Text | `""` | Stufen-Schlüssel wie `refine.stage`; `""` = Standard-Stufe. Eine von IT gesperrte Stufe geht vor |
+| `insertMode` | Text | `""` | `paste`/`type`/`clipboard`; `""` = `desktop.insertMode` |
+| `pressEnter` | bool | `false` | Nach dem Einfügen Enter senden. Ein Import übernimmt `true` nur für ein Profil, das es so schon gab; sonst kommt das Profil mit `false` an (Warnung in der Vorschau) und Enter gilt erst, wenn der Nutzer es im Profil selbst einschaltet |
+| `enabled` | bool | `true` | Profil aktiv |
+
+Vorrang: ein Profil mit passendem `titlePattern` vor einem Profil nur mit `process`; unter gleich genauen das erste der
+Liste. Der Stufen-Hotkey ändert die Stufe des passenden Profils (Vordergrundfenster bzw. Ziel des laufenden Diktats) und
+speichert sie hier; ohne passendes Profil ändert er `refine.stage`.
+
 | `android` | Android-eigene Felder (Inhalt bestimmt die Android-App) | Desktop liest ihn nicht, zeigt ihn nicht in der Vorschau, prüft ihn nicht und gibt ihn unverändert weiter |
 
 ## Provisioning-Zusatz

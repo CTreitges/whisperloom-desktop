@@ -56,6 +56,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         Microphones = [new Choice("", loc["Mic_Default"]), .. (microphones ?? []).Select(m => new Choice(m, m))];
         InsertModes = [.. new[] { "paste", "type", "clipboard" }.Select(m => new Choice(m, loc["Insert_" + m]))];
         Hotkeys = new HotkeysViewModel(_desktop, recordHotkey);
+        Profiles = new Features.Profiles.ProfilesViewModel(_desktop);
 
         _sttProvider = Pick(SttProviders, _s.Stt.ProviderId);
         _sttFallbackProvider = Pick(SttProviders, _s.SttFallback.ProviderId);
@@ -108,6 +109,9 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     /// <summary>Windows: Tastenkürzel-Seite (Phase 3).</summary>
     public HotkeysViewModel Hotkeys { get; }
+
+    /// <summary>App-Profile (nur Windows, WLD-P5b).</summary>
+    public Features.Profiles.ProfilesViewModel Profiles { get; }
 
     public KeyFieldViewModel SttKey { get; }
     public KeyFieldViewModel SttFallbackKey { get; }
@@ -184,6 +188,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         _desktop.UiLanguage = UiLanguage.Value;
         _desktop.InsertMode = InsertMode.Value;
         Hotkeys.Apply();
+        Profiles.Apply();
         SettingsStore.SetDesktop(_s, _desktop);
         Local.Apply();
         var result = SettingsJson.Deserialize(SettingsJson.Serialize(_s));
