@@ -85,13 +85,13 @@ internal static class HelpShotScenes
     private static void Managed(ControllerFixture f)
     {
         f.Controller.Settings.Management.TenantName = "Beispiel GmbH";
-        f.Controller.Settings.Stt.Model = "whisper-1";
+        f.Controller.Settings.Stt.Model = "gpt-transcribe";
         f.Controller.Policy = new Core.Settings.PolicySettings
         {
             Locked = ["stt.providerId", "secrets.stt", "stt.baseUrl", "stt.readTimeoutSec"],
             Defaults = new Dictionary<string, System.Text.Json.JsonElement>
             {
-                ["stt.model"] = System.Text.Json.JsonSerializer.SerializeToElement("whisper-1"),
+                ["stt.model"] = System.Text.Json.JsonSerializer.SerializeToElement("gpt-transcribe"),
             },
         };
     }
@@ -218,7 +218,7 @@ internal static class HelpShotScenes
         {
             var at = now.AddHours(-hours);
             await f.History.AddAsync(new HistoryEntry(FileHistoryStore.NewId(at), at, lang, 6200, raw, text,
-                new Refinement(RefineModes.FromKey(stage)), "OpenAI · whisper-1", stage == "off" ? null : "gpt-5-mini"), CancellationToken.None);
+                new Refinement(RefineModes.FromKey(stage)), "OpenAI · gpt-transcribe", stage == "off" ? null : "gpt-6-luna"), CancellationToken.None);
         }
         var actions = new HistoryActions(_ => Task.FromResult(true), _ => Task.FromResult("Pasted"),
             (id, stage) => f.Controller.ReprocessVersionAsync(id, stage), f.Controller.EditHistoryAsync,
