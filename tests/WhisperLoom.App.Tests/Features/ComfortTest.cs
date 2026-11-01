@@ -133,7 +133,8 @@ public sealed class ComfortTest
         var send = flow.HandleAsync(HotkeyAction.OverlaySend);
         await WaitFor(() => f.Controller.IsRefining);
         await flow.HandleAsync(HotkeyAction.Toggle);
-        await send;
+        // Zeitgrenze: ohne wirksamen Ausweg wartete die langsame Verbesserung sonst ewig (Test hinge statt rot zu werden).
+        await send.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
         Assert.Equal("Hallo Welt", rig.Keys.Target);
         Assert.Null(f.Controller.LastRefined!.Model);
         Assert.Null(f.Controller.LastRefined.Skipped); // ohne Hinweis, wie Android
