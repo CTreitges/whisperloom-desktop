@@ -173,7 +173,13 @@ CREATE TABLE preis (
 );
 """
 
-MIGRATIONEN: list[str] = [_V1, _V2]
+# W2-SFIX: Zeitpunkt, zu dem ein Admin die TOTP-Einrichtung beim Login übersprungen hat (0 = nie). Firmen bleiben
+# unverändert (keine stille Migration ihrer Anmeldearten).
+_V3 = """
+ALTER TABLE admin ADD COLUMN totp_spaeter_ms INTEGER NOT NULL DEFAULT 0;
+"""
+
+MIGRATIONEN: list[str] = [_V1, _V2, _V3]
 SCHEMA_VERSION = len(MIGRATIONEN)
 
 

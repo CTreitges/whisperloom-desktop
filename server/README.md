@@ -85,7 +85,7 @@ Für Tests (aus `server/`): `.venv/Scripts/python.exe -m pip install -r requirem
 |---|---|---|
 | `WL_DATA_DIR` | `~/.local/share/whisperloom-server` (Docker: `/data`) | Datenordner (DB, `master.key`, `ausgabe/`) |
 | `WL_BASE_URL` | `http://127.0.0.1:8080` | Öffentliche Adresse; `https://` → Cookies `Secure` mit `__Host-`-Präfix |
-| `WL_AUTH_MODES` | `password_totp` | Anmeldearten, kommagetrennt (siehe unten) oder genau `file` |
+| `WL_AUTH_MODES` | `password_totp,password` | Anmeldearten, kommagetrennt (siehe unten) oder genau `file` |
 | `WL_TRUSTED_PROXIES` | – | Genaue Adresse(n) des Reverse-Proxys, z. B. `127.0.0.1/32` oder `172.30.0.10/32`; nie ganze Docker- oder Firmennetze (siehe trusted_header) |
 | `WL_TRUSTED_HEADER` | `Remote-User` | Header mit dem Benutzernamen (trusted_header) |
 | `WL_CONFIG_FILE` | – | YAML- oder JSON-Datei im Datei-Modus |
@@ -129,10 +129,19 @@ Dazu `WL_TRUSTED_PROXIES=127.0.0.1/32`, damit Rate-Limits die echte Client-IP se
 
 `WL_AUTH_MODES` legt fest, was die Instanz erlaubt. Jede Firma kann auf der Seite „Firma“ weiter einschränken (owner).
 
+**Zwei-Faktor ist standardmäßig freiwillig** (ohne `WL_AUTH_MODES` gilt `password_totp,password`). Neue Firmen erlauben
+beide Arten: Beim ersten Login sieht ein Admin die TOTP-Einrichtung mit dem Knopf „Später einrichten“; wer überspringt,
+meldet sich danach nur mit Passwort an, sieht in der Übersicht den Hinweis „Zwei-Faktor ist nicht eingerichtet –
+empfohlen“ und kann es jederzeit unter Admins → „Mein Konto“ einschalten. Ein owner verlangt Zwei-Faktor für alle
+Admins, indem er auf der Seite „Firma“ nur „Passwort und Zwei-Faktor“ ankreuzt; dann gibt es keinen Knopf, der Server
+lehnt ein Überspringen ab (403), und Sitzungen ohne zweiten Faktor enden. Firmen, die schon so eingestellt sind, bleiben
+unverändert. **Update-Hinweis:** Wer `WL_AUTH_MODES` bisher nicht gesetzt hatte, bekam Pflicht-TOTP; Firmen ohne eigene
+Einschränkung erlauben nach dem Update beide Arten. Pflicht für die ganze Instanz behalten: `WL_AUTH_MODES=password_totp`.
+
 | Art | Verhalten | Beispiel |
 |---|---|---|
-| `password_totp` (Standard) | Passwort + 6-stelliger Code einer Authenticator-App. Wer noch kein TOTP hat, richtet es beim ersten Login ein. | `WL_AUTH_MODES=password_totp` |
-| `password` | Passwort, TOTP freiwillig je Konto („2FA abschaltbar“). Eine Firma, die nur `password_totp` erlaubt, verlangt TOTP trotzdem. | `WL_AUTH_MODES=password_totp,password` |
+| `password_totp` (Standard, zusammen mit `password`) | Passwort + 6-stelliger Code einer Authenticator-App. Erlaubt die Firma nur diese Art, richtet jedes Konto ohne TOTP es beim ersten Login ein (Pflicht). | `WL_AUTH_MODES=password_totp` |
+| `password` (Standard, zusammen mit `password_totp`) | Passwort, TOTP freiwillig je Konto. Erlaubt die Firma beide Arten, bietet der erste Login die Einrichtung mit „Später einrichten“ an; Konten mit TOTP geben den Code weiter ein. | `WL_AUTH_MODES=password_totp,password` |
 | `trusted_header` | Vorgeschaltete Anmeldung (Authelia, oauth2-proxy, Authentik). Der Header mit dem Benutzernamen gilt nur von `WL_TRUSTED_PROXIES`; von jeder anderen Adresse wird er ignoriert. Der Benutzername muss als Admin angelegt sein. | `WL_AUTH_MODES=trusted_header WL_TRUSTED_PROXIES=127.0.0.1/32 WL_TRUSTED_HEADER=Remote-User` |
 | `local_only` | Portal ohne Login, nur direkt auf dem Server-Rechner (`127.0.0.1`/`::1`, lokaler Host-Header, kein `X-Forwarded-*`). Von anderen Adressen: 403. Nicht hinter einem Reverse-Proxy auf demselben Rechner verwenden. Im Docker-Container wirkungslos (Gegenstelle ist das Docker-Netz). | `WL_AUTH_MODES=local_only WL_BASE_URL=http://127.0.0.1:8080` |
 | `file` | Kein Portal, kein Admin-Login. Firmen, Gruppen, Richtlinie und Keys aus `WL_CONFIG_FILE`. Geräte freigeben per `autoApprove` oder CLI `device-approve`. | `WL_AUTH_MODES=file WL_CONFIG_FILE=/etc/whisperloom/firmen.yaml` |
@@ -345,13 +354,22 @@ See the Caddy and nginx examples above; set `WL_TRUSTED_PROXIES=127.0.0.1/32` so
 
 | Method | Behaviour |
 |---|---|
-| `password_totp` (default) | Password plus 6-digit authenticator code; accounts without TOTP set it up at first sign-in. |
-| `password` | Password, TOTP optional per account (two-factor can be turned off). A company allowing only `password_totp` still requires it. |
+| `password_totp` (default, together with `password`) | Password plus 6-digit authenticator code. If a company allows only this method, every account without TOTP sets it up at first sign-in (mandatory). |
+| `password` (default, together with `password_totp`) | Password, TOTP optional per account. If a company allows both, the first sign-in offers the setup with “Set up later”; accounts with TOTP keep entering their code. |
 | `trusted_header` | Upstream sign-in (Authelia, oauth2-proxy, Authentik). The user-name header counts only from `WL_TRUSTED_PROXIES` and is ignored from any other address. The user name must exist as an admin. Trust only the proxy's exact address (`/32`), never a whole Docker or office network: anything sending from a trusted address can claim any admin. The proxy must set or overwrite the header on every request; a repeated header is rejected. |
 | `local_only` | Portal without sign-in, only directly on the server machine (`127.0.0.1`/`::1`, local Host header, no `X-Forwarded-*`). Other addresses get 403. Do not use behind a reverse proxy on the same machine; no effect inside Docker. |
 | `file` | No portal, no admin sign-in. Companies, groups, policy and keys come from `WL_CONFIG_FILE` (YAML or JSON, `env:NAME` references for secrets), re-read on SIGHUP and on file change. Approve devices via `autoApprove` or `device-approve`. |
 
 Each company may restrict the instance's methods further (page “Company”, owners only).
+
+**Two-factor is optional by default** (without `WL_AUTH_MODES` the server uses `password_totp,password`). New companies
+allow both: at the first sign-in an admin sees the TOTP setup with a “Set up later” button; after skipping, they sign in
+with the password only, see the hint “Two-factor is not set up – recommended” on the overview and can turn it on any
+time under Admins → “My account”. An owner requires two-factor for all admins by ticking only “Password and two-factor”
+on the page “Company”; then there is no button, the server rejects skipping (403) and sessions without a second factor
+end. Companies already set up that way stay unchanged. **Upgrade note:** instances that did not set `WL_AUTH_MODES`
+used to require TOTP; companies without their own restriction allow both methods after the update. To keep TOTP
+mandatory for the whole instance, set `WL_AUTH_MODES=password_totp`.
 
 ### Policy, keys, master key
 

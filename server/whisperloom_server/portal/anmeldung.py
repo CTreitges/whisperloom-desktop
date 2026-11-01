@@ -3,6 +3,8 @@
 Basis: whisperloom-android feat/simple-portal server/simple-whisper/portal.py (Login, Einladung, Logout)
 TOTP-Pflicht: Erlaubt die Firma (bzw. Instanz) `password` nicht, braucht jedes Konto TOTP und richtet es beim ersten
 Login ein. Erlaubt sie `password`, gilt TOTP nur für Konten, die es selbst eingeschaltet haben.
+Optional (W2-SFIX): Erlaubt sie beides, bietet der erste Login die Einrichtung mit „Später einrichten“ an; wer
+überspringt, meldet sich danach nur mit Passwort an, bis er TOTP unter „Mein Konto“ einschaltet.
 """
 
 import sqlite3
@@ -48,6 +50,11 @@ def totp_pflicht(arten: tuple[str, ...]) -> bool:
     return "password" not in arten
 
 
+def totp_angebot(arten: tuple[str, ...]) -> bool:
+    """Einrichtung beim Login anbieten, aber überspringbar: beide Passwort-Arten erlaubt."""
+    return "password" in arten and "password_totp" in arten
+
+
 def _vor_seite(request: Request, name: str, ctx: dict, status: int = 200):
     token, neu = vor_csrf(request)
     antwort = seite(request, name, {**ctx, "csrf": token}, status)
@@ -83,7 +90,7 @@ def _nach_passwort(request: Request, con: sqlite3.Connection, admin) -> Redirect
         return None
     if admin["totp_enc"]:
         return _neue_sitzung(request, con, admin["id"], "totp", "/login/totp")
-    if totp_pflicht(arten):
+    if totp_pflicht(arten) or (totp_angebot(arten) and not admin["totp_spaeter_ms"]):
         return _neue_sitzung(request, con, admin["id"], "totp_einrichten", "/login/totp-einrichten")
     return _neue_sitzung(request, con, admin["id"], "voll", "/")
 
@@ -171,7 +178,13 @@ def _einrichten_ctx(request: Request, con: sqlite3.Connection, s) -> dict:
         con.execute("UPDATE sitzung SET totp_neu_enc = ?, totp_neu_nonce = ? WHERE id_hash = ?", (enc, nonce, s["id_hash"]))
     gruppen = " ".join(geheimnis[i : i + 4] for i in range(0, len(geheimnis), 4))
     return {"csrf": s["csrf"], "geheimnis": gruppen, "uri": totp.uri(geheimnis, s["benutzer"], AUSSTELLER),
-            "passwort_noetig": s["stufe"] == "voll"}
+            "passwort_noetig": s["stufe"] == "voll", "spaeter": _spaeter_erlaubt(request, con, s)}
+
+
+def _spaeter_erlaubt(request: Request, con: sqlite3.Connection, s) -> bool:
+    if s["stufe"] != "totp_einrichten":
+        return False
+    return not totp_pflicht(_arten(request, con, con.execute("SELECT * FROM admin WHERE id = ?", (s["admin_id"],)).fetchone()))
 
 
 def _einrichten_sitzung(request: Request, con: sqlite3.Connection):
@@ -218,6 +231,26 @@ def totp_einrichten(request: Request, code: str = Form(""), csrf: str = Form("")
     if s["stufe"] == "voll":
         auth.sitzungen_beenden(con, s["admin_id"])  # neuer zweiter Faktor: andere Sitzungen des Kontos enden
     return _voll(request, con, s, "/?ok=totp_ein")
+
+
+@router.post("/login/totp-spaeter", response_class=HTMLResponse)
+def totp_spaeter(request: Request, csrf: str = Form(""), con: sqlite3.Connection = Depends(verbindung)):
+    """„Später einrichten“ beim Login: nur aus der Einrichtungs-Stufe und nur, wenn die Firma `password` erlaubt."""
+    s = _zwischen(request, con, "totp_einrichten")
+    if s is None:
+        return RedirectResponse("/login", status_code=303)
+    if not (herkunft_ok(request) and krypto.gleich(s["csrf"], csrf)):
+        return verboten(request)
+    if not _totp_versuch(request, s):
+        return seite(request, "totp_einrichten.html", {**_einrichten_ctx(request, con, s), "fehler": "h.zu_oft"}, 429)
+    if not _spaeter_erlaubt(request, con, s):
+        ereignis("login fehler", fehler="totp_spaeter_verboten", admin=s["admin_id"])
+        return verboten(request)
+    con.execute("UPDATE admin SET totp_spaeter_ms = ? WHERE id = ?", (jetzt(request), s["admin_id"]))
+    admin = con.execute("SELECT firma_id, benutzer FROM admin WHERE id = ?", (s["admin_id"],)).fetchone()
+    firmen.protokoll(con, admin["firma_id"], admin["benutzer"], "totp_spaeter", admin["benutzer"], jetzt(request))
+    ereignis("login ok", admin=s["admin_id"], art="passwort_totp_spaeter")
+    return _voll(request, con, s, "/")
 
 
 @router.get("/einladung/{token}", response_class=HTMLResponse)

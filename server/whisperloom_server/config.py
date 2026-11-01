@@ -105,7 +105,8 @@ class Einstellungen:
         e = cls(
             daten=Path(daten),
             basis_url=env.get("WL_BASE_URL", cls.basis_url).rstrip("/"),
-            anmeldearten=anmeldearten_lesen(env.get("WL_AUTH_MODES", "password_totp")),
+            # Standard (Christof-Entscheidung 2026-11-01): Zwei-Faktor optional, beim ersten Login überspringbar.
+            anmeldearten=anmeldearten_lesen(env.get("WL_AUTH_MODES", "password_totp,password")),
             vertraute_proxies=netze_lesen(env.get("WL_TRUSTED_PROXIES", "")),
             header_benutzer=env.get("WL_TRUSTED_HEADER", cls.header_benutzer),
             konfig_datei=Path(datei) if datei else None,

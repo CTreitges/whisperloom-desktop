@@ -24,5 +24,12 @@
     <input id="code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" required class="code-feld">
     <button type="submit" class="knopf haupt">{{ t('p.totp_einschalten') }}</button>
   </form>
+  {% if spaeter %}
+  <form method="post" action="/login/totp-spaeter" class="formular">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <p class="klein">{{ t('p.totp_spaeter_text') }}</p>
+    <button type="submit" class="knopf leise">{{ t('p.totp_spaeter') }}</button>
+  </form>
+  {% endif %}
 </section>
 {% endblock %}

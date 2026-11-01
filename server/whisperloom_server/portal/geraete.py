@@ -42,6 +42,9 @@ def uebersicht(request: Request, wer: Wer = Depends(in_firma), con: sqlite3.Conn
         "firma": firma,
         "schluessel_anzahl": con.execute("SELECT COUNT(*) FROM schluessel WHERE firma_id = ?", (fid,)).fetchone()[0],
         "gruppen_anzahl": con.execute("SELECT COUNT(*) FROM gruppe WHERE firma_id = ?", (fid,)).fetchone()[0],
+        # W2-SFIX: dezenter Hinweis für Admins mit Passwort-Login ohne Zwei-Faktor
+        "totp_fehlt": wer.art == "sitzung" and con.execute(
+            "SELECT totp_enc IS NULL FROM admin WHERE id = ?", (wer.admin_id,)).fetchone()[0] == 1,
     }, wer=wer, con=con)
 
 
