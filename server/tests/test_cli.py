@@ -66,3 +66,21 @@ def test_instanz_admin_und_fehler(einst, capsys):
     assert cli.main(["admin-create", "gibtsnicht", "x"], einst) == 1
     assert "fehler: unbekannte Firma" in capsys.readouterr().err
     assert cli.main(["tenant-create", "A B", "x"], einst) == 1
+
+
+def test_key_set_liest_key_von_stdin(einst, capsys, monkeypatch):
+    """W2-SRV2: Zugang per CLI (Docker-CI, Server ohne Portal); der Key kommt nie als Argument."""
+    import io
+
+    cli.main(["tenant-create", "muster", "Muster GmbH"], einst)
+    monkeypatch.setattr("sys.stdin", io.StringIO("test-key-not-real-5\n"))
+    assert cli.main(["key-set", "muster", "stt", "--provider", "groq", "--model", "whisper-large-v3-turbo"], einst) == 0
+    zeile = sql(einst, "SELECT anbieter, modell, letzte4 FROM schluessel WHERE zugang = 'stt'")[0]
+    assert tuple(zeile) == ("groq", "whisper-large-v3-turbo", "al-5")
+    assert "test-key-not-real-5" not in capsys.readouterr().out
+    monkeypatch.setattr("sys.stdin", io.StringIO("\n"))  # eigener Server ohne Key, aber internes Ziel ohne Freigabe
+    assert cli.main(["key-set", "muster", "llm", "--provider", "custom", "--base-url", "http://127.0.0.1:9/v1"], einst) == 1
+    assert "WL_UPSTREAM_ALLOW" in capsys.readouterr().err
+    monkeypatch.setattr("sys.stdin", io.StringIO("\n"))
+    assert cli.main(["key-set", "muster", "stt", "--provider", "groq"], einst) == 1  # groq braucht einen Key
+    assert "kein_key" in capsys.readouterr().err

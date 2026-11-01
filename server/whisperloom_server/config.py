@@ -11,6 +11,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from . import ssrf
+
 # Admin-Anmeldearten. `file` schließt alle anderen aus (kein Portal).
 ANMELDEARTEN = ("password_totp", "password", "trusted_header", "local_only")
 DATEI_MODUS = "file"
@@ -47,6 +49,13 @@ def netze_lesen(text: str) -> tuple[Netz, ...]:
         raise KonfigFehler(f"WL_TRUSTED_PROXIES: {e}") from e
 
 
+def upstream_netze_lesen(text: str) -> tuple[Netz, ...]:
+    try:
+        return ssrf.netze_lesen(text)
+    except ValueError as e:
+        raise KonfigFehler(f"WL_UPSTREAM_ALLOW: {e}") from e
+
+
 @dataclass
 class Einstellungen:
     daten: Path
@@ -57,7 +66,10 @@ class Einstellungen:
     konfig_datei: Path | None = None
     master_hex: str | None = None
     min_app_version: str = ""
+    # Proxy (W2-SRV2): interne Ziele, die der Instanz-Admin für Anbieter-URLs freigibt (ssrf.py), und DNS-Auflösung.
+    upstream_erlaubt: tuple[Netz, ...] = ()
     uhr: Callable[[], int] = field(default=jetzt_ms)
+    aufloeser: ssrf.Aufloeser = field(default=ssrf.system_aufloesen)
 
     @property
     def db_pfad(self) -> Path:
@@ -98,6 +110,7 @@ class Einstellungen:
             konfig_datei=Path(datei) if datei else None,
             master_hex=env.get("WL_MASTER_KEY") or None,
             min_app_version=env.get("WL_MIN_APP_VERSION", ""),
+            upstream_erlaubt=upstream_netze_lesen(env.get("WL_UPSTREAM_ALLOW", "")),
         )
         e.pruefen()
         return e

@@ -11,7 +11,7 @@
   {% for k in schluessel %}
     <li class="zeile">
       <span class="zeile-text"><strong>{{ t('zugang.' ~ k.zugang) if k.zugang in zugaenge else k.zugang }}</strong>
-        <span class="klein">{{ opt('stt.providerId', k.anbieter) }}{% if k.basis_url %} · {{ k.basis_url }}{% endif %} · •••• {{ k.letzte4 }} · {{ k.geaendert_ms | zeit }}</span></span>
+        <span class="klein">{{ opt('stt.providerId', k.anbieter) }}{% if k.modell %} · {{ k.modell }}{% endif %}{% if k.basis_url %} · {{ k.basis_url }}{% endif %}{% if k.letzte4 %} · •••• {{ k.letzte4 }}{% else %} · {{ t('p.ohne_key') }}{% endif %} · {{ k.geaendert_ms | zeit }}</span></span>
       <form method="post" action="/schluessel/{{ k.zugang }}/entfernen"><input type="hidden" name="csrf" value="{{ wer.csrf }}"><button class="knopf leise">{{ t('p.entfernen') }}</button></form>
     </li>
   {% endfor %}
@@ -38,8 +38,14 @@
     <label for="basis_url">{{ t('p.basis_url') }}</label>
     <input id="basis_url" name="basis_url" type="url" maxlength="300" placeholder="https://" aria-describedby="url-hinweis">
     <p id="url-hinweis" class="klein">{{ t('p.basis_url_text') }}</p>
+    <div class="formular" data-zeigen-wenn="name!=eigen">
+      <label for="modell">{{ t('p.modell_optional') }}</label>
+      <input id="modell" name="modell" maxlength="100" aria-describedby="modell-hinweis" autocapitalize="none" spellcheck="false">
+      <p id="modell-hinweis" class="klein">{{ t('p.modell_text') }}</p>
+    </div>
     <label for="key">{{ t('p.key') }}</label>
-    <input id="key" name="key" type="password" maxlength="500" required autocomplete="off" spellcheck="false">
+    <input id="key" name="key" type="password" maxlength="500" autocomplete="off" spellcheck="false" aria-describedby="key-hinweis">
+    <p id="key-hinweis" class="klein">{{ t('p.key_text') }}</p>
     <button type="submit" class="knopf haupt">{{ t('p.key_speichern') }}</button>
   </form>
 </section>

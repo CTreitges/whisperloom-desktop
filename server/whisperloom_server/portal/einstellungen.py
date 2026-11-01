@@ -5,7 +5,7 @@ import sqlite3
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse
 
-from .. import firmen, katalog, richtlinie, schluessel
+from .. import firmen, katalog, richtlinie, schluessel, ssrf
 from ..abhaengig import jetzt, verbindung
 from ..katalog import Ungueltig
 from ..log import ereignis
@@ -108,13 +108,19 @@ def schluessel_seite(request: Request, wer: Wer = Depends(in_firma), con: sqlite
 @router.post("/schluessel")
 def schluessel_speichern(request: Request, csrf: str = Form(""), name: str = Form(""), eigener_name: str = Form(""),
                          anbieter: str = Form(""), basis_url: str = Form(""), key: str = Form(""),
-                         wer: Wer = Depends(in_firma), con: sqlite3.Connection = Depends(verbindung)):
+                         modell: str = Form(""), wer: Wer = Depends(in_firma),
+                         con: sqlite3.Connection = Depends(verbindung)):
     csrf_pruefen(request, wer, csrf)
     if request.app.state.begrenzer.erlaubt("schluessel:" + wer.firma_id, 30, STUNDE) is not None:
         return zurueck("/schluessel", hinweis="zu_oft")
     ziel = eigener_name.strip().lower() if name == "eigen" else name
+    einst = request.app.state.einst
+    # SSRF (W2-SRV2): interne Ziele nur mit Freigabe der Instanz (WL_UPSTREAM_ALLOW); der Proxy prüft je Anfrage erneut.
+    if basis_url.strip() and not ssrf.beim_speichern_ok(basis_url.strip(), einst.upstream_erlaubt, einst.aufloeser):
+        return zurueck("/schluessel", hinweis="ziel_verboten")
     try:
-        schluessel.speichern(con, request.app.state.krypto, wer.firma_id, ziel, anbieter, basis_url, key, jetzt(request))
+        schluessel.speichern(con, request.app.state.krypto, wer.firma_id, ziel, anbieter, basis_url, key, jetzt(request),
+                             modell=modell)
     except schluessel.SchluesselFehler as ex:
         return zurueck("/schluessel", hinweis=str(ex).removeprefix("h."))
     firmen.protokoll(con, wer.firma_id, wer.benutzer, "key_gespeichert", ziel, jetzt(request))

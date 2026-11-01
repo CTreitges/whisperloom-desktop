@@ -5,9 +5,9 @@ name: Server
 on:
   push:
     branches: [main]
-    paths: ["server/**", ".github/workflows/server.yml", "docs/server-api.md"]
+    paths: ["server/**", ".github/workflows/server.yml", "docs/server-api.md", "src/WhisperLoom.Core/Api/**"]
   pull_request:
-    paths: ["server/**", ".github/workflows/server.yml", "docs/server-api.md"]
+    paths: ["server/**", ".github/workflows/server.yml", "docs/server-api.md", "src/WhisperLoom.Core/Api/**"]
 
 permissions:
   contents: read
@@ -24,9 +24,12 @@ jobs:
       - run: server/.venv/bin/python -m ruff check server
       # Bekannte Schwachstellen in den Laufzeit-Abhängigkeiten (pip-audit ist in requirements-dev.txt gepinnt).
       - run: server/.venv/bin/python -m pip_audit -r server/requirements.txt --progress-spinner off
-      - run: server/.venv/bin/python -m pytest server -q
+      # test_app_kompat.py schickt mit dem App-Client (WhisperLoom.Core) Anfragen durch den Proxy (W2-SRV2).
+      - uses: actions/setup-dotnet@v6
+        with: { global-json-file: global.json }
+      - run: server/.venv/bin/python -m pytest server -q -rs
       - run: server/.venv/bin/python -m pytest server -q -k contract
-      - run: python server/tools/smoke_server.py
+      - run: python server/tools/smoke_server.py --proxy
 
   server-docker:
     runs-on: ubuntu-latest
@@ -67,3 +70,20 @@ jobs:
           exit 1
       - if: always()
         run: docker logs wl || true
+      # W2-SRV2: Proxy-Aufruf gegen einen Fake-Anbieter im Compose-Netz (Freigabe nur dieses Netzes per WL_UPSTREAM_ALLOW).
+      - name: Compose mit Fake-Anbieter starten
+        working-directory: server
+        run: |
+          docker rm -f wl
+          docker compose -f docker-compose.yml -f ci/compose-proxy.yml up -d --build
+          for i in $(seq 1 60); do
+            if [ "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/healthz)" = 200 ]; then echo "healthz 200"; break; fi
+            sleep 1
+          done
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/healthz)" = 200
+      - name: Proxy-Aufruf im Compose-Netz
+        working-directory: server
+        run: bash ci/proxy-check.sh
+      - if: always()
+        working-directory: server
+        run: docker compose -f docker-compose.yml -f ci/compose-proxy.yml logs || true

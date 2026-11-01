@@ -10,9 +10,10 @@ from whisperloom_server import db, richtlinie, schluessel
 
 from .conftest import FAKE_KEY, admin_client, alle_routen, enroll, kry, neue_firma, neuer_admin, seiten_csrf, sql
 
-TABELLEN = ["firma", "gruppe", "firmencode", "admin", "geraet", "richtlinie", "schluessel", "einladung"]
+TABELLEN = ["firma", "gruppe", "firmencode", "admin", "geraet", "richtlinie", "schluessel", "einladung", "nutzung",
+            "nutzung_fehler", "budget", "preis"]
 
-# (Pfad-Vorlage, Formularfelder). {g} Gerät B, {gr} Gruppe B, {a} Admin B, {k} Key-Name, {f} Firma B
+# (Pfad-Vorlage, Formularfelder). {g} Gerät B, {gr} Gruppe B, {a} Admin B, {k} Key-Name, {f} Firma B, {m} Modell B
 ROUTEN = [
     *[(f"/geraete/{{g}}/{a}", {"name": "Übernommen", "gruppe": ""}) for a in
       ("freigeben", "sperren", "entsperren", "loeschen", "umbenennen", "gruppe")],
@@ -31,6 +32,13 @@ ROUTEN = [
     ("/instanz/firmen/{f}/sperren", {}),
     ("/instanz/firmen/{f}/oeffnen", {}),
     ("/instanz/firmen", {"slug": "neu", "name": "Neu"}),
+    ("/budget", {"ebene": "gruppe", "gruppe": "{gr}", "max_anfragen": "1"}),
+    ("/budget", {"ebene": "geraet", "geraet": "{g}", "max_tokens": "1"}),
+    ("/budget", {"ebene": "firma", "max_anfragen": "5"}),
+    ("/budget/entfernen", {"ebene": "firma", "ziel": ""}),
+    ("/budget/entfernen", {"ebene": "gruppe", "ziel": "{gr}"}),
+    ("/budget/preis", {"modell": "{m}", "minute": "9"}),
+    ("/budget/preis/entfernen", {"modell": "{m}"}),
     ("/logout", {}),
 ]
 # Routen, die keine Firmendaten berühren (vor dem Login) — eigene Tests in test_anmeldearten/test_csrf.
@@ -76,9 +84,17 @@ def zwei(app, einst, uhr, client):
     firmen.code_setzen(con, k, b["id"], gid_b, 0)
     con.close()
     g_b = enroll(client, b["code"], name="Geheimgerät B")
+    con = db.verbinden(einst.db_pfad)
+    con.execute("INSERT INTO budget (firma_id, ebene, ziel_id, max_anfragen) VALUES (?, 'firma', '', 7)", (b["id"],))
+    con.execute("INSERT INTO budget (firma_id, ebene, ziel_id, max_anfragen) VALUES (?, 'gruppe', ?, 7)", (b["id"], gid_b))
+    con.execute("INSERT INTO preis (firma_id, modell, minute_mikro) VALUES (?, 'geheim-modell-b', 7)", (b["id"],))
+    con.execute("INSERT INTO nutzung (firma_id, geraet_id, gruppe_id, monat, anfragen) VALUES (?, ?, ?, '2027-01', 7)",
+                (b["id"], g_b["deviceId"], gid_b))
+    con.close()
     admin_b = neuer_admin(einst, b["id"], "bernd-b")
     c = admin_client(app, einst, uhr, a["id"], "anna-a")
-    return {"c": c, "a": a, "b": b, "ids": {"g": g_b["deviceId"], "gr": gid_b, "a": admin_b["id"], "k": "mistral", "f": b["id"]}}
+    return {"c": c, "a": a, "b": b, "ids": {"g": g_b["deviceId"], "gr": gid_b, "a": admin_b["id"], "k": "mistral", "f": b["id"],
+                                                                     "m": "geheim-modell-b"}}
 
 
 @pytest.mark.parametrize("vorlage,felder", ROUTEN, ids=[r[0] for r in ROUTEN])
@@ -105,10 +121,12 @@ def test_jede_portal_post_route_ist_abgedeckt(app):
             assert basis in abgedeckt, f"Mandanten-Test fehlt für {route.path}"
 
 
-@pytest.mark.parametrize("pfad", ["/", "/geraete", "/gruppen", "/richtlinie", "/schluessel", "/admins", "/firma"])
+@pytest.mark.parametrize("pfad", ["/", "/geraete", "/gruppen", "/richtlinie", "/schluessel", "/admins", "/firma",
+                                  "/nutzung?monat=2027-01", "/nutzung.csv?monat=2027-01", "/budget"])
 def test_get_zeigt_nichts_von_firma_b(zwei, pfad):
     html = zwei["c"].get(pfad).text
-    for geheim in ("Firma B", "Geheimgerät B", "Geheimgruppe B", "bernd-b", "7777", zwei["b"]["code"], zwei["ids"]["g"]):
+    for geheim in ("Firma B", "Geheimgerät B", "Geheimgruppe B", "bernd-b", "7777", zwei["b"]["code"], zwei["ids"]["g"],
+                   "geheim-modell-b", zwei["ids"]["gr"]):
         assert geheim not in html, (pfad, geheim)
 
 

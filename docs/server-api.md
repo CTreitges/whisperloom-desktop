@@ -15,7 +15,7 @@ Begriffe „Fest / Vorgabe / Frei“ und das Richtlinien-Modell: [settings-forma
   Windows-Pfade, Registry oder Credential Manager voraus. Wohin die App Token und Keys legt, entscheidet die Plattform
   (Desktop: `ISecretStore`, Android: Keystore).
 - **Client-Kennung:** `User-Agent: WhisperLoom/<version> (<platform>)` bei jeder Anfrage.
-- **Grenzen:** Request-Body höchstens 64 KiB (Proxy-Audio: siehe §3.7). Rate-Limits je IP, Code und Gerät; bei
+- **Grenzen:** Request-Body höchstens 64 KiB (Proxy-Audio und Proxy-Text: siehe §3.7). Rate-Limits je IP, Code und Gerät; bei
   Überschreitung `429 rate_limited` mit `Retry-After: <Sekunden>`.
 - **Datenschutz:** Der Server speichert Token und Firmencodes nur gehasht (SHA-256), Keys nur verschlüsselt. Logs nur
   Metadaten (Gerät, Route, Status, Dauer, Fehlerklasse), nie Diktattext, Audio, Keys, Token oder Header.
@@ -39,12 +39,12 @@ Die App wählt ihren Text nach `error` (DE/EN aus `Localization`); `message` ist
 | `invalid_request` | 400 | Format, Pflichtfeld, unbekanntes Feld | Fehler anzeigen, nicht wiederholen |
 | `device_unknown` | 401 | Token unbekannt oder widerrufen (Gerät gelöscht) | `management.state = "revoked"`, Token löschen, „Neu verbinden“ anbieten; Firmen-Werte bleiben bis dahin stehen |
 | `code_invalid` | 404 | Firmencode unbekannt oder abgelaufen | Eingabe prüfen lassen |
-| `not_found` | 404 | Route unbekannt, z. B. Proxy-Routen (§3.6/§3.7) auf einem Server ohne Proxy | nicht wiederholen; die Funktion gilt als vom Server nicht angeboten |
+| `not_found` | 404 | Route unbekannt, z. B. Proxy-Routen (§3.6/§3.7) auf einem Server ohne Proxy; ebenso Proxy bei `keyMode: "distribute"` oder ohne passenden Zugang der Firma | nicht wiederholen; die Funktion gilt als vom Server nicht angeboten |
 | `device_pending` | 403 | Gerät noch nicht freigegeben (Route braucht Freigabe) | Warten, `GET /device` abfragen |
 | `device_blocked` | 403 | Gerät gesperrt | `management.state = "blocked"`, Proxy-Zugang aus |
 | `tenant_blocked` | 403 | Firma gesperrt | wie `device_blocked` |
 | `leave_not_allowed` | 403 | Abmelden ist von der Firma verboten | „Abmelden“ ausblenden |
-| `budget_exhausted` | 403 | Proxy: Budget des Geräts bzw. der Gruppe aufgebraucht | Fehler wie Anbieter-Fehler, Fallback greift |
+| `budget_exhausted` | 403 | Proxy: Budget des Geräts bzw. der Gruppe aufgebraucht (auch: Budget der Firma; Monatsdeckel, §3.7) | Der Proxy lehnt ab, kein Ersatz-Anbieter; die App zeigt „Firmenbudget für diesen Monat erreicht – bitte IT fragen“ |
 | `too_many_pending` | 409 | Zu viele wartende Geräte für diesen Code | später erneut |
 | `payload_too_large` | 413 | Body zu groß | nicht wiederholen |
 | `client_outdated` | 426 | App-Version zu alt; Feld `minAppVersion` | Update anbieten |
@@ -216,6 +216,8 @@ Antwort `200`:
 ```json
 {"object": "list", "data": [{"id": "whisper-large-v3-turbo", "object": "model", "owned_by": "groq"}, {"id": "llama-3.3-70b", "object": "model", "owned_by": "groq"}]}
 ```
+- Ergänzt (W2-SRV2): Die Liste enthält die Modelle, die die Firma an ihren Zugängen festgelegt hat (`owned_by` = Anbieter
+  des Zugangs); ohne festgelegtes Modell ist `data` leer. Fehler wie §3.7.
 
 ### 3.7 `POST /api/v1/proxy/audio/transcriptions` und `POST /api/v1/proxy/chat/completions`
 
@@ -238,6 +240,32 @@ Antwort `200`:
 
 Fehler: `401 device_unknown`, `403 device_blocked`, `403 budget_exhausted`, `413 payload_too_large`,
 `429 rate_limited`, `502 upstream_error`, `504 upstream_timeout`.
+
+**Ergänzungen (W2-SRV2, additiv):**
+- **Antwortfelder:** `/audio/transcriptions` liefert optional `language` (erkannte Sprache, wie vom Anbieter gemeldet) und
+  optional `usage`. `/chat/completions` liefert zusätzlich `model` und `usage`
+  (`{"prompt_tokens", "completion_tokens", "total_tokens"}`); `finish_reason` ist `stop` oder `length`.
+- **Anfragefelder:** `/audio/transcriptions` nimmt `file`, `model`, `language`, `languages[]`, `prompt`,
+  `response_format`, `temperature` (jedes höchstens einmal); `/chat/completions` nimmt `model`, `messages` (Rollen
+  `system`, `user`, `assistant`, `content` als Text), `temperature`, `top_p`, `max_tokens`, `max_completion_tokens`,
+  `reasoning_effort`, `thinking`, `stream` (nur `false`). Anderes → `400 invalid_request`. Die Antwort ist immer JSON.
+- **Grenzen:** Audio-Body höchstens 25 MiB (+ 64 KiB Multipart-Rahmen), Text-Body höchstens 1 MiB. Große Bodies liest
+  der Server erst nach Prüfung des Geräte-Tokens (sonst `401`/`403` ohne Lesen); gleichzeitige Uploads je Gerät und
+  Firma sind begrenzt (`429` mit `Retry-After`), je Instanz `503`. Ein Body ohne Daten über 15 s bzw. länger als
+  300 s → `400 invalid_request`.
+- **Zugänge und Modell:** Erkennung nutzt die Zugänge `stt` und `stt_fallback` der eigenen Firma, Text `llm` und
+  `llm_fallback` (ohne `llm` den Erkennungs-Zugang). Legt ein Zugang ein Modell fest, geht dieses an den Anbieter, sonst
+  das Modell der Anfrage; `GET /config` setzt dann `stt.model` bzw. `llm.model` als `fixed`.
+- **Ersatz:** Den Ersatz-Zugang wählt der Server bei Netzfehler, Zeitlimit, `401`/`403`/`429`/`5xx` oder unbrauchbarer
+  Antwort des Anbieters; nicht bei `400`/`404`/`413`/`422` (Fehler der Anfrage). Zeitlimits wie die App: Verbindung
+  15 s, mit Ersatz 8 s; Antwort 90 s, eigene Server (`custom`, `ollama`) 600 s.
+- **Budget:** Monatsdeckel (UTC-Monat) je Firma, Gruppe und Gerät für Anfragen, Audio-Minuten, Tokens und geschätzte
+  Kosten. Ist eine Grenze erreicht, antwortet der Server `403 budget_exhausted`, ohne den Anbieter zu fragen; einen
+  Ersatz-Anbieter gibt es dann nicht. Laufende Anfragen zählen bei der Prüfung mit (Anzahl, Audio-Minuten).
+- **Weitere Fehler:** `400 invalid_request`, `403 device_pending`, `403 tenant_blocked`, `404 not_found` (§1.2).
+- **Datenschutz:** Audio und Text bleiben im Arbeitsspeicher der Anfrage. Der Server speichert je Gerät, Gruppe und Monat
+  nur Zähler (Anfragen, Audio-Dauer, Tokens, geschätzte Kosten, Fehler je Klasse) und reicht Antworten des Anbieters nur
+  normalisiert weiter (nie Fehlertexte oder Header des Anbieters).
 
 ## 4. Versionierung
 
