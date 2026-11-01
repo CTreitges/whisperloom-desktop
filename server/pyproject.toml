@@ -5,6 +5,18 @@ description = "WhisperLoom Firmen-Manager: zentrale Verwaltung von Geräten, Ric
 requires-python = ">=3.12"
 license = { text = "MIT" }
 
+# Editierbar installierbar (`pip install -e server`), damit `python -m whisperloom_server` aus jedem Ordner läuft.
+# Doku: https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html (abgerufen 2026-11-01)
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["whisperloom_server*"]
+
+[tool.setuptools.package-data]
+whisperloom_server = ["templates/*.html", "static/*", "texte/*.json"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]

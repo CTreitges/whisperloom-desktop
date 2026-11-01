@@ -43,7 +43,7 @@ Das Image läuft als Benutzer `whisperloom` (UID 10001), Daten liegen im Volume 
 ```sh
 cd server
 py -3 -m venv .venv                         # Linux: python3 -m venv .venv
-.venv/Scripts/python.exe -m pip install -r requirements.txt   # Linux: .venv/bin/python -m pip …
+.venv/Scripts/python.exe -m pip install -r requirements.txt -e .   # Linux: .venv/bin/python -m pip …
 export WL_DATA_DIR=/var/lib/whisperloom WL_BASE_URL=https://wl.example.com
 .venv/bin/python -m whisperloom_server init
 .venv/bin/python -m whisperloom_server tenant-create muster "Muster GmbH" --owner chef
@@ -76,7 +76,7 @@ WantedBy=multi-user.target
 Mit `LoadCredential` liest der Server den Hauptschlüssel aus `$CREDENTIALS_DIRECTORY/master.key`. Datei-Modus neu laden:
 `systemctl kill -s HUP whisperloom-server`.
 
-Für Tests: `.venv/Scripts/python.exe -m pip install -r requirements-dev.txt`, dann
+Für Tests (aus `server/`): `.venv/Scripts/python.exe -m pip install -r requirements-dev.txt -e .`, dann
 `.venv/Scripts/python.exe -m pytest server -q` (aus dem Repo) und `py -3 -X utf8 server/tools/smoke_server.py`.
 
 ### Konfiguration (Umgebungsvariablen)
@@ -230,7 +230,7 @@ go to a file with mode 600 in `/data/ausgabe/`. The image runs as user `whisperl
 
 ```sh
 cd server
-python3 -m venv .venv && .venv/bin/python -m pip install -r requirements.txt
+python3 -m venv .venv && .venv/bin/python -m pip install -r requirements.txt -e .
 export WL_DATA_DIR=/var/lib/whisperloom WL_BASE_URL=https://wl.example.com
 .venv/bin/python -m whisperloom_server init
 .venv/bin/python -m whisperloom_server tenant-create acme "ACME Ltd" --owner boss

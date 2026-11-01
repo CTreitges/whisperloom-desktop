@@ -19,6 +19,12 @@ def test_hilfe_als_prozess():
     assert "tenant-create" in text and "serve" in text and "Hauptschlüssel" in text
 
 
+def test_hilfe_aus_fremdem_ordner(tmp_path):
+    """Akzeptanzbefehl `<venv>/python -m whisperloom_server --help` ohne cwd=server/ (Paket per `pip install -e`)."""
+    r = subprocess.run([sys.executable, "-m", "whisperloom_server", "--help"], cwd=tmp_path, capture_output=True, timeout=60)
+    assert r.returncode == 0, r.stderr.decode("utf-8", "replace")
+
+
 def test_firma_anlegen_mit_show(einst, capsys):
     assert cli.main(["tenant-create", "muster", "Muster GmbH", "--owner", "chef", "--auto-approve", "--show"], einst) == 0
     aus = capsys.readouterr().out

@@ -7,3 +7,5 @@ master.key
 .env
 ausgabe/
 daten/
+*.egg-info/
+build/
