@@ -59,6 +59,11 @@ Ist `policy.json` unlesbar, lehnen `WhisperLoom key set|delete` und `update` ab 
 `openai`) ist eine eigene `baseUrl` zu einem anderen Host ein Verstoß — im Einstellungsfenster wie beim Import — damit
 Diktate und der verteilte Key nicht an einen fremden Server gehen. `custom` (eigener Server) und `ollama` haben keine
 feste Adresse: Wer sie freigibt, gibt jeden Server frei; dann `stt.baseUrl` bzw. `llm.baseUrl` mitsperren.
+Auch „Zugang prüfen“ schickt einen Key nur an einen freigegebenen Server.
+
+**Provisioning ist der vertrauenswürdige Weg:** Anders als ein Import löscht `provision` keine vorhandenen Keys des
+Benutzers, wenn die Datei Adressen ändert — ein vorhandener Key ginge dann an die neue Adresse. Nur Dateien aus
+eigener, vertrauenswürdiger Quelle provisionieren; für Vorlagen von Dritten ist `WhisperLoom import` da.
 
 **Fremde Einstellungsdateien:** Ein Import des Nutzers übernimmt nie Keys, Richtlinie, den Pfad der Vokabular-Datei
 oder die Ollama-Adresse. Lenkt er einen gespeicherten Key an einen anderen Host (Adresse, Anbieter oder manueller
@@ -134,7 +139,12 @@ If `policy.json` cannot be read, `WhisperLoom key set|delete` and `update` refus
 **Allow list `allowedProviders`:** it also covers the address. For providers with a fixed address (e.g. `groq`,
 `openai`) a custom `baseUrl` pointing to another host is a violation — in the settings window and on import — so
 dictations and the distributed key never go to a foreign server. `custom` (own server) and `ollama` have no fixed
-address: allowing them allows any server; lock `stt.baseUrl` or `llm.baseUrl` as well.
+address: allowing them allows any server; lock `stt.baseUrl` or `llm.baseUrl` as well. "Check access" also sends a
+key only to an allowed server.
+
+**Provisioning is the trusted path:** unlike an import, `provision` does not delete existing user keys when the file
+changes addresses — an existing key would then go to the new address. Only provision files from your own trusted
+source; third-party templates belong in `WhisperLoom import`.
 
 **Foreign settings files:** a user import never takes keys, the policy, the vocabulary file path or the Ollama
 address. If it would send a stored key to another host (address, provider or manual proxy), the preview warns and the

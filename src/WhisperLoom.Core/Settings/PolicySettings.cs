@@ -74,12 +74,21 @@ public sealed record PolicySettings
         if (AllowedProviders is not null)
         {
             violations.AddRange(used
-                .Where(u => IsProviderAllowed(u.Id) && !string.IsNullOrWhiteSpace(u.Url) &&
-                            ProviderCatalog.Find(u.Id) is { } p && !p.NeedsUrl && KeyRoutes.Origin(u.Url) != KeyRoutes.Origin(p.BaseUrl))
+                .Where(u => IsProviderAllowed(u.Id) && !IsAddressAllowed(u.Id, u.Url))
                 .Select(u => $"{u.Path}.baseUrl: von IT ist nur der Server von \"{u.Id}\" freigegeben ({KeyRoutes.Origin(u.Url!)})"));
         }
         return violations;
     }
+
+    /// <summary>
+    /// Darf ein Key an diesen Zugang gehen (auch „Zugang prüfen“)? Anbieter freigegeben und, bei Freigabeliste und fester
+    /// Adresse des Anbieters, leere bzw. gleiche Adresse wie im Katalog.
+    /// </summary>
+    public bool AllowsTarget(string providerId, string? baseUrl) => IsProviderAllowed(providerId) && IsAddressAllowed(providerId, baseUrl);
+
+    private bool IsAddressAllowed(string providerId, string? baseUrl) =>
+        AllowedProviders is null || string.IsNullOrWhiteSpace(baseUrl) || ProviderCatalog.Find(providerId) is not { } p || p.NeedsUrl ||
+        KeyRoutes.Origin(baseUrl) == KeyRoutes.Origin(p.BaseUrl);
 
     /// <summary>
     /// Liest den Abschnitt <c>policy</c> einer Provisioning-Datei. <c>lockSettings</c>: <c>true</c> sperrt alle Pfade,
@@ -152,7 +161,7 @@ public static class PolicyJson
 
     public static string Serialize(PolicySettings policy) => JsonSerializer.Serialize(policy, Options);
 
-    /// <exception cref="JsonException">Kein gültiges JSON.</exception>
+    /// <exception cref="JsonException">Kein gültiges JSON oder <c>null</c> (zählt wie unlesbar: key und update brechen ab).</exception>
     public static PolicySettings Deserialize(string json) =>
-        JsonSerializer.Deserialize<PolicySettings>(json, Options) ?? PolicySettings.None;
+        JsonSerializer.Deserialize<PolicySettings>(json, Options) ?? throw new JsonException("policy.json enthält null");
 }

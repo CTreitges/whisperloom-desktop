@@ -72,6 +72,21 @@ internal static class KeyRoutes
         return targets;
     }
 
+    /// <summary>
+    /// Origins, an die <paramref name="after"/> Diktattext schickt und <paramref name="before"/> nicht — Erkennung,
+    /// Textverbesserung und eingeschaltete Fallbacks, unabhängig von Keys (Review WLD-FIX R-1: die Antwort eines fremden
+    /// Textmodells wird getippt).
+    /// </summary>
+    public static IReadOnlyList<string> NewDictationTargets(WhisperLoomSettings before, WhisperLoomSettings after) =>
+        [.. DictationTargets(after).Except(DictationTargets(before)).Order(StringComparer.Ordinal)];
+
+    private static HashSet<string> DictationTargets(WhisperLoomSettings s)
+    {
+        var none = new AccessKeys();
+        ApiAccess?[] accesses = [SettingsAccess.Stt(s, none), SettingsAccess.Llm(s, none), SettingsAccess.SttFallback(s, none), SettingsAccess.LlmFallback(s, none)];
+        return [.. accesses.Where(a => a is not null && a.BaseUrl.Trim().Length > 0).Select(a => Origin(a!.BaseUrl))];
+    }
+
     /// <summary>Schema, Host und Port in Kleinbuchstaben; keine gültige URL bleibt, wie sie ist.</summary>
     internal static string Origin(string url) =>
         Uri.TryCreate(url.Trim(), UriKind.Absolute, out var u) ? $"{u.Scheme}://{u.Authority}".ToLowerInvariant() : url.Trim();

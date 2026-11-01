@@ -170,6 +170,31 @@ public class TextInserterTest
         Assert.Equal("alt", _rig.Clipboard.Text);
     }
 
+    [Theory]
+    [InlineData("cmd.exe")]
+    [InlineData("WindowsTerminal.exe")]
+    [InlineData("powershell")]
+    public async Task Type_mode_into_a_console_sends_line_breaks_as_spaces(string process)
+    {
+        // Review WLD-FIX R-1: ein Zeilenumbruch wird als Umschalt+Enter getippt — in einer Konsole führt das die Zeile aus.
+        _rig.Windows.Processes[42] = process;
+
+        Assert.Equal(InsertOutcome.Typed, await Insert("dir\r\nrm -rf x\nexit\r", InsertMode.Type));
+
+        Assert.Equal("dir rm -rf x exit ", _rig.Keys.Target);
+        Assert.Equal(0, _rig.Keys.Enters);
+    }
+
+    [Fact]
+    public async Task Type_mode_outside_consoles_keeps_line_breaks()
+    {
+        _rig.Windows.Processes[42] = "notepad.exe";
+
+        await Insert("eins\nzwei", InsertMode.Type);
+
+        Assert.Equal("eins\nzwei", _rig.Keys.Target);
+    }
+
     [Fact]
     public async Task Clipboard_only_mode_sets_a_normal_clipboard_entry()
     {

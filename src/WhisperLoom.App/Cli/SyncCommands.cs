@@ -64,7 +64,9 @@ internal sealed class SyncCommands(string dataDir, ISecretStore secrets, TextWri
         var stored = await StoredKeysAsync(secrets, ct);
         var preview = SyncImport.Preview(_settings.Load(), SyncDocument.Parse(File.ReadAllText(path)), _policy.Load(), stored);
         Report([.. preview.Warnings, .. preview.DroppedKeys.Select(DropWarning),
-            .. preview.EnterDisabled.Select(p => $"Profil {p}: Enter danach ausgeschaltet (fremde Datei); bei Bedarf im Profil selbst einschalten")], preview.Errors);
+            .. preview.EnterDisabled.Select(p => $"Profil {p}: Enter danach ausgeschaltet (fremde Datei); bei Bedarf im Profil selbst einschalten"),
+            .. preview.DictationTargets.Select(t => $"Diktate gehen künftig auch an {t} (Erkennung bzw. Textverbesserung); nur übernehmen, wenn du dem Server vertraust")],
+            preview.Errors);
         foreach (var c in preview.Changes)
         {
             output.WriteLine($"{(c.Locked ? "locked" : "change")} {c.Path}: {c.Old ?? "-"} -> {c.New ?? "-"}");
@@ -117,7 +119,7 @@ internal sealed class SyncCommands(string dataDir, ISecretStore secrets, TextWri
         }
     }
 
-    private static string DropWarning(KeyDrop d) => $"Key {d.Name} wird gelöscht: der Import würde ihn an {d.Target} schicken; danach neu eingeben";
+    private static string DropWarning(KeyDrop d) => $"Key {d.Name} wird gelöscht: der Import würde ihn an {d.Target} schicken; nur neu eingeben, wenn du {d.Target} vertraust";
 
     private void Report(IReadOnlyList<string> warnings, IReadOnlyList<string> errorList)
     {

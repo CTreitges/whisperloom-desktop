@@ -178,6 +178,42 @@ public class SyncUiTest
         Assert.Null(await secrets.GetAsync(SecretNames.Stt, CancellationToken.None));
     }
 
+    [AvaloniaTheory]
+    [InlineData("openai", "https://angreifer.example/v1")] // erlaubter Anbieter, fremder Host
+    [InlineData("mistral", "")] // nicht freigegebener Anbieter (bleibt sichtbar, weil gerade gewählt)
+    public async Task Key_check_under_allowed_providers_does_not_send_the_key_to_a_forbidden_target(string provider, string url)
+    {
+        // Review WLD-FIX D-3: „Zugang prüfen“ schickte den Key an die eingetippte Adresse, vorbei an der Freigabeliste.
+        Loc.Instance.SetLanguage("de");
+        using var f = new ControllerFixture();
+        f.Controller.Settings.Stt.ProviderId = provider;
+        f.Controller.Policy = new PolicySettings { AllowedProviders = ["openai"] };
+        var secrets = new MemorySecretStore();
+        await secrets.SetAsync(SecretNames.Stt, "test-key-not-real-7", CancellationToken.None);
+        var checker = new FakeAccessChecker();
+        var vm = new SettingsViewModel(f.Controller, secrets, checker) { SttBaseUrl = url };
+
+        await vm.SttKey.CheckCommand.ExecuteAsync(null);
+
+        Assert.Null(checker.Last);
+    }
+
+    [AvaloniaFact]
+    public async Task Key_check_under_allowed_providers_still_works_for_the_catalog_host()
+    {
+        using var f = new ControllerFixture();
+        f.Controller.Settings.Stt.ProviderId = "openai";
+        f.Controller.Policy = new PolicySettings { AllowedProviders = ["openai"] };
+        var secrets = new MemorySecretStore();
+        await secrets.SetAsync(SecretNames.Stt, "test-key-not-real-7", CancellationToken.None);
+        var checker = new FakeAccessChecker();
+        var vm = new SettingsViewModel(f.Controller, secrets, checker);
+
+        await vm.SttKey.CheckCommand.ExecuteAsync(null);
+
+        Assert.Equal(("openai", ""), checker.Last);
+    }
+
     [AvaloniaFact]
     public async Task Key_check_with_llm_same_uses_the_recognition_address()
     {

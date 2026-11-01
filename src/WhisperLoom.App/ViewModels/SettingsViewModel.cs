@@ -71,12 +71,12 @@ public sealed partial class SettingsViewModel : ObservableObject
         _insertMode = Pick(InsertModes, _desktop.InsertMode);
         _historySize = HistorySizes.Contains(_s.History.Size) ? _s.History.Size : HistorySettings.DefaultSize;
 
-        SttKey = new KeyFieldViewModel(SecretNames.Stt, secrets, checker, () => (SttProvider.Value, SttBaseUrl)) { Editable = KeyEditable(SecretNames.Stt) };
-        SttFallbackKey = new KeyFieldViewModel(SecretNames.SttFallback, secrets, checker, () => (SttFallbackProvider.Value, SttFallbackBaseUrl)) { Editable = KeyEditable(SecretNames.SttFallback) };
+        SttKey = new KeyFieldViewModel(SecretNames.Stt, secrets, checker, () => (SttProvider.Value, SttBaseUrl)) { Editable = KeyEditable(SecretNames.Stt), Policy = _policy };
+        SttFallbackKey = new KeyFieldViewModel(SecretNames.SttFallback, secrets, checker, () => (SttFallbackProvider.Value, SttFallbackBaseUrl)) { Editable = KeyEditable(SecretNames.SttFallback), Policy = _policy };
         // „wie Erkennung“: Adresse der Erkennung wie in der Auflösung (llm.baseUrl gilt dann nicht).
         LlmKey = new KeyFieldViewModel(SecretNames.Llm, secrets, checker,
-            () => LlmProvider.Value == LlmSettings.Same ? (SttProvider.Value, SttBaseUrl) : (LlmProvider.Value, LlmBaseUrl)) { Editable = KeyEditable(SecretNames.Llm) };
-        LlmFallbackKey = new KeyFieldViewModel(SecretNames.LlmFallback, secrets, checker, () => (LlmFallbackProvider.Value, LlmFallbackBaseUrl)) { Editable = KeyEditable(SecretNames.LlmFallback) };
+            () => LlmProvider.Value == LlmSettings.Same ? (SttProvider.Value, SttBaseUrl) : (LlmProvider.Value, LlmBaseUrl)) { Editable = KeyEditable(SecretNames.Llm), Policy = _policy };
+        LlmFallbackKey = new KeyFieldViewModel(SecretNames.LlmFallback, secrets, checker, () => (LlmFallbackProvider.Value, LlmFallbackBaseUrl)) { Editable = KeyEditable(SecretNames.LlmFallback), Policy = _policy };
         Local = new LocalViewModel(_s, local);
     }
 

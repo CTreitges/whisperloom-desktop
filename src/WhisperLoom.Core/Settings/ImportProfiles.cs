@@ -20,7 +20,7 @@ internal static class ImportProfiles
         {
             return disabled;
         }
-        var known = (Profiles(current) ?? []).OfType<JsonObject>().Where(PressesEnter).Select(Identity).ToHashSet();
+        var known = (Profiles(current) ?? []).OfType<JsonObject>().Where(p => PressesEnter(p) && Enabled(p)).Select(Identity).ToHashSet();
         foreach (var profile in profiles.OfType<JsonObject>().Where(p => PressesEnter(p) && !known.Contains(Identity(p))))
         {
             foreach (var name in Names(profile, "pressEnter"))
@@ -41,6 +41,14 @@ internal static class ImportProfiles
     private static bool PressesEnter(JsonObject profile) =>
         profile.LastOrDefault(p => p.Key.Equals("pressEnter", StringComparison.OrdinalIgnoreCase)).Value is JsonValue v &&
         v.GetValueKind() == JsonValueKind.True;
+
+    /// <summary>
+    /// Profil aktiv (fehlt das Feld: ja). Ein abgeschaltetes Enter-Profil zählt nicht als bestätigt — der Import schaltete
+    /// es sonst samt Enter wieder ein.
+    /// </summary>
+    private static bool Enabled(JsonObject profile) =>
+        profile.LastOrDefault(p => p.Key.Equals("enabled", StringComparison.OrdinalIgnoreCase)).Value is not JsonValue v ||
+        v.GetValueKind() != JsonValueKind.False;
 
     /// <summary>Wie <c>AppProfiles</c> vergleicht: Prozess ohne „.exe“ und ohne Groß-/Kleinschreibung, Titel-Regex wörtlich.</summary>
     private static (string Process, string Title) Identity(JsonObject profile)

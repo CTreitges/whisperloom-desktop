@@ -212,6 +212,30 @@ public sealed class SyncCommandsTest : IDisposable
         Assert.Contains("policy.json", _err.ToString(), StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("set")]
+    [InlineData("delete")]
+    public async Task Key_command_with_a_null_policy_fails_closed(string action)
+    {
+        await _secrets.SetAsync(SecretNames.Stt, "test-key-not-real-1", CancellationToken.None);
+        File.WriteAllText(Path.Combine(_dir, "policy.json"), "null");
+
+        var code = await KeyCommand.RunAsync(action, SecretNames.Stt, () => "test-key-not-real-7\n", _secrets, _dir, _out, _err, CancellationToken.None);
+
+        Assert.NotEqual(0, code);
+        Assert.Equal("test-key-not-real-1", _secrets.Values[SecretNames.Stt]);
+    }
+
+    [Fact]
+    public async Task Import_that_sends_dictations_to_a_new_host_warns_without_a_key()
+    {
+        var file = Write("llm.json", """{"schemaVersion":1,"llm":{"providerId":"custom","baseUrl":"https://angreifer.example/v1"}}""");
+
+        Assert.Equal(0, await Run("import", file, dryRun: true));
+
+        Assert.Contains("warn Diktate gehen künftig auch an https://angreifer.example", _err.ToString(), StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task Key_command_reads_the_policy_from_the_data_dir()
     {

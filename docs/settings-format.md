@@ -26,9 +26,12 @@ Richtlinie), Modell `src/WhisperLoom.Core/Contracts/Settings/WhisperLoomSettings
   (`desktop.proxyMode`/`proxyUrl`) so, dass ein gespeicherter Key an ein neues Ziel ginge (anderer Host, auch über
   einen Fallback oder die Textverbesserung, die den Key erben; abgeschaltete Fallbacks zählen mit), zeigt die Vorschau
   die Zeile `secrets.<zugang>: gespeichert → gelöscht (neues Ziel …)` mit Warnung. Beim Übernehmen wird dieser Key
-  gelöscht, bevor die Einstellungen gespeichert werden; danach neu eingeben. Bleibt der Host gleich, bleibt der Key.
+  gelöscht, bevor die Einstellungen gespeichert werden; nur neu eingeben, wenn man dem neuen Ziel vertraut. Bleibt der
+  Host gleich, bleibt der Key.
   Bei `llm.providerId = "same"` zählt für den `llm`-Key die Adresse der Erkennung (dorthin schickt ihn „Zugang prüfen“).
   Felder in `desktop` und `local` zählen in jeder Groß-/Kleinschreibung, wie die App sie liest.
+- **Neue Ziele für Diktattext** nennt die Vorschau auch ohne Key („Diktate gehen künftig auch an …“): Erkennung,
+  Textverbesserung und eingeschaltete Fallbacks. Die Antwort eines Textmodells wird eingefügt bzw. getippt.
 - **Gerätebezogene Ziele** übernimmt ein Import nie: `stt.vocabularyFile` und `local.ollamaUrl` (Adresse der lokalen
   Textverbesserung). Ein Export enthält `stt.vocabularyFile` nicht.
 
@@ -67,8 +70,8 @@ Richtlinie), Modell `src/WhisperLoom.Core/Contracts/Settings/WhisperLoomSettings
 
 | Abschnitt | Gehört | Andere App |
 |---|---|---|
-
-| `desktop` | Desktop: `uiLanguage` (`""`/`de`/`en`), `output`, `microphone` (gerätebezogen), `stageFontSize`, `proxyMode` (`system`/`off`/`manual`), `proxyUrl` (ein manueller Proxy bekommt nie die Windows-Anmeldung NTLM/Kerberos, nur der System-Proxy); Windows: `hotkeysEnabled`, `hotkeyHold`, `hotkeyToggle`, `hotkeyStage`, `hotkeyReinsert` (`Ctrl+Alt+Shift+V`), `hotkeyRewrite` (`Ctrl+Alt+Shift+R`), `insertMode` (`paste`/`type`/`clipboard`), `profiles` (App-Profile, siehe unten) | Android liest ihn nicht, speichert ihn beim Import und gibt ihn beim Export unverändert zurück |
+| `desktop` | Desktop: `uiLanguage` (`""`/`de`/`en`), `output`, `microphone` (gerätebezogen), `stageFontSize`, `proxyMode` (`system`/`off`/`manual`), `proxyUrl` (ein manueller Proxy bekommt nie die Windows-Anmeldung NTLM/Kerberos, nur der System-Proxy); Windows: `hotkeysEnabled`, `hotkeyHold`, `hotkeyToggle`, `hotkeyStage`, `hotkeyReinsert` (`Ctrl+Alt+Shift+V`), `hotkeyRewrite` (`Ctrl+Alt+Shift+R`), `insertMode` (`paste`/`type`/`clipboard`; `type` in Konsolen und Editoren mit Terminal tippt Zeilenumbrüche als Leerzeichen, sonst führte Umschalt+Enter die Zeile aus), `profiles` (App-Profile, siehe unten) | Android liest ihn nicht, speichert ihn beim Import und gibt ihn beim Export unverändert zurück |
+| `android` | Android-eigene Felder (Inhalt bestimmt die Android-App) | Desktop liest ihn nicht, zeigt ihn nicht in der Vorschau, prüft ihn nicht und gibt ihn unverändert weiter |
 
 ### App-Profile (`desktop.profiles`, Windows)
 
@@ -87,8 +90,6 @@ Liste von Objekten; gilt für Diktate per Tastenkürzel ins Zielfenster.
 Vorrang: ein Profil mit passendem `titlePattern` vor einem Profil nur mit `process`; unter gleich genauen das erste der
 Liste. Der Stufen-Hotkey ändert die Stufe des passenden Profils (Vordergrundfenster bzw. Ziel des laufenden Diktats) und
 speichert sie hier; ohne passendes Profil ändert er `refine.stage`.
-
-| `android` | Android-eigene Felder (Inhalt bestimmt die Android-App) | Desktop liest ihn nicht, zeigt ihn nicht in der Vorschau, prüft ihn nicht und gibt ihn unverändert weiter |
 
 ## Provisioning-Zusatz
 

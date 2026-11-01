@@ -26,6 +26,9 @@ public sealed record ImportPreview(
     /// hat: Enter in eine Konsole ist ein Befehl — das bestätigt der Nutzer im Profil selbst.
     /// </summary>
     public IReadOnlyList<string> EnterDisabled { get; init; } = [];
+
+    /// <summary>Neue Ziele (Origin) für Diktattext — Erkennung, Textverbesserung, eingeschaltete Fallbacks —, auch ohne Key.</summary>
+    public IReadOnlyList<string> DictationTargets { get; init; } = [];
 }
 
 /// <summary>Ein gespeicherter Key (<see cref="Contracts.SecretNames"/>), den ein Import an <paramref name="Target"/> lenken würde.</summary>
@@ -79,7 +82,7 @@ public static class SyncImport
             .Select(d => $"secrets.{d.Name}: von IT festgelegter Key ginge an {d.Target}").ToList();
         return locked.Count > 0
             ? preview with { Settings = null, Errors = [.. preview.Errors, .. locked] }
-            : preview with { DroppedKeys = drops };
+            : preview with { DroppedKeys = drops, DictationTargets = KeyRoutes.NewDictationTargets(current, preview.Settings) };
     }
 
     /// <summary>

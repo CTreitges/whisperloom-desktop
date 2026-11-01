@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using WhisperLoom.App.Localization;
 using WhisperLoom.App.Services;
 using WhisperLoom.Core.Contracts;
+using WhisperLoom.Core.Settings;
 
 namespace WhisperLoom.App.ViewModels;
 
@@ -38,6 +39,9 @@ public sealed partial class KeyFieldViewModel : ObservableObject
 
     /// <summary>false = Key von IT festgelegt (Richtlinie): Ersetzen und Löschen ausgegraut, Prüfen bleibt.</summary>
     public bool Editable { get; init; } = true;
+
+    /// <summary>Richtlinie für „Zugang prüfen“ (<see cref="PolicySettings.AllowsTarget"/>).</summary>
+    public PolicySettings Policy { get; init; } = PolicySettings.None;
 
     public bool CanDelete => IsSet && Editable;
 
@@ -131,6 +135,12 @@ public sealed partial class KeyFieldViewModel : ObservableObject
             return;
         }
         var (providerId, baseUrl) = _target();
+        // Freigabeliste der IT gilt auch hier: sonst ginge der Key an eine eingetippte, nie gespeicherte Adresse.
+        if (!Policy.AllowsTarget(providerId, baseUrl))
+        {
+            Status = Loc.Instance["Access_Policy"];
+            return;
+        }
         var result = await _checker.CheckAsync(providerId, baseUrl, key, CancellationToken.None);
         Status = result.StatusCode is { } code
             ? $"{Loc.Instance[result.MessageKey]} (HTTP {code})"

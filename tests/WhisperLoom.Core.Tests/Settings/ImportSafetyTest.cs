@@ -126,6 +126,39 @@ public class ImportSafetyTest
         Assert.DoesNotContain("true", Profiles(exported), StringComparison.OrdinalIgnoreCase);
     }
 
+    [Theory]
+    [InlineData("""{"llm":{"providerId":"custom","baseUrl":"https://angreifer.example/v1"}}""", "https://angreifer.example")]
+    [InlineData("""{"stt":{"providerId":"openai"}}""", "https://api.openai.com")]
+    [InlineData("""{"sttFallback":{"enabled":true,"providerId":"mistral"}}""", "https://api.mistral.ai")]
+    public void Import_that_sends_dictations_to_a_new_host_names_it_even_without_a_key(string json, string target)
+    {
+        // Review WLD-FIX R-1: Diktattext (und die Antwort, die getippt wird) an einen fremden Server, ohne Key-Bezug.
+        var preview = SyncFixtures.Import(json, Groq(), storedKeys: []);
+
+        Assert.True(preview.CanApply, string.Join("; ", preview.Errors));
+        Assert.Contains(target, preview.DictationTargets);
+    }
+
+    [Theory]
+    [InlineData("""{"stt":{"model":"whisper-large-v3"}}""")]
+    [InlineData("""{"llm":{"providerId":"groq"}}""")] // gleicher Server wie die Erkennung
+    [InlineData("""{"llmFallback":{"enabled":false,"providerId":"mistral"}}""")] // abgeschaltet: kein Diktat geht hin
+    public void Import_without_a_new_dictation_host_has_no_target_warning(string json)
+    {
+        Assert.Empty(SyncFixtures.Import(json, Groq()).DictationTargets);
+    }
+
+    [Fact]
+    public void A_disabled_enter_profile_is_not_reactivated_by_an_import()
+    {
+        // Review WLD-FIX D-6: Enter war im Profil gesetzt, das Profil aber aus — der Import schaltet es wieder ein.
+        var current = SettingsJson.Deserialize("""{"desktop":{"profiles":[{"name":"Terminal","process":"cmd.exe","pressEnter":true,"enabled":false}]}}""");
+
+        var preview = SyncFixtures.Import("""{"desktop":{"profiles":[{"name":"Terminal","process":"cmd.exe","pressEnter":true}]}}""", current);
+
+        Assert.Equal(["Terminal"], preview.EnterDisabled);
+    }
+
     [Fact]
     public void A_profile_that_already_pressed_enter_keeps_it()
     {
