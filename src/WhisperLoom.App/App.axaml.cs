@@ -171,11 +171,16 @@ public partial class App : Application
                 if (_setupWindow is null)
                 {
                     var settings = CreateSettings(host);
+                    var recorder = CreateTestRecorder(host);
                     var setup = new SetupViewModel(settings, new SetupState(host.Options.DataDir), Autostart.ForCurrentOs(),
-                        new MicLevelTest(CreateTestRecorder(host), () => settings.Microphone.Value), RecordHotkey,
+                        new MicLevelTest(recorder, () => settings.Microphone.Value), RecordHotkey,
                         OperatingSystem.IsWindows(), ToggleCommand());
                     _setupWindow = new SetupWindow(setup);
-                    _setupWindow.Closed += (_, _) => _setupWindow = null;
+                    _setupWindow.Closed += (_, _) =>
+                    {
+                        _setupWindow = null;
+                        (recorder as IDisposable)?.Dispose();
+                    };
                     _ = settings.LoadKeysAsync();
                 }
                 Activate(_setupWindow);
