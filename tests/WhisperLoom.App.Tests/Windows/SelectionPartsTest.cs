@@ -31,7 +31,7 @@ public sealed class SelectionPartsTest
 
         var read = await reader.ReadAsync(42, false, CancellationToken.None);
 
-        Assert.Equal(new SelectionRead(SelectionReadKind.Text, "Hallo"), read);
+        Assert.Equal(new SelectionRead(SelectionReadKind.Text, "Hallo", ElementId: "el-1"), read); // W2-FIX M-4: Element gemerkt
         Assert.Empty(rig.Steps);
     }
 
@@ -56,7 +56,7 @@ public sealed class SelectionPartsTest
 
         var read = await reader.ReadAsync(42, false, CancellationToken.None);
 
-        Assert.Equal(new SelectionRead(SelectionReadKind.Text, "markiert", ViaClipboard: true), read);
+        Assert.Equal(new SelectionRead(SelectionReadKind.Text, "markiert", ViaClipboard: true, ElementId: "el-1"), read);
         Assert.Equal(["wait-modifiers", "save", "ctrl-c", "get-text", "restore"], rig.Steps);
         Assert.Equal("vorher", rig.Clipboard.Text);
     }
