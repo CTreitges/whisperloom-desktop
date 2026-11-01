@@ -7,6 +7,7 @@ using Avalonia.Threading;
 using WhisperLoom.App.Audio;
 using WhisperLoom.App.Instance;
 using WhisperLoom.App.Services;
+using WhisperLoom.App.Setup;
 using WhisperLoom.App.Tray;
 using WhisperLoom.App.Updates;
 using WhisperLoom.App.ViewModels;
@@ -26,6 +27,7 @@ public partial class App : Application
     private StageWindow? _stage;
     private HistoryWindow? _historyWindow;
     private SettingsWindow? _settingsWindow;
+    private SetupWindow? _setupWindow;
     private IDisposable? _input;
     private readonly CancellationTokenSource _updates = new();
 
@@ -58,6 +60,10 @@ public partial class App : Application
         if (verb is not null)
         {
             await _host.ExecuteAsync(verb, args);
+        }
+        else if (SetupState.ShowOnStart(options, new SetupState(options.DataDir)))
+        {
+            Open("setup");
         }
         else if (_tray is null)
         {
@@ -131,7 +137,7 @@ public partial class App : Application
     /// <summary>Rekorder für die Einstellungen (nur mit laufendem Hook).</summary>
     internal Func<Task<string?>>? RecordHotkey { get; private set; }
 
-    /// <summary>"stage", "history", "settings" oder "quit".</summary>
+    /// <summary>"stage", "history", "settings", "setup" oder "quit".</summary>
     private void Open(string what)
     {
         var host = _host;
@@ -164,7 +170,7 @@ public partial class App : Application
             case "settings":
                 if (_settingsWindow is null)
                 {
-                    var vm = new SettingsViewModel(host.Controller, host.Secrets, new HttpAccessChecker(() => HttpClients.Create(SettingsStore.Desktop(host.Controller.Settings))), Microphones(host), host.Local, RecordHotkey);
+                    var vm = CreateSettings(host);
                     _settingsWindow = new SettingsWindow(vm);
                     _settingsWindow.Closed += (_, _) => _settingsWindow = null;
                     // Nach einem Import ist die Kopie des Fensters veraltet: neu öffnen statt sie später zurückzuspeichern.
@@ -179,6 +185,24 @@ public partial class App : Application
                 }
                 Activate(_settingsWindow);
                 break;
+            case "setup":
+                if (_setupWindow is null)
+                {
+                    var settings = CreateSettings(host);
+                    var recorder = CreateTestRecorder(host);
+                    var setup = new SetupViewModel(settings, new SetupState(host.Options.DataDir), Autostart.ForCurrentOs(),
+                        new MicLevelTest(recorder, () => settings.Microphone.Value), RecordHotkey,
+                        OperatingSystem.IsWindows(), ToggleCommand());
+                    _setupWindow = new SetupWindow(setup);
+                    _setupWindow.Closed += (_, _) =>
+                    {
+                        _setupWindow = null;
+                        (recorder as IDisposable)?.Dispose();
+                    };
+                    _ = settings.LoadKeysAsync();
+                }
+                Activate(_setupWindow);
+                break;
             case "quit":
                 // Erst die IPC-Antwort rausgehen lassen, dann beenden.
                 Dispatcher.UIThread.Post(async () =>
@@ -189,6 +213,18 @@ public partial class App : Application
                 break;
         }
     }
+
+    private SettingsViewModel CreateSettings(AppHost host) =>
+        new(host.Controller, host.Secrets, new HttpAccessChecker(() => HttpClients.Create(SettingsStore.Desktop(host.Controller.Settings))),
+            Microphones(host), host.Local, RecordHotkey);
+
+    /// <summary>Eigener Recorder für den Pegel-Test, damit ein laufendes Diktat unberührt bleibt.</summary>
+    private static IAudioRecorder CreateTestRecorder(AppHost host) =>
+        host.Options.TestAudio is null ? new PortAudioRecorder() : new WavFileRecorder(host.Options.TestAudio);
+
+    /// <summary>Befehl fürs Desktop-Kürzel (Linux), mit dem Pfad dieser App.</summary>
+    private static string ToggleCommand() =>
+        Autostart.ExecutablePath() is { } exe ? $"\"{exe}\" toggle" : "whisperloom toggle";
 
     private static IReadOnlyList<string> Microphones(AppHost host)
     {
