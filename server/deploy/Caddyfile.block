@@ -1,0 +1,10 @@
+# WhisperLoom Firmen-Manager — Demo (systemd --user whisperloom-admin, 127.0.0.1:8099). Sicherheits-Header (CSP, HSTS,
+# nosniff, Referrer-Policy) setzt die App selbst; Audio über den Proxy bis 25 MiB + 64 KiB (sicherheit.GRENZEN);
+# MiB statt MB: Caddy rechnet MB dezimal (26 MB < 25 MiB + Rahmen).
+whisperloom-admin.{$SITE_HOST} {
+	import subsite
+	request_body {
+		max_size 26MiB
+	}
+	reverse_proxy 127.0.0.1:8099
+}

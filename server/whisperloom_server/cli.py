@@ -56,6 +56,15 @@ def _einladung_text(con, einst: Einstellungen, aid: str, benutzer: str) -> str:
     return f"Admin: {benutzer}\nEinladung (gültig bis {bis}, einmal verwendbar): {link}\n"
 
 
+def _passwort_von_stdin() -> str:
+    """Startpasswort von stdin (nie als Argument: Prozessliste, Shell-Verlauf); gleiche Regel wie im Portal."""
+    passwort = sys.stdin.readline().rstrip("\r\n")
+    regel = auth.passwort_regel(passwort, passwort)
+    if regel:
+        raise CliFehler(f"Passwort abgelehnt ({regel.removeprefix('h.')})")
+    return passwort
+
+
 def ausfuehren(a: argparse.Namespace, einst: Einstellungen) -> str:
     if a.befehl == "init":
         return init(einst)
@@ -65,8 +74,20 @@ def ausfuehren(a: argparse.Namespace, einst: Einstellungen) -> str:
     jetzt = einst.uhr()
     try:
         if a.befehl == "instance-admin-create":
+            if a.password_stdin:
+                konten.anlegen(con, None, a.benutzer, "instance", jetzt, passwort=_passwort_von_stdin())
+                return f"Admin: {a.benutzer.lower()}\nPasswort gesetzt (zweiter Faktor beim ersten Login)"
             aid = konten.anlegen(con, None, a.benutzer, "instance", jetzt)
             return _ausgeben(einst, "instanz-admin", _einladung_text(con, einst, aid, a.benutzer.lower()), a.show)
+        if a.befehl == "tenant-delete":
+            # Löscht die Firma samt Gruppen, Codes, Admins, Geräten, Keys und Zählern (ON DELETE CASCADE); Audit bleibt.
+            f = _firma(con, a.slug)
+            if a.confirm != a.slug:
+                raise CliFehler("zum Löschen --confirm <slug> angeben")
+            con.execute("DELETE FROM firma WHERE id = ?", (f["id"],))
+            # Slug mit ins Audit: nach dem Löschen ist die ID allein nicht mehr zuzuordnen.
+            firmen.protokoll(con, None, "cli", "firma_geloescht", f"{a.slug} {f['id']}", jetzt)
+            return "gelöscht"
         if a.befehl == "tenant-create":
             fid, code = firmen.anlegen(con, kry, a.slug, a.name, jetzt)
             con.execute("UPDATE firma SET auto_freigabe = ?, key_modus = ? WHERE id = ?", (int(a.auto_approve), a.key_mode, fid))
@@ -90,8 +111,11 @@ def ausfuehren(a: argparse.Namespace, einst: Einstellungen) -> str:
             return _ausgeben(einst, f"code-{a.slug}", f"Firma: {f['name']}\nFirmencode: {code}\n", a.show)
         if a.befehl == "admin-create":
             f = _firma(con, a.slug)
-            aid = konten.anlegen(con, f["id"], a.benutzer, a.role, jetzt)
+            passwort = _passwort_von_stdin() if a.password_stdin else None
+            aid = konten.anlegen(con, f["id"], a.benutzer, a.role, jetzt, passwort=passwort)
             firmen.protokoll(con, f["id"], "cli", "admin_neu", a.benutzer.lower(), jetzt)
+            if passwort:
+                return f"Admin: {a.benutzer.lower()}\nPasswort gesetzt (zweiter Faktor beim ersten Login)"
             return _ausgeben(einst, "admin", _einladung_text(con, einst, aid, a.benutzer.lower()), a.show)
         if a.befehl in ("admin-invite", "admin-totp-reset"):
             row = con.execute("SELECT * FROM admin WHERE benutzer = ?", (a.benutzer.lower(),)).fetchone()
@@ -150,6 +174,9 @@ def _parser() -> argparse.ArgumentParser:
     s.add_argument("--owner")
     s.add_argument("--auto-approve", action="store_true")
     s.add_argument("--key-mode", choices=("proxy", "distribute"), default="proxy")
+    s = sub.add_parser("tenant-delete", help="Firma mit allen Geräten, Admins und Keys löschen")
+    s.add_argument("slug")
+    s.add_argument("--confirm", default="", help="Slug zur Bestätigung wiederholen")
     sub.add_parser("tenant-list", help="Firmen auflisten")
     for name, hilfe in (("code-rotate", "Firmencode erneuern (alter Code sofort ungültig)"), ("code-show", "Firmencode zeigen")):
         sub.add_parser(name, help=hilfe).add_argument("slug")
@@ -170,6 +197,9 @@ def _parser() -> argparse.ArgumentParser:
     s.add_argument("--model", default="")
     for name in ("instance-admin-create", "tenant-create", "code-rotate", "code-show", "admin-create", "admin-invite"):
         sub.choices[name].add_argument("--show", action="store_true", help="Geheimnisse auf stdout statt in eine Datei")
+    for name in ("instance-admin-create", "admin-create"):
+        sub.choices[name].add_argument("--password-stdin", action="store_true",
+                                       help="Startpasswort von stdin statt Einladungs-Link")
     return p
 
 

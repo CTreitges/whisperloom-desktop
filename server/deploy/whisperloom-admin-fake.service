@@ -1,0 +1,16 @@
+[Unit]
+Description=WhisperLoom Demo - Fake-Anbieter fuer den Proxy (tools/fake_api.py, nur Loopback)
+After=network.target
+
+[Service]
+Type=exec
+# Eigene Loopback-Adresse: die SSRF-Freigabe der Demo (WL_UPSTREAM_ALLOW) umfasst nur 127.0.0.2/32.
+# -I: nur Standardbibliothek, kein Import aus dem Arbeitsordner oder PYTHON*-Umgebung.
+ExecStart=/usr/bin/python3 -I %h/whisperloom-admin/app/tools/fake_api.py --host 127.0.0.2 --port 8100 --proxy-port 8101
+UMask=0077
+NoNewPrivileges=true
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target
