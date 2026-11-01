@@ -91,6 +91,12 @@ public static class SettingsAccess
                 providers[name] = key;
             }
         }
+        // W2-ENR: Key des Firmen-Proxys (Geräte-Token) nur für dessen Eintrag; der Speicher gibt ihn nur im Zustand approved.
+        if (settings is not null && CompanyProvider.IsActive(settings.Management)
+            && await secrets.GetAsync(CompanyProvider.EntryId, ct).ConfigureAwait(false) is { Length: > 0 } token)
+        {
+            providers[CompanyProvider.EntryId] = token;
+        }
         return new(
             await secrets.GetAsync(SecretNames.Stt, ct).ConfigureAwait(false) ?? "",
             await secrets.GetAsync(SecretNames.SttFallback, ct).ConfigureAwait(false) ?? "",

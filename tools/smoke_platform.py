@@ -76,12 +76,14 @@ def cleanup_secrets(platform: str, prefix: str, data_dir: Path) -> None:
     """Löscht alle Testeinträge mit dem Test-Präfix — nie Einträge ohne "WhisperLoom-Test-"."""
     if not prefix.startswith("WhisperLoom-Test-"):
         raise ValueError("cleanup nur für Test-Präfixe")
+    # W2-ENR: Geräte-Token (<präfix>device) und Firmen-Keys unter eigenem Präfix (<präfix>company:<zugang>).
+    entries = [(prefix, name) for name in (*NAMES, "device")] + [(prefix + "company:", name) for name in NAMES]
     if platform == "win":
-        for name in NAMES:
-            win_delete(prefix + name)
+        for p, name in entries:
+            win_delete(p + name)
         return
-    for name in NAMES:
-        subprocess.run(["secret-tool", "clear", "service", prefix.rstrip(":"), "account", name], capture_output=True)
+    for p, name in entries:
+        subprocess.run(["secret-tool", "clear", "service", p.rstrip(":"), "account", name], capture_output=True)
     (data_dir / "secrets.json").unlink(missing_ok=True)
 
 

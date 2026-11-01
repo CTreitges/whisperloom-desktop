@@ -25,7 +25,18 @@ public sealed partial class SettingsViewModel
     public Task Pending { get; private set; } = Task.CompletedTask;
 
     /// <summary>Neue Arbeitskopie vom aktuellen Stand der App (z. B. nach „Auf Firmenvorgabe zurücksetzen“).</summary>
-    public SettingsViewModel Reopen() => _reopen();
+    public SettingsViewModel Reopen()
+    {
+        var fresh = _reopen();
+        fresh.Company = Company;
+        return fresh;
+    }
+
+    /// <summary>Firmen-Anbindung für die Seite „Firma“ (W2-ENR); null ohne Server-Anbindung (Tests).</summary>
+    public Management.ManagementService? Company { get; set; }
+
+    /// <summary>Richtlinie der App jetzt; weicht sie von <see cref="Policy"/> ab, ist die Arbeitskopie veraltet (Abgleich, Verlassen).</summary>
+    internal PolicySettings LivePolicy => _controller.Policy;
 
     /// <summary>Verlauf an/aus. Im Fenster fragt „aus“ erst nach (<see cref="HistoryOffPending"/>), denn es löscht den Verlauf.</summary>
     public bool HistoryEnabled

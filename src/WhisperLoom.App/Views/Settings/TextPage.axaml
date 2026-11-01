@@ -47,7 +47,7 @@
               <v:KeyFieldView x:Name="LlmKeyView" DataContext="{Binding Session.LlmKey}" />
             </ds:SettingRow>
           </Panel>
-          <ds:HintRow TextKey="Key_AtEntry" IsVisible="{Binding Session.LlmUsesEntry}" Margin="14,4,14,10" />
+          <ds:HintRow TextKey="{Binding Session.LlmKeyHint}" IsVisible="{Binding Session.LlmUsesEntry}" Margin="14,4,14,10" />
           <ds:SettingRow Path="llm.model">
             <vs:ModelPickerView x:Name="LlmModelPicker" DataContext="{Binding LlmModelPicker}" />
           </ds:SettingRow>
@@ -128,7 +128,7 @@
                 <v:KeyFieldView x:Name="LlmFallbackKeyView" DataContext="{Binding Session.LlmFallbackKey}" />
               </ds:SettingRow>
             </Panel>
-            <ds:HintRow TextKey="Key_AtEntry" IsVisible="{Binding Session.LlmFallbackUsesEntry}" Margin="14,4,14,10" />
+            <ds:HintRow TextKey="{Binding Session.LlmFallbackKeyHint}" IsVisible="{Binding Session.LlmFallbackUsesEntry}" Margin="14,4,14,10" />
             <ds:SettingRow Path="llmFallback.model">
               <vs:ModelPickerView DataContext="{Binding LlmFallbackModelPicker}" />
             </ds:SettingRow>

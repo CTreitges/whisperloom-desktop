@@ -10,6 +10,12 @@ namespace WhisperLoom.App.Setup;
 /// <summary>Schritte des Einrichtungs-Assistenten in fester Reihenfolge.</summary>
 public enum SetupStep
 {
+    /// <summary>„Wie nutzt du WhisperLoom?“ – für mich oder mit meiner Firma (W2-ENR).</summary>
+    Usage,
+
+    /// <summary>Firmen-Server und Firmencode, danach „Wartet auf Freigabe“ (W2-ENR).</summary>
+    Company,
+
     Language,
     Microphone,
     Recognition,
@@ -25,12 +31,17 @@ public enum SetupStep
 /// (Linux), Autostart, Fertig. Arbeitet auf einem <see cref="SettingsViewModel"/> (dieselbe Kopie, Sperren und
 /// dasselbe Speichern wie das Einstellungsfenster). Von der IT gesperrte Schritte (<see cref="SettingsViewModel.Editable"/>)
 /// entfallen. Überspringen speichert nichts, markiert die Einrichtung aber als erledigt.
+/// W2-ENR: Mit Firmen-Anbindung beginnt der Assistent mit „Wie nutzt du WhisperLoom?“. Der Firmen-Pfad verbindet per
+/// Firmencode, wartet auf die Freigabe und baut danach die Arbeitskopie und die Schritte neu auf: Was die Firma Fest
+/// setzt, entfällt; Mikrofon, Hotkey-Test und Autostart bleiben.
 /// </summary>
 public sealed partial class SetupViewModel : ObservableObject
 {
     private readonly SetupState _state;
     private readonly IAutostart? _autostart;
     private readonly string _uiLanguageBefore;
+    private readonly Func<Task<string?>>? _recordHotkey;
+    private readonly bool _companyAvailable;
 
     /// <param name="settings">Kopie der Einstellungen samt Key-Feldern, lokalen Modellen und Hotkey-Rekorder.</param>
     /// <param name="autostart">null = OS ohne Autostart; der Schritt zeigt dann nur einen Hinweis.</param>
@@ -38,46 +49,94 @@ public sealed partial class SetupViewModel : ObservableObject
     /// <param name="recordHotkey">Rekorder des globalen Hooks (Windows); null = Hotkey-Test nicht möglich.</param>
     /// <param name="windows">Windows-Variante (Hotkey-Test) statt Linux-Anleitung; Tests prüfen beide.</param>
     /// <param name="toggleCommand">Befehl fürs Desktop-Kürzel unter Linux, z. B. <c>"/opt/WhisperLoom" toggle</c>.</param>
+    /// <param name="management">Firmen-Anbindung; null = ohne Firmen-Pfad (Schritt „Wie nutzt du WhisperLoom?“ entfällt).</param>
+    /// <param name="pollDelay">Wartezeit zwischen zwei Abfragen beim Warten auf die Freigabe; Tests ersetzen sie.</param>
     public SetupViewModel(SettingsViewModel settings, SetupState state, IAutostart? autostart, MicLevelTest? microphone,
-        Func<Task<string?>>? recordHotkey, bool windows, string toggleCommand)
+        Func<Task<string?>>? recordHotkey, bool windows, string toggleCommand, Management.ManagementService? management = null,
+        Func<TimeSpan, CancellationToken, Task>? pollDelay = null)
     {
-        Settings = settings;
+        _settings = settings;
         _state = state;
         _autostart = autostart;
+        _recordHotkey = recordHotkey;
         Mic = microphone;
-        Hotkey = new HotkeyCheck(settings.Hotkeys, recordHotkey);
+        _hotkey = new HotkeyCheck(settings.Hotkeys, recordHotkey);
         Windows = windows;
         ToggleCommand = toggleCommand;
         _uiLanguageBefore = settings.UiLanguage.Value;
         _autostartEnabled = autostart?.IsEnabled ?? false;
-        Steps = VisibleSteps(settings.Editable, settings.Local.Engine.Value);
-        _current = Steps[0];
-        settings.Local.PropertyChanged += OnLocalChanged;
-        settings.PropertyChanged += OnSettingsChanged;
+        if (management is not null)
+        {
+            Join = new CompanyJoinViewModel(management, pollDelay);
+            Join.Approved += OnApproved;
+            Join.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(CompanyJoinViewModel.Phase))
+                {
+                    NextCommand.NotifyCanExecuteChanged();
+                }
+            };
+            var m = settings.Current.Management;
+            // Usage nur für noch nicht verbundene Geräte ohne IT-Richtlinie; ein wartendes Gerät landet direkt beim Firmen-Schritt.
+            _companyAvailable = m.State is "none" or "revoked" && !settings.HasPolicy || m.State == "pending";
+            _useCompany = m.State == "pending";
+        }
+        _steps = BuildSteps();
+        _current = _steps[0];
+        Attach(settings);
         Loc.Instance.PropertyChanged += (_, _) => OnPropertyChanged(nameof(Title));
     }
 
-    public SettingsViewModel Settings { get; }
+    /// <summary>Arbeitskopie; nach der Freigabe durch die Firma neu aufgebaut (neue Richtlinie).</summary>
+    public SettingsViewModel Settings
+    {
+        get => _settings;
+        private set => SetProperty(ref _settings, value);
+    }
+
+    private SettingsViewModel _settings;
 
     public MicLevelTest? Mic { get; }
 
-    public HotkeyCheck Hotkey { get; }
+    public HotkeyCheck Hotkey
+    {
+        get => _hotkey;
+        private set => SetProperty(ref _hotkey, value);
+    }
+
+    private HotkeyCheck _hotkey;
 
     public bool Windows { get; }
 
     public string ToggleCommand { get; }
 
     /// <summary>Sichtbare Schritte nach der Richtlinie; „Fertig“ ist immer dabei und immer zuletzt.</summary>
-    public IReadOnlyList<SetupStep> Steps { get; }
+    public IReadOnlyList<SetupStep> Steps
+    {
+        get => _steps;
+        private set
+        {
+            if (SetProperty(ref _steps, value))
+            {
+                OnPropertyChanged(nameof(Index));
+                OnPropertyChanged(nameof(Progress));
+                OnPropertyChanged(nameof(ProgressValue));
+                OnPropertyChanged(nameof(CanBack));
+                BackCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
+
+    private IReadOnlyList<SetupStep> _steps;
 
     /// <summary>Fenster schließen (nach Fertig oder Überspringen).</summary>
     public event Action? CloseRequested;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(Index), nameof(Progress), nameof(Title), nameof(CanBack), nameof(IsLast),
-        nameof(ShowLanguage), nameof(ShowMicrophone), nameof(ShowRecognition), nameof(ShowStage), nameof(ShowHotkey),
+    [NotifyPropertyChangedFor(nameof(Index), nameof(Progress), nameof(ProgressValue), nameof(Title), nameof(CanBack), nameof(IsLast),
+        nameof(ShowUsage), nameof(ShowCompany), nameof(ShowLanguage), nameof(ShowMicrophone), nameof(ShowRecognition), nameof(ShowStage), nameof(ShowHotkey),
         nameof(ShowAutostart), nameof(ShowDone))]
-    [NotifyCanExecuteChangedFor(nameof(BackCommand))]
+    [NotifyCanExecuteChangedFor(nameof(BackCommand), nameof(NextCommand))]
     private SetupStep _current;
 
     [ObservableProperty]
@@ -89,6 +148,9 @@ public sealed partial class SetupViewModel : ObservableObject
 
     public int Index => Steps.ToList().IndexOf(Current);
 
+    /// <summary>Fortschrittsbalken im Kopf: erledigte Schritte inklusive des aktuellen.</summary>
+    public int ProgressValue => Index + 1;
+
     public string Progress => Loc.Instance.Format("Setup_Progress", Index + 1, Steps.Count);
 
     public string Title => Loc.Instance["Setup_Step_" + Current];
@@ -97,6 +159,8 @@ public sealed partial class SetupViewModel : ObservableObject
 
     public bool IsLast => Current == SetupStep.Done;
 
+    public bool ShowUsage => Current == SetupStep.Usage;
+    public bool ShowCompany => Current == SetupStep.Company;
     public bool ShowLanguage => Current == SetupStep.Language;
     public bool ShowMicrophone => Current == SetupStep.Microphone;
     public bool ShowRecognition => Current == SetupStep.Recognition;
@@ -152,7 +216,7 @@ public sealed partial class SetupViewModel : ObservableObject
         return steps;
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanNext))]
     public void Next() => Go(Index + 1);
 
     [RelayCommand(CanExecute = nameof(CanBack))]
@@ -165,7 +229,12 @@ public sealed partial class SetupViewModel : ObservableObject
             return;
         }
         StopMic(); // Verlassen des Mikrofon-Schritts beendet den Pegel-Test
+        Join?.Deactivate();
         Current = Steps[index];
+        if (Current == SetupStep.Company)
+        {
+            Join?.Activate();
+        }
     }
 
     /// <summary>Überspringen: nichts speichern, Oberflächensprache zurück, als erledigt markieren, schließen.</summary>
@@ -173,6 +242,7 @@ public sealed partial class SetupViewModel : ObservableObject
     public void Skip()
     {
         StopMic();
+        Join?.Deactivate();
         Loc.Instance.SetLanguage(_uiLanguageBefore);
         MarkDoneAndClose();
     }
@@ -182,6 +252,7 @@ public sealed partial class SetupViewModel : ObservableObject
     public async Task Finish()
     {
         StopMic();
+        Join?.Deactivate();
         Status = "";
         if (NeedsPromptEnabled(Settings))
         {

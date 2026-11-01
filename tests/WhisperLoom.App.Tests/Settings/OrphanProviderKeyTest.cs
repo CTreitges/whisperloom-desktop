@@ -161,7 +161,8 @@ public sealed class OrphanProviderKeyTest
         window.Close();
     }
 
-    [Fact]
+    // Auf dem UI-Thread: SetLanguage meldet an Bindungen noch lebender Fenster anderer Tests (sonst Thread-Fehler in der CI).
+    [AvaloniaFact]
     public void Drop_of_a_removed_entry_has_its_own_text()
     {
         // Prüfrunde 2 D-K1-4

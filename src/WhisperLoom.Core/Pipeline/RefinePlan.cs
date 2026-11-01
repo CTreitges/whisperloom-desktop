@@ -76,7 +76,8 @@ public sealed class RefinePlan
         {
             return await OnlineAsync(route, raw, language, refinement, onNote, ct).ConfigureAwait(false);
         }
-        catch (Exception) when (route.FallbackLocal && !ct.IsCancellationRequested)
+        // W2-ENR (Christof): Firmenbudget erreicht = klar ablehnen, auch kein lokales Ersatzmodell.
+        catch (Exception e) when (route.FallbackLocal && !ct.IsCancellationRequested && !Api.CompanyProvider.IsBudgetError(e))
         {
             _onlineFailed = true;
             var text = await LocalAsync(raw, language, refinement, ct).ConfigureAwait(false);
@@ -106,7 +107,7 @@ public sealed class RefinePlan
             {
                 return await Refiner(_access, timeout, a => _access = a).RefineAsync(raw, language, refinement, ct).ConfigureAwait(false);
             }
-            catch (Exception e) when (second is not null && !ct.IsCancellationRequested)
+            catch (Exception e) when (second is not null && !ct.IsCancellationRequested && !Api.CompanyProvider.IsBudgetError(e))
             {
                 _primaryFailed = true;
                 firstError = e;

@@ -49,7 +49,8 @@ public sealed class FallbackBackend(ITranscriptionBackend primary, ITranscriptio
         {
             return await primary.TranscribeAsync(audio, language, ct).ConfigureAwait(false);
         }
-        catch (Exception e) when (!ct.IsCancellationRequested && !Cancelled())
+        // W2-ENR (Christof): Firmenbudget erreicht = klar ablehnen, kein Ersatz-Anbieter.
+        catch (Exception e) when (!ct.IsCancellationRequested && !Cancelled() && !Api.CompanyProvider.IsBudgetError(e))
         {
             error = e;
         }

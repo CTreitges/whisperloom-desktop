@@ -182,7 +182,10 @@ Ein neues Provisioning ersetzt die Richtlinie vollständig. Die Sperren sind kei
 
 Gespeichert wird die Richtlinie getrennt in `<Datenordner>/policy.json` (Felder `locked` als aufgelöste Pfadliste,
 `historyEnabled`, `updatesEnabled`, `allowedProviders`; W2: `defaults` = Blatt-Pfad → Firmenwert); `status --json`
-zeigt sie unter `policy`. Pfade der Sperre vergleichen ohne Rücksicht auf Groß-/Kleinschreibung (W2-C0: vorher umging
+zeigt sie unter `policy`. W2-ENR: Daneben `<Datenordner>/policy-fixed.json` (Blatt-Pfad → Wert der festen Pfade zum
+Zeitpunkt von Provisioning bzw. Abgleich); Start und Neuladen setzen diese Werte wieder ein, solange der Pfad Fest ist
+(lokal geänderte `settings.json`). `management-cache.json` hält ETag, Proxy-Adresse und die letzte Server-Konfiguration
+ohne `secrets`. Pfade der Sperre vergleichen ohne Rücksicht auf Groß-/Kleinschreibung (W2-C0: vorher umging
 `desktop.ProxyMode` die Sperre `desktop.proxyMode`).
 
 ## Richtlinie: drei Stufen
