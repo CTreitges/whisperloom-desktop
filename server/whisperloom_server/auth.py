@@ -65,13 +65,14 @@ def _fehlversuch(con: sqlite3.Connection, row: sqlite3.Row, jetzt: int) -> None:
 
 
 def _ip_gesperrt(con: sqlite3.Connection, b_hmac: str, ip_hmac: str, jetzt: int) -> bool:
-    """Fehlversuche dieser IP für diesen Benutzer (seit dem letzten Erfolg) bzw. weiche Grenze über alle IPs."""
+    """Fehlversuche dieser IP für diesen Benutzer seit ihrem letzten Erfolg (Reihenfolge per id, nicht per Zeit) bzw.
+    weiche Grenze über alle IPs."""
     row = con.execute(
-        "SELECT"
-        " SUM(ip_hmac = :i AND zeit_ms > MAX(:sperre, COALESCE((SELECT MAX(zeit_ms) FROM login_versuch"
-        "     WHERE benutzer_hmac = :b AND ip_hmac = :i AND erfolg = 1), 0))) AS hier,"
-        " SUM(ip_hmac = :i) AS hier_stunde, COUNT(*) AS gesamt "
-        "FROM login_versuch WHERE benutzer_hmac = :b AND erfolg = 0 AND zeit_ms > :stunde",
+        "WITH letzt AS (SELECT COALESCE(MAX(id), 0) AS bis FROM login_versuch"
+        "  WHERE benutzer_hmac = :b AND ip_hmac = :i AND erfolg = 1) "
+        "SELECT SUM(v.ip_hmac = :i AND v.id > letzt.bis AND v.zeit_ms > :sperre) AS hier,"
+        " SUM(v.ip_hmac = :i AND v.id > letzt.bis) AS hier_stunde, COUNT(*) AS gesamt "
+        "FROM login_versuch v, letzt WHERE v.benutzer_hmac = :b AND v.erfolg = 0 AND v.zeit_ms > :stunde",
         {"b": b_hmac, "i": ip_hmac, "sperre": jetzt - SPERRE_MS, "stunde": jetzt - GLOBAL_MS},
     ).fetchone()
     if (row["hier"] or 0) >= FEHLVERSUCHE_MAX:
@@ -79,18 +80,36 @@ def _ip_gesperrt(con: sqlite3.Connection, b_hmac: str, ip_hmac: str, jetzt: int)
     return row["gesamt"] >= GLOBAL_MAX and (row["hier_stunde"] or 0) >= 1
 
 
+def _versuch_eintragen(con: sqlite3.Connection, row, b_hmac: str, ip_hmac: str, jetzt: int) -> int | None:
+    """Prüfen und Eintragen in einer Schreib-Transaktion, vor argon2 (Review-Befund): Gleichzeitige Anfragen einer IP
+    sehen sich so gegenseitig und bekommen zusammen höchstens FEHLVERSUCHE_MAX Versuche. None = gesperrt."""
+    con.execute("BEGIN IMMEDIATE")
+    try:
+        if (row is not None and row["gesperrt_bis_ms"] > jetzt) or _ip_gesperrt(con, b_hmac, ip_hmac, jetzt):
+            vid = None
+        else:
+            vid = con.execute("INSERT INTO login_versuch (ip_hmac, benutzer_hmac, zeit_ms, erfolg) VALUES (?, ?, ?, 0)",
+                              (ip_hmac, b_hmac, jetzt)).lastrowid
+        con.execute("COMMIT")
+    except BaseException:
+        con.execute("ROLLBACK")
+        raise
+    return vid
+
+
 def anmelden(con: sqlite3.Connection, kry: Krypto, benutzer: str, passwort: str, ip: str, jetzt: int):
     """("ok", admin) | ("falsch", None) | ("gesperrt", None) | ("konto_gesperrt", None).
 
     `ip` ist der Limit-Schlüssel (IPv4-Adresse bzw. IPv6-/64, `netz.limit_ip`). Unbekannte Namen zählen genauso wie
-    bekannte, damit beide gleich aussehen. Die Konto-Sperre `gesperrt_bis_ms` setzen nur noch TOTP-Fehlversuche
-    (dafür braucht man das Passwort).
+    bekannte, damit beide gleich aussehen. Gesperrte Versuche rechnen kein argon2 (gleich für bekannte und unbekannte
+    Namen, spart CPU und Speicher unter Last). Die Konto-Sperre `gesperrt_bis_ms` setzen nur noch TOTP-Fehlversuche
+    (dafür braucht man das Passwort); ein richtiges Passwort setzt deren Zähler nicht zurück, nur ein richtiger Code.
     """
     benutzer = benutzer.strip().lower()
     b_hmac, ip_hmac = kry.hmac("benutzer:" + benutzer), kry.hmac("ip:" + ip)
     row = con.execute("SELECT * FROM admin WHERE benutzer = ?", (benutzer,)).fetchone()
-    if (row is not None and row["gesperrt_bis_ms"] > jetzt) or _ip_gesperrt(con, b_hmac, ip_hmac, jetzt):
-        passwort_pruefen(None, passwort)  # gleiche Laufzeit; gesperrte Versuche zählen nicht weiter
+    vid = _versuch_eintragen(con, row, b_hmac, ip_hmac, jetzt)
+    if vid is None:
         return ("gesperrt", None)
     ergebnis: tuple[str, sqlite3.Row | None]
     if passwort_pruefen(row["pw_hash"] if row is not None else None, passwort):
@@ -98,14 +117,11 @@ def anmelden(con: sqlite3.Connection, kry: Krypto, benutzer: str, passwort: str,
             ergebnis = ("konto_gesperrt", None)
         else:
             ergebnis = ("ok", row)
-            neu_hash = _ph.hash(passwort) if _ph.check_needs_rehash(row["pw_hash"]) else row["pw_hash"]
-            con.execute("UPDATE admin SET fehlversuche = 0, pw_hash = ? WHERE id = ?", (neu_hash, row["id"]))
+            con.execute("UPDATE login_versuch SET erfolg = 1 WHERE id = ?", (vid,))
+            if _ph.check_needs_rehash(row["pw_hash"]):
+                con.execute("UPDATE admin SET pw_hash = ? WHERE id = ?", (_ph.hash(passwort), row["id"]))
     else:
         ergebnis = ("falsch", None)
-    con.execute(
-        "INSERT INTO login_versuch (ip_hmac, benutzer_hmac, zeit_ms, erfolg) VALUES (?, ?, ?, ?)",
-        (ip_hmac, b_hmac, jetzt, int(ergebnis[0] == "ok")),
-    )
     con.execute("DELETE FROM login_versuch WHERE zeit_ms < ?", (jetzt - 86_400_000,))
     return ergebnis
 

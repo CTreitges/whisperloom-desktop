@@ -90,6 +90,63 @@ def test_unbekannter_name_wie_bekannter(einst, app):
     assert status == {"chef": 429, "gibt-es-nicht": 429}
 
 
+def test_gleichzeitige_versuche_einer_ip_hoechstens_fuenf(einst, monkeypatch):
+    """Review-Befund: Prüfen und Eintragen vor argon2 – parallele Fehlversuche einer IP sehen sich gegenseitig."""
+    import threading
+    import time
+
+    from .conftest import kry
+
+    langsam = auth.passwort_pruefen
+    monkeypatch.setattr(auth, "passwort_pruefen", lambda h, p: (time.sleep(0.2), langsam(h, p))[1])
+    f = neue_firma(einst, "muster")
+    neuer_admin(einst, f["id"], "chef")
+    k, start, ergebnisse = kry(einst), threading.Barrier(10), []
+
+    def versuch():
+        con = db.verbinden(einst.db_pfad)
+        try:
+            start.wait()
+            ergebnisse.append(auth.anmelden(con, k, "chef", FALSCH, "203.0.113.7", einst.uhr())[0])
+        finally:
+            con.close()
+
+    faeden = [threading.Thread(target=versuch) for _ in range(10)]
+    for t in faeden:
+        t.start()
+    for t in faeden:
+        t.join()
+    assert sorted(ergebnisse) == ["falsch"] * 5 + ["gesperrt"] * 5
+
+
+def test_totp_fehlversuche_ueber_neue_logins_sperren_konto(einst, app, uhr):
+    """Review-Befund: ein richtiges Passwort setzt die TOTP-Fehlversuche nicht zurück (sonst 4 je Login, endlos)."""
+    from .conftest import seiten_csrf
+
+    f = neue_firma(einst, "muster")
+    neuer_admin(einst, f["id"], "chef")
+    c = _von(app, "203.0.113.7")
+    for runde in range(5):
+        c.cookies.clear()
+        assert passwort_login(c, "chef", PASSWORT).headers.get("location") == "/login/totp", runde
+        c.post("/login/totp", data={"code": "000000", "csrf": seiten_csrf(c, "/login/totp")})
+    assert sql(einst, "SELECT gesperrt_bis_ms > 0 FROM admin WHERE benutzer = 'chef'")[0][0] == 1
+    assert passwort_login(_von(app, "198.51.100.20"), "chef", PASSWORT).status_code == 429
+
+
+def test_weiche_grenze_vergisst_tippfehler_vor_erfolg(einst, app):
+    """Review-Befund: Ein Tippfehler des echten Admins vor seinem Erfolg zählt unter Angriff nicht gegen seine IP."""
+    f = neue_firma(einst, "muster")
+    neuer_admin(einst, f["id"], "chef")
+    echt = _von(app, "198.51.100.250")
+    passwort_login(echt, "chef", FALSCH)
+    assert passwort_login(echt, "chef", PASSWORT).status_code == 303
+    for i in range(auth.GLOBAL_MAX):
+        passwort_login(_von(app, f"198.51.100.{i}"), "chef", FALSCH)
+    echt.cookies.clear()
+    assert passwort_login(echt, "chef", PASSWORT).status_code == 303
+
+
 def test_cli_admin_unlock_hebt_sperre_auf(einst, app, capsys):
     f = neue_firma(einst, "muster")
     neuer_admin(einst, f["id"], "chef")

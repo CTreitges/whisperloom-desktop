@@ -222,8 +222,9 @@ def loopback(host: str) -> bool:
 
 
 def serve_pruefen(einst: Einstellungen, host: str) -> None:
-    """local_only nur an Loopback (Review N-13): hinter einem Reverse-Proxy mit Standard-proxy_pass sähe sonst jede
-    Anfrage aus dem Internet lokal aus und wäre Instanz-Admin."""
+    """local_only nur an Loopback (Review N-13): Gebunden an alle Adressen wäre das Portal aus dem Netz erreichbar und
+    hinge allein an der Header-Prüfung in netz.ist_lokal. Grenze: Ein Reverse-Proxy auf demselben Rechner, der an
+    127.0.0.1 weiterleitet (nginx-Standard ohne X-Forwarded-For), sieht weiter lokal aus; davor warnt die README."""
     if "local_only" in einst.anmeldearten and not loopback(host):
         raise CliFehler(f"local_only nur mit --host 127.0.0.1 bzw. ::1 (nicht {host}); "
                         "für Zugriff über das Netz eine Anmeldeart mit Passwort oder trusted_header wählen")
