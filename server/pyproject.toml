@@ -1,0 +1,39 @@
+[project]
+name = "whisperloom-server"
+version = "0.1.0"
+description = "WhisperLoom Firmen-Manager: zentrale Verwaltung von Geräten, Richtlinien und Keys (selbst hostbar, mandantenfähig)"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+
+# Editierbar installierbar (`pip install -e server`), damit `python -m whisperloom_server` aus jedem Ordner läuft.
+# Doku: https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html (abgerufen 2026-11-01)
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["whisperloom_server*"]
+
+[tool.setuptools.package-data]
+whisperloom_server = ["templates/*.html", "static/*", "texte/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-p no:cacheprovider"
+# starlette.testclient empfiehlt httpx2; der Dienst nutzt httpx 0.28 (requirements.txt), das genügt den Tests.
+filterwarnings = ["ignore:Using `httpx` with `starlette.testclient`"]
+
+[tool.ruff]
+line-length = 130
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "SIM"]
+# B008: FastAPI-Abhängigkeiten als Default (Depends/Form) sind das dokumentierte Muster.
+ignore = ["B008"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests und Smoke: assert, feste Fake-Werte, Pfade und Unterprozesse sind gewollt.
+"tests/*" = ["S101", "S105", "S106", "S108", "S603", "S310"]
+"tools/*" = ["S101", "S105", "S106", "S603", "S310"]

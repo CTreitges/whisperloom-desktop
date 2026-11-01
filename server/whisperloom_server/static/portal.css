@@ -1,0 +1,167 @@
+/* WhisperLoom-Portal: schlicht, an Apple-HIG orientiert (gruppierte Listen, eine Hauptaktion je Seite, System-Schrift).
+   Doku: https://developer.apple.com/design/human-interface-guidelines/ (Layout, Color, Typography; abgerufen 2026-11-01) */
+:root {
+  color-scheme: light dark;
+  --hg: #f2f2f7; --flaeche: #ffffff; --text: #1c1c1e; --leise: #5a5a5f; --linie: #d8d8dd;
+  --akzent: #0062cc; --akzent-text: #ffffff; --gefahr: #c4231a; --ok: #1d7a34; --warn: #8a5a00; --feldrand: #8a8a8e;
+  --ok-hg: #e6f4ea; --warn-hg: #fff4e0; --fehler-hg: #fdecea; --info-hg: #e8f0fb;
+  --radius: 12px; --fokus: 0 0 0 3px rgba(0, 98, 204, .45);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --hg: #000000; --flaeche: #1c1c1e; --text: #f2f2f7; --leise: #aeaeb2; --linie: #3a3a3c;
+    --akzent: #4ea1ff; --akzent-text: #00172e; --gefahr: #ff6b61; --ok: #5ad27c; --warn: #ffc65c; --feldrand: #7c7c80;
+    --ok-hg: #11301a; --warn-hg: #3a2a08; --fehler-hg: #3d1512; --info-hg: #102540; --fokus: 0 0 0 3px rgba(78, 161, 255, .55);
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--hg); color: var(--text); line-height: 1.45;
+  font: 16px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+a { color: var(--akzent); }
+h1 { font-size: 1.75rem; line-height: 1.2; margin: 0 0 .25rem; letter-spacing: -.01em; }
+h2 { font-size: 1.05rem; margin: 0 0 .75rem; }
+code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: .95em; word-break: break-all; }
+.sprung { position: absolute; left: -999px; top: 0; background: var(--flaeche); padding: .5rem 1rem; z-index: 10; }
+.sprung:focus { left: 1rem; }
+:focus-visible { outline: none; box-shadow: var(--fokus); border-radius: 6px; }
+
+.rahmen { min-height: 100vh; }
+.rahmen.mit-leiste { display: grid; grid-template-columns: 15rem 1fr;
+  /* Leistenfläche läuft über die ganze Seitenhöhe, auch wenn die Leiste selbst klebt */
+  background: linear-gradient(to right, var(--flaeche) calc(15rem - 1px), var(--linie) calc(15rem - 1px), var(--linie) 15rem, transparent 15rem); }
+.leiste {
+  background: var(--flaeche); border-right: 1px solid var(--linie); padding: 1.25rem 1rem;
+  position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: .5rem; overflow-y: auto;
+}
+.marke { font-weight: 700; margin: 0; font-size: 1.1rem; }
+.marke.mitte { text-align: center; margin: 2rem 0 1rem; }
+.firma { margin: 0 0 .75rem; color: var(--leise); font-size: .9rem; }
+.leiste ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.leiste a { display: block; padding: .5rem .75rem; border-radius: 8px; color: var(--text); text-decoration: none; }
+.leiste a:hover { background: var(--hg); }
+.leiste a[aria-current="page"] { background: var(--akzent); color: var(--akzent-text); font-weight: 600; }
+.leiste-fuss { margin-top: auto; border-top: 1px solid var(--linie); padding-top: .75rem; }
+.sprachwahl a[aria-current] { font-weight: 600; color: var(--text); text-decoration: none; }
+.leiste .sprachwahl a { display: inline; padding: 0; border-radius: 0; }
+.leiste .sprachwahl a:hover { background: none; text-decoration: underline; }
+.einstellung.ohne-wert .einstellung-wert { opacity: .45; }
+.formular > .formular { margin: 0; }
+[hidden] { display: none !important; }
+
+main { padding: 2rem clamp(1rem, 4vw, 3rem) 5rem; max-width: 60rem; width: 100%; }
+main.schmal { max-width: 26rem; margin: 0 auto; padding-top: 1rem; }
+.untertitel { color: var(--leise); margin: 0 0 1.5rem; max-width: 42rem; }
+.klein { font-size: .875rem; color: var(--leise); }
+.mitte { text-align: center; }
+.leer { color: var(--leise); margin: .25rem 0; }
+
+.karte, .gruppe-box {
+  background: var(--flaeche); border-radius: var(--radius); padding: 1.1rem 1.25rem; margin: 0 0 1.25rem;
+  border: 1px solid var(--linie);
+}
+.karte { padding: 1.5rem; }
+.gruppe-box.hervor { border-color: var(--akzent); }
+fieldset.gruppe-box { min-width: 0; }
+fieldset.gruppe-box legend { font-weight: 700; font-size: 1.05rem; float: left; width: 100%; padding: 0; margin: 0 0 .5rem; }
+fieldset.gruppe-box legend + * { clear: both; }
+.raster { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 0 1.25rem; }
+
+.liste { list-style: none; margin: 0; padding: 0; }
+.liste > li + li { border-top: 1px solid var(--linie); }
+.liste.karten > li + li { border-top: 1px solid var(--linie); }
+.zeile { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .65rem 0; flex-wrap: wrap; }
+.zeile-text { display: flex; flex-direction: column; min-width: 0; }
+.geraet-kopf { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.geraet-kopf h2 { margin: 0; }
+.werte { margin: 0; display: grid; gap: .35rem; }
+.werte div { display: flex; justify-content: space-between; gap: 1rem; }
+.werte dt { color: var(--leise); }
+.werte dd { margin: 0; font-weight: 600; }
+
+.abzeichen { font-size: .8rem; font-weight: 600; padding: .15rem .6rem; border-radius: 999px; white-space: nowrap; }
+.status-approved { background: var(--ok-hg); color: var(--ok); }
+.status-pending { background: var(--warn-hg); color: var(--warn); }
+.status-blocked { background: var(--fehler-hg); color: var(--gefahr); }
+
+.formular { display: flex; flex-direction: column; gap: .4rem; margin: .5rem 0; }
+.formular.reihe { flex-direction: row; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; }
+.formular.reihe input, .formular.reihe select { flex: 1 1 12rem; }
+.formular label { font-weight: 500; margin-top: .4rem; }
+.formular.reihe label { margin-top: 0; }
+input, select, textarea {
+  font: inherit; color: var(--text); background: var(--flaeche); border: 1px solid var(--feldrand); border-radius: 8px;
+  padding: .55rem .7rem; min-height: 2.5rem; width: 100%;
+}
+textarea { resize: vertical; }
+input[type="checkbox"], input[type="radio"] { width: auto; min-height: 0; accent-color: var(--akzent); }
+.code-feld { font-size: 1.4rem; letter-spacing: .3em; text-align: center; }
+
+.knopf {
+  font: inherit; font-weight: 600; border: 1px solid var(--linie); background: var(--flaeche); color: var(--akzent);
+  padding: .55rem 1rem; border-radius: 8px; cursor: pointer; min-height: 2.75rem; text-decoration: none; display: inline-flex;
+  align-items: center; justify-content: center;
+}
+.knopf:hover { background: var(--hg); }
+.knopf.haupt { background: var(--akzent); color: var(--akzent-text); border-color: var(--akzent); }
+.knopf.haupt:hover { filter: brightness(1.08); }
+.knopf.leise { color: var(--text); font-weight: 500; }
+.knopf.gefahr { color: var(--gefahr); border-color: var(--gefahr); background: transparent; }
+.klein-knopf { min-height: 2.25rem; padding: .3rem .7rem; font-size: .875rem; }
+.formular > .knopf { align-self: flex-start; margin-top: .6rem; }
+.aktionen { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-top: .6rem; }
+.aktionen.spalte { flex-direction: column; align-items: stretch; }
+.aktionen form { margin: 0; }
+.leiste-unten {
+  position: sticky; bottom: 0; padding: .75rem 0; background: linear-gradient(transparent, var(--hg) 35%);
+  display: flex; justify-content: flex-end;
+}
+
+.mehr { margin-top: .6rem; }
+.mehr > summary { cursor: pointer; color: var(--akzent); font-weight: 500; padding: .3rem 0; width: fit-content; }
+.mehr.rechts { margin-top: 0; }
+
+.meldung { border-radius: 10px; padding: .7rem 1rem; margin: 0 0 1.25rem; }
+.meldung.ok { background: var(--ok-hg); color: var(--ok); }
+.meldung.hinweis { background: var(--warn-hg); color: var(--warn); }
+.meldung.fehler { background: var(--fehler-hg); color: var(--gefahr); }
+.meldung.info { background: var(--info-hg); color: var(--text); }
+.geheimnis { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.geheimnis code { font-size: 1.05rem; background: var(--hg); padding: .35rem .6rem; border-radius: 6px; }
+.schritte { padding-left: 1.25rem; display: flex; flex-direction: column; gap: .75rem; }
+
+.segmente { display: flex; flex-wrap: wrap; gap: 4px; background: var(--flaeche); border: 1px solid var(--linie);
+  border-radius: 10px; padding: 4px; width: fit-content; max-width: 100%; margin-bottom: 1rem; }
+.segmente a { padding: .4rem .9rem; border-radius: 7px; text-decoration: none; color: var(--text); }
+.segmente a[aria-current="page"] { background: var(--akzent); color: var(--akzent-text); font-weight: 600; }
+.legende { display: flex; flex-wrap: wrap; gap: .25rem 1.5rem; margin: 0 0 1.25rem; }
+.legende div { display: flex; gap: .4rem; }
+.legende dt { font-weight: 600; color: var(--text); }
+.legende dd { margin: 0; }
+
+.einstellung { display: grid; grid-template-columns: minmax(12rem, 1.4fr) 9.5rem minmax(10rem, 1.2fr); gap: .75rem;
+  align-items: center; padding: .6rem 0; }
+.einstellung-name { display: flex; flex-direction: column; }
+.einstellung-name label { font-weight: 500; }
+.einstellung.mit-fehler .einstellung-name label { color: var(--gefahr); }
+.feld-fehler { color: var(--gefahr); font-size: .875rem; }
+.einstellung-wert { display: flex; align-items: center; }
+.schalter { width: 1.35rem !important; height: 1.35rem; }
+.wahl { display: flex; gap: .65rem; align-items: flex-start; padding: .5rem 0; font-weight: 400 !important; }
+.wahl span { display: flex; flex-direction: column; }
+.wahl input { margin-top: .3rem; }
+.mit-schalter { display: flex; gap: .6rem; align-items: center; }
+
+.tabelle-rahmen { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+th, td { text-align: left; padding: .45rem .5rem; border-bottom: 1px solid var(--linie); vertical-align: top; }
+th { color: var(--leise); font-weight: 600; }
+
+@media (max-width: 760px) {
+  .rahmen.mit-leiste { display: block; }
+  .leiste { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--linie); }
+  .leiste ul { flex-direction: row; flex-wrap: wrap; }
+  .einstellung { grid-template-columns: 1fr; gap: .4rem; }
+}

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block titel %}{{ t('nav.schluessel') }}{% endblock %}
+{% block inhalt %}
+<h1>{{ t('nav.schluessel') }}</h1>
+<p class="untertitel">{{ t('p.schluessel_text') }}</p>
+<p class="meldung info">{{ t('modus.' ~ key_modus ~ '_text') }} <a href="/firma">{{ t('p.modus_aendern') }}</a></p>
+<section class="gruppe-box" aria-labelledby="t-liste">
+  <h2 id="t-liste">{{ t('p.gespeicherte_keys') }}</h2>
+  {% if not schluessel %}<p class="leer">{{ t('p.keys_leer') }}</p>{% endif %}
+  <ul class="liste">
+  {% for k in schluessel %}
+    <li class="zeile">
+      <span class="zeile-text"><strong>{{ t('zugang.' ~ k.zugang) if k.zugang in zugaenge else k.zugang }}</strong>
+        <span class="klein">{{ opt('stt.providerId', k.anbieter) }}{% if k.basis_url %} · {{ k.basis_url }}{% endif %} · •••• {{ k.letzte4 }} · {{ k.geaendert_ms | zeit }}</span></span>
+      <form method="post" action="/schluessel/{{ k.zugang }}/entfernen"><input type="hidden" name="csrf" value="{{ wer.csrf }}"><button class="knopf leise">{{ t('p.entfernen') }}</button></form>
+    </li>
+  {% endfor %}
+  </ul>
+</section>
+<section class="gruppe-box" aria-labelledby="t-neu">
+  <h2 id="t-neu">{{ t('p.key_speichern_titel') }}</h2>
+  <form method="post" action="/schluessel" class="formular" autocomplete="off">
+    <input type="hidden" name="csrf" value="{{ wer.csrf }}">
+    <label for="name">{{ t('p.zugang') }}</label>
+    <select id="name" name="name">
+      {% for z in zugaenge %}<option value="{{ z }}">{{ t('zugang.' ~ z) }}</option>{% endfor %}
+      <option value="eigen">{{ t('zugang.eigen') }}</option>
+    </select>
+    <div class="formular" data-zeigen-wenn="name=eigen">
+      <label for="eigener_name">{{ t('p.eigener_name') }}</label>
+      <input id="eigener_name" name="eigener_name" maxlength="40" aria-describedby="eigen-hinweis" autocapitalize="none">
+      <p id="eigen-hinweis" class="klein">{{ t('p.eigener_name_text') }}</p>
+    </div>
+    <div class="formular" data-zeigen-wenn="name!=eigen">
+      <label for="anbieter">{{ t('p.anbieter') }}</label>
+      <select id="anbieter" name="anbieter">{% for a in anbieter %}<option value="{{ a }}">{{ opt('stt.providerId', a) }}</option>{% endfor %}</select>
+    </div>
+    <label for="basis_url">{{ t('p.basis_url') }}</label>
+    <input id="basis_url" name="basis_url" type="url" maxlength="300" placeholder="https://" aria-describedby="url-hinweis">
+    <p id="url-hinweis" class="klein">{{ t('p.basis_url_text') }}</p>
+    <label for="key">{{ t('p.key') }}</label>
+    <input id="key" name="key" type="password" maxlength="500" required autocomplete="off" spellcheck="false">
+    <button type="submit" class="knopf haupt">{{ t('p.key_speichern') }}</button>
+  </form>
+</section>
+{% endblock %}

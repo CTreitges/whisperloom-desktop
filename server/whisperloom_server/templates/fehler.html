@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block titel %}{{ t(titel_key) }}{% endblock %}
+{% block inhalt %}
+<section class="karte">
+  <h1>{{ t(titel_key) }}</h1>
+  <p>{{ t(text_key) }}</p>
+  <p><a href="/">{{ t('p.zur_startseite') }}</a></p>
+</section>
+{% endblock %}

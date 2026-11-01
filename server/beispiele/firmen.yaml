@@ -1,0 +1,23 @@
+# Datei-Modus (WL_AUTH_MODES=file): Firmen, Gruppen, Richtlinie und Keys ohne Portal.
+# Neu gelesen beim Start, bei SIGHUP und wenn sich die Datei ändert. Keys und Codes als env:NAME statt Klartext.
+tenants:
+  - slug: muster
+    name: Muster GmbH
+    code: env:WL_CODE_MUSTER          # Firmencode (16 Zeichen Crockford-Base32); fehlt er, erzeugt ihn der Server (code-show)
+    keyMode: proxy                    # proxy (Standard) | distribute
+    autoApprove: true                 # neue Geräte sofort freigeben (Software-Verteilung)
+    maxPending: 50
+    policy:                           # Pfad: {level: fixed|default, value: …}; fehlender Pfad = Frei
+      refine.stage: {level: default, value: polish}
+      history.enabled: {level: fixed, value: true}
+      management.allowLeave: {level: fixed, value: false}
+      desktop.hotkeyHold: {level: default, value: "Ctrl+Alt+Space"}   # Tastenkürzel nur default
+    groups:
+      - name: Vertrieb
+        code: env:WL_CODE_VERTRIEB    # optional: eigener Code → Geräte landen in der Gruppe
+        policy:
+          refine.stage: {level: fixed, value: summarize}
+          history.enabled: {level: free}
+    keys:                             # Name wie `secrets` einer Provisioning-Datei
+      stt: {provider: groq, key: env:WL_KEY_GROQ}
+      llm: {provider: openai, baseUrl: "https://llm.intern.example/v1", key: env:WL_KEY_LLM}
