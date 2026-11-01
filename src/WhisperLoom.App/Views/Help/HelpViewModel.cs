@@ -107,7 +107,13 @@ public sealed partial class HelpViewModel : ObservableObject, IDisposable
             var start = plain.LastIndexOf(' ', at - 25) + 1;
             plain = "… " + plain[start..];
         }
-        return plain.Length <= 90 ? plain : plain[..87].TrimEnd() + " …";
+        if (plain.Length <= 90)
+        {
+            return plain;
+        }
+        // An der letzten Wortgrenze kürzen, nicht mitten im Wort.
+        var cut = plain.LastIndexOf(' ', 87);
+        return plain[..(cut > 40 ? cut : 87)].TrimEnd() + " …";
     }
 
     private void UpdateGroupTitles()

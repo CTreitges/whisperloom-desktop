@@ -177,6 +177,18 @@ public sealed class HelpCatalogTest
     }
 
     [Fact]
+    public void Search_snippet_ends_at_a_word_boundary()
+    {
+        // Prüfrunde 1 (D6): „Speicher lie …“ – der Auszug schnitt mitten im Wort.
+        var text = "Internet und Proxy prüfen. Solange das Audio im Speicher liegt, sendet das Tray-Menü noch einmal und weiter geht es";
+        var snippet = HelpViewModel.Snippet(text, "Proxy");
+        Assert.EndsWith(" …", snippet);
+        var body = snippet[..^2];
+        Assert.True(text.StartsWith(body + " ", StringComparison.Ordinal), $"„{snippet}“ endet mitten im Wort");
+        Assert.True(snippet.Length <= 90);
+    }
+
+    [Fact]
     public void Search_snippet_keeps_the_match_visible()
     {
         Assert.Equal("Kurz und Proxy", HelpViewModel.Snippet("• Kurz und Proxy", "proxy"));
