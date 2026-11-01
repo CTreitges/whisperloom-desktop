@@ -16,6 +16,7 @@
               <TextBlock x:Name="EmptyText" Text="{Binding [Providers_Empty], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding IsEmpty}"
                          Foreground="{DynamicResource Loom.TextSecondary}" TextWrapping="Wrap" />
               <Button x:Name="AddProviderButton" Content="{Binding [Providers_Add], Source={x:Static l:Loc.Instance}}" Command="{Binding AddCommand}" />
+              <TextBlock Text="{Binding Error}" IsVisible="{Binding Error.Length}" Foreground="{DynamicResource Loom.Error}" TextWrapping="Wrap" />
             </StackPanel>
           </ds:SettingRow>
         </StackPanel>

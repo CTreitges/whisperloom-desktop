@@ -112,6 +112,17 @@ public static class SyncImport
         return preview;
     }
 
+    /// <summary>
+    /// Key-Namen (<c>custom:&lt;id&gt;</c>) der eigenen Anbieter in einer Datei: Der Aufrufer prüft sie zusätzlich zu den
+    /// aktuellen Einträgen auf gespeicherte Keys, damit ein verwaister Key nie an einen neu importierten Eintrag gleicher
+    /// ID geht (Prüfrunde 1 K-1).
+    /// </summary>
+    public static IReadOnlyList<string> ProviderKeyNames(SyncDocument file) =>
+        file.Settings["providers"] is JsonObject providers && providers["custom"] is JsonArray custom
+            ? [.. custom.OfType<JsonObject>().Select(e => e["id"] is JsonValue v && v.TryGetValue<string>(out var id) ? ProvidersSettings.CustomPrefix + id : "")
+                .Where(Contracts.SecretNames.IsProviderKey).Distinct(StringComparer.Ordinal)]
+            : [];
+
     /// <summary>Entfernt alle Schreibweisen von <paramref name="name"/>; true, wenn es eine gab.</summary>
     internal static bool RemoveIgnoringCase(JsonObject o, string name)
     {

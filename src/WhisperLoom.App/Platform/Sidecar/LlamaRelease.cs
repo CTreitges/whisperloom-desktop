@@ -82,6 +82,10 @@ public sealed class LlamaRelease(HttpClient http, string dir)
         }
     }
 
+    /// <summary>Link-Ziel nur ein Dateiname im selben Ordner: kein Pfad, nicht leer, nicht „.“/„..“ (Prüfrunde 1 D-1).</summary>
+    internal static bool IsSafeLinkTarget(string target) =>
+        target is not ("" or "." or "..") && Path.GetFileName(target) == target;
+
     /// <summary>
     /// Entpackt nur einfache Dateinamen (ohne Pfade aus dem Archiv) in den Zielordner. Linux: Rechte aus dem Archiv,
     /// Symlinks der Bibliotheken (<c>libllama.so.0 → libllama.so.0.6.0</c>) nur auf Namen im selben Ordner.
@@ -114,7 +118,7 @@ public sealed class LlamaRelease(HttpClient http, string dir)
                     e.ExtractToFile(path, overwrite: true);
                     if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(path, e.Mode & (UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute | UnixFileMode.GroupRead | UnixFileMode.GroupExecute | UnixFileMode.OtherRead | UnixFileMode.OtherExecute));
                 }
-                else if (e.EntryType == TarEntryType.SymbolicLink && Path.GetFileName(e.LinkName) == e.LinkName && e.LinkName.Length > 0)
+                else if (e.EntryType == TarEntryType.SymbolicLink && IsSafeLinkTarget(e.LinkName))
                 {
                     links.Add((name, e.LinkName));
                 }

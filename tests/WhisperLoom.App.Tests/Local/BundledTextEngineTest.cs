@@ -150,6 +150,18 @@ public sealed class BundledTextEngineTest : IAsyncLifetime
         Assert.False(bad.IsInstalled(SidecarVariant.Cpu));
     }
 
+    [Theory]
+    [InlineData("libllama.so.0.6.0", true)]
+    [InlineData("..", false)]
+    [InlineData(".", false)]
+    [InlineData("", false)]
+    [InlineData("../../etc/passwd", false)]
+    [InlineData("sub/lib.so", false)]
+    public void Link_targets_stay_in_the_folder(string target, bool safe)
+    {
+        Assert.Equal(safe, LlamaRelease.IsSafeLinkTarget(target));
+    }
+
     [Fact]
     public void Linux_archive_keeps_library_links_and_drops_paths()
     {
@@ -162,6 +174,8 @@ public sealed class BundledTextEngineTest : IAsyncLifetime
         Assert.True(File.Exists(Path.Combine(target, "llama-server")));
         Assert.Equal("lib", File.ReadAllText(Path.Combine(target, "libllama.so.0"))); // Link bzw. unter Windows Kopie
         Assert.False(File.Exists(Path.Combine(target, "evil")));
+        Assert.False(Path.Exists(Path.Combine(target, "up")));
+        Assert.False(Path.Exists(Path.Combine(target, "self")));
     }
 
     private LocalTextEngine Text(WhisperLoomSettings s, BundledTextEngine bundled) => new(
@@ -204,6 +218,8 @@ public sealed class BundledTextEngineTest : IAsyncLifetime
             tar.WriteEntry(new PaxTarEntry(TarEntryType.SymbolicLink, "llama-b0/libllama.so.0") { LinkName = "libllama.so.0.6.0" });
             tar.WriteEntry(new PaxTarEntry(TarEntryType.SymbolicLink, "llama-b0/libllama.so") { LinkName = "libllama.so.0" });
             tar.WriteEntry(new PaxTarEntry(TarEntryType.SymbolicLink, "llama-b0/evil") { LinkName = "../../etc/passwd" });
+            tar.WriteEntry(new PaxTarEntry(TarEntryType.SymbolicLink, "llama-b0/up") { LinkName = ".." }); // Prüfrunde 1 D-1
+            tar.WriteEntry(new PaxTarEntry(TarEntryType.SymbolicLink, "llama-b0/self") { LinkName = "." });
         }
         return ms.ToArray();
     }

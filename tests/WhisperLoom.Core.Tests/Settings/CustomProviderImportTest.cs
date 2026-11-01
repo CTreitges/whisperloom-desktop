@@ -43,6 +43,24 @@ public class CustomProviderImportTest
     }
 
     [Fact]
+    public void Import_that_removes_an_entry_drops_its_key()
+    {
+        // Prüfrunde 1 K-1: Ein Import ersetzt providers.custom; der Key des entfernten Eintrags darf nicht verwaisen.
+        var preview = SyncFixtures.Import("""{"providers":{"custom":[]},"stt":{"providerId":"openai"}}""", Current(), storedKeys: ["custom:lab"]);
+
+        Assert.True(preview.CanApply, string.Join("; ", preview.Errors));
+        Assert.Contains(new KeyDrop("custom:lab", KeyRoutes.RemovedEntry), preview.DroppedKeys);
+    }
+
+    [Fact]
+    public void Provider_key_names_of_a_file_are_read_for_the_orphan_check()
+    {
+        var file = SyncDocument.Parse("""{"providers":{"custom":[{"id":"lab"},{"id":"Ungültig!"},{"id":"lab"},{"name":"ohne id"}]}}""");
+
+        Assert.Equal(["custom:lab"], SyncImport.ProviderKeyNames(file));
+    }
+
+    [Fact]
     public void Import_with_the_same_host_keeps_the_key()
     {
         var preview = SyncFixtures.Import(

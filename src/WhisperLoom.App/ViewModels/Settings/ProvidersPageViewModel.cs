@@ -156,15 +156,33 @@ public sealed partial class ProvidersPageViewModel : SettingsPageViewModel
 
     public bool IsEmpty => Rows.Count == 0;
 
+    [ObservableProperty] private string _error = "";
+
+    /// <summary>
+    /// Neuer Eintrag mit freier ID. Ein gespeicherter Key unter dieser ID (verwaist, z. B. nach einem Import) wird vorher
+    /// gelöscht — sonst erbte ihn der neue Eintrag und schickte ihn an seine Adresse (Prüfrunde 1 K-1).
+    /// </summary>
     [RelayCommand]
-    private void Add()
+    private async Task Add()
     {
         var ids = Rows.Select(r => r.Entry.Id).ToHashSet(StringComparer.Ordinal);
         var n = 1;
         while (ids.Contains($"anbieter-{n}")) n++;
-        var row = Row(new CustomProvider { Id = $"anbieter-{n}", Name = Loc.Instance.Format("Provider_NewName", n), Protocol = "openai" });
+        var entry = new CustomProvider { Id = $"anbieter-{n}", Name = Loc.Instance.Format("Provider_NewName", n), Protocol = "openai" };
+        try
+        {
+            await Session.SecretStore.DeleteAsync(SecretNames.ForProvider(ProvidersSettings.CustomPrefix + entry.Id), CancellationToken.None);
+        }
+        catch (IOException)
+        {
+            Error = Loc.Instance["Key_StoreError"];
+            return;
+        }
+        Error = "";
+        var row = Row(entry);
         Rows.Add(row);
         OnPropertyChanged(nameof(IsEmpty));
+        await row.Key.LoadAsync();
     }
 
     /// <summary>Lädt die Keys der Einträge (nur „gesetzt“ bzw. „nicht gesetzt“).</summary>
@@ -196,16 +214,18 @@ public sealed partial class ProvidersPageViewModel : SettingsPageViewModel
             row.Error = error;
             return;
         }
-        Rows.Remove(row);
-        OnPropertyChanged(nameof(IsEmpty));
-        Changed();
+        // Erst den Key: scheitert die Ablage, bleibt der Eintrag (ein verwaister Key ginge an einen späteren Eintrag gleicher ID).
         try
         {
             await Session.SecretStore.DeleteAsync(row.Key.Name, CancellationToken.None);
         }
         catch (IOException)
         {
-            // Key-Ablage nicht erreichbar: der Key bleibt, geht aber nirgends mehr hin (kein Eintrag).
+            row.Error = Loc.Instance["Key_StoreError"];
+            return;
         }
+        Rows.Remove(row);
+        OnPropertyChanged(nameof(IsEmpty));
+        Changed();
     }
 }
