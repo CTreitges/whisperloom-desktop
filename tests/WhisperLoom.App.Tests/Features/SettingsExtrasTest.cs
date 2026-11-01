@@ -75,6 +75,8 @@ public sealed class SettingsExtrasTest
         Assert.True(vm.CanReprocess);
         Assert.DoesNotContain(vm.Stages, s => s.Value == "off");
 
+        // Gleiche Zeit hieße zufällige Reihenfolge (ID-Suffix): der neue Eintrag ist später.
+        f.Now = f.Now.AddMinutes(1);
         vm.ReprocessStage = vm.Stages.Single(s => s.Value == "summarize");
         await vm.ReprocessCommand.ExecuteAsync(vm.Items[0]);
 
