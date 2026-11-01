@@ -34,4 +34,20 @@ public static class SecretNames
 
     /// <summary>Geräte-Token des Firmen-Servers (<c>docs/server-api.md</c>, W2). Kein Zugang, nie per Provisioning setzbar.</summary>
     public const string Device = "device";
+
+    /// <summary>
+    /// W2: Key eines eigenen Anbieters (<c>providers.custom</c>). Der Name ist die Anbieter-ID <c>custom:&lt;id&gt;</c>; der
+    /// Key gehört zum Eintrag, nicht zum Zugang, und geht nur an dessen Adresse.
+    /// </summary>
+    public static string ForProvider(string providerId) => providerId;
+
+    /// <summary><c>custom:&lt;id&gt;</c> mit <c>[a-z0-9][a-z0-9_-]{0,31}</c>.</summary>
+    public static bool IsProviderKey(string name)
+    {
+        const string prefix = "custom:";
+        if (!name.StartsWith(prefix, StringComparison.Ordinal)) return false;
+        var id = name[prefix.Length..];
+        return id.Length is > 0 and <= 32 && (char.IsAsciiLetterLower(id[0]) || char.IsAsciiDigit(id[0])) &&
+            id.All(c => char.IsAsciiLetterLower(c) || char.IsAsciiDigit(c) || c is '_' or '-');
+    }
 }

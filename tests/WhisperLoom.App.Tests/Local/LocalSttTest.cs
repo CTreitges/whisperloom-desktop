@@ -45,6 +45,25 @@ public sealed class LocalSttTest
         Assert.True(await LocalAssets.WaitGoneAsync(pid, TimeSpan.FromSeconds(10)), $"whisper-server {pid} läuft noch");
     }
 
+    /// <summary>W2-LOCAL: eigene Whisper-Datei außerhalb des Modellordners; der Begleitprozess startet mit <c>-m &lt;pfad&gt;</c>.</summary>
+    [Fact]
+    public async Task ErkenntMitEigenerDateiUeberIhrenPfad()
+    {
+        await LocalAssets.EnsureAsync();
+        var file = Path.Combine(LocalAssets.DataDir, "eigene-modelle", "mein-tiny.bin");
+        Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+        File.Copy(new ModelStore(Path.Combine(LocalAssets.LocalDir, "models")).File(ModelCatalog.Tiny), file, overwrite: true);
+        var settings = CpuTiny();
+        settings.Offline.Model = "custom:mein";
+        settings.Offline.CustomModels.Add(new CustomWhisperModel { Name = "mein", Path = file });
+        await using var stt = new LocalStt(LocalAssets.LocalDir, () => settings);
+
+        var result = await stt.TranscribeAsync(JfkAudio(), "en", CancellationToken.None);
+
+        Assert.Contains("fellow Americans", result.Text, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(file, stt.Server!.Model);
+    }
+
     /// <summary>Host = die App mit dem Verb <c>bench</c> (lange Messung); Kill nur über die gespeicherte PID des Hosts.</summary>
     [Fact]
     public async Task NachKillDesHostsLaeuftKeinServerMehr()

@@ -87,10 +87,11 @@ public sealed class SettingsCoverageTest
     }
 
     [Fact]
-    public void Sidebar_has_at_most_nine_pages_in_sections()
+    public void Sidebar_has_at_most_eleven_pages_in_sections()
     {
-        Assert.InRange(SettingsCatalog.Pages.Count, 1, 9);
-        Assert.Equal(["dictation", "usage", "system"], SettingsCatalog.Pages.Select(p => p.Section).Distinct());
+        // W2-LOCAL: „Anbieter“ und „Lokale Modelle“ im Abschnitt „Quellen“ (task.md verlangt eigene Seiten); Platz für „Firma“ (W2-ENR).
+        Assert.InRange(SettingsCatalog.Pages.Count, 1, 11);
+        Assert.Equal(["dictation", "sources", "usage", "system"], SettingsCatalog.Pages.Select(p => p.Section).Distinct());
         Assert.All(SettingsCatalog.Entries, e => Assert.Contains(SettingsCatalog.Pages, p => p.Id == e.Page));
     }
 

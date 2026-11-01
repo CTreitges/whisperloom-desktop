@@ -18,6 +18,8 @@
     <DataTemplate DataType="vm:GeneralPageViewModel"><vs:GeneralPage /></DataTemplate>
     <DataTemplate DataType="vm:RecognitionPageViewModel"><vs:RecognitionPage /></DataTemplate>
     <DataTemplate DataType="vm:TextPageViewModel"><vs:TextPage /></DataTemplate>
+    <DataTemplate DataType="vm:ProvidersPageViewModel"><vs:ProvidersPage /></DataTemplate>
+    <DataTemplate DataType="vm:LocalModelsPageViewModel"><vs:LocalModelsPage /></DataTemplate>
     <DataTemplate DataType="vm:CleanupPageViewModel"><vs:CleanupPage /></DataTemplate>
     <DataTemplate DataType="vm:OutputPageViewModel"><vs:OutputPage /></DataTemplate>
     <DataTemplate DataType="vm:HotkeysPageViewModel"><vs:HotkeysPage /></DataTemplate>

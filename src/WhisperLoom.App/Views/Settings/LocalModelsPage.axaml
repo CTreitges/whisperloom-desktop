@@ -1,0 +1,135 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:WhisperLoom.App.ViewModels.Settings"
+             xmlns:avm="using:WhisperLoom.App.ViewModels"
+             xmlns:ds="using:WhisperLoom.App.Design"
+             xmlns:l="using:WhisperLoom.App.Localization"
+             x:Class="WhisperLoom.App.Views.Settings.LocalModelsPage"
+             x:DataType="vm:LocalModelsPageViewModel">
+  <!-- Lokale Modelle (W2-LOCAL): Whisper laden (Standard), eigene Dateien, mitgelieferte Textmodelle, lokale Server. -->
+  <ds:SettingsPage TitleKey="Page_localmodels">
+    <StackPanel Spacing="20">
+      <ds:SettingsGroup TitleKey="G_WhisperModels" FooterKey="G_WhisperModels_Footer">
+        <StackPanel>
+          <ds:SettingRow TitleKey="Local_Models" Stacked="True">
+            <ItemsControl ItemsSource="{Binding Local.Models}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="avm:LocalModelViewModel">
+                  <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,3">
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                      <TextBlock Text="{Binding Label}" />
+                      <TextBlock Text="✓" IsVisible="{Binding Installed}" Foreground="{DynamicResource Loom.Accent}" />
+                      <TextBlock Text="{Binding Status}" Foreground="{DynamicResource Loom.TextSecondary}" FontSize="{DynamicResource Loom.Font.Caption}" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <Button Grid.Column="1" Margin="8,0,0,0" Content="{Binding [Local_Download], Source={x:Static l:Loc.Instance}}" Command="{Binding DownloadCommand}"
+                            IsVisible="{Binding !Installed}" AutomationProperties.Name="{Binding DownloadName}" />
+                    <Button Grid.Column="2" Margin="8,0,0,0" Content="{Binding [Local_Delete], Source={x:Static l:Loc.Instance}}" Command="{Binding DeleteCommand}"
+                            IsVisible="{Binding Installed}" AutomationProperties.Name="{Binding DeleteName}" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ds:SettingRow>
+          <ds:SettingRow Path="offline.customModels" Stacked="True" Error="{Binding Local.CustomModelError}">
+            <StackPanel Spacing="6">
+              <ItemsControl x:Name="CustomModelList" ItemsSource="{Binding Local.CustomModels}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="avm:CustomWhisperRow">
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,3">
+                      <StackPanel Spacing="1">
+                        <TextBlock Text="{Binding Name}" />
+                        <TextBlock Text="{Binding Path}" FontSize="{DynamicResource Loom.Font.Caption}" Foreground="{DynamicResource Loom.TextSecondary}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding Status}" IsVisible="{Binding Status.Length}" FontSize="{DynamicResource Loom.Font.Caption}" Foreground="{DynamicResource Loom.Error}" />
+                      </StackPanel>
+                      <Button Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center" Content="{Binding [Local_Remove], Source={x:Static l:Loc.Instance}}"
+                              Command="{Binding RemoveCommand}" AutomationProperties.Name="{Binding RemoveName}" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <Button x:Name="AddFileButton" Content="{Binding [Local_AddFile], Source={x:Static l:Loc.Instance}}" Click="OnAddFile" />
+            </StackPanel>
+          </ds:SettingRow>
+        </StackPanel>
+      </ds:SettingsGroup>
+
+      <ds:SettingsGroup TitleKey="G_TextModels" FooterKey="G_TextModels_Footer">
+        <StackPanel>
+          <ds:SettingRow TitleKey="TextModels_List" Stacked="True">
+            <ItemsControl x:Name="TextModelList" ItemsSource="{Binding Local.TextModels}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="avm:TextModelViewModel">
+                  <Grid ColumnDefinitions="*,Auto,Auto,Auto" Margin="0,3">
+                    <StackPanel Spacing="1" VerticalAlignment="Center">
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="{Binding Label}" />
+                        <TextBlock Text="✓" IsVisible="{Binding Installed}" Foreground="{DynamicResource Loom.Accent}" />
+                      </StackPanel>
+                      <TextBlock Text="{Binding RamNote}" IsVisible="{Binding !Fits}" FontSize="{DynamicResource Loom.Font.Caption}" Foreground="{DynamicResource Loom.TextSecondary}" />
+                      <TextBlock Text="{Binding Status}" IsVisible="{Binding Status.Length}" FontSize="{DynamicResource Loom.Font.Caption}" Foreground="{DynamicResource Loom.TextSecondary}" />
+                    </StackPanel>
+                    <Button Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center" Content="{Binding [Local_Download], Source={x:Static l:Loc.Instance}}"
+                            Command="{Binding DownloadCommand}" IsVisible="{Binding CanDownload}" AutomationProperties.Name="{Binding DownloadName}" />
+                    <Button Grid.Column="2" Margin="8,0,0,0" VerticalAlignment="Center" Content="{Binding [Action_Cancel], Source={x:Static l:Loc.Instance}}"
+                            Command="{Binding CancelCommand}" IsVisible="{Binding Status.Length}" AutomationProperties.Name="{Binding CancelName}" />
+                    <Button Grid.Column="3" Margin="8,0,0,0" VerticalAlignment="Center" Content="{Binding [Local_Delete], Source={x:Static l:Loc.Instance}}"
+                            Command="{Binding DeleteCommand}" IsVisible="{Binding Installed}" AutomationProperties.Name="{Binding DeleteName}" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ds:SettingRow>
+        </StackPanel>
+      </ds:SettingsGroup>
+
+      <ds:SettingsGroup TitleKey="G_LocalServers" FooterKey="G_LocalServers_Footer">
+        <StackPanel>
+          <ds:SettingRow Path="local.servers" Stacked="True">
+            <StackPanel Spacing="10">
+              <ItemsControl x:Name="ServerList" ItemsSource="{Binding Local.Servers}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Spacing="14" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="avm:LocalServerRow">
+                    <Border BorderBrush="{DynamicResource Loom.Separator}" BorderThickness="0,0,0,1" Padding="0,0,0,12">
+                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="6">
+                      <TextBlock Grid.Row="0" Text="{Binding [Server_Name], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
+                      <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding Name, UpdateSourceTrigger=LostFocus}" Width="280" HorizontalAlignment="Left"
+                               AutomationProperties.Name="{Binding [Server_Name], Source={x:Static l:Loc.Instance}}" />
+                      <TextBlock Grid.Row="1" Text="{Binding [Server_Kind], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
+                      <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding Kinds}" SelectedItem="{Binding Kind}" Width="280"
+                                AutomationProperties.Name="{Binding [Server_Kind], Source={x:Static l:Loc.Instance}}" />
+                      <TextBlock Grid.Row="2" Text="{Binding [Set_BaseUrl], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
+                      <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding BaseUrl, UpdateSourceTrigger=LostFocus}" Width="280" HorizontalAlignment="Left"
+                               PlaceholderText="http://127.0.0.1:1234/v1" AutomationProperties.Name="{Binding [Set_BaseUrl], Source={x:Static l:Loc.Instance}}" />
+                      <TextBlock Grid.Row="3" Text="{Binding [Set_Model], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
+                      <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding Model, UpdateSourceTrigger=LostFocus}" Width="280" HorizontalAlignment="Left"
+                               PlaceholderText="{Binding [Server_ModelFirst], Source={x:Static l:Loc.Instance}}" AutomationProperties.Name="{Binding [Set_Model], Source={x:Static l:Loc.Instance}}" />
+                      <TextBlock Grid.Row="4" Grid.ColumnSpan="2" Text="{Binding Error}" IsVisible="{Binding Error.Length}" Foreground="{DynamicResource Loom.Error}" TextWrapping="Wrap" />
+                      <StackPanel Grid.Row="5" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8">
+                        <Button Content="{Binding [Key_Check], Source={x:Static l:Loc.Instance}}" Command="{Binding CheckCommand}" AutomationProperties.Name="{Binding CheckName}" />
+                        <Button Content="{Binding [Local_Remove], Source={x:Static l:Loc.Instance}}" Command="{Binding RemoveCommand}" AutomationProperties.Name="{Binding RemoveName}"
+                                IsVisible="{Binding !RemovePending}" />
+                        <TextBlock Text="{Binding Status}" VerticalAlignment="Center" Foreground="{DynamicResource Loom.TextSecondary}" />
+                      </StackPanel>
+                      <StackPanel Grid.Row="5" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8" IsVisible="{Binding RemovePending}" HorizontalAlignment="Right">
+                        <TextBlock Text="{Binding [Server_RemoveConfirm], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
+                        <Button Content="{Binding [Action_Cancel], Source={x:Static l:Loc.Instance}}" Command="{Binding CancelRemoveCommand}" />
+                        <Button Content="{Binding [Local_Remove], Source={x:Static l:Loc.Instance}}" Command="{Binding ConfirmRemoveCommand}" AutomationProperties.Name="{Binding RemoveName}" />
+                      </StackPanel>
+                    </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <Button x:Name="AddServerButton" Content="{Binding [Server_Add], Source={x:Static l:Loc.Instance}}" Command="{Binding Local.AddServerCommand}" />
+            </StackPanel>
+          </ds:SettingRow>
+        </StackPanel>
+      </ds:SettingsGroup>
+    </StackPanel>
+  </ds:SettingsPage>
+</UserControl>

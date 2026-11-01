@@ -140,6 +140,7 @@ public sealed partial class SettingsShellViewModel : ObservableObject, IDisposab
     private IEnumerable<SettingsPageViewModel> CreatePages(SettingsViewModel s) =>
     [
         new GeneralPageViewModel(s), new RecognitionPageViewModel(s), new TextPageViewModel(s), new CleanupPageViewModel(s),
+        new ProvidersPageViewModel(s), new LocalModelsPageViewModel(s),
         new OutputPageViewModel(s), new HotkeysPageViewModel(s, _toggleCommand), new PrivacyPageViewModel(s), new NetworkPageViewModel(s),
     ];
 

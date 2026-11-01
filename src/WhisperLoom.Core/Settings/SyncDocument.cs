@@ -25,17 +25,38 @@ public sealed record SyncDocument(JsonObject Settings, IReadOnlyDictionary<strin
 
     /// <exception cref="SyncFormatException">Kein JSON-Objekt, falscher Typ in secrets/policy.</exception>
     /// <exception cref="NotSupportedException">Schema einer neueren Version.</exception>
+    /// <summary>Durchläuft alle Objekte und Listen; doppelte Eigenschaften werfen dabei <see cref="ArgumentException"/>.</summary>
+    private static void Materialize(JsonNode? node)
+    {
+        switch (node)
+        {
+            case JsonObject o:
+                foreach (var (_, value) in o) Materialize(value);
+                break;
+            case JsonArray a:
+                foreach (var value in a) Materialize(value);
+                break;
+        }
+    }
+
     public static SyncDocument Parse(string json)
     {
         JsonNode? node;
         try
         {
             node = JsonNode.Parse(json, documentOptions: new JsonDocumentOptions { AllowTrailingCommas = true, CommentHandling = JsonCommentHandling.Skip });
+            // JsonObject prüft doppelte Eigenschaften erst beim ersten Zugriff: jetzt alles einmal durchlaufen.
+            Materialize(node);
         }
         catch (JsonException e)
         {
             // Nur Zeile/Position, nicht der Text: die Datei kann Keys enthalten.
             throw new SyncFormatException($"Kein gültiges JSON (Zeile {e.LineNumber + 1}, Position {e.BytePositionInLine + 1}).");
+        }
+        catch (ArgumentException)
+        {
+            // JsonObject wirft beim Zugriff auf doppelte Eigenschaften; den Namen nicht nennen (könnte ein Key sein).
+            throw new SyncFormatException("Kein gültiges JSON: doppelte Eigenschaft.");
         }
         if (node is not JsonObject root)
         {

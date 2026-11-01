@@ -71,10 +71,12 @@ internal static partial class FeatureValidator
         Url(errors, "management.serverUrl", s.Management.ServerUrl, optional: true);
     }
 
-    /// <summary>Eigener Eintrag als Anbieter eines Zugangs: <c>custom:&lt;id&gt;</c> mit passender Fähigkeit.</summary>
+    /// <summary>
+    /// Eintrag als Anbieter eines Zugangs: <c>custom:&lt;id&gt;</c> (<c>providers.custom</c>) oder <c>local:&lt;name&gt;</c>
+    /// (<c>local.servers</c> dieses Geräts) mit passender Fähigkeit.
+    /// </summary>
     public static bool IsCustomProvider(WhisperLoomSettings s, string id, bool stt) =>
-        id.StartsWith(ProvidersSettings.CustomPrefix, StringComparison.Ordinal) &&
-        s.Providers.Custom.FirstOrDefault(c => c.Id == id[ProvidersSettings.CustomPrefix.Length..]) is { } p &&
+        id.Contains(':', StringComparison.Ordinal) && ProviderDirectory.For(s).Find(id) is { IsEntry: true } p &&
         (stt ? p.HasStt : p.HasLlm);
 
     /// <summary><c>local</c> gehört der App (<c>LocalSettings</c>, im Vertrag nur als JSON): <c>textEngine</c> und <c>servers</c>.</summary>

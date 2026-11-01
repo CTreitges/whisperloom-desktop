@@ -74,6 +74,10 @@ Einstellungen vorgegeben, entfallen die gesperrten Schritte.
 Weitere Befehle: `start`, `stop`, `cancel`, `pause`, `resume`, `show`, `setup`, `status --json`, `reprocess <stufe>`,
 `recent-insert <n>`, `update`, `--version`, `quit`.
 
+### Lokale Modelle und eigene Anbieter
+Eigene Whisper-Dateien, lokale Server (LM Studio, llama.cpp, faster-whisper-server), mitgeliefertes Textmodell über
+llama.cpp und eigene Anbieter-Einträge: [`docs/local-models.md`](docs/local-models.md).
+
 ### Firmen-Einsatz
 - **Proxy:** System-Proxy inkl. PAC und NTLM/Kerberos mit dem Windows-Konto, manuell oder aus – [`docs/proxy.md`](docs/proxy.md).
 - **IT-Vorgaben** (Anbieter, Keys, gesperrte Felder, Verlauf, Updates): [`docs/provisioning.md`](docs/provisioning.md),
@@ -105,7 +109,8 @@ MIT, siehe [`LICENSE`](LICENSE). Komponenten von Dritten: [`THIRD_PARTY.md`](THI
 - **Recognition** in the cloud (OpenAI, Groq, Mistral, ElevenLabs, your own OpenAI-compatible server and more, your own key) or **locally** with
   whisper.cpp (Vulkan GPU or CPU, no internet).
 - **Stages:** Off (raw text), Polish, Beautify, Summarize, Readable, **Prompt** (turns a dictation into a clean prompt for AI
-  assistants). Text refinement through the provider (e.g. Claude, Gemini, OpenAI) or locally through Ollama.
+  assistants). Text refinement through the provider (e.g. Claude, Gemini, OpenAI) or locally through Ollama, a bundled
+  llama.cpp model or a local server; own Whisper files and custom providers: [`docs/local-models.md`](docs/local-models.md).
 - Filler-word removal, paragraphs, **context words** (names, jargon), fallback providers.
 - **Windows:** configurable shortcuts – *Hold* (default Ctrl+Win), *Toggle* with an overlay (Ctrl+Space; Enter = insert,
   Ctrl+Enter = insert + Enter, Backspace = discard) and *Next stage* (Ctrl+Alt+Space). Text is pasted into the active

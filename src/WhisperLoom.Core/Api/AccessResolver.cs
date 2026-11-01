@@ -5,6 +5,8 @@ namespace WhisperLoom.Core.Api;
 /// <summary>
 /// Leitet aus den Einstellungswerten den Zugang ab (Port von <c>AccessResolver</c>, <c>api/ApiAccess.kt</c>). Hier
 /// entscheidet sich, gegen welchen Server mit welchem Key gesprochen wird — ein Key geht nie an einen fremden Anbieter.
+/// W2: Einträge des <see cref="ProviderDirectory"/> (<c>custom:&lt;id&gt;</c>, <c>local:&lt;name&gt;</c>) haben eine feste
+/// Adresse und nur ihren eigenen Key (<see cref="ProviderDirectory.KeyOf"/>); Adresse und Key des Zugangs gelten für sie nie.
 /// </summary>
 public static class AccessResolver
 {
@@ -13,18 +15,21 @@ public static class AccessResolver
 
     /// <param name="readTimeoutSec">0 = Anbieter-Standard (90 s, eigener Server 600 s).</param>
     /// <param name="serverModels">Geladene Modell-Listen (<see cref="ModelCache"/>) — Flags für Server-Modelle.</param>
+    /// <param name="providers">Katalog und Einträge; null = nur der Katalog.</param>
     public static ApiAccess ResolveStt(
         string providerId,
         string baseUrl,
         string apiKey,
         string model,
         int readTimeoutSec = 0,
-        IServerModelLookup? serverModels = null)
+        IServerModelLookup? serverModels = null,
+        ProviderDirectory? providers = null)
     {
-        var provider = ProviderCatalog.ById(providerId);
+        var dir = providers ?? ProviderDirectory.Catalog;
+        var provider = dir.ById(providerId);
         var modelId = IfBlank(model.Trim(), provider.DefaultSttModel);
-        var url = IfBlank(baseUrl.Trim(), provider.BaseUrl);
-        return new ApiAccess(url, apiKey.Trim(), modelId, TimeoutMs(readTimeoutSec, provider), provider,
+        var url = Url(provider, baseUrl);
+        return new ApiAccess(url, Key(dir, provider, apiKey), modelId, TimeoutMs(readTimeoutSec, provider), provider,
             Option(provider, ModelKind.Stt, url, modelId, serverModels ?? ServerModelLookup.None));
     }
 
@@ -44,23 +49,27 @@ public static class AccessResolver
         IServerModelLookup? serverModels = null,
         bool sttOffline = false,
         string stageModel = "",
-        RefineMode? stage = null)
+        RefineMode? stage = null,
+        ProviderDirectory? providers = null)
     {
         var same = string.IsNullOrWhiteSpace(providerId) || providerId == LlmSame;
         if (same && sttOffline)
         {
             return new ApiAccess("", "", "", stt.ReadTimeoutMs, stt.Provider, null, SameAsOffline: true);
         }
-        var provider = same ? stt.Provider : ProviderCatalog.ById(providerId);
+        var dir = providers ?? ProviderDirectory.Catalog;
+        var provider = same ? stt.Provider : dir.ById(providerId);
         var sameProvider = provider.Id == stt.Provider.Id;
         var accessModel = IfBlank(model.Trim(), provider.RecommendedLlmModel(stage));
         var modelId = accessModel.Length == 0 ? "" : IfBlank(stageModel.Trim(), accessModel);
 
-        var url = same ? stt.BaseUrl
+        var url = same || (sameProvider && provider.IsEntry) ? stt.BaseUrl
+            : provider.IsEntry ? provider.BaseUrl
             : !string.IsNullOrWhiteSpace(baseUrl) ? baseUrl.Trim()
             : sameProvider ? stt.BaseUrl
             : provider.BaseUrl;
         var key = same ? stt.ApiKey
+            : provider.IsEntry ? dir.KeyOf(provider)
             : !string.IsNullOrWhiteSpace(apiKey) ? apiKey.Trim()
             : sameProvider ? stt.ApiKey
             : "";
@@ -78,15 +87,17 @@ public static class AccessResolver
         string baseUrl,
         string apiKey,
         string model,
-        IServerModelLookup? serverModels = null)
+        IServerModelLookup? serverModels = null,
+        ProviderDirectory? providers = null)
     {
-        var same = ProviderCatalog.ById(providerId).Id == primary.Provider.Id;
+        var same = (providers ?? ProviderDirectory.Catalog).ById(providerId).Id == primary.Provider.Id;
         return ResolveStt(
             providerId,
             string.IsNullOrWhiteSpace(baseUrl) ? (same ? primary.BaseUrl : "") : baseUrl,
             string.IsNullOrWhiteSpace(apiKey) ? (same && SameServer(baseUrl, primary) ? primary.ApiKey : "") : apiKey,
             model,
-            serverModels: serverModels);
+            serverModels: serverModels,
+            providers: providers);
     }
 
     /// <summary>
@@ -103,16 +114,31 @@ public static class AccessResolver
         string model,
         IServerModelLookup? serverModels = null,
         bool sttOffline = false,
-        RefineMode? stage = null)
+        RefineMode? stage = null,
+        ProviderDirectory? providers = null)
     {
-        var provider = ProviderCatalog.ById(providerId);
+        var dir = providers ?? ProviderDirectory.Catalog;
+        var provider = dir.ById(providerId);
+        var modelId = IfBlank(model.Trim(), provider.RecommendedLlmModel(stage));
+        if (provider.IsEntry)
+        {
+            return new ApiAccess(provider.BaseUrl, dir.KeyOf(provider), modelId, TimeoutMs(0, provider), provider,
+                Option(provider, ModelKind.Llm, provider.BaseUrl, modelId, serverModels ?? ServerModelLookup.None));
+        }
         ApiAccess?[] donors = [primary.SameAsOffline ? null : primary, sttOffline ? null : stt];
         var donor = donors.FirstOrDefault(d => d is not null && d.Provider.Id == provider.Id && SameServer(baseUrl, d));
         var url = IfBlank(baseUrl.Trim(), donor?.BaseUrl ?? provider.BaseUrl);
-        var modelId = IfBlank(model.Trim(), provider.RecommendedLlmModel(stage));
         return new ApiAccess(url, IfBlank(apiKey.Trim(), donor?.ApiKey ?? ""), modelId, TimeoutMs(0, provider), provider,
             Option(provider, ModelKind.Llm, url, modelId, serverModels ?? ServerModelLookup.None));
     }
+
+    /// <summary>Einträge: immer ihre eigene Adresse; Katalog: Adresse des Zugangs, leer = die des Anbieters.</summary>
+    private static string Url(ProviderInfo provider, string baseUrl) =>
+        provider.IsEntry ? provider.BaseUrl : IfBlank(baseUrl.Trim(), provider.BaseUrl);
+
+    /// <summary>Einträge: nur ihr eigener Key; Katalog: der Key des Zugangs.</summary>
+    private static string Key(ProviderDirectory dir, ProviderInfo provider, string apiKey) =>
+        provider.IsEntry ? dir.KeyOf(provider) : apiKey.Trim();
 
     /// <summary>
     /// Darf ein leerer Key des Fallbacks den von <paramref name="donor"/> erben? Bei fester Adresse ist derselbe Anbieter
@@ -129,7 +155,7 @@ public static class AccessResolver
     /// </summary>
     private static ModelOption? Option(ProviderInfo provider, ModelKind kind, string url, string id, IServerModelLookup serverModels)
     {
-        var catalog = kind == ModelKind.Stt ? provider.SttModel(id) : provider.LlmModel(id);
+        var catalog = provider.IsEntry ? null : kind == ModelKind.Stt ? provider.SttModel(id) : provider.LlmModel(id);
         var option = catalog is not null || id.Trim().Length == 0
             ? catalog
             : ModelLists.OptionFor(provider, kind, id, serverModels.Find(provider.Id, kind, url, id));
