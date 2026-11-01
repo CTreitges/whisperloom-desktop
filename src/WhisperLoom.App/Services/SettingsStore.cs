@@ -48,9 +48,6 @@ public sealed class DesktopSettings
     /// <summary>Windows: letztes Diktat erneut ins Vordergrundfenster einfügen (WLD-P5b).</summary>
     public string HotkeyReinsert { get; set; } = "Ctrl+Alt+Shift+V";
 
-    /// <summary>Windows: markierten Text per gesprochener Anweisung umschreiben (WLD-P5b).</summary>
-    public string HotkeyRewrite { get; set; } = "Ctrl+Alt+Shift+R";
-
     /// <summary>App-Profile (WLD-P5b): Stufe, Ausgabemodus und Enter je Zielprogramm; Reihenfolge = Vorrang unter gleich genauen.</summary>
     public List<Features.Profiles.AppProfile> Profiles { get; set; } = [];
 
@@ -80,6 +77,8 @@ public sealed class SettingsStore
     {
         var settings = File.Exists(FilePath) ? SettingsJson.Deserialize(File.ReadAllText(FilePath)) : new WhisperLoomSettings();
         settings.Engine ??= "online";
+        // W2-SEL: „Markierung umschreiben“ geht in „Markierung verarbeiten“ auf (desktop.hotkeyRewrite → selection.hotkeyCombo).
+        Features.Selection.SelectionMigration.Apply(settings, combo => Platform.Windows.Input.Hotkey.Parse(combo) is not null);
         return settings;
     }
 

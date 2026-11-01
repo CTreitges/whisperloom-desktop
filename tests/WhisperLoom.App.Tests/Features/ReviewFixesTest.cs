@@ -37,7 +37,7 @@ public sealed class ReviewFixesTest : IDisposable
         _f = new ControllerFixture(new WhisperLoomSettings { Refine = new RefineSettings { Stage = "off" } }, Sink);
         _f.Pipeline.RawText = "Hallo Welt";
         _flow = new InputFlow(_f.Controller, Sink, _ui, () => _rig.Windows.Current, _ => { },
-            _ => new WindowInfo("notepad", ""), new SelectionCapture(_rig.Clipboard, _rig.Keys, _rig.Windows, TimeSpan.Zero));
+            _ => new WindowInfo("notepad", "")) { Selection = SelectionTesting.Wiring(_rig) };
     }
 
     private InsertOutputSink Sink { get; }
@@ -122,7 +122,7 @@ public sealed class ReviewFixesTest : IDisposable
         _f.Controller.Rewriter = new FakeRewriter();
         _rig.Keys.Selection = "Vertraulich";
 
-        await _flow.HandleAsync(HotkeyAction.Rewrite);
+        await _flow.HandleAsync(HotkeyAction.Selection);
 
         Assert.DoesNotContain("ctrl-c", _rig.Steps);
         Assert.Equal(DictationState.Idle, _f.Controller.State);

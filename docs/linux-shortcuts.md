@@ -32,6 +32,8 @@ Weitere Befehle für eigene Kürzel:
 | `show` | Bühnenansicht öffnen |
 | `setup` | Einrichtungs-Assistent erneut öffnen |
 | `status --json` | Zustand ausgeben (für Skripte) |
+| `process-selection` | markierten Text verarbeiten: Stufen-Wähler als kleines Fenster, Ergebnis in die Zwischenablage |
+| `process-selection --stage beautify` | markierten Text sofort mit dieser Stufe verarbeiten (`polish`, `beautify`, `summarize`, `prompt`) |
 
 „Halten zum Sprechen“ geht über Kürzel der Desktop-Umgebung nicht, weil sie nur beim Drücken auslösen. Nimm
 `toggle`: einmal drücken = Aufnahme, nochmal drücken = fertig.
@@ -71,6 +73,24 @@ Ohne Tray öffnet WhisperLoom beim Start die Bühnenansicht; die Kürzel funktio
 - **Sway / i3**: `bindsym Ctrl+Alt+d exec "/pfad/zu/WhisperLoom" toggle`
 - **Hyprland**: `bind = CTRL ALT, D, exec, "/pfad/zu/WhisperLoom" toggle`
 
+## Markierten Text verarbeiten
+
+Text in einem beliebigen Programm mit der Maus markieren (nicht kopieren nötig), dann ein Kürzel auf
+
+```bash
+"/pfad/zu/WhisperLoom" process-selection
+```
+
+drücken. WhisperLoom liest die **Primärauswahl** (das zuletzt Markierte), zeigt die Stufen zur Wahl (Klick, ↑/↓, Tab,
+1–9, Enter; Esc bricht ab) und legt das Ergebnis in die **Zwischenablage** – mit Strg+V über die Markierung einfügen.
+Mit `--stage <stufe>` entfällt die Wahl, z. B. ein zweites Kürzel nur für „Verschönern“. Der Eintrag landet im Verlauf
+mit Quelle „Markierung“.
+
+- Wayland: `wl-paste` aus `wl-clipboard` nötig; X11: `xclip` (oder `xsel`). Fehlt das Werkzeug, meldet WhisperLoom
+  per Benachrichtigung, was zu installieren ist.
+- Ist nichts markiert, kommt der Hinweis „Nichts markiert“.
+- „Nach Anweisung umschreiben“ und direktes Ersetzen der Markierung gibt es nur unter Windows.
+
 ## Wayland oder X11?
 
 | | Wayland | X11 |
@@ -78,6 +98,7 @@ Ohne Tray öffnet WhisperLoom beim Start die Bühnenansicht; die Kürzel funktio
 | Kürzel der Desktop-Umgebung → `whisperloom toggle` | ja | ja |
 | Globale Kürzel direkt in der App | nein (Wayland erlaubt es nicht) | noch nicht |
 | Zwischenablage | `wl-clipboard` (`wl-copy`) nötig | `xclip` nötig |
+| Markierung lesen (`process-selection`) | `wl-paste --primary` (`wl-clipboard`) | `xclip` oder `xsel` |
 | Direkt einfügen/tippen | nein (später: wtype/ydotool) | nein |
 
 Welche Sitzung läuft: `echo $XDG_SESSION_TYPE` (`wayland` oder `x11`).
@@ -103,6 +124,11 @@ use the `.AppImage` file. `toggle` starts or stops-and-processes a recording and
 result is on the **clipboard** (paste with Ctrl+V). Other verbs: `start`, `stop`, `cancel`, `pause`, `resume`,
 `stage next`, `stage <off|polish|beautify|summarize|readable|prompt>`, `show`, `setup`, `status --json`. Push-to-talk is
 not possible with desktop shortcuts; use `toggle`.
+
+**Process selected text:** select text anywhere, then run `"/path/to/WhisperLoom" process-selection` from a shortcut.
+WhisperLoom reads the primary selection, shows the stage picker as a small window (click, ↑/↓, Tab, 1–9, Enter; Esc
+cancels) and puts the result on the clipboard. `--stage <stage>` skips the picker. Needs `wl-paste` (`wl-clipboard`) on
+Wayland and `xclip` or `xsel` on X11; a notification names a missing tool.
 
 - **KDE Plasma 6:** System Settings → Keyboard → Shortcuts → *Add New → Command or Script…* → command as above → set a
   key (e.g. Meta+Space or Ctrl+Alt+D) → Apply.

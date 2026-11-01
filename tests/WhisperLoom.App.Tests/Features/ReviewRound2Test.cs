@@ -66,7 +66,7 @@ public sealed class ReviewRound2Test : IDisposable
         _keys = new GateKeys(_rig.Keys);
         _rig.Windows.Alive.Add(7);
         _flow = new InputFlow(_f.Controller, sink, _ui, () => _rig.Windows.Current, _ => { },
-            _ => new WindowInfo("notepad", ""), new SelectionCapture(_rig.Clipboard, _keys, _rig.Windows, TimeSpan.Zero));
+            _ => new WindowInfo("notepad", "")) { Selection = SelectionTesting.Wiring(_rig, keys: _keys) };
     }
 
     public void Dispose() => _f.Dispose();
@@ -124,8 +124,8 @@ public sealed class ReviewRound2Test : IDisposable
         _rig.Keys.Selection = "Markiert";
         _keys.Close();
 
-        var first = _flow.HandleAsync(HotkeyAction.Rewrite);
-        var second = _flow.HandleAsync(HotkeyAction.Rewrite);
+        var first = _flow.HandleAsync(HotkeyAction.Selection);
+        var second = _flow.HandleAsync(HotkeyAction.Selection);
         var reinsert = _flow.HandleAsync(HotkeyAction.Reinsert);
         await Task.Delay(50);
         _keys.Open();
@@ -135,7 +135,7 @@ public sealed class ReviewRound2Test : IDisposable
         Assert.Equal(1, _rig.Steps.Count(s => s is "ctrl-c" or "ctrl-insert"));
         Assert.DoesNotContain("ctrl-v", _rig.Steps);
         Assert.Equal("alt", _rig.Clipboard.Text);
-        Assert.True(_ui.Overlay);
+        Assert.NotNull(_flow.Picker);
     }
 
     // R3 — anderes Fenster vorn nach dem Warten auf die Modifier: keine Kopier-Kombi, Toast.
@@ -145,7 +145,7 @@ public sealed class ReviewRound2Test : IDisposable
         _rig.Keys.Selection = "Markiert";
         _keys.OnWait = () => _rig.Windows.Current = 7;
 
-        await _flow.HandleAsync(HotkeyAction.Rewrite);
+        await _flow.HandleAsync(HotkeyAction.Selection);
 
         Assert.DoesNotContain("ctrl-c", _rig.Steps);
         Assert.DoesNotContain("ctrl-insert", _rig.Steps);
@@ -160,7 +160,7 @@ public sealed class ReviewRound2Test : IDisposable
         _rig.Keys.Selection = "Markiert";
         _rig.Windows.Elevated.Add(42);
 
-        await _flow.HandleAsync(HotkeyAction.Rewrite);
+        await _flow.HandleAsync(HotkeyAction.Selection);
 
         Assert.DoesNotContain("ctrl-c", _rig.Steps);
         Assert.Equal(Loc.Instance["Rewrite_TargetProtected"], _ui.Hints[^1].Message);
@@ -172,14 +172,14 @@ public sealed class ReviewRound2Test : IDisposable
     {
         _rig.Keys.Selection = "Markiert";
         _rig.Clipboard.FailRestores = 2;
-        await _flow.HandleAsync(HotkeyAction.Rewrite);
+        await _flow.HandleAsync(HotkeyAction.Selection);
         Assert.Equal(Loc.Instance["Rewrite_RestoreFailed"], _ui.Hints[^1].Message);
-        Assert.False(_ui.Overlay);
+        Assert.Null(_flow.Picker);
 
         _rig.Clipboard.Text = "alt";
         _rig.Clipboard.FailRestores = 1;
-        await _flow.HandleAsync(HotkeyAction.Rewrite);
-        Assert.True(_ui.Overlay);
+        await _flow.HandleAsync(HotkeyAction.Selection);
+        Assert.NotNull(_flow.Picker);
         Assert.Equal("alt", _rig.Clipboard.Text);
     }
 

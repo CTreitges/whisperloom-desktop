@@ -22,6 +22,7 @@ public sealed partial class ProfileRowViewModel : ObservableObject
         _stage = Pick(owner.Stages, profile.Stage);
         _insertMode = Pick(owner.InsertModes, profile.InsertMode);
         _pressEnter = profile.PressEnter; // null = Erben (W2-C0)
+        _floatingButton = profile.FloatingButton; // null = wie eingestellt (W2-SEL)
         _enabled = profile.Enabled;
     }
 
@@ -48,6 +49,10 @@ public sealed partial class ProfileRowViewModel : ObservableObject
     private bool? _pressEnter;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Button))]
+    private bool? _floatingButton;
+
+    [ObservableProperty]
     private bool _enabled;
 
     /// <summary>Hinweis bei ungültigem Regex; leer = gültig.</summary>
@@ -70,6 +75,13 @@ public sealed partial class ProfileRowViewModel : ObservableObject
         set => PressEnter = value.Value switch { "on" => true, "off" => false, _ => null };
     }
 
+    /// <summary>Schwebender Knopf (W2-SEL): Wie eingestellt (null) oder Hier nie (false).</summary>
+    public Choice Button
+    {
+        get => _owner.ButtonChoices[FloatingButton == false ? 1 : 0];
+        set => FloatingButton = value.Value == "off" ? false : null;
+    }
+
     public AppProfile ToProfile() => new()
     {
         Name = Name.Trim(),
@@ -78,6 +90,7 @@ public sealed partial class ProfileRowViewModel : ObservableObject
         Stage = Stage.Value,
         InsertMode = InsertMode.Value,
         PressEnter = PressEnter,
+        FloatingButton = FloatingButton,
         Enabled = Enabled,
     };
 
@@ -102,6 +115,7 @@ public sealed class ProfilesViewModel
         var loc = Loc.Instance;
         Stages = [new Choice("", loc["Profile_Default"]), .. RefineModes.SettingsFor(true).Select(m => new Choice(m.Key(), loc["Stage_" + m.Key()]))];
         EnterChoices = [new Choice("", loc["Profile_Default"]), new Choice("on", loc["Profile_EnterOn"]), new Choice("off", loc["Profile_EnterOff"])];
+        ButtonChoices = [new Choice("", loc["Profile_FloatingButton_Inherit"]), new Choice("off", loc["Profile_FloatingButton_Off"])];
         InsertModes = [new Choice("", loc["Profile_Default"]), .. new[] { "paste", "type", "clipboard" }.Select(m => new Choice(m, loc["Insert_" + m]))];
         Rows = [.. desktop.Profiles.Select(p => new ProfileRowViewModel(this, p))];
         AddCommand = new RelayCommand(() => Rows.Add(new ProfileRowViewModel(this, new AppProfile())));
@@ -120,6 +134,9 @@ public sealed class ProfilesViewModel
 
     /// <summary>Enter danach: Wie Standard (erbt output.pressEnter), An, Aus.</summary>
     public IReadOnlyList<Choice> EnterChoices { get; }
+
+    /// <summary>Schwebender Knopf je Profil (W2-SEL): Wie eingestellt, Hier nie.</summary>
+    public IReadOnlyList<Choice> ButtonChoices { get; }
 
     public ObservableCollection<ProfileRowViewModel> Rows { get; }
 

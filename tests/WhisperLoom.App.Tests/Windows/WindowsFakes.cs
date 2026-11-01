@@ -160,6 +160,11 @@ internal sealed class FakeWindows(Steps steps) : IWindowAdapter
 
     public string FocusClass(IntPtr window) => window == 42 ? "Edit" : "";
 
+    /// <summary>Fensterklassen je Fenster (Electron: Chrome_WidgetWin_1); sonst "".</summary>
+    public Dictionary<IntPtr, string> Classes { get; } = [];
+
+    public string WindowClass(IntPtr window) => Classes.GetValueOrDefault(window, "");
+
     public bool Activate(IntPtr window)
     {
         steps.Add("activate");

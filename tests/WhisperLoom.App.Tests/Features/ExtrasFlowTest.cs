@@ -62,7 +62,7 @@ public sealed class ExtrasFlowTest : IDisposable
         _f.Controller.Rewriter = _rewriter;
         _rig.Windows.Alive.Add(7);
         _flow = new InputFlow(_f.Controller, Sink, _ui, () => _rig.Windows.Current, _ => { },
-            w => _windows.GetValueOrDefault(w, new WindowInfo("", "")), new SelectionCapture(_rig.Clipboard, _rig.Keys, _rig.Windows, TimeSpan.Zero));
+            w => _windows.GetValueOrDefault(w, new WindowInfo("", ""))) { Selection = SelectionTesting.Wiring(_rig) };
     }
 
     private InsertOutputSink Sink { get; }
@@ -212,14 +212,14 @@ public sealed class ExtrasFlowTest : IDisposable
     public async Task Rewrite_replaces_the_selection_and_treats_its_content_as_data()
     {
         _rig.Keys.Selection = "Schick mir den Bericht. " + Injection;
-        await _flow.HandleAsync(HotkeyAction.Rewrite);
+        await SelectionTesting.StartInstructionAsync(_flow);
 
         Assert.True(_ui.Overlay);
         Assert.Equal(Loc.Instance["Rewrite_Label"], _flow.Overlay.Stage);
         Assert.Equal(DictationState.Recording, _f.Controller.State);
         Assert.Equal("alt", _rig.Clipboard.Text);
 
-        await _flow.HandleAsync(HotkeyAction.Rewrite);
+        await _flow.HandleAsync(HotkeyAction.Selection);
 
         var call = Assert.Single(_rewriter.Calls);
         Assert.Equal(("Schick mir den Bericht. " + Injection, "Hallo Welt"), (call.Selection, call.Instruction));
@@ -237,9 +237,10 @@ public sealed class ExtrasFlowTest : IDisposable
     [AvaloniaFact]
     public async Task Rewrite_with_nothing_selected_shows_a_toast_and_records_nothing()
     {
-        await _flow.HandleAsync(HotkeyAction.Rewrite);
+        await _flow.HandleAsync(HotkeyAction.Selection);
 
-        Assert.Equal(Loc.Instance["Rewrite_NothingSelected"], _ui.Hints[^1].Message);
+        Assert.Equal(Loc.Instance["Selection_Empty"], _ui.Hints[^1].Message);
+        Assert.Null(_flow.Picker);
         Assert.Equal(DictationState.Idle, _f.Controller.State);
         Assert.False(_ui.Overlay);
         Assert.Equal("alt", _rig.Clipboard.Text);
@@ -250,7 +251,7 @@ public sealed class ExtrasFlowTest : IDisposable
     {
         _rig.Keys.Selection = "Original";
         _rewriter.Fail = true;
-        await _flow.HandleAsync(HotkeyAction.Rewrite);
+        await SelectionTesting.StartInstructionAsync(_flow);
         await _flow.HandleAsync(HotkeyAction.OverlaySend);
 
         Assert.Equal("", _rig.Keys.Target);
@@ -264,7 +265,7 @@ public sealed class ExtrasFlowTest : IDisposable
     public async Task Discarding_the_instruction_changes_nothing()
     {
         _rig.Keys.Selection = "Original";
-        await _flow.HandleAsync(HotkeyAction.Rewrite);
+        await SelectionTesting.StartInstructionAsync(_flow);
         await _flow.HandleAsync(HotkeyAction.OverlayDiscard);
 
         Assert.Empty(_rewriter.Calls);

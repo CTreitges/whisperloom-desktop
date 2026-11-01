@@ -166,6 +166,13 @@ public sealed partial class AppHost
     /// <summary>Windows mit Hotkeys: Text ins Ziel des letzten Diktats einfügen (Tray-Verlauf); null = kopieren.</summary>
     public Func<string, Task<string>>? InsertRecent { get; set; }
 
+    /// <summary>
+    /// „Markierung verarbeiten“ (W2-SEL): Windows mit Hotkeys über den Eingabe-Ablauf, Linux über die Primärauswahl. Argument:
+    /// Stufe (CLI <c>--stage</c>) oder null (Stufen-Wähler); zweites Argument true = Tray (Ziel = Fenster vor dem Tray-Klick).
+    /// null = nicht verfügbar.
+    /// </summary>
+    public Func<string?, bool, Task<string>>? ProcessSelection { get; set; }
+
     /// <summary>Windows mit Hotkeys: wie der Hotkey „erneut einfügen“ (Vordergrundfenster); null = kopieren.</summary>
     public Func<Task<string>>? Reinsert { get; set; }
 
@@ -314,6 +321,14 @@ public sealed partial class AppHost
             case "retry":
                 message = await Controller.RetryAsync();
                 ok = message == "done";
+                break;
+            case "process-selection" when ProcessSelection is null:
+                ok = false;
+                message = "unavailable";
+                break;
+            case "process-selection":
+                message = await ProcessSelection(args.Count > 0 ? args[0] : null, false);
+                ok = message is "picker" or "done" or "instruction" or "busy";
                 break;
             case "focus-probe":
                 message = ProbeFocus is { } probe ? await probe() : "Unknown 0";

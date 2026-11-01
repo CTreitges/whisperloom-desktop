@@ -33,6 +33,11 @@ internal static class HistoryJson
             ["model"] = e.Model,
             ["skipped"] = e.Skipped,
         };
+        // Fehlt = Diktat (W2-SEL; ältere Dateien und Leser bleiben gültig).
+        if (e.Source is { Length: > 0 } source)
+        {
+            o["source"] = source;
+        }
         // Fehlt = nur die damalige Fassung (ältere Dateien und Leser bleiben gültig).
         if (e.Versions is { } versions)
         {
@@ -109,7 +114,8 @@ internal static class HistoryJson
             Text(o, "sttLabel"),
             Text(o, "model") is { Length: > 0 } model ? model : null,
             Text(o, "skipped") is { Length: > 0 } skipped ? skipped : null,
-            ReadVersions(o["versions"] as JsonArray));
+            ReadVersions(o["versions"] as JsonArray),
+            Text(o, "source") is { Length: > 0 } source ? source : null);
     }
 
     /// <summary>Unbekannte oder fehlende Stufe gilt als aus.</summary>

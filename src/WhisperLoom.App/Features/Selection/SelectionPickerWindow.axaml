@@ -1,0 +1,23 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:l="using:WhisperLoom.App.Localization"
+        xmlns:ds="using:WhisperLoom.App.Design"
+        x:Class="WhisperLoom.App.Features.Selection.SelectionPickerWindow"
+        x:DataType="ds:StagePickerViewModel"
+        Title="WhisperLoom"
+        Width="290" SizeToContent="Height"
+        Background="Transparent" TransparencyLevelHint="Transparent">
+  <!-- Stufen-Wähler am Cursor (W2-SEL): unter Windows fokusfrei (NoActivate), Tasten kommen über den Hook; unter Linux ein
+       normales kleines Fenster. Komponente aus W2-OUT (ds:StagePicker), Farben aus dem Designsystem (W2-UI1). -->
+  <!-- Schatten: der Rand allein hebt sich über fremdem Inhalt zu wenig ab (HIG-Review W2-SEL). -->
+  <Border Background="{DynamicResource Loom.Surface}" CornerRadius="12" Padding="6" Margin="8"
+          BorderBrush="{DynamicResource Loom.Separator}" BorderThickness="1" BoxShadow="0 4 14 0 #55000000">
+    <StackPanel Spacing="4">
+      <TextBlock Text="{Binding [Selection_PickerTitle], Source={x:Static l:Loc.Instance}}" Margin="10,6,10,2"
+                 FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource Loom.TextSecondary}" />
+      <ds:StagePicker x:Name="PickerView" />
+      <TextBlock Text="{Binding [Selection_PickerKeys], Source={x:Static l:Loc.Instance}}" Margin="10,2,10,6"
+                 FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource Loom.TextSecondary}" />
+    </StackPanel>
+  </Border>
+</Window>

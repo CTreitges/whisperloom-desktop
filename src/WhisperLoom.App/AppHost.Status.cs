@@ -104,6 +104,7 @@ public sealed partial class AppHost
                     ["text"] = latest.Text,
                     ["stage"] = latest.Refinement.Mode.Key(),
                     ["stt"] = latest.SttLabel,
+                    ["source"] = latest.Source,
                 },
             },
             ["secretStore"] = Secrets.Kind,

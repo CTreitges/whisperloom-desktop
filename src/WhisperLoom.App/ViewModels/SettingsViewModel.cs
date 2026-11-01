@@ -65,7 +65,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         UiLanguages = [new Choice("", loc["Ui_System"]), new Choice("de", "Deutsch"), new Choice("en", "English")];
         Microphones = [new Choice("", loc["Mic_Default"]), .. (microphones ?? []).Select(m => new Choice(m, m))];
         InsertModes = [.. new[] { "paste", "type", "clipboard" }.Select(m => new Choice(m, loc["Insert_" + m]))];
-        Hotkeys = new HotkeysViewModel(_desktop, recordHotkey) { Changed = Touch };
+        Hotkeys = new HotkeysViewModel(_desktop, recordHotkey, _s.Selection) { Changed = Touch };
         Profiles = new Features.Profiles.ProfilesViewModel(_desktop) { Changed = Touch };
 
         _sttProvider = Pick(SttProviders, _s.Stt.ProviderId);

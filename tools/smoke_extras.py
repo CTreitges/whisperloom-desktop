@@ -11,7 +11,8 @@ Prüfungen:
 - reprocess: IPC "reprocess beautify" verarbeitet den Rohtext neu — keine Erkennung, eine Text-Anfrage, neuer Eintrag.
 - profile-stage: Profil "WhisperLoom.TestTarget.exe" → Stufe polish im Diktat (Standard bleibt off); der Stufen-Hotkey
   ändert die Stufe des Profils (Hinweis "Profil · Stufe", desktop.profiles in settings.json), das nächste Diktat nutzt sie.
-- rewrite-selection: markierter Text mit Injektions-Satz, Strg+Alt+Umschalt+R, Anweisung, zweiter Druck — die Markierung
+- rewrite-selection: markierter Text mit Injektions-Satz, Strg+Alt+Umschalt+S (W2-SEL: Umschreiben ging in „Markierung
+  verarbeiten“ auf) → Wähler → „Nach Anweisung umschreiben …“, Anweisung, zweiter Druck — die Markierung
   ist durch die Antwort der Fake-API ersetzt, der Injektions-Satz ging nur im Datenblock <auswahl> raus, der System-Prompt
   ist "Umschreiben nach Anweisung", die Zwischenablage ist wiederhergestellt, kein Verlaufseintrag.
 """
@@ -38,6 +39,7 @@ def extras_settings(fake) -> dict:
     settings = smoke_full.fake_settings(fake, via_proxy=False)
     settings["language"] = "de"
     settings["refine"] = {"stage": "off", "promptEnabled": True}
+    settings["polish"] = {**settings.get("polish", {}), "trailingSpace": False}  # Ziel == lastResult vergleichen (wie input, W2-OUT)
     settings["desktop"] = {"insertMode": "paste", "profiles": [
         {"name": PROFILE_NAME, "process": "WhisperLoom.TestTarget.exe", "stage": "polish"}]}
     return settings
@@ -154,15 +156,18 @@ def profile_check(run, keys, exe, out, report, fake, data: Path) -> None:
         # Zweites Diktat ins selbe Ziel: dort steht danach erstes + zweites Ergebnis.
         s2 = si.idle(run)
         want2 = s2.get("lastResult") or ""
-        d2 = si.wait_for(lambda: (lambda x: x if want2 and x.get("text") == first + want2 else None)(t.read()), 5) or t.read()
-        d2["_landed"] = bool(want2) and d2.get("text") == first + want2 and si.went_to(s2, t.hwnd)[0]
+        # Leerzeichen davor (W2-OUT, OutputDecision.WithLeadingSpace): direkt an ein Wort angefügt → " " dazwischen.
+        joined = first + (" " if first and not first[-1].isspace() and want2[:1].isalnum() else "") + want2
+        d2 = si.wait_for(lambda: (lambda x: x if want2 and x.get("text") == joined else None)(t.read()), 5) or t.read()
+        d2["_landed"] = bool(want2) and d2.get("text") == joined and si.went_to(s2, t.hwnd)[0]
         latest2 = (s2.get("history") or {}).get("latest") or {}
     report.check("profile-stage",
                  d1["_landed"] and latest1.get("stage") == "polish" and s1.get("stage") == "off"
                  and hint.startswith(f"{PROFILE_NAME} · ") and profile_stage == "beautify"
                  and latest2.get("stage") == "beautify" and s2.get("stage") == "off" and d2["_landed"],
                  f"diktat1={latest1.get('stage')} standard={s1.get('stage')} hint={hint!r} profil={profile_stage} "
-                 f"diktat2={latest2.get('stage')} standard={s2.get('stage')} {d1['_where']}")
+                 f"diktat2={latest2.get('stage')} standard={s2.get('stage')} {d1['_where']} landed={d1['_landed']}/{d2['_landed']} "
+                 f"ziel2={d2.get('text')!r:.60}")
 
 
 def reinsert_check(run, keys, exe, out, report) -> None:
@@ -225,12 +230,16 @@ def rewrite_check(run, keys, exe, out, report, fake) -> None:
         # Ein Fokus-Klick kann die Start-Markierung aufheben: neu markieren.
         keys.combo("ctrl", "a")
         time.sleep(0.2)
-        keys.combo("ctrl", "alt", "shift", "r")
+        keys.combo("ctrl", "alt", "shift", "s")
+        picker = si.wait_for(lambda: (lambda x: x if x.get("pickerOpen") else None)(
+            ((run.status() or {}).get("input") or {}).get("selection") or {}), 5) or {}
+        options = picker.get("options") or []
+        keys.combo(str(options.index("instruction") + 1) if "instruction" in options else "esc")
         opened = si.overlay_open(run)
         mode = (opened.get("input") or {}).get("mode")
         clip_during = plat.read_clipboard("win")
         time.sleep(0.5)
-        keys.combo("ctrl", "alt", "shift", "r")
+        keys.combo("ctrl", "alt", "shift", "s")
         s = si.idle(run)
         d = si.wait_for(lambda: (lambda x: x if x.get("text") == REWRITTEN else None)(t.read()), 5) or t.read()
         went, where = si.went_to(s, t.hwnd)

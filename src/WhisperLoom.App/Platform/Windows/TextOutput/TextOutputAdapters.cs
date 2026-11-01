@@ -62,4 +62,7 @@ public interface IWindowAdapter
 
     /// <summary>Fensterklasse des Steuerelements mit Tastaturfokus im Thread des Fensters; "" wenn keins.</summary>
     string FocusClass(IntPtr window);
+
+    /// <summary>Klasse des Fensters selbst (z. B. <c>Chrome_WidgetWin_1</c> bei Electron-Apps); "" wenn nicht lesbar.</summary>
+    string WindowClass(IntPtr window) => "";
 }

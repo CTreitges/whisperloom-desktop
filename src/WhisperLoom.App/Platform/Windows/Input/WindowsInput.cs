@@ -20,6 +20,8 @@ public sealed class WindowsInput : IDisposable
     private readonly AppLog _log;
     private readonly HotkeyStateMachine _machine = new(null, null, null);
     private readonly KeyboardHook _hook;
+    private readonly Features.Selection.MouseHookSwitch _mouse;
+    private IntPtr _lastExternal;
     private readonly DispatcherTimer _tick = new() { Interval = TimeSpan.FromMilliseconds(100) };
     private TaskCompletionSource<Hotkey?>? _recording;
 
@@ -28,10 +30,27 @@ public sealed class WindowsInput : IDisposable
         _controller = controller;
         _log = log;
         var windows = new Win32Windows();
+        _mouse = new Features.Selection.MouseHookSwitch(() => new MouseHook(new MouseGestures(), OnMouseAction));
         Flow = new InputFlow(controller, sink, new InputPresenter(TargetCenter), windows.Foreground,
             active => _hook!.Update(m => m.OverlayKeysActive = active),
-            w => new Features.Profiles.WindowInfo(windows.ProcessName(w), Win32Windows.Title(w)),
-            new Features.Rewrite.SelectionCapture(new Win32TextClipboard(), new Win32KeySender(), windows));
+            w => new Features.Profiles.WindowInfo(windows.ProcessName(w), Win32Windows.Title(w)))
+        {
+            Selection = new Features.Selection.SelectionWiring
+            {
+                Reader = new Features.Selection.SelectionReader(
+                    new FocusProbe(new UiaFocusSource(), fallback: new MsaaFocusSource()), new UiaSelectionSource(),
+                    new Features.Rewrite.SelectionCapture(new Win32TextClipboard(), new Win32KeySender(), windows), windows),
+                Ui = new Features.Selection.SelectionPresenter(noActivate: true, TargetCenter),
+                PickerKeys = active => _hook!.Update(m => m.PickerKeysActive = active),
+                DismissOnKey = active => _hook!.Update(m => m.DismissOnKey = active),
+                TransientChanged = rects => _mouse.Update(m => m.Transient = rects),
+                Anchor = SelectionNative.Anchor,
+                WindowAt = SelectionNative.WindowAt,
+                ReplayRightClick = MouseHook.ReplayRightClick,
+                Activate = windows.Activate,
+                LastExternal = () => _lastExternal,
+            },
+        };
         Flow.FallbackToast += outcome => Dispatcher.UIThread.Post(() => Flow.ShowFallback(outcome));
         // Log nur Metadaten: Ergebnis, Prozess und Fokus-Klasse des Fensters, das die Eingabe bekam — nie Text.
         sink.Inserted += outcome => Dispatcher.UIThread.Post(() => _log.Event(
@@ -41,7 +60,15 @@ public sealed class WindowsInput : IDisposable
             ("sameTarget", sink.LastReport?.SameTarget),
             ("focusClass", sink.LastReport?.FocusClass)));
         _hook = new KeyboardHook(_machine, OnHookAction);
-        _tick.Tick += (_, _) => Flow.Tick();
+        _tick.Tick += (_, _) =>
+        {
+            // Tray-Eintrag „Markierung verarbeiten …“: der Klick ins Tray nimmt den Fokus, gemerkt wird das Fenster davor.
+            if (SelectionNative.ExternalForeground() is var external && external != IntPtr.Zero)
+            {
+                _lastExternal = external;
+            }
+            Flow.Tick();
+        };
         _tick.Start();
         ApplySettings();
         controller.PropertyChanged += OnControllerChanged;
@@ -50,6 +77,9 @@ public sealed class WindowsInput : IDisposable
     public InputFlow Flow { get; }
 
     public bool HookRunning => _hook.IsRunning;
+
+    /// <summary>Maus-Hook installiert (nur mit eingeschaltetem Maus-Starter, W2-SEL).</summary>
+    public bool MouseHookRunning => _mouse.Installed;
 
     /// <summary>
     /// Echte Ausgabe-Senke für Windows: Einfügen per Tastenkürzel mit Fokus-Prüfung über UI Automation (W2-OUT), sonst die
@@ -93,6 +123,7 @@ public sealed class WindowsInput : IDisposable
         _controller.PropertyChanged -= OnControllerChanged;
         _tick.Stop();
         _hook.Dispose();
+        _mouse.Dispose();
     }
 
     private void OnHookAction(HotkeyAction action, Hotkey? recorded)
@@ -101,6 +132,11 @@ public sealed class WindowsInput : IDisposable
         if (action is HotkeyAction.Recorded or HotkeyAction.RecordCancelled)
         {
             _recording?.TrySetResult(recorded);
+            return;
+        }
+        if (action == HotkeyAction.PickerKey && recorded is { } key)
+        {
+            Dispatcher.UIThread.Post(() => Flow.PickerKey(key));
             return;
         }
         Dispatcher.UIThread.Post(async () =>
@@ -128,7 +164,35 @@ public sealed class WindowsInput : IDisposable
             m.Toggle = on ? Hotkey.ParseOr(desktop.HotkeyToggle, Hotkey.DefaultToggle) : null;
             m.Stage = on ? Hotkey.ParseOr(desktop.HotkeyStage, Hotkey.DefaultStage) : null;
             m.Reinsert = on ? Hotkey.ParseOr(desktop.HotkeyReinsert, Hotkey.DefaultReinsert) : null;
-            m.Rewrite = on ? Hotkey.ParseOr(desktop.HotkeyRewrite, Hotkey.DefaultRewrite) : null;
+            var combo = _controller.Settings.Selection.HotkeyCombo;
+            m.Selection = on && combo.Length > 0 ? Hotkey.ParseOr(combo, Hotkey.DefaultSelection) : null;
+        });
+        if (!_mouse.Apply(_controller.Settings.Selection))
+        {
+            _log.Event("mousehook", ("status", "unavailable"));
+        }
+    }
+
+    /// <summary>Maus-Hook-Thread: nur weiterreichen, sofort zurückkehren.</summary>
+    private void OnMouseAction(MouseDecision decision)
+    {
+        var at = new PixelPoint(decision.X, decision.Y);
+        Dispatcher.UIThread.Post(async () =>
+        {
+            switch (decision.Action)
+            {
+                case MouseAction.CtrlRightClick:
+                    _log.Event("selection.start", ("trigger", "ctrlRightClick"));
+                    await Flow.OnCtrlRightClickAsync(at);
+                    break;
+                case MouseAction.SelectionGesture:
+                    await Flow.OnSelectionGestureAsync(at);
+                    break;
+                case MouseAction.Dismiss:
+                    Flow.CancelPicker();
+                    Flow.HideButton();
+                    break;
+            }
         });
     }
 
