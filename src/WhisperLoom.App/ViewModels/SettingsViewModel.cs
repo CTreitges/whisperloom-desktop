@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using WhisperLoom.App.Localization;
 using WhisperLoom.App.Services;
+using WhisperLoom.App.ViewModels.Settings;
 using WhisperLoom.Core.Contracts;
 using WhisperLoom.Core.Contracts.Settings;
 using WhisperLoom.Core.Settings;
@@ -15,9 +16,10 @@ public sealed record Choice(string Value, string Label)
 }
 
 /// <summary>
-/// Einstellungen: Erkennung, Text, Kontext-Wörter, Netzwerk/Proxy, Datenschutz, Ausgabe, Oberfläche.
-/// Arbeitet auf einer Kopie; erst <see cref="Save"/> übernimmt sie in die App und settings.json.
-/// Keys laufen nur über die <see cref="KeyFieldViewModel"/> in den <see cref="ISecretStore"/>.
+/// Arbeitskopie der Einstellungen für Einstellungsfenster und Einrichtungs-Assistent. Keys laufen nur über die
+/// <see cref="KeyFieldViewModel"/> in den <see cref="ISecretStore"/>. Mit <see cref="AutoSave"/> (Einstellungsfenster)
+/// gilt jede gültige Änderung sofort (SettingsViewModel.Commit.cs); ohne (Assistent) übernimmt erst <see cref="Save"/>.
+/// Ungültige Werte (Adressen, Zahlen) landen nur in <see cref="Errors"/>, nicht in der Kopie.
 /// </summary>
 public sealed partial class SettingsViewModel : ObservableObject
 {
@@ -26,19 +28,23 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly DictationController _controller;
     private readonly WhisperLoomSettings _s;
     private readonly DesktopSettings _desktop;
+    private readonly PolicySettings _policy;
+    private readonly bool _ready;
 
-    /// <param name="local">Lokale Teile der App (Modelle, Begleitprozess, Ollama); null = Tab „Lokal“ ohne Downloads.</param>
+    /// <param name="local">Lokale Teile der App (Modelle, Begleitprozess, Ollama); null = Seite „Erkennung“ ohne Downloads.</param>
     /// <param name="recordHotkey">Rekorder des globalen Hooks (Windows, Phase 3); null = Tastenkürzel nur anzeigen.</param>
     public SettingsViewModel(DictationController controller, ISecretStore secrets, IAccessChecker checker, IReadOnlyList<string>? microphones = null,
         Platform.Sidecar.LocalParts? local = null, Func<Task<string?>>? recordHotkey = null)
     {
         _controller = controller;
+        _reopen = () => new SettingsViewModel(controller, secrets, checker, microphones, local, recordHotkey);
         _s = SettingsJson.Deserialize(SettingsJson.Serialize(controller.Settings));
         _desktop = SettingsStore.Desktop(_s);
         _policy = controller.Policy;
         Editable = new LockMap(_policy);
         Sync = new SyncViewModel(controller, secrets);
         SecretStoreKind = secrets.Kind;
+        LocalParts = local;
         var loc = Loc.Instance;
 
         // Von IT nicht freigegebene Anbieter erscheinen nicht; der aktuelle bleibt sichtbar, sonst wechselte er still.
@@ -55,8 +61,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         UiLanguages = [new Choice("", loc["Ui_System"]), new Choice("de", "Deutsch"), new Choice("en", "English")];
         Microphones = [new Choice("", loc["Mic_Default"]), .. (microphones ?? []).Select(m => new Choice(m, m))];
         InsertModes = [.. new[] { "paste", "type", "clipboard" }.Select(m => new Choice(m, loc["Insert_" + m]))];
-        Hotkeys = new HotkeysViewModel(_desktop, recordHotkey);
-        Profiles = new Features.Profiles.ProfilesViewModel(_desktop);
+        Hotkeys = new HotkeysViewModel(_desktop, recordHotkey) { Changed = Touch };
+        Profiles = new Features.Profiles.ProfilesViewModel(_desktop) { Changed = Touch };
 
         _sttProvider = Pick(SttProviders, _s.Stt.ProviderId);
         _sttFallbackProvider = Pick(SttProviders, _s.SttFallback.ProviderId);
@@ -78,22 +84,43 @@ public sealed partial class SettingsViewModel : ObservableObject
             () => LlmProvider.Value == LlmSettings.Same ? (SttProvider.Value, SttBaseUrl) : (LlmProvider.Value, LlmBaseUrl)) { Editable = KeyEditable(SecretNames.Llm), Policy = _policy };
         LlmFallbackKey = new KeyFieldViewModel(SecretNames.LlmFallback, secrets, checker, () => (LlmFallbackProvider.Value, LlmFallbackBaseUrl)) { Editable = KeyEditable(SecretNames.LlmFallback), Policy = _policy };
         Local = new LocalViewModel(_s, local);
+        Local.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(LocalViewModel.Engine) or nameof(LocalViewModel.Backend) or nameof(LocalViewModel.Rule)
+                or nameof(LocalViewModel.SelectedModel) or nameof(LocalViewModel.OllamaModel) or nameof(LocalViewModel.Accurate)
+                or nameof(LocalViewModel.IdleMinutes) or nameof(LocalViewModel.OllamaUrl))
+            {
+                Touch();
+            }
+        };
+        _baseline = BuildResult(); // normalisiert (Abschnitte desktop/local vollständig), damit der erste Commit nur echte Änderungen überträgt
+        _ready = true;
     }
 
-    private readonly PolicySettings _policy;
-
-    /// <summary>Welche Felder änderbar sind; gesperrte (von IT festgelegte) sind ausgegraut.</summary>
+    /// <summary>Welche Felder änderbar sind (Einrichtungs-Assistent); das Einstellungsfenster blendet Festes aus.</summary>
     public LockMap Editable { get; }
 
     /// <summary>Hinweis „von IT festgelegt“ zeigen.</summary>
     public bool HasPolicy => _policy.IsActive;
 
+    public PolicySettings Policy => _policy;
+
     public SyncViewModel Sync { get; }
+
+    /// <summary>Inline-Fehler je Pfad (ungültig, nicht gespeichert).</summary>
+    public ErrorMap Errors { get; } = new();
 
     private bool KeyEditable(string name) => !_policy.IsLocked("secrets." + name);
 
-    /// <summary>Tab „Lokal“ (WLD-P4b).</summary>
+    /// <summary>Lokale Erkennung (WLD-P4b): Modelle, Rechenweg, Ollama.</summary>
     public LocalViewModel Local { get; }
+
+    internal Platform.Sidecar.LocalParts? LocalParts { get; }
+
+    /// <summary>Arbeitskopie für Seiten-ViewModels, die Felder ohne eigene Eigenschaft hier binden (Bereinigung, Stufen-Optionen).</summary>
+    internal WhisperLoomSettings Working => _s;
+
+    internal DesktopSettings Desktop => _desktop;
 
     public IReadOnlyList<Choice> SttProviders { get; }
     public IReadOnlyList<Choice> LlmProviders { get; }
@@ -107,7 +134,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     public IReadOnlyList<Choice> Microphones { get; }
     public IReadOnlyList<Choice> InsertModes { get; }
 
-    /// <summary>Windows: Tastenkürzel-Seite (Phase 3).</summary>
+    /// <summary>Windows: Tastenkürzel (Phase 3).</summary>
     public HotkeysViewModel Hotkeys { get; }
 
     /// <summary>App-Profile (nur Windows, WLD-P5b).</summary>
@@ -125,39 +152,38 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     // Erkennung
     [ObservableProperty] private Choice _sttProvider;
-    public string SttBaseUrl { get => _s.Stt.BaseUrl; set => _s.Stt.BaseUrl = value.Trim(); }
-    public string SttModel { get => _s.Stt.Model; set => _s.Stt.Model = value.Trim(); }
+    public string SttBaseUrl { get => _s.Stt.BaseUrl; set => SetChecked("stt.baseUrl", value.Trim(), v => SettingsValidation.BaseUrl(v, SttProvider.Value), v => _s.Stt.BaseUrl = v); }
+    public string SttModel { get => _s.Stt.Model; set => SetPlain(() => _s.Stt.Model = value.Trim()); }
     [ObservableProperty] private Choice _language;
-    public bool SttFallbackEnabled { get => _s.SttFallback.Enabled; set => _s.SttFallback.Enabled = value; }
+    public bool SttFallbackEnabled { get => _s.SttFallback.Enabled; set => SetPlain(() => _s.SttFallback.Enabled = value); }
     [ObservableProperty] private Choice _sttFallbackProvider;
-    public string SttFallbackBaseUrl { get => _s.SttFallback.BaseUrl; set => _s.SttFallback.BaseUrl = value.Trim(); }
-    public string SttFallbackModel { get => _s.SttFallback.Model; set => _s.SttFallback.Model = value.Trim(); }
+    public string SttFallbackBaseUrl { get => _s.SttFallback.BaseUrl; set => SetChecked("sttFallback.baseUrl", value.Trim(), v => SettingsValidation.BaseUrl(v, SttFallbackProvider.Value), v => _s.SttFallback.BaseUrl = v); }
+    public string SttFallbackModel { get => _s.SttFallback.Model; set => SetPlain(() => _s.SttFallback.Model = value.Trim()); }
 
     // Text
     [ObservableProperty] private Choice _stage;
-    public bool PromptEnabled { get => _s.Refine.PromptEnabled; set => _s.Refine.PromptEnabled = value; }
+    public bool PromptEnabled { get => _s.Refine.PromptEnabled; set => SetPlain(() => _s.Refine.PromptEnabled = value); }
     [ObservableProperty] private Choice _llmProvider;
-    public string LlmBaseUrl { get => _s.Llm.BaseUrl; set => _s.Llm.BaseUrl = value.Trim(); }
-    public string LlmModel { get => _s.Llm.Model; set => _s.Llm.Model = value.Trim(); }
+    public string LlmBaseUrl { get => _s.Llm.BaseUrl; set => SetChecked("llm.baseUrl", value.Trim(), v => SettingsValidation.BaseUrl(v, LlmUrlProvider), v => _s.Llm.BaseUrl = v); }
+    public string LlmModel { get => _s.Llm.Model; set => SetPlain(() => _s.Llm.Model = value.Trim()); }
     public string ModelPolish { get => StageModel("polish"); set => SetStageModel("polish", value); }
     public string ModelBeautify { get => StageModel("beautify"); set => SetStageModel("beautify", value); }
     public string ModelSummarize { get => StageModel("summarize"); set => SetStageModel("summarize", value); }
     public string ModelPrompt { get => StageModel("prompt"); set => SetStageModel("prompt", value); }
-    public bool LlmFallbackEnabled { get => _s.LlmFallback.Enabled; set => _s.LlmFallback.Enabled = value; }
+    public bool LlmFallbackEnabled { get => _s.LlmFallback.Enabled; set => SetPlain(() => _s.LlmFallback.Enabled = value); }
     [ObservableProperty] private Choice _llmFallbackProvider;
-    public string LlmFallbackBaseUrl { get => _s.LlmFallback.BaseUrl; set => _s.LlmFallback.BaseUrl = value.Trim(); }
-    public string LlmFallbackModel { get => _s.LlmFallback.Model; set => _s.LlmFallback.Model = value.Trim(); }
+    public string LlmFallbackBaseUrl { get => _s.LlmFallback.BaseUrl; set => SetChecked("llmFallback.baseUrl", value.Trim(), v => SettingsValidation.BaseUrl(v, LlmFallbackProvider.Value), v => _s.LlmFallback.BaseUrl = v); }
+    public string LlmFallbackModel { get => _s.LlmFallback.Model; set => SetPlain(() => _s.LlmFallback.Model = value.Trim()); }
 
     // Kontext-Wörter
-    public string Vocabulary { get => _s.Stt.Vocabulary; set => _s.Stt.Vocabulary = value; }
-    public string VocabularyFile { get => _s.Stt.VocabularyFile; set => _s.Stt.VocabularyFile = value.Trim(); }
+    public string Vocabulary { get => _s.Stt.Vocabulary; set => SetPlain(() => _s.Stt.Vocabulary = value); }
+    public string VocabularyFile { get => _s.Stt.VocabularyFile; set => SetPlain(() => _s.Stt.VocabularyFile = value.Trim()); }
 
     // Netzwerk
     [ObservableProperty] private Choice _proxyMode;
-    public string ProxyUrl { get => _desktop.ProxyUrl; set => _desktop.ProxyUrl = value.Trim(); }
+    public string ProxyUrl { get => _desktop.ProxyUrl; set => SetChecked("desktop.proxyUrl", value.Trim(), SettingsValidation.ProxyUrl, v => _desktop.ProxyUrl = v); }
 
-    // Datenschutz
-    public bool HistoryEnabled { get => _s.History.Enabled; set => _s.History.Enabled = value; }
+    // Datenschutz (Ausschalten im Fenster erst nach Rückfrage, weil es den Verlauf löscht: SettingsViewModel.Commit.cs)
     [ObservableProperty] private int _historySize;
 
     // Ausgabe und Oberfläche
@@ -171,53 +197,23 @@ public sealed partial class SettingsViewModel : ObservableObject
     public Task LoadKeysAsync() =>
         Task.WhenAll(SttKey.LoadAsync(), SttFallbackKey.LoadAsync(), LlmKey.LoadAsync(), LlmFallbackKey.LoadAsync());
 
-    /// <summary>Übernimmt die Kopie: App, settings.json und Oberflächensprache. „Verlauf aus“ leert den Verlauf.</summary>
+    /// <summary>Anbieter, gegen den llm.baseUrl geprüft wird („wie Erkennung“ = Erkennungs-Anbieter).</summary>
+    private string LlmUrlProvider => LlmProvider.Value == LlmSettings.Same ? SttProvider.Value : LlmProvider.Value;
+
+    /// <summary>Übernimmt die ganze Kopie: App, settings.json und Oberflächensprache. „Verlauf aus“ leert den Verlauf.</summary>
     [RelayCommand]
     public async Task Save()
     {
-        _s.Stt.ProviderId = SttProvider.Value;
-        _s.SttFallback.ProviderId = SttFallbackProvider.Value;
-        _s.Llm.ProviderId = LlmProvider.Value;
-        _s.LlmFallback.ProviderId = LlmFallbackProvider.Value;
-        _s.Language = Language.Value;
-        _s.Refine.Stage = Stage.Value;
-        _s.History.Size = HistorySize;
-        _desktop.ProxyMode = ProxyMode.Value;
-        _desktop.Output = Output.Value;
-        _desktop.Microphone = Microphone.Value;
-        _desktop.UiLanguage = UiLanguage.Value;
-        _desktop.InsertMode = InsertMode.Value;
-        Hotkeys.Apply();
-        Profiles.Apply();
-        SettingsStore.SetDesktop(_s, _desktop);
-        Local.Apply();
-        var result = SettingsJson.Deserialize(SettingsJson.Serialize(_s));
-        if (_policy.IsActive)
+        var result = BuildResult();
+        if (await ApplyAsync(result))
         {
-            // Wie ein Import: gesperrte Felder bleiben, fester Verlauf gilt, nicht freigegebene Anbieter werden abgelehnt.
-            var preview = SyncImport.ApplyPolicy(_controller.Settings, result, _policy);
-            if (!preview.CanApply)
-            {
-                SaveStatus = string.Join(Environment.NewLine, preview.Errors);
-                return;
-            }
-            result = preview.Settings!;
-        }
-        Loc.Instance.SetLanguage(UiLanguage.Value);
-        try
-        {
-            await _controller.ApplySettingsAsync(result);
-            SaveStatus = Loc.Instance["Settings_Saved"];
-        }
-        catch (IOException)
-        {
-            SaveStatus = Loc.Instance["Settings_HistoryClearError"];
+            _baseline = result;
         }
     }
 
     private string StageModel(string stage) => _s.Llm.StageModels.GetValueOrDefault(stage, "");
 
-    private void SetStageModel(string stage, string value)
+    private void SetStageModel(string stage, string value) => SetPlain(() =>
     {
         if (string.IsNullOrWhiteSpace(value))
         {
@@ -227,8 +223,22 @@ public sealed partial class SettingsViewModel : ObservableObject
         {
             _s.Llm.StageModels[stage] = value.Trim();
         }
-    }
+    });
 
-    private static Choice Pick(IReadOnlyList<Choice> choices, string value) =>
+    // Auswahllisten: jede Änderung zählt sofort (AutoSave).
+    partial void OnSttProviderChanged(Choice value) => Touch();
+    partial void OnSttFallbackProviderChanged(Choice value) => Touch();
+    partial void OnLlmProviderChanged(Choice value) => Touch();
+    partial void OnLlmFallbackProviderChanged(Choice value) => Touch();
+    partial void OnLanguageChanged(Choice value) => Touch();
+    partial void OnStageChanged(Choice value) => Touch();
+    partial void OnProxyModeChanged(Choice value) => Touch();
+    partial void OnHistorySizeChanged(int value) => Touch();
+    partial void OnOutputChanged(Choice value) => Touch();
+    partial void OnMicrophoneChanged(Choice value) => Touch();
+    partial void OnUiLanguageChanged(Choice value) => Touch();
+    partial void OnInsertModeChanged(Choice value) => Touch();
+
+    internal static Choice Pick(IReadOnlyList<Choice> choices, string value) =>
         choices.FirstOrDefault(c => c.Value == value) ?? choices[0];
 }

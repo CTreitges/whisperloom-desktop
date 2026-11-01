@@ -8,8 +8,8 @@ using WhisperLoom.Core.Contracts;
 namespace WhisperLoom.App.Tray;
 
 /// <summary>
-/// Tray-Menü: Start/Stopp, Stufe (Untermenü), letzte Diktate (Untermenü, WLD-P5b), Bühnenansicht, Verlauf, Einstellungen,
-/// Einrichtung, Beenden. Texte folgen Zustand, Stufe und Oberflächensprache. Unter Linux exportiert Avalonia es als
+/// Tray-Menü nach HIG (W2-UI1): Hauptaktion Start/Stopp oben, dann Gruppen durch Trenner – Stufe und letzte Diktate
+/// (Untermenüs), Fenster (Bühne, Verlauf), Einstellungen/Einrichtung (mit „…“, öffnen ein Fenster), zuletzt Beenden. Texte folgen Zustand, Stufe und Oberflächensprache. Unter Linux exportiert Avalonia es als
 /// StatusNotifierItem; zeigt der Desktop kein Tray, reichen Bühnenansicht und CLI.
 /// </summary>
 // Doku: docs.avaloniaui.net/docs/reference/controls/tray-icon (abgerufen 2026-10-30).
@@ -42,7 +42,14 @@ public sealed class TrayMenu
         _setup = new NativeMenuItem { Command = new RelayCommand(() => open("setup")) };
         _quit = new NativeMenuItem { Command = new RelayCommand(() => open("quit")) };
         Menu = new NativeMenu();
-        foreach (var item in new NativeMenuItemBase[] { _toggle, _stage, _recent, _show, _history, _settings, _setup, new NativeMenuItemSeparator(), _quit })
+        foreach (var item in new NativeMenuItemBase[]
+        {
+            _toggle, new NativeMenuItemSeparator(),
+            _stage, _recent, new NativeMenuItemSeparator(),
+            _show, _history, new NativeMenuItemSeparator(),
+            _settings, _setup, new NativeMenuItemSeparator(),
+            _quit,
+        })
         {
             Menu.Items.Add(item);
         }

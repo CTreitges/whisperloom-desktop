@@ -1,0 +1,129 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:WhisperLoom.App.ViewModels.Settings"
+             xmlns:avm="using:WhisperLoom.App.ViewModels"
+             xmlns:v="using:WhisperLoom.App.Views"
+             xmlns:ds="using:WhisperLoom.App.Design"
+             xmlns:l="using:WhisperLoom.App.Localization"
+             x:Class="WhisperLoom.App.Views.Settings.RecognitionPage"
+             x:DataType="vm:RecognitionPageViewModel">
+  <!-- Online und lokal auf einer Seite (W2-UI1); Modelle aus providers.json mit „Eigenes Modell …“. -->
+  <ds:SettingsPage TitleKey="Page_recognition">
+    <StackPanel Spacing="20">
+      <ds:SettingsGroup TitleKey="G_Engine">
+        <StackPanel>
+          <ds:SettingRow Path="engine">
+            <ComboBox x:Name="EngineBox" Classes="row" ItemsSource="{Binding Local.Engines}" SelectedItem="{Binding Local.Engine}" />
+          </ds:SettingRow>
+          <ds:SettingRow Path="language">
+            <ComboBox x:Name="LanguageBox" Classes="row" ItemsSource="{Binding Session.Languages}" SelectedItem="{Binding Session.Language}" />
+          </ds:SettingRow>
+        </StackPanel>
+      </ds:SettingsGroup>
+
+      <ds:SettingsGroup TitleKey="G_Online" FooterKey="G_Online_Footer">
+        <StackPanel>
+          <ds:SettingRow Path="stt.providerId">
+            <ComboBox x:Name="SttProviderBox" Classes="row" ItemsSource="{Binding Session.SttProviders}" SelectedItem="{Binding Session.SttProvider}" />
+          </ds:SettingRow>
+          <ds:SettingRow Path="secrets.stt" Stacked="True">
+            <v:KeyFieldView x:Name="SttKeyView" DataContext="{Binding Session.SttKey}" />
+          </ds:SettingRow>
+          <ds:SettingRow Path="stt.model">
+            <ds:CustomChoiceBox DataContext="{Binding SttModel}" />
+          </ds:SettingRow>
+          <Expander Classes="advanced" IsExpanded="{Binding AdvancedOpen}" Header="{Binding [Advanced], Source={x:Static l:Loc.Instance}}">
+            <StackPanel>
+              <ds:SettingRow Path="stt.baseUrl" Error="{Binding Session.Errors[stt.baseUrl]}">
+                <TextBox Classes="row" Text="{Binding Session.SttBaseUrl, UpdateSourceTrigger=LostFocus}" PlaceholderText="https://…/v1" />
+              </ds:SettingRow>
+              <ds:SettingRow Path="stt.readTimeoutSec" Error="{Binding Session.Errors[stt.readTimeoutSec]}">
+                <TextBox Width="90" Text="{Binding ReadTimeout, UpdateSourceTrigger=LostFocus}" />
+              </ds:SettingRow>
+            </StackPanel>
+          </Expander>
+        </StackPanel>
+      </ds:SettingsGroup>
+
+      <ds:SettingsGroup TitleKey="G_Local" FooterKey="G_Local_Footer">
+        <StackPanel>
+          <ds:SettingRow Path="offline.model">
+            <ComboBox x:Name="ModelBox" Classes="row" ItemsSource="{Binding Local.ModelChoices}" SelectedItem="{Binding Local.SelectedModel}" />
+          </ds:SettingRow>
+          <ds:SettingRow TitleKey="Local_Models" Stacked="True">
+            <ItemsControl ItemsSource="{Binding Local.Models}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="avm:LocalModelViewModel">
+                  <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,3">
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                      <TextBlock Text="{Binding Label}" />
+                      <TextBlock Text="✓" IsVisible="{Binding Installed}" Foreground="{DynamicResource Loom.Accent}" />
+                      <TextBlock Text="{Binding Status}" Foreground="{DynamicResource Loom.TextSecondary}" FontSize="{DynamicResource Loom.Font.Caption}" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <Button Grid.Column="1" Margin="8,0,0,0" Content="{Binding [Local_Download], Source={x:Static l:Loc.Instance}}" Command="{Binding DownloadCommand}"
+                            IsVisible="{Binding !Installed}" AutomationProperties.Name="{Binding Label}" />
+                    <Button Grid.Column="2" Margin="8,0,0,0" Content="{Binding [Local_Delete], Source={x:Static l:Loc.Instance}}" Command="{Binding DeleteCommand}"
+                            IsVisible="{Binding Installed}" AutomationProperties.Name="{Binding Label}" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ds:SettingRow>
+          <ds:SettingRow Path="offline.accurate">
+            <ToggleSwitch IsChecked="{Binding Local.Accurate}" OnContent="" OffContent="" />
+          </ds:SettingRow>
+          <ds:SettingRow Path="local.backend">
+            <ComboBox Classes="row" ItemsSource="{Binding Local.Backends}" SelectedItem="{Binding Local.Backend}" />
+          </ds:SettingRow>
+          <ds:SettingRow TitleKey="Local_BackendNow">
+            <TextBlock x:Name="BackendInfoText" Text="{Binding Local.BackendInfo}" Foreground="{DynamicResource Loom.TextSecondary}" />
+          </ds:SettingRow>
+          <Expander Classes="advanced" Header="{Binding [Advanced], Source={x:Static l:Loc.Instance}}">
+            <StackPanel>
+              <ds:SettingRow Path="local.idleMinutes" Error="{Binding Session.Errors[local.idleMinutes]}">
+                <TextBox Width="90" Text="{Binding IdleMinutes, UpdateSourceTrigger=LostFocus}" />
+              </ds:SettingRow>
+            </StackPanel>
+          </Expander>
+        </StackPanel>
+      </ds:SettingsGroup>
+
+      <ds:SettingsGroup TitleKey="G_Vocabulary">
+        <StackPanel>
+          <ds:SettingRow Path="stt.vocabulary" Stacked="True">
+            <TextBox Classes="wide" Text="{Binding Session.Vocabulary, UpdateSourceTrigger=LostFocus}" AcceptsReturn="True" Height="120" TextWrapping="Wrap" />
+          </ds:SettingRow>
+          <ds:SettingRow Path="stt.vocabularyFile">
+            <TextBox Classes="row" Text="{Binding Session.VocabularyFile, UpdateSourceTrigger=LostFocus}" PlaceholderText="C:\…\namen.md" />
+          </ds:SettingRow>
+        </StackPanel>
+      </ds:SettingsGroup>
+
+      <ds:SettingsGroup TitleKey="G_Fallback">
+        <StackPanel>
+          <ds:SettingRow Path="sttFallback.enabled">
+            <ToggleSwitch IsChecked="{Binding Session.SttFallbackEnabled}" OnContent="" OffContent="" />
+          </ds:SettingRow>
+          <StackPanel IsEnabled="{Binding Session.SttFallbackEnabled}">
+            <ds:SettingRow Path="sttFallback.providerId">
+              <ComboBox Classes="row" ItemsSource="{Binding Session.SttProviders}" SelectedItem="{Binding Session.SttFallbackProvider}" />
+            </ds:SettingRow>
+            <ds:SettingRow Path="secrets.sttFallback" Stacked="True">
+              <v:KeyFieldView x:Name="SttFallbackKeyView" DataContext="{Binding Session.SttFallbackKey}" />
+            </ds:SettingRow>
+            <ds:SettingRow Path="sttFallback.model">
+              <ds:CustomChoiceBox DataContext="{Binding SttFallbackModel}" />
+            </ds:SettingRow>
+            <Expander Classes="advanced" IsExpanded="{Binding FallbackAdvancedOpen}" Header="{Binding [Advanced], Source={x:Static l:Loc.Instance}}">
+              <StackPanel>
+                <ds:SettingRow Path="sttFallback.baseUrl" Error="{Binding Session.Errors[sttFallback.baseUrl]}">
+                  <TextBox Classes="row" Text="{Binding Session.SttFallbackBaseUrl, UpdateSourceTrigger=LostFocus}" PlaceholderText="https://…/v1" />
+                </ds:SettingRow>
+              </StackPanel>
+            </Expander>
+          </StackPanel>
+        </StackPanel>
+      </ds:SettingsGroup>
+    </StackPanel>
+  </ds:SettingsPage>
+</UserControl>

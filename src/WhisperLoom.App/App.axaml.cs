@@ -173,13 +173,7 @@ public partial class App : Application
                     var vm = CreateSettings(host);
                     _settingsWindow = new SettingsWindow(vm);
                     _settingsWindow.Closed += (_, _) => _settingsWindow = null;
-                    // Nach einem Import ist die Kopie des Fensters veraltet: neu öffnen statt sie später zurückzuspeichern.
-                    vm.Sync.Applied += () => Dispatcher.UIThread.Post(() =>
-                    {
-                        _settingsWindow?.Close();
-                        _settingsWindow = null;
-                        Open("settings");
-                    });
+                    // Nach Import bzw. „Zurücksetzen“ baut die Hülle (SettingsShellViewModel) die Arbeitskopie selbst neu auf.
                     _ = vm.LoadKeysAsync();
                     _ = vm.Local.RefreshOllamaCommand.ExecuteAsync(null);
                 }

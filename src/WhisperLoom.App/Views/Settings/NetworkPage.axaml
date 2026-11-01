@@ -1,0 +1,21 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:WhisperLoom.App.ViewModels.Settings"
+             xmlns:ds="using:WhisperLoom.App.Design"
+             x:Class="WhisperLoom.App.Views.Settings.NetworkPage"
+             x:DataType="vm:NetworkPageViewModel">
+  <ds:SettingsPage TitleKey="Page_network">
+    <StackPanel Spacing="20">
+      <ds:SettingsGroup TitleKey="G_Proxy">
+        <StackPanel>
+          <ds:SettingRow Path="desktop.proxyMode">
+            <ComboBox Classes="row" ItemsSource="{Binding Session.ProxyModes}" SelectedItem="{Binding Session.ProxyMode}" />
+          </ds:SettingRow>
+          <ds:SettingRow Path="desktop.proxyUrl" Error="{Binding Session.Errors[desktop.proxyUrl]}" IsEnabled="{Binding IsManual}">
+            <TextBox x:Name="ProxyUrlBox" Classes="row" Text="{Binding Session.ProxyUrl, UpdateSourceTrigger=LostFocus}" PlaceholderText="http://proxy:3128" />
+          </ds:SettingRow>
+        </StackPanel>
+      </ds:SettingsGroup>
+    </StackPanel>
+  </ds:SettingsPage>
+</UserControl>

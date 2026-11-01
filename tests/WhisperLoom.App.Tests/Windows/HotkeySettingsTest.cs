@@ -74,7 +74,7 @@ public class HotkeySettingsTest
         Loc.Instance.SetLanguage("de");
         using var f = new ControllerFixture();
         var tray = new TrayMenu(f.Controller, _ => { });
-        var stages = (NativeMenuItem)tray.Menu.Items[1];
+        var stages = tray.Menu.Items.OfType<NativeMenuItem>().Single(i => i.Menu is not null && i.Header!.StartsWith(Loc.Instance["Stage_Label"], StringComparison.Ordinal));
         Assert.DoesNotContain(stages.Menu!.Items, i => ((NativeMenuItem)i).Header == Loc.Instance["Stage_prompt"]);
 
         var vm = new SettingsViewModel(f.Controller, new MemorySecretStore(), new FakeAccessChecker()) { PromptEnabled = true };
