@@ -98,7 +98,7 @@ public sealed class ManagementSyncTest
         Assert.Equal("test-key-not-real-8", r.User.Values[SecretNames.SttFallback]); // eigene Keys bleiben
         Assert.False(r.Settings.Polish.TrailingSpace); // lokale Einstellungen unangetastet
         Assert.Null(await r.Secrets.GetAsync(SecretNames.Stt, CancellationToken.None));
-        Assert.Contains("gesperrt", ManagementTexts.Notice(r.Settings.Management), StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Muster GmbH", ManagementTexts.Notice(r.Settings.Management));
     }
 
     [Fact]

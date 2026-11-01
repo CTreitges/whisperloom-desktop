@@ -55,7 +55,7 @@ public sealed class CompanyUiTest
         using var w = new Wizard();
         var window = Show(w.Vm);
         Assert.Equal(SetupStep.Usage, w.Vm.Current);
-        Assert.Equal("Wie nutzt du WhisperLoom?", Named<TextBlock>(window, "StepTitle").Text);
+        Assert.Equal(Loc.Instance["Setup_Step_Usage"], Named<TextBlock>(window, "StepTitle").Text);
         Assert.True(Named<RadioButton>(window, "UsagePersonal").IsChecked);
         Assert.Equal([SetupStep.Usage, SetupStep.Language, SetupStep.Microphone, SetupStep.Recognition, SetupStep.Stage, SetupStep.Hotkey,
             SetupStep.Autostart, SetupStep.Done], w.Vm.Steps);
@@ -100,7 +100,6 @@ public sealed class CompanyUiTest
         Assert.Equal(JoinPhase.Pending, join.Phase);
         Assert.True(Named<StackPanel>(window, "CompanyWaiting").IsVisible);
         Assert.False(Named<StackPanel>(window, "CompanyInput").IsVisible);
-        Assert.Equal("Wartet auf Freigabe durch die IT", Loc.Instance["Company_Waiting"]);
 
         w.Poll.Release(); // erste Abfrage: noch nicht freigegeben
         await WaitUntil(() => server.Requests.Count(q => q.Path == "/api/v1/device") >= 1);
@@ -153,7 +152,7 @@ public sealed class CompanyUiTest
         await page.Join.JoinCommand.ExecuteAsync(null);
         Dispatcher.UIThread.RunJobs();
         Assert.True(page.IsConnected);
-        Assert.Equal(("Muster GmbH", FakeManagementServer.Url, "Freigegeben"), (page.TenantName, page.ServerUrl, page.StateText));
+        Assert.Equal(("Muster GmbH", FakeManagementServer.Url, Loc.Instance["Company_State_approved"]), (page.TenantName, page.ServerUrl, page.StateText));
         Assert.NotEqual(Loc.Instance["Company_LastSyncNever"], page.LastSyncText);
         Assert.False(page.CanLeave); // Firma setzt management.allowLeave Fest auf false
 
@@ -173,8 +172,8 @@ public sealed class CompanyUiTest
         await r.JoinAsync();
         r.Server.Set("blocked");
         await page.SyncNowCommand.ExecuteAsync(null);
-        Assert.Equal("Gesperrt", page.StateText);
-        Assert.Contains("gesperrt", page.Notice);
+        Assert.Equal(Loc.Instance["Company_State_blocked"], page.StateText);
+        Assert.Equal(Loc.Instance.Format("Company_Notice_blocked", "Muster GmbH"), page.Notice);
     }
 
     private static async Task WaitUntil(Func<bool> condition)

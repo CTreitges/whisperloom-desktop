@@ -137,8 +137,9 @@ public sealed class CompanyAccessTest
         await controller.StopAsync();
         Assert.Equal("budget", controller.LastErrorClass);
         Assert.Equal("Error_Budget", controller.LastErrorKey);
-        Localization.Loc.Instance.SetLanguage("de");
-        Assert.Equal("Monatslimit der Firma erreicht", Localization.Loc.Instance[controller.LastErrorKey!]);
+        // Tabelle direkt: die Sprache von Loc.Instance teilen sich parallel laufende Tests.
+        Assert.Equal("Monatslimit der Firma erreicht", Localization.Loc.LoadTable("de")[controller.LastErrorKey!]);
+        Assert.Equal("Company monthly limit reached", Localization.Loc.LoadTable("en")[controller.LastErrorKey!]);
 
         pipeline.Error = ApiErrors.Http(403, "forbidden");
         controller.Start();
