@@ -46,8 +46,25 @@ internal sealed class SyncCommands(string dataDir, ISecretStore secrets, TextWri
         {
             return 1;
         }
+        var settings = plan.Settings!;
+        var policy = plan.Policy;
+        var keys = plan.Secrets;
+        if (Management.CompanySecretStore.IsManaged(current.Management) && current.Management.State != "revoked")
+        {
+            // Firmen-Server verwaltet das Gerät: eine lokale Datei überschreibt weder Fest noch die Richtlinie (W2-ENR).
+            policy = _policy.Load();
+            var guarded = SyncImport.ApplyPolicy(current, settings, policy);
+            Report(["Gerät wird vom Firmen-Server verwaltet: feste Werte, Richtlinie und Anbindung bleiben"], guarded.Errors);
+            if (!guarded.CanApply)
+            {
+                return 1;
+            }
+            settings = guarded.Settings!;
+            settings.Management = current.Management;
+            keys = plan.Secrets.Where(k => !policy.IsLocked("secrets." + k.Key)).ToDictionary(k => k.Key, k => k.Value);
+        }
         // Erst die Keys: scheitert die Ablage, bleiben Einstellungen und Richtlinie wie vorher.
-        foreach (var (name, key) in plan.Secrets)
+        foreach (var (name, key) in keys)
         {
             await secrets.SetAsync(name, key, ct);
         }
@@ -56,8 +73,8 @@ internal sealed class SyncCommands(string dataDir, ISecretStore secrets, TextWri
         {
             await secrets.DeleteAsync(drop.Name, ct);
         }
-        _settings.Save(plan.Settings!);
-        _policy.Save(plan.Policy);
+        _settings.Save(settings);
+        _policy.Save(policy, settings);
         foreach (var line in plan.Summary())
         {
             output.WriteLine(line);

@@ -37,6 +37,17 @@ public sealed partial class SettingsViewModel
 
     private static bool IsEntry(string providerId) => providerId.Contains(':', StringComparison.Ordinal);
 
+    /// <summary>
+    /// Hinweis unter einem Zugang auf einen Eintrag (W2-ENR): Firmen-Proxy → „läuft über die Firma“, sonst „Key beim Anbieter“.
+    /// </summary>
+    public string SttKeyHint => KeyHint(SttProvider.Value);
+    public string SttFallbackKeyHint => KeyHint(SttFallbackProvider.Value);
+    public string LlmKeyHint => LlmProvider.Value == LlmSettings.Same ? SttKeyHint : KeyHint(LlmProvider.Value);
+    public string LlmFallbackKeyHint => KeyHint(LlmFallbackProvider.Value);
+
+    private static string KeyHint(string providerId) =>
+        providerId.StartsWith(CompanyProvider.Prefix, StringComparison.Ordinal) ? "Key_AtCompany" : "Key_AtEntry";
+
     /// <summary>Anzeige eines Anbieters: Katalogname bzw. „Name · eigener Anbieter / lokaler Server“.</summary>
     internal static string ProviderLabel(ProviderInfo p) =>
         p.Id.StartsWith(ProvidersSettings.CustomPrefix, StringComparison.Ordinal) ? Loc.Instance.Format("Provider_CustomEntry", p.Name)
@@ -105,6 +116,10 @@ public sealed partial class SettingsViewModel
         OnPropertyChanged(nameof(SttFallbackUsesEntry));
         OnPropertyChanged(nameof(LlmUsesEntry));
         OnPropertyChanged(nameof(LlmFallbackUsesEntry));
+        OnPropertyChanged(nameof(SttKeyHint));
+        OnPropertyChanged(nameof(SttFallbackKeyHint));
+        OnPropertyChanged(nameof(LlmKeyHint));
+        OnPropertyChanged(nameof(LlmFallbackKeyHint));
     }
 
     /// <summary>

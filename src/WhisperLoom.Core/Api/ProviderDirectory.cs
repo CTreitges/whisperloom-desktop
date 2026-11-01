@@ -33,9 +33,9 @@ public sealed class ProviderDirectory(IReadOnlyList<IProviderSource> sources, IR
     /// <summary>Katalog und Einträge in Anzeige-Reihenfolge.</summary>
     public IEnumerable<ProviderInfo> All => ProviderCatalog.Providers.Concat(Sources.SelectMany(s => s.Providers));
 
-    /// <summary>Verzeichnis aus den Einstellungen: eigene Anbieter und lokale Server.</summary>
+    /// <summary>Verzeichnis aus den Einstellungen: eigene Anbieter, lokale Server und (W2-ENR) der Proxy der Firma.</summary>
     public static ProviderDirectory For(WhisperLoomSettings s) =>
-        new([new CustomProviderSource(s.Providers.Custom), new LocalServerSource(LocalServerSource.Read(s))]);
+        new([new CustomProviderSource(s.Providers.Custom), new LocalServerSource(LocalServerSource.Read(s)), new CompanyProviderSource(s.Management)]);
 
     /// <summary>Das Verzeichnis mit einer weiteren Quelle (z. B. Firmen-Anbieter).</summary>
     public ProviderDirectory With(IProviderSource source) => new([.. Sources, source], _keys);

@@ -32,7 +32,7 @@
               <v:KeyFieldView x:Name="SttKeyView" DataContext="{Binding Session.SttKey}" />
             </ds:SettingRow>
           </Panel>
-          <ds:HintRow TextKey="Key_AtEntry" IsVisible="{Binding Session.SttUsesEntry}" Margin="14,4,14,10" />
+          <ds:HintRow TextKey="{Binding Session.SttKeyHint}" IsVisible="{Binding Session.SttUsesEntry}" Margin="14,4,14,10" />
           <ds:SettingRow Path="stt.model">
             <vs:ModelPickerView x:Name="SttModelPicker" DataContext="{Binding SttModelPicker}" />
           </ds:SettingRow>
@@ -99,7 +99,7 @@
                 <v:KeyFieldView x:Name="SttFallbackKeyView" DataContext="{Binding Session.SttFallbackKey}" />
               </ds:SettingRow>
             </Panel>
-            <ds:HintRow TextKey="Key_AtEntry" IsVisible="{Binding Session.SttFallbackUsesEntry}" Margin="14,4,14,10" />
+            <ds:HintRow TextKey="{Binding Session.SttFallbackKeyHint}" IsVisible="{Binding Session.SttFallbackUsesEntry}" Margin="14,4,14,10" />
             <ds:SettingRow Path="sttFallback.model">
               <vs:ModelPickerView DataContext="{Binding SttFallbackModelPicker}" />
             </ds:SettingRow>

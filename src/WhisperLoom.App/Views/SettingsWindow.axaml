@@ -25,6 +25,7 @@
     <DataTemplate DataType="vm:HotkeysPageViewModel"><vs:HotkeysPage /></DataTemplate>
     <DataTemplate DataType="vm:PrivacyPageViewModel"><vs:PrivacyPage /></DataTemplate>
     <DataTemplate DataType="vm:NetworkPageViewModel"><vs:NetworkPage /></DataTemplate>
+    <DataTemplate DataType="vm:CompanyPageViewModel"><vs:CompanyPage /></DataTemplate>
   </Window.DataTemplates>
 
   <Grid ColumnDefinitions="232,*" ds:Managed.Context="{Binding Managed}">

@@ -13,12 +13,14 @@ public partial class SetupWindow : Window
     {
         DataContext = viewModel;
         viewModel.CloseRequested += Close;
+        Design.SystemTheme.Follow(this, Avalonia.Application.Current?.PlatformSettings);
         _micTimer.Tick += (_, _) => viewModel.Mic?.Tick();
         _micTimer.Start();
         // Schließen per Fensterknopf: ein laufender Pegel-Test endet, die Aufnahme wird verworfen.
         Closed += (_, _) =>
         {
             _micTimer.Stop();
+            viewModel.Join?.Deactivate();
             if (viewModel.Mic is { Running: true } mic)
             {
                 mic.Stop();

@@ -172,7 +172,7 @@ public sealed partial class DictationController
         catch (Exception e) when (e is ApiHttpException or ApiNetworkException or ApiNotConfiguredException or LocalNotAvailableException
                                       or IOException)
         {
-            Fail(ErrorKey(e), e.GetType().Name);
+            Fail(ErrorKey(e), ErrorClass(e));
             _log.Event("reprocess", ("status", "error"), ("errorClass", e.GetType().Name));
             return "error";
         }
@@ -251,7 +251,7 @@ public sealed partial class DictationController
         catch (Exception e) when (e is ApiHttpException or ApiNetworkException or ApiNotConfiguredException or LocalNotAvailableException
                                       or IOException)
         {
-            Fail(ErrorKey(e), e.GetType().Name);
+            Fail(ErrorKey(e), ErrorClass(e));
             _log.Event("rewrite", ("status", "error"), ("errorClass", e.GetType().Name), ("httpStatus", (e as ApiHttpException)?.StatusCode));
         }
         finally
@@ -280,9 +280,13 @@ public sealed partial class DictationController
     };
 
     /// <summary>Lokalisierungs-Schlüssel eines Fehlers der Pipeline (wie im Diktat).</summary>
+    /// <summary>Fehlerklasse für <c>status --json</c>: <c>budget</c> (Monatslimit der Firma, W2-ENR), sonst der Typname.</summary>
+    private static string ErrorClass(Exception e) => Core.Api.CompanyProvider.IsBudgetError(e) ? "budget" : e.GetType().Name;
+
     private static string ErrorKey(Exception e) => e switch
     {
         ApiNotConfiguredException => "Error_NotConfigured",
+        _ when Core.Api.CompanyProvider.IsBudgetError(e) => "Error_Budget",
         ApiHttpException => "Error_Http",
         ApiNetworkException => "Error_Network",
         IOException => "Key_StoreError",

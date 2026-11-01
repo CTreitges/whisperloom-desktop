@@ -88,6 +88,10 @@ public sealed partial class SettingsShellViewModel : ObservableObject, IDisposab
     public void Dispose()
     {
         Session.Sync.Applied -= OnImported;
+        if (Session.Company is { } company)
+        {
+            company.Changed -= OnManagementChanged;
+        }
         Loc.Instance.PropertyChanged -= OnLanguageChanged;
         foreach (var page in Pages)
         {
@@ -114,9 +118,17 @@ public sealed partial class SettingsShellViewModel : ObservableObject, IDisposab
         if (Session is not null)
         {
             Session.Sync.Applied -= OnImported;
+            if (Session.Company is { } previous)
+            {
+                previous.Changed -= OnManagementChanged;
+            }
         }
         session.AutoSave = true;
         session.Sync.Applied += OnImported;
+        if (session.Company is { } company)
+        {
+            company.Changed += OnManagementChanged;
+        }
         Session = session;
         Managed = new ManagedContext(_sourceOf(session), ResetToDefaultAsync);
         Pages.Clear();
@@ -142,7 +154,20 @@ public sealed partial class SettingsShellViewModel : ObservableObject, IDisposab
         new GeneralPageViewModel(s), new RecognitionPageViewModel(s), new TextPageViewModel(s), new CleanupPageViewModel(s),
         new ProvidersPageViewModel(s), new LocalModelsPageViewModel(s),
         new OutputPageViewModel(s), new HotkeysPageViewModel(s, _toggleCommand), new PrivacyPageViewModel(s), new NetworkPageViewModel(s),
+        new CompanyPageViewModel(s),
     ];
+
+    /// <summary>
+    /// Abgleich bzw. Verlassen der Firma hat die Richtlinie getauscht (W2-ENR): neu aufbauen, damit Fest sofort verschwindet
+    /// bzw. wieder erscheint. Ein Abgleich ohne Änderung (304) lässt die Seite in Ruhe.
+    /// </summary>
+    private void OnManagementChanged() => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+    {
+        if (!ReferenceEquals(Session.Policy, Session.LivePolicy))
+        {
+            Reload();
+        }
+    });
 
     /// <summary>
     /// Sucht in Titel, Beschreibung, Gruppe und Seite (aktuelle Sprache) sowie im Pfad; alle Wörter müssen vorkommen.

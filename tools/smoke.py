@@ -1,6 +1,6 @@
 """Smoke-Tests gegen eine gebaute WhisperLoom-App (Windows oder Linux).
 
-Aufruf: py -3 -X utf8 tools/smoke.py --platform win|linux --suite shell|full|offline|provision|ui|input --id <ID> --app <exe>
+Aufruf: py -3 -X utf8 tools/smoke.py --platform win|linux --suite shell|full|offline|provision|enroll|ui|input --id <ID> --app <exe>
 Je Prüfung eine Zeile "SMOKE <name> OK" bzw. "SMOKE <name> FAIL <grund>", am Ende "SMOKE SUITE <suite> OK|FAIL n/m".
 
 Suites:
@@ -11,6 +11,9 @@ Suites:
   toggle-output, language-en, proxy, history, fallback-stt, secret-store, anthropic-prompt, logs-clean, no-audio-stored.
 - offline: lokale Erkennung (whisper-server, Modell tiny, CPU) und Ollama-Fake ohne Netz-Fakes (tools/smoke_offline.py):
   offline-stt, offline-refine-ollama, raw-plus-rules. Die Vorbereitung lädt Modell, Begleitprozess und jfk.wav einmal.
+- enroll: Firmen-Anbindung (W2-ENR, tools/smoke_enroll.py) gegen den Server aus server/ (--server-local, freier Port) mit
+  tools/fake_api.py hinter dem Proxy — join-pending, approve-sync, fixed-values, proxy-dictation, blocked-notice, logs-clean.
+  Ohne echte Eingabe; Ausgabe-Senke --output-file.
 - provision: IT-Provisioning (tools/smoke_provision.py) — provision-import, policy-lock, export-no-secrets.
   Eigener Datenordner, Key-Präfix WhisperLoom-Test-<ID>: (wird gelöscht), keine Eingabe, keine Zwischenablage.
 - ui: echte Pipeline gegen tools/fake_api.py, Ausgabe in die echte Zwischenablage — clipboard-real, unter Windows
@@ -42,6 +45,7 @@ import wave
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import smoke_enroll  # noqa: E402
 import smoke_full  # noqa: E402
 import smoke_offline  # noqa: E402
 import smoke_platform as plat  # noqa: E402
@@ -317,7 +321,7 @@ def ui_checks(args, work: Path, report: Report, fake: smoke_full.FakeApi) -> Non
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="WhisperLoom-Smokes")
     parser.add_argument("--platform", choices=["win", "linux"], required=True)
-    parser.add_argument("--suite", choices=["shell", "full", "offline", "provision", "ui", "input"], default="shell")
+    parser.add_argument("--suite", choices=["shell", "full", "offline", "provision", "enroll", "ui", "input"], default="shell")
     parser.add_argument("--id", required=True)
     parser.add_argument("--app", required=True)
     parser.add_argument("--work-dir", type=Path)
@@ -325,6 +329,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--lock", type=Path)
     parser.add_argument("--target", help="TestTarget-Exe für --suite input (sonst aus dem Repo gebaut)")
     parser.add_argument("--only", choices=["extras"], help="--suite input: nur diesen Teil (extras = WLD-P5b)")
+    parser.add_argument("--server-local", action="store_true", help="--suite enroll: Server aus server/ lokal starten")
+    parser.add_argument("--server-python", help="--suite enroll: Python der Server-venv (sonst server/.venv)")
+    parser.add_argument("--server-dir", help="--suite enroll: anderer server/-Ordner (z. B. Worktree eines Server-Branches)")
     args = parser.parse_args(argv)
     args.app = str(Path(args.app).resolve())
     work = args.work_dir or default_work_dir(args.platform)
@@ -341,6 +348,8 @@ def main(argv: list[str] | None = None) -> int:
         suite_ui(args, work, report)
     elif args.suite == "provision":
         smoke_provision.run(args, work, report, sys.modules[__name__])
+    elif args.suite == "enroll":
+        smoke_enroll.run(args, work, report, sys.modules[__name__])
     elif args.suite == "full":
         smoke_full.run(args, work, report, sys.modules[__name__])
     elif args.suite == "offline":

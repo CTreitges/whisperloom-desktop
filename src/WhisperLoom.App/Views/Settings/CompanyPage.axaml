@@ -1,0 +1,86 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:WhisperLoom.App.ViewModels.Settings"
+             xmlns:ds="using:WhisperLoom.App.Design"
+             xmlns:s="using:WhisperLoom.App.Setup"
+             xmlns:l="using:WhisperLoom.App.Localization"
+             x:Class="WhisperLoom.App.Views.Settings.CompanyPage"
+             x:DataType="vm:CompanyPageViewModel">
+  <!-- Seite „Firma“ (W2-ENR). Verlassen ist zerstörend für die Anbindung: Rückfrage inline (HIG „Alerts“: nur wo nötig). -->
+  <ds:SettingsPage TitleKey="Page_company">
+    <StackPanel Spacing="20">
+      <!-- Verbunden -->
+      <ds:SettingsGroup TitleKey="G_Company" IsVisible="{Binding IsConnected}">
+        <StackPanel>
+          <ds:HintRow x:Name="CompanyNotice" Kind="Warning" Text="{Binding Notice}" IsVisible="{Binding Notice.Length}" Margin="14,10,14,4" />
+          <ds:SettingRow TitleKey="Company_Name">
+            <TextBlock x:Name="CompanyName" Text="{Binding TenantName}" FontWeight="SemiBold" VerticalAlignment="Center" />
+          </ds:SettingRow>
+          <ds:SettingRow TitleKey="Company_Server">
+            <SelectableTextBlock x:Name="CompanyServer" Text="{Binding ServerUrl}" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="320" />
+          </ds:SettingRow>
+          <ds:SettingRow TitleKey="Company_Status" DescriptionKey="Company_StatusDesc">
+            <TextBlock x:Name="CompanyState" Text="{Binding StateText}" VerticalAlignment="Center" />
+          </ds:SettingRow>
+          <ds:SettingRow TitleKey="Company_LastSync">
+            <TextBlock x:Name="CompanyLastSync" Text="{Binding LastSyncText}" VerticalAlignment="Center" />
+          </ds:SettingRow>
+          <ds:SettingRow TitleKey="Company_Device">
+            <SelectableTextBlock x:Name="CompanyDevice" Text="{Binding DeviceId}" FontFamily="monospace" VerticalAlignment="Center" />
+          </ds:SettingRow>
+          <ds:SettingRow TitleKey="Company_SyncNow" DescriptionKey="Company_SyncNowDesc">
+            <Button x:Name="SyncNowButton" Content="{Binding [Company_SyncNowButton], Source={x:Static l:Loc.Instance}}" Command="{Binding SyncNowCommand}" />
+          </ds:SettingRow>
+          <ds:SettingRow TitleKey="Company_Leave" DescriptionKey="Company_LeaveDesc" IsVisible="{Binding CanLeave}">
+            <Button x:Name="LeaveButton" Content="{Binding [Company_LeaveButton], Source={x:Static l:Loc.Instance}}" Command="{Binding LeaveCommand}" />
+          </ds:SettingRow>
+          <StackPanel x:Name="LeaveConfirm" IsVisible="{Binding LeavePending}" Spacing="8" Margin="14,4,14,12">
+            <ds:HintRow Kind="Warning" TextKey="Company_LeaveConfirm" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button x:Name="CancelLeaveButton" Content="{Binding [Action_Cancel], Source={x:Static l:Loc.Instance}}" Command="{Binding CancelLeaveCommand}" />
+              <Button x:Name="ConfirmLeaveButton" Content="{Binding [Company_LeaveConfirmButton], Source={x:Static l:Loc.Instance}}" Command="{Binding ConfirmLeaveCommand}" />
+            </StackPanel>
+          </StackPanel>
+          <ds:HintRow x:Name="CompanyLeaveLocked" TextKey="Company_LeaveLocked" IsVisible="{Binding !CanLeave}" Margin="14,4,14,10" />
+        </StackPanel>
+      </ds:SettingsGroup>
+
+      <!-- Nicht verbunden: „Mit Firma verbinden …“ -->
+      <ds:SettingsGroup TitleKey="G_CompanyConnect" FooterKey="Company_ConnectFooter" IsVisible="{Binding ShowConnect}">
+        <StackPanel>
+          <ds:HintRow x:Name="CompanyRevoked" Kind="Warning" Text="{Binding Notice}" IsVisible="{Binding Notice.Length}" Margin="14,10,14,4" />
+          <ds:SettingRow TitleKey="Company_Connect" DescriptionKey="Company_ConnectDesc" IsVisible="{Binding !ShowJoin}">
+            <Button x:Name="ConnectButton" Content="{Binding [Company_ConnectButton], Source={x:Static l:Loc.Instance}}" Command="{Binding OpenJoinCommand}" />
+          </ds:SettingRow>
+        </StackPanel>
+      </ds:SettingsGroup>
+
+      <!-- Formular wie im Assistenten -->
+      <ds:SettingsGroup TitleKey="G_CompanyJoin" FooterKey="Company_ConnectFooter" IsVisible="{Binding ShowJoin}">
+        <StackPanel Margin="14,12,14,14" Spacing="6">
+        <StackPanel Spacing="6" DataContext="{Binding Join}" x:DataType="s:CompanyJoinViewModel">
+          <StackPanel IsVisible="{Binding ShowInput}" Spacing="6">
+            <TextBlock Text="{Binding [Company_Server], Source={x:Static l:Loc.Instance}}" Foreground="{DynamicResource Loom.TextSecondary}" />
+            <TextBox x:Name="JoinServerBox" Classes="row" HorizontalAlignment="Left" Text="{Binding Server}" PlaceholderText="https://wl.example.com"
+                     AutomationProperties.Name="{Binding [Company_Server], Source={x:Static l:Loc.Instance}}" />
+            <TextBlock Text="{Binding [Company_Code], Source={x:Static l:Loc.Instance}}" Foreground="{DynamicResource Loom.TextSecondary}" Margin="0,6,0,0" />
+            <TextBox x:Name="JoinCodeBox" Classes="row" HorizontalAlignment="Left" Text="{Binding Code}" FontFamily="monospace" PlaceholderText="ABCD-EFGH-JKMN-PQRS"
+                     AutomationProperties.Name="{Binding [Company_Code], Source={x:Static l:Loc.Instance}}" />
+            <Button x:Name="JoinNowButton" Classes="accent" Margin="0,8,0,0" Content="{Binding [Company_Join], Source={x:Static l:Loc.Instance}}" Command="{Binding JoinCommand}" />
+          </StackPanel>
+          <StackPanel IsVisible="{Binding IsWaiting}" Spacing="8">
+            <TextBlock FontWeight="SemiBold" Text="{Binding [Company_Waiting], Source={x:Static l:Loc.Instance}}" />
+            <ProgressBar IsIndeterminate="True" Height="4" MinHeight="4" Foreground="{DynamicResource Loom.Accent}" />
+            <TextBlock Text="{Binding WaitingDetail}" TextWrapping="Wrap" Foreground="{DynamicResource Loom.TextSecondary}" />
+          </StackPanel>
+          <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="{DynamicResource Loom.Error}" IsVisible="{Binding StatusIsError}" />
+        </StackPanel>
+        <Button x:Name="CloseJoinButton" Content="{Binding [Action_Cancel], Source={x:Static l:Loc.Instance}}" Command="{Binding CloseJoinCommand}"
+                IsVisible="{Binding Join.ShowInput, FallbackValue=False}" />
+        </StackPanel>
+      </ds:SettingsGroup>
+
+      <ds:HintRow x:Name="CompanyStatusText" Text="{Binding Status}" IsVisible="{Binding Status.Length}" />
+    </StackPanel>
+  </ds:SettingsPage>
+</UserControl>

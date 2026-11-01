@@ -7,7 +7,10 @@ internal static class SecretStoreNames
 {
     public static void Check(string name)
     {
-        if (!SecretNames.All.Contains(name) && name != SecretNames.Device && !SecretNames.IsProviderKey(name))
+        // W2-ENR: Key des Firmen-Proxys (company:proxy) ist kein gespeicherter Wert – CompanySecretStore liefert das Geräte-Token;
+        // erlaubt, damit ein Speicher ohne Firmen-Anbindung einfach „nichts gespeichert“ antwortet.
+        if (!SecretNames.All.Contains(name) && name != SecretNames.Device && !SecretNames.IsProviderKey(name)
+            && name != Core.Api.CompanyProvider.EntryId)
         {
             throw new ArgumentException($"Unbekannter Key-Name: {name}", nameof(name));
         }
