@@ -23,6 +23,7 @@ public sealed class SettingsNavigationTest
 {
     private static SettingsWindow Open(ControllerFixture f)
     {
+        SettingsShellViewModel.LastPage = "general";
         var window = new SettingsWindow(new SettingsViewModel(f.Controller, new MemorySecretStore(), new FakeAccessChecker()));
         window.Show();
         Dispatcher.UIThread.RunJobs();
@@ -46,6 +47,20 @@ public sealed class SettingsNavigationTest
         Assert.Equal("recognition", window.Shell.SelectedPage!.Id);
         Assert.IsType<RecognitionPageViewModel>(window.FindControl<ContentControl>("PageHost")!.Content);
         window.Close();
+    }
+
+    [AvaloniaFact]
+    public void Reopening_shows_the_last_viewed_page()
+    {
+        using var f = new ControllerFixture();
+        var window = Open(f);
+        Assert.Equal("general", window.Shell!.SelectedPage!.Id);
+        SettingsUi.Show(window, "privacy");
+        window.Close();
+
+        var again = new SettingsWindow(new SettingsViewModel(f.Controller, new MemorySecretStore(), new FakeAccessChecker()));
+        Assert.Equal("privacy", again.Shell!.SelectedPage!.Id);
+        SettingsShellViewModel.LastPage = "general";
     }
 
     [AvaloniaFact]

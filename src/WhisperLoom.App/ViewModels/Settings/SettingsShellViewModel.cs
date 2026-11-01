@@ -30,8 +30,11 @@ public sealed partial class SettingsShellViewModel : ObservableObject, IDisposab
         _sourceOf = source ?? (s => new PolicyManagedSource(s.Policy));
         _toggleCommand = toggleCommand;
         Loc.Instance.PropertyChanged += OnLanguageChanged;
-        Load(session, "general");
+        Load(session, LastPage);
     }
+
+    /// <summary>Zuletzt gezeigte Seite (HIG settings.md: „Restore the most recently viewed pane“), für die Laufzeit der App.</summary>
+    internal static string LastPage { get; set; } = "general";
 
     public SettingsViewModel Session { get; private set; } = null!;
 
@@ -79,6 +82,14 @@ public sealed partial class SettingsShellViewModel : ObservableObject, IDisposab
     }
 
     partial void OnSearchTextChanged(string value) => RunSearch();
+
+    partial void OnSelectedPageChanged(SettingsPageViewModel? value)
+    {
+        if (value is not null)
+        {
+            LastPage = value.Id;
+        }
+    }
 
     private void Load(SettingsViewModel session, string pageId)
     {
