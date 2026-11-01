@@ -26,6 +26,32 @@ def test_dockerfile_nicht_root_mit_healthcheck():
     assert text.index("USER whisperloom") < text.index("CMD [")
 
 
+def _pins(datei: Path) -> dict[str, str]:
+    """name==version je Zeile (Fortsetzungen, Hashes, Kommentare und Marker ignoriert), Namen nach PEP 503."""
+    import re
+
+    pins = {}
+    for zeile in datei.read_text(encoding="utf-8").splitlines():
+        m = re.match(r"^([A-Za-z0-9._-]+)==([^\s;\\]+)", zeile)
+        if m:
+            pins[re.sub(r"[-_.]+", "-", m.group(1)).lower()] = m.group(2)
+    return pins
+
+
+def test_dockerfile_digest_und_gehashte_abhaengigkeiten():
+    """Review N-16: Basis-Image per Digest, pip nur mit Hashes; die Hash-Datei folgt requirements.txt."""
+    import re
+
+    text = (SERVER / "Dockerfile").read_text(encoding="utf-8")
+    assert re.search(r"^FROM python:3\.12-slim@sha256:[0-9a-f]{64}$", text, re.M), "Basis-Image ohne Digest"
+    assert "pip install --require-hashes --no-deps -r requirements-hashes.txt" in text
+    assert "COPY requirements-hashes.txt ." in text
+    gehasht = SERVER / "requirements-hashes.txt"
+    assert _pins(gehasht) == _pins(SERVER / "requirements.txt")
+    bloecke = re.split(r"\n(?=[A-Za-z0-9])", gehasht.read_text(encoding="utf-8").split("\n", 4)[-1])
+    assert all("--hash=sha256:" in b for b in bloecke if "==" in b)
+
+
 def test_migrationen_idempotent(tmp_path):
     pfad = tmp_path / "x.db"
     db.einrichten(pfad)
