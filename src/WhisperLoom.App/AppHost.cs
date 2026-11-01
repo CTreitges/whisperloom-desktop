@@ -270,6 +270,10 @@ public sealed partial class AppHost
                 message = await RecentInsertAsync(args.Count > 0 ? args[0] : "0");
                 ok = message != "no-entry";
                 break;
+            case "retry":
+                message = await Controller.RetryAsync();
+                ok = message == "done";
+                break;
             case "focus-probe":
                 message = ProbeFocus is { } probe ? await probe() : "Unknown 0";
                 break;

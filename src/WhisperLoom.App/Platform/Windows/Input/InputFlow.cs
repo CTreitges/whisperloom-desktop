@@ -81,7 +81,7 @@ public sealed partial class InputFlow
         _overlayKeys = overlayKeys;
         _describe = describe;
         _capture = capture;
-        Overlay = new OverlayViewModel(PauseResume, Discard, () => _ = SendAsync());
+        Overlay = new OverlayViewModel(PauseResume, Discard, () => _ = SendAsync()) { Retry = () => _ = RetryFromOverlayAsync() };
         controller.PropertyChanged += OnControllerChanged;
         sink.Inserted += outcome =>
         {
@@ -109,6 +109,10 @@ public sealed partial class InputFlow
         {
             return;
         }
+        if (SkipIfProcessing(action))
+        {
+            return;
+        }
         switch (action)
         {
             case HotkeyAction.HoldStart when _controller.State == DictationState.Idle:
@@ -127,9 +131,9 @@ public sealed partial class InputFlow
                 _ui.HidePill();
                 if (result == "error")
                 {
-                    Toast(_controller.LastErrorKey ?? "Overlay_Error");
+                    ErrorToast(_controller.LastErrorKey ?? "Overlay_Error");
                 }
-                else
+                else if (result == "done")
                 {
                     HintIfRawOnly();
                 }
@@ -177,6 +181,7 @@ public sealed partial class InputFlow
         {
             _ui.SetPill(_controller.Level, processing: false);
         }
+        LengthTick();
     }
 
     public JsonObject Status()
@@ -252,8 +257,9 @@ public sealed partial class InputFlow
         if (result == "error")
         {
             Overlay.ErrorKey = _controller.LastErrorKey;
+            Overlay.CanRetry = _controller.CanRetry;
             Overlay.State = OverlayState.Error;
-            await Task.Delay(ErrorDuration);
+            await Task.Delay(Overlay.CanRetry ? RetryWindow : ErrorDuration);
             if (_mode == Mode.None && Overlay.State == OverlayState.Error)
             {
                 _ui.HideOverlay();
@@ -261,7 +267,7 @@ public sealed partial class InputFlow
             return;
         }
         _ui.HideOverlay();
-        if (!rewrite)
+        if (!rewrite && result == "done")
         {
             HintIfRawOnly();
         }
@@ -328,8 +334,10 @@ public sealed partial class InputFlow
         }
         if (_controller.State == DictationState.Paused)
         {
-            _controller.Resume();
-            Overlay.State = OverlayState.Recording;
+            if (_controller.Resume() == "recording")
+            {
+                Overlay.State = OverlayState.Recording;
+            }
         }
         else if (_controller.Pause() == "paused")
         {

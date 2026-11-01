@@ -8,7 +8,7 @@ internal sealed record CliRequest(string? Verb, IReadOnlyList<string> Args, AppO
 {
     /// <summary>Verben, die eine laufende Instanz voraussetzen und keine starten.</summary>
     public bool NeedsRunningInstance => Verb is "stop" or "cancel" or "stage" or "status" or "pause" or "resume" or "quit"
-        or "reprocess" or "reinsert" or "recent-insert" or "history-copy" or "focus-probe";
+        or "reprocess" or "reinsert" or "recent-insert" or "history-copy" or "focus-probe" or "retry";
 
     /// <summary>Verben, die der aufrufende Prozess selbst erledigt (Key nie über die IPC).</summary>
     public bool IsLocal => Verb is "key" or "bench" or "provision" or "import" or "export" or "version" or "update";
@@ -54,14 +54,14 @@ internal static class CommandLine
     public const string Usage =
         "Aufruf: WhisperLoom [toggle|start|stop|cancel|pause|resume|stage next|stage <name>|status [--json]|show|setup|quit|key set <name>|key delete <name>]\n" +
         "        [provision <datei>|import <datei> [--dry-run]|export <datei>]\n" +
-        "        [reprocess <stufe> [<id>]|reinsert|recent-insert <n>|history-copy <n>|focus-probe]\n" +
+        "        [reprocess <stufe> [<id>]|reinsert|recent-insert <n>|history-copy <n>|focus-probe|retry]\n" +
         "        [--data-dir <pfad>] [--test-audio <wav>] [--output-file <pfad>] [--secret-prefix <präfix>] [--hotkeys]\n" +
         "        WhisperLoom bench --model <tiny|base|small|large-v3-turbo> --seconds <n> [--backend auto|cpu]\n" +
         "        WhisperLoom --version | update [--feed <ordner|url>]";
 
     private static readonly HashSet<string> Verbs =
         ["toggle", "start", "stop", "cancel", "pause", "resume", "stage", "status", "show", "setup", "key", "quit", "bench", "provision", "import", "export",
-         "reprocess", "reinsert", "recent-insert", "history-copy", "focus-probe", "update"];
+         "reprocess", "reinsert", "recent-insert", "history-copy", "focus-probe", "retry", "update"];
 
     /// <summary>Schalter des Verbs <c>bench</c>; sie landen samt Wert in <see cref="CliRequest.Args"/>.</summary>
     private static readonly HashSet<string> BenchSwitches = ["--model", "--seconds", "--backend"];

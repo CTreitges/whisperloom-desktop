@@ -31,7 +31,8 @@ public sealed partial class OverlayViewModel : ObservableObject
     }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(StateText), nameof(IsRecording), nameof(IsPaused), nameof(CanAct), nameof(IsError), nameof(PauseText))]
+    [NotifyPropertyChangedFor(nameof(StateText), nameof(IsRecording), nameof(IsPaused), nameof(CanAct), nameof(IsError), nameof(PauseText),
+        nameof(IsProcessing))]
     private OverlayState _state;
 
     [ObservableProperty]
@@ -52,6 +53,15 @@ public sealed partial class OverlayViewModel : ObservableObject
     private bool _isStagePickerOpen;
 
     public bool CanPickStage => StagePicker is not null;
+
+    /// <summary>Wiederholbarer Fehler: Knopf „Erneut senden“ (Audio liegt nur im Speicher, W2-OUT).</summary>
+    [ObservableProperty]
+    private bool _canRetry;
+
+    /// <summary>Rückruf für „Erneut senden“; null = kein Knopf.</summary>
+    public Action? Retry { get; set; }
+
+    public bool IsProcessing => State == OverlayState.Processing;
 
     /// <summary>Lokalisierungs-Schlüssel des Fehlers (<c>Error_*</c>).</summary>
     [ObservableProperty]
@@ -89,6 +99,9 @@ public sealed partial class OverlayViewModel : ObservableObject
 
     [RelayCommand]
     private void Send() => _send();
+
+    [RelayCommand]
+    private void RetrySend() => Retry?.Invoke();
 
     [RelayCommand]
     private void ToggleStages() => IsStagePickerOpen = StagePicker is not null && !IsStagePickerOpen;

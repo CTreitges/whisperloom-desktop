@@ -29,6 +29,7 @@ public partial class App : Application
     private SettingsWindow? _settingsWindow;
     private SetupWindow? _setupWindow;
     private IDisposable? _input;
+    private Platform.Windows.Input.InputFlow? _flow;
     private readonly CancellationTokenSource _updates = new();
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
@@ -56,6 +57,7 @@ public partial class App : Application
 
         CreateTray(_host);
         StartHotkeys(_host);
+        StartLengthWatch(_host);
         StartUpdates(_host);
         if (verb is not null)
         {
@@ -97,6 +99,37 @@ public partial class App : Application
     }
 
     /// <summary>Windows: globale Tastenkürzel, Overlay und Einfügen (Phase 3); im Testbetrieb nur mit <c>--hotkeys</c>.</summary>
+    /// <summary>
+    /// Längen-Takt für Diktate ohne Tastenkürzel (Tray, CLI, Linux; W2-OUT): Hinweis ab 10 min, bei 12 min hält die Aufnahme an.
+    /// Kürzel-Diktate prüft <c>InputFlow.Tick</c> selbst (dort wird beim Halten gesendet).
+    /// </summary>
+    private void StartLengthWatch(AppHost host)
+    {
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+        timer.Tick += (_, _) =>
+        {
+            var flow = _flow;
+            if (flow is not null && flow.ModeName != "none")
+            {
+                return;
+            }
+            if (host.Controller.CheckLength() is not { } notice)
+            {
+                return;
+            }
+            var key = notice == "long" ? "Recording_Long" : "Recording_Capped";
+            if (flow is not null)
+            {
+                flow.ShowNotice(key);
+            }
+            else if (OperatingSystem.IsLinux())
+            {
+                _ = Output.DesktopNotify.ShowAsync(Localization.Loc.Instance[key]);
+            }
+        };
+        timer.Start();
+    }
+
     private void StartHotkeys(AppHost host)
     {
         if (OperatingSystem.IsWindows())
@@ -129,6 +162,7 @@ public partial class App : Application
         if (input is not null)
         {
             _input = input;
+            _flow = input.Flow;
             host.InputStatus = () =>
             {
                 var status = input.Flow.Status();

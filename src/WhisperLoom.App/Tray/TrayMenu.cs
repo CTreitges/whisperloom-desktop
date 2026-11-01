@@ -18,6 +18,7 @@ public sealed class TrayMenu
     private readonly DictationController _controller;
     private readonly Func<HistoryEntry, Task>? _onRecent;
     private readonly NativeMenuItem _toggle;
+    private readonly NativeMenuItem _retry;
     private readonly NativeMenuItem _stage;
     private readonly NativeMenuItem _recent;
     private readonly NativeMenuItem _show;
@@ -34,6 +35,8 @@ public sealed class TrayMenu
         _controller = controller;
         _onRecent = onRecent;
         _toggle = new NativeMenuItem { Command = new AsyncRelayCommand(() => controller.ToggleAsync()) };
+        // „Erneut senden“ nach einem wiederholbaren Fehler (W2-OUT): nur sichtbar, solange Audio im Speicher liegt.
+        _retry = new NativeMenuItem { Command = new AsyncRelayCommand(() => controller.RetryAsync()) };
         _stage = new NativeMenuItem { Menu = new NativeMenu() };
         _recent = new NativeMenuItem { Menu = new NativeMenu() };
         _show = new NativeMenuItem { Command = new RelayCommand(() => open("stage")) };
@@ -88,6 +91,17 @@ public sealed class TrayMenu
     {
         var loc = Loc.Instance;
         _toggle.Header = loc[_controller.IsRecording ? "Action_Stop" : "Action_Start"];
+        _retry.Header = loc["Tray_Retry"];
+        // Direkt unter der Hauptaktion, nur solange Audio für „Erneut senden“ im Speicher liegt.
+        var shown = Menu.Items.Contains(_retry);
+        if (_controller.CanRetry && !shown)
+        {
+            Menu.Items.Insert(1, _retry);
+        }
+        else if (!_controller.CanRetry && shown)
+        {
+            Menu.Items.Remove(_retry);
+        }
         _stage.Header = $"{loc["Stage_Label"]}: {loc["Stage_" + _controller.Stage.Key()]}";
         _show.Header = loc["Tray_Stage"];
         _history.Header = loc["Tray_History"];

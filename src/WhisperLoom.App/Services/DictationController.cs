@@ -156,6 +156,7 @@ public sealed partial class DictationController : ObservableObject
             return "audio-unavailable";
         }
         _recorded = TimeSpan.Zero;
+        ResetComfort();
         _segmentStart = _now();
         State = DictationState.Recording;
         _log.Event("recording.start");
@@ -176,9 +177,9 @@ public sealed partial class DictationController : ObservableObject
 
     public string Resume()
     {
-        if (State != DictationState.Paused)
+        if (State != DictationState.Paused || Capped)
         {
-            return "not-paused";
+            return Capped ? "capped" : "not-paused";
         }
         _segmentStart = _now();
         _recorder.Resume();
@@ -198,6 +199,10 @@ public sealed partial class DictationController : ObservableObject
             _recorded += _now() - _segmentStart;
         }
         var audio = _recorder.Stop();
+        if (DiscardIfTooShort(audio))
+        {
+            return "too-short";
+        }
         State = DictationState.Processing;
         _processing = new CancellationTokenSource();
         _processingTask = ProcessAsync(audio, _processing.Token);
@@ -290,7 +295,7 @@ public sealed partial class DictationController : ObservableObject
         var refinement = RefinementOf(EffectiveRefine());
         try
         {
-            var result = await _pipeline.RunAsync(new DictationRequest(audio, Settings.Language, refinement), ct);
+            var result = await RunPipelineAsync(new DictationRequest(audio, Settings.Language, refinement), ct);
             LastRaw = result.Raw;
             LastResult = result.Text;
             LastRefined = result.Result;
@@ -329,6 +334,7 @@ public sealed partial class DictationController : ObservableObject
                                       or IOException)
         {
             Fail(ErrorKey(e), e.GetType().Name);
+            KeepForRetry(e, audio);
             _log.Event(
                 "dictation",
                 ("status", "error"),
@@ -373,21 +379,6 @@ public sealed partial class DictationController : ObservableObject
         {
             _log.Event("history", ("status", "error"));
         }
-    }
-
-    /// <summary>
-    /// Ging die Ausgabe in ein Passwortfeld (UI Automation), bleibt vom Diktat nichts: kein Verlauf, kein „erneut einfügen“
-    /// (wie Android <c>HistoryPolicy</c>, W2-OUT).
-    /// </summary>
-    private bool ForgetIfPrivate()
-    {
-        if (_output is not IPrivateAwareOutput { LastWasPrivate: true })
-        {
-            return false;
-        }
-        LastRaw = "";
-        LastResult = "";
-        return true;
     }
 
     private void Fail(string key, string errorClass)

@@ -89,22 +89,26 @@ internal sealed class FakeAccessChecker : IAccessChecker
 internal sealed class ControllerFixture : IDisposable
 {
     /// <param name="output">Andere Ausgabe statt <see cref="Sink"/> (Windows-Einfügen, Phase 3).</param>
-    public ControllerFixture(WhisperLoomSettings? settings = null, IOutputSink? output = null)
+    /// <param name="recorder">Anderer Rekorder (z. B. kürzere Aufnahme, W2-OUT).</param>
+    /// <param name="pipeline">Andere Pipeline statt <see cref="Pipeline"/> (z. B. mit Ausweg, W2-OUT).</param>
+    public ControllerFixture(WhisperLoomSettings? settings = null, IOutputSink? output = null, FakeRecorder? recorder = null,
+        IDictationPipeline? pipeline = null)
     {
         DataDir = Path.Combine(Path.GetTempPath(), "wl-test-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(DataDir);
         Log = new AppLog(DataDir);
         Store = new SettingsStore(DataDir);
+        Recorder = recorder ?? new FakeRecorder();
         var s = settings ?? new WhisperLoomSettings();
         History = new FileHistoryStore(Path.Combine(DataDir, "history"), () => Controller!.Settings.History);
-        Controller = new DictationController(Recorder, Pipeline, output ?? Sink, History, Log, s, Store.Save, () => Now);
+        Controller = new DictationController(Recorder, pipeline ?? Pipeline, output ?? Sink, History, Log, s, Store.Save, () => Now);
     }
 
     public string DataDir { get; }
 
     public DateTimeOffset Now { get; set; } = new(2026, 10, 30, 12, 0, 0, TimeSpan.Zero);
 
-    public FakeRecorder Recorder { get; } = new();
+    public FakeRecorder Recorder { get; }
 
     public FakeDictationPipeline Pipeline { get; } = new() { RawText = "Hallo Welt geheimes Diktat" };
 

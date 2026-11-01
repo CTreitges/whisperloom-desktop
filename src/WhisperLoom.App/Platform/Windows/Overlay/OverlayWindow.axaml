@@ -62,9 +62,13 @@
         <Button x:Name="PauseButton" Content="{Binding PauseText}" Command="{Binding PauseResumeCommand}" IsEnabled="{Binding CanAct}" />
         <Button x:Name="DiscardButton" Content="{Binding [Overlay_Discard], Source={x:Static l:Loc.Instance}}"
                 Command="{Binding DiscardCommand}" IsEnabled="{Binding CanAct}" />
+        <Button x:Name="RetryButton" Classes="primary" Content="{Binding [Overlay_Retry], Source={x:Static l:Loc.Instance}}"
+                Command="{Binding RetrySendCommand}" IsVisible="{Binding CanRetry}" />
         <Button x:Name="SendButton" Classes="primary" Content="{Binding [Overlay_Send], Source={x:Static l:Loc.Instance}}"
                 Command="{Binding SendCommand}" IsEnabled="{Binding CanAct}" />
       </StackPanel>
+      <TextBlock Text="{Binding [Overlay_SkipHint], Source={x:Static l:Loc.Instance}}" FontSize="12"
+                 Foreground="{StaticResource WlOnSurfaceVariant}" IsVisible="{Binding IsProcessing}" />
       <TextBlock Text="{Binding [Overlay_KeysHint], Source={x:Static l:Loc.Instance}}" FontSize="12"
                  Foreground="{StaticResource WlOnSurfaceVariant}" IsVisible="{Binding CanAct}" />
     </StackPanel>

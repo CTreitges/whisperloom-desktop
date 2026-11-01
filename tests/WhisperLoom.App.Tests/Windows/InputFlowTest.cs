@@ -232,7 +232,8 @@ public sealed class InputFlowTest : IDisposable
         _f.Pipeline.Failure = FakeFailure.SttNetwork;
         await _flow.HandleAsync(HotkeyAction.HoldStart);
         await _flow.HandleAsync(HotkeyAction.HoldEnd);
-        Assert.Contains(_ui.Hints, h => h.Kind == "toast" && h.Message == Loc.Instance["Error_Network"]);
+        // Netzfehler ist wiederholbar (W2-OUT): Text des Fehlers plus Hinweis auf „Erneut senden“.
+        Assert.Contains(_ui.Hints, h => h.Kind == "toast" && h.Message == Loc.Instance.Format("Error_WithRetry", Loc.Instance["Error_Network"]));
     }
 
     [AvaloniaFact]
