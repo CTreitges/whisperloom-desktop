@@ -65,6 +65,23 @@ public sealed class SelectionSettingsTest
     }
 
     [AvaloniaFact]
+    public async Task Profil_kann_den_Knopf_abschalten_Erben_wird_nicht_geschrieben()
+    {
+        using var f = new ControllerFixture();
+        var vm = new SettingsViewModel(f.Controller, new MemorySecretStore(), new FakeAccessChecker());
+        vm.Profiles.AddSuggestionsCommand.Execute(null);
+        Assert.Equal("", vm.Profiles.Rows[0].Button.Value); // Wie eingestellt
+        vm.Profiles.Rows[1].Button = vm.Profiles.ButtonChoices.Single(c => c.Value == "off");
+
+        await vm.Save();
+
+        var saved = SettingsStore.Desktop(f.Store.Load()).Profiles;
+        Assert.Equal([null, false], saved.Select(p => p.FloatingButton));
+        var profiles = JsonNode.Parse(File.ReadAllText(f.Store.FilePath))!["desktop"]!["profiles"]!.AsArray();
+        Assert.Equal([false, true], profiles.Select(p => p!.AsObject().ContainsKey("floatingButton")));
+    }
+
+    [AvaloniaFact]
     public void Abgeschaltete_Kombi_zaehlt_nicht_als_Konflikt()
     {
         var desktop = new DesktopSettings { HotkeyReinsert = "Ctrl+Alt+Shift+S" };

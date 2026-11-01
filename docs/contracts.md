@@ -209,3 +209,15 @@ neue Felder), Client↔Server: [server-api.md](server-api.md).
 
 Abweichungen von den Namensvorschlägen des Issues: `selection.hotkey` heißt `selection.hotkeyCombo` (kein Schema-Feld
 darf auf `key` enden, Test `KeinKeyFeldImSchema`); `local.servers[].kind` (`stt`/`text`) nennt den Zweck.
+
+### W2-SEL: Markierung verarbeiten (additiv)
+
+| Typ / Member | Inhalt |
+|---|---|
+| `HistoryEntry.Source` | siehe oben; `"selection"` = Eintrag aus „Markierung verarbeiten“ |
+| `Core/Output/OutputDecision.IsCautious(process, windowClass)` | „Vorsichtig“ einfügen: Browser (`IsBrowser`) oder Electron-Fenster (Klasse `Chrome_WidgetWin_1`, `ChromiumWindowClass`) – bei Fokus „unbekannt“ alte Zwischenablage zurück (Entscheidung Christof 2026-11-01) |
+| App: `IWindowAdapter.WindowClass(hwnd)` | Klasse des Zielfensters; Default-Methode `""`, bestehende Implementierungen bleiben gültig |
+| CLI/IPC `process-selection [--stage <stufe>]` | Windows: Markierung des Vordergrundfensters → Wähler bzw. sofort mit Stufe; Linux: Primärauswahl → Wähler-Fenster bzw. Stufe → Zwischenablage. Antwort `picker`, `done`, `instruction`, `empty`, `password`, `no-tool`, `stage-locked`, `stage-unavailable`, `busy`, `unavailable` |
+| `status --json` | `input.selection` (`picker`, `pickerOpen`, `options`, `highlighted`, `button` [x, y], `buttonVisible`, `pickerRect`), `input.mouseHook`, `history.latest.source` |
+| App-Abschnitt `desktop.profiles[].floatingButton` | `null` = wie `selection.floatingButton`, `false` = hier nie |
+| `desktop.hotkeyRewrite` | entfällt; Migration nach `selection.hotkeyCombo` beim Laden (`SelectionMigration`) |
