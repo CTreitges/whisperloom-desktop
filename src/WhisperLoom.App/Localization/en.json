@@ -51,6 +51,7 @@
   "Company_Leave": "Leave company",
   "Company_LeaveButton": "Leave company …",
   "Company_LeaveConfirm": "Really leave? Company access and the proxy stop working; your other settings stay.",
+  "Company_LeaveConfirmButton": "Leave",
   "Company_LeaveDesc": "Disconnects this device. The company values stay as your own settings.",
   "Company_LeaveLocked": "Your company has decided that this connection stays in place.",
   "Company_LeftOk": "Disconnected from the company.",

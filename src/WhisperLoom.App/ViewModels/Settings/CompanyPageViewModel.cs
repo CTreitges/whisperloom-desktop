@@ -39,6 +39,9 @@ public sealed partial class CompanyPageViewModel : SettingsPageViewModel
 
     public bool IsNotConnected => !IsConnected;
 
+    /// <summary>„Mit Firma verbinden …“ zeigen: nicht verbunden und Formular zu (sonst stünde eine leere Gruppe darüber).</summary>
+    public bool ShowConnect => IsNotConnected && !ShowJoin;
+
     public string TenantName => ManagementTexts.Tenant(M);
 
     public string ServerUrl => M.ServerUrl;
@@ -61,7 +64,9 @@ public sealed partial class CompanyPageViewModel : SettingsPageViewModel
 
     [ObservableProperty] private bool _leavePending;
 
-    [ObservableProperty] private bool _showJoin;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowConnect))]
+    private bool _showJoin;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SyncNowCommand), nameof(LeaveCommand))]
@@ -69,6 +74,10 @@ public sealed partial class CompanyPageViewModel : SettingsPageViewModel
 
     [RelayCommand]
     private void OpenJoin() => ShowJoin = true;
+
+    /// <summary>Formular schließen, solange noch nicht verbunden (danach wartet das Gerät; das Formular zeigt den Status).</summary>
+    [RelayCommand]
+    private void CloseJoin() => ShowJoin = false;
 
     private bool NotBusy() => !Busy && _service is not null;
 
@@ -142,7 +151,7 @@ public sealed partial class CompanyPageViewModel : SettingsPageViewModel
     private void Refresh()
     {
         foreach (var name in new[] { nameof(IsConnected), nameof(IsNotConnected), nameof(TenantName), nameof(ServerUrl), nameof(DeviceId),
-                     nameof(StateText), nameof(LastSyncText), nameof(Notice), nameof(CanLeave) })
+                     nameof(StateText), nameof(LastSyncText), nameof(Notice), nameof(CanLeave), nameof(ShowConnect) })
         {
             OnPropertyChanged(name);
         }

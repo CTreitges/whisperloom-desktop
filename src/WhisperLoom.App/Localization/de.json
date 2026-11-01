@@ -51,6 +51,7 @@
   "Company_Leave": "Firma verlassen",
   "Company_LeaveButton": "Firma verlassen …",
   "Company_LeaveConfirm": "Wirklich verlassen? Firmen-Zugänge und Proxy funktionieren danach nicht mehr; deine übrigen Einstellungen bleiben.",
+  "Company_LeaveConfirmButton": "Verlassen",
   "Company_LeaveDesc": "Löst die Anbindung. Die Werte der Firma bleiben als deine eigenen Einstellungen stehen.",
   "Company_LeaveLocked": "Deine Firma hat festgelegt, dass die Anbindung bestehen bleibt.",
   "Company_LeftOk": "Verbindung zur Firma gelöst.",

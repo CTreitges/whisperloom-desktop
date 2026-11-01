@@ -165,17 +165,17 @@
           <!-- 1 Sprache -->
           <StackPanel x:Name="LanguagePanel" IsVisible="{Binding ShowLanguage}">
             <TextBlock Classes="intro" Text="{Binding [Setup_LanguageIntro], Source={x:Static l:Loc.Instance}}" />
-            <TextBlock Classes="f" Text="{Binding [Settings_UiLanguage], Source={x:Static l:Loc.Instance}}" />
-            <ComboBox x:Name="UiLanguageBox" IsEnabled="{Binding Settings.Editable[desktop.uiLanguage]}" ItemsSource="{Binding Settings.UiLanguages}" SelectedItem="{Binding Settings.UiLanguage}" />
-            <TextBlock Classes="f" Text="{Binding [Setup_RecognitionLanguage], Source={x:Static l:Loc.Instance}}" />
-            <ComboBox x:Name="LanguageBox" IsEnabled="{Binding Settings.Editable[language]}" ItemsSource="{Binding Settings.Languages}" SelectedItem="{Binding Settings.Language}" />
+            <TextBlock Classes="f" IsVisible="{Binding Settings.Editable[desktop.uiLanguage]}" Text="{Binding [Settings_UiLanguage], Source={x:Static l:Loc.Instance}}" />
+            <ComboBox x:Name="UiLanguageBox" IsVisible="{Binding Settings.Editable[desktop.uiLanguage]}" ItemsSource="{Binding Settings.UiLanguages}" SelectedItem="{Binding Settings.UiLanguage}" />
+            <TextBlock Classes="f" IsVisible="{Binding Settings.Editable[language]}" Text="{Binding [Setup_RecognitionLanguage], Source={x:Static l:Loc.Instance}}" />
+            <ComboBox x:Name="LanguageBox" IsVisible="{Binding Settings.Editable[language]}" ItemsSource="{Binding Settings.Languages}" SelectedItem="{Binding Settings.Language}" />
           </StackPanel>
 
           <!-- 2 Mikrofon mit Pegel-Test -->
           <StackPanel x:Name="MicrophonePanel" IsVisible="{Binding ShowMicrophone}">
             <TextBlock Classes="intro" Text="{Binding [Setup_MicIntro], Source={x:Static l:Loc.Instance}}" />
-            <TextBlock Classes="f" Text="{Binding [Settings_Microphone], Source={x:Static l:Loc.Instance}}" />
-            <ComboBox x:Name="MicrophoneBox" IsEnabled="{Binding Settings.Editable[desktop.microphone]}" ItemsSource="{Binding Settings.Microphones}" SelectedItem="{Binding Settings.Microphone}" />
+            <TextBlock Classes="f" IsVisible="{Binding Settings.Editable[desktop.microphone]}" Text="{Binding [Settings_Microphone], Source={x:Static l:Loc.Instance}}" />
+            <ComboBox x:Name="MicrophoneBox" IsVisible="{Binding Settings.Editable[desktop.microphone]}" ItemsSource="{Binding Settings.Microphones}" SelectedItem="{Binding Settings.Microphone}" />
             <StackPanel IsVisible="{Binding Mic, Converter={x:Static ObjectConverters.IsNotNull}}" Spacing="8" Margin="0,14,0,0">
               <StackPanel Orientation="Horizontal" Spacing="8">
                 <Button x:Name="MicStartButton" Content="{Binding [Setup_MicStart], Source={x:Static l:Loc.Instance}}" Command="{Binding Mic.StartCommand, FallbackValue={x:Null}}" />
@@ -192,16 +192,16 @@
           <!-- 3 Erkennungsweg -->
           <StackPanel x:Name="RecognitionPanel" IsVisible="{Binding ShowRecognition}">
             <TextBlock Classes="intro" Text="{Binding [Setup_RecognitionIntro], Source={x:Static l:Loc.Instance}}" />
-            <ComboBox x:Name="EngineBox" IsEnabled="{Binding Settings.Editable[engine]}" ItemsSource="{Binding Settings.Local.Engines}" SelectedItem="{Binding Settings.Local.Engine}" />
+            <ComboBox x:Name="EngineBox" IsVisible="{Binding Settings.Editable[engine]}" ItemsSource="{Binding Settings.Local.Engines}" SelectedItem="{Binding Settings.Local.Engine}" />
             <StackPanel x:Name="OnlinePanel" IsVisible="{Binding ShowOnline}">
-              <TextBlock Classes="f" Text="{Binding [Settings_Provider], Source={x:Static l:Loc.Instance}}" />
-              <ComboBox x:Name="ProviderBox" IsEnabled="{Binding Settings.Editable[stt.providerId]}" ItemsSource="{Binding Settings.SttProviders}" SelectedItem="{Binding Settings.SttProvider}" />
-              <TextBlock Classes="f" Text="{Binding [Settings_ApiKey], Source={x:Static l:Loc.Instance}}" />
-              <v:KeyFieldView x:Name="SttKeyField" DataContext="{Binding Settings.SttKey}" />
+              <TextBlock Classes="f" IsVisible="{Binding Settings.Editable[stt.providerId]}" Text="{Binding [Settings_Provider], Source={x:Static l:Loc.Instance}}" />
+              <ComboBox x:Name="ProviderBox" IsVisible="{Binding Settings.Editable[stt.providerId]}" ItemsSource="{Binding Settings.SttProviders}" SelectedItem="{Binding Settings.SttProvider}" />
+              <TextBlock Classes="f" IsVisible="{Binding Settings.Editable[secrets.stt]}" Text="{Binding [Settings_ApiKey], Source={x:Static l:Loc.Instance}}" />
+              <Panel IsVisible="{Binding Settings.Editable[secrets.stt]}"><v:KeyFieldView x:Name="SttKeyField" DataContext="{Binding Settings.SttKey}" /></Panel>
             </StackPanel>
             <StackPanel x:Name="OfflinePanel" IsVisible="{Binding ShowOffline}">
-              <TextBlock Classes="f" Text="{Binding [Local_Model], Source={x:Static l:Loc.Instance}}" />
-              <ComboBox x:Name="ModelBox" IsEnabled="{Binding Settings.Editable[offline.model]}" ItemsSource="{Binding Settings.Local.ModelChoices}" SelectedItem="{Binding Settings.Local.SelectedModel}" />
+              <TextBlock Classes="f" IsVisible="{Binding Settings.Editable[offline.model]}" Text="{Binding [Local_Model], Source={x:Static l:Loc.Instance}}" />
+              <ComboBox x:Name="ModelBox" IsVisible="{Binding Settings.Editable[offline.model]}" ItemsSource="{Binding Settings.Local.ModelChoices}" SelectedItem="{Binding Settings.Local.SelectedModel}" />
               <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
                 <TextBlock Text="{Binding SelectedModel.Label}" VerticalAlignment="Center" MinWidth="220" />
                 <TextBlock Text="✓" IsVisible="{Binding SelectedModel.Installed}" Foreground="{DynamicResource Loom.Accent}" VerticalAlignment="Center" />
@@ -215,7 +215,7 @@
           <!-- 4 Stufe -->
           <StackPanel x:Name="StagePanel" IsVisible="{Binding ShowStage}">
             <TextBlock Classes="intro" Text="{Binding [Setup_StageIntro], Source={x:Static l:Loc.Instance}}" />
-            <ComboBox x:Name="StageBox" IsEnabled="{Binding Settings.Editable[refine.stage]}" ItemsSource="{Binding Settings.Stages}" SelectedItem="{Binding Settings.Stage}" />
+            <ComboBox x:Name="StageBox" IsVisible="{Binding Settings.Editable[refine.stage]}" ItemsSource="{Binding Settings.Stages}" SelectedItem="{Binding Settings.Stage}" />
             <TextBlock Classes="note" Text="{Binding [Setup_StageNote], Source={x:Static l:Loc.Instance}}" />
           </StackPanel>
 

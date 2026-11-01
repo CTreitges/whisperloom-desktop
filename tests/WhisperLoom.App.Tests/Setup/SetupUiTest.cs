@@ -213,7 +213,7 @@ public sealed class SetupUiTest
     public void Richtlinie_teilweise_Schritt_bleibt_mit_gesperrten_Feldern()
     {
         Loc.Instance.SetLanguage("de");
-        // Nur der Anbieter ist fest: Schritt Erkennung bleibt, Anbieter ausgegraut, Key und Weg änderbar.
+        // Nur der Anbieter ist fest: Schritt Erkennung bleibt, Anbieter ausgeblendet, Key und Weg änderbar.
         using var s = new SetupFixture(policy: new PolicySettings { Locked = ["stt.providerId"] });
         var window = Show(s.Vm);
         Assert.Equal(AllSteps, s.Vm.Steps);
@@ -222,8 +222,8 @@ public sealed class SetupUiTest
             s.Vm.Next();
         }
         Dispatcher.UIThread.RunJobs();
-        Assert.False(Named<ComboBox>(window, "ProviderBox").IsEnabled);
-        Assert.True(Named<ComboBox>(window, "EngineBox").IsEnabled);
+        Assert.False(Named<ComboBox>(window, "ProviderBox").IsVisible); // W2-ENR: Fest ist auch im Assistenten ausgeblendet
+        Assert.True(Named<ComboBox>(window, "EngineBox").IsVisible);
         window.Close();
 
         // Lokal fest gewählt, Modell fest: Schritt entfällt.

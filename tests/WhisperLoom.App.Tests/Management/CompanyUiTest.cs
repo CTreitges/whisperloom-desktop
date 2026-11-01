@@ -142,8 +142,13 @@ public sealed class CompanyUiTest
         using var page = new CompanyPageViewModel(session);
         Assert.True(page.IsNotConnected);
         Assert.False(page.ShowJoin);
+        Assert.True(page.ShowConnect);
         page.OpenJoinCommand.Execute(null);
         Assert.True(page.ShowJoin);
+        Assert.False(page.ShowConnect); // keine leere Gruppe über dem Formular (HIG-Review)
+        page.CloseJoinCommand.Execute(null);
+        Assert.True(page.ShowConnect);
+        page.OpenJoinCommand.Execute(null);
 
         r.Server.AutoApprove = true;
         r.Server.AllowLeave = false;
