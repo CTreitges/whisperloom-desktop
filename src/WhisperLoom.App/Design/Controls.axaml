@@ -12,8 +12,16 @@
       <ControlTemplate>
         <ScrollViewer HorizontalScrollBarVisibility="Disabled">
           <StackPanel Margin="28,20,28,28" Spacing="{DynamicResource Loom.Space.L}" MaxWidth="760" HorizontalAlignment="Stretch">
-            <TextBlock Text="{TemplateBinding Title}" FontSize="{DynamicResource Loom.Font.PageTitle}" FontWeight="SemiBold"
-                       Foreground="{DynamicResource Loom.Text}" />
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="{TemplateBinding Title}" FontSize="{DynamicResource Loom.Font.PageTitle}" FontWeight="SemiBold"
+                         Foreground="{DynamicResource Loom.Text}" />
+              <!-- W2-HELP: runder Hilfe-Knopf wie in den macOS-Einstellungen; öffnet den passenden Abschnitt der Hilfe. -->
+              <Button Name="PART_Help" Grid.Column="1" Content="?" Command="{TemplateBinding HelpCommand}" VerticalAlignment="Center"
+                      Width="28" Height="28" CornerRadius="14" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                      FontWeight="SemiBold" Background="{DynamicResource Loom.Surface}" BorderBrush="{DynamicResource Loom.Separator}"
+                      BorderThickness="1" Foreground="{DynamicResource Loom.Accent}"
+                      ToolTip.Tip="{TemplateBinding HelpTip}" AutomationProperties.Name="{TemplateBinding HelpName}" />
+            </Grid>
             <ds:HintRow Name="PART_Managed" Kind="Managed" Text="{TemplateBinding ManagedText}" IsVisible="{TemplateBinding HasManagedRows}" />
             <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" />
           </StackPanel>

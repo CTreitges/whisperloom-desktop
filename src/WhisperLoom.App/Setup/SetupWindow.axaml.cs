@@ -5,6 +5,10 @@ namespace WhisperLoom.App.Setup;
 
 public partial class SetupWindow : Window
 {
+    /// <summary>W2-HELP: Hilfe-Abschnitt zum aktuellen Schritt.</summary>
+    private void OnHelp(object? sender, Avalonia.Interactivity.RoutedEventArgs e) =>
+        Views.Help.HelpLauncher.Open(Views.Help.HelpLauncher.TopicFor(this));
+
     private readonly DispatcherTimer _micTimer = new() { Interval = TimeSpan.FromMilliseconds(80) };
 
     public SetupWindow() => InitializeComponent();

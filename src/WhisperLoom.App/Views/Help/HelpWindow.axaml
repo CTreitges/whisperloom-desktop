@@ -1,0 +1,229 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:h="using:WhisperLoom.App.Views.Help"
+        xmlns:ds="using:WhisperLoom.App.Design"
+        xmlns:l="using:WhisperLoom.App.Localization"
+        x:Class="WhisperLoom.App.Views.Help.HelpWindow"
+        x:DataType="h:HelpViewModel"
+        Classes="loom"
+        Title="{Binding [Help_WindowTitle], Source={x:Static l:Loc.Instance}}"
+        Icon="/Assets/whisperloom.ico"
+        Width="1000" Height="720" MinWidth="760" MinHeight="480">
+  <!--
+    Hilfe nach HIG „Help“/„Sidebars“ wie das Einstellungsfenster: links Suche + Abschnitte (Pfeiltasten), rechts der Abschnitt
+    mit Illustration, Text, Screenshots (Ziffern = Legende) und Links. Strg+F = Suche, ↓ aus der Suche in die Treffer, Esc leert die
+    Suche bzw. schließt.
+  -->
+  <Window.Styles>
+    <Style Selector="TextBlock.body">
+      <Setter Property="FontSize" Value="{DynamicResource Loom.Font.Body}" />
+      <Setter Property="Foreground" Value="{DynamicResource Loom.Text}" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="LineHeight" Value="21" />
+    </Style>
+    <Style Selector="TextBlock.heading">
+      <Setter Property="FontSize" Value="15" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource Loom.Text}" />
+      <Setter Property="Margin" Value="0,10,0,0" />
+    </Style>
+    <Style Selector="TextBlock.caption">
+      <Setter Property="FontSize" Value="{DynamicResource Loom.Font.Caption}" />
+      <Setter Property="Foreground" Value="{DynamicResource Loom.TextSecondary}" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="Border.card">
+      <Setter Property="Background" Value="{DynamicResource Loom.Surface}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Loom.Separator}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{DynamicResource Loom.Radius.Group}" />
+      <Setter Property="Padding" Value="16" />
+    </Style>
+    <Style Selector="Border.number">
+      <Setter Property="Width" Value="22" />
+      <Setter Property="Height" Value="22" />
+      <Setter Property="CornerRadius" Value="11" />
+      <Setter Property="Background" Value="{DynamicResource Loom.Accent}" />
+    </Style>
+    <Style Selector="Border.number TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource Loom.OnAccent}" />
+      <Setter Property="FontSize" Value="{DynamicResource Loom.Font.Caption}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.tileButton">
+      <Setter Property="Background" Value="{DynamicResource Loom.Surface}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Loom.Separator}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{DynamicResource Loom.Radius.Group}" />
+      <Setter Property="Padding" Value="14,12" />
+      <Setter Property="Margin" Value="0,0,12,12" />
+      <Setter Property="Width" Value="216" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="VerticalContentAlignment" Value="Top" />
+    </Style>
+    <Style Selector="Button.tileButton:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Loom.SurfaceHigh}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Loom.Accent}" />
+    </Style>
+  </Window.Styles>
+
+  <Grid ColumnDefinitions="232,*">
+    <Border Grid.Column="0" Background="{DynamicResource Loom.Sidebar}" BorderBrush="{DynamicResource Loom.Separator}" BorderThickness="0,0,1,0">
+      <DockPanel>
+        <TextBox x:Name="SearchBox" DockPanel.Dock="Top" Margin="12,14,12,6" Text="{Binding SearchText}"
+                 PlaceholderText="{Binding [Help_SearchPlaceholder], Source={x:Static l:Loc.Instance}}"
+                 AutomationProperties.Name="{Binding [Help_SearchName], Source={x:Static l:Loc.Instance}}">
+          <TextBox.InnerLeftContent>
+            <PathIcon Data="{DynamicResource Loom.Icon.Search}" Width="14" Height="14" Margin="8,0,0,0" Foreground="{DynamicResource Loom.TextSecondary}" />
+          </TextBox.InnerLeftContent>
+        </TextBox>
+
+        <Panel>
+          <ListBox x:Name="SectionList" Classes="sidebar" ItemsSource="{Binding Sections}" SelectedItem="{Binding SelectedSection}"
+                   IsVisible="{Binding !IsSearching}" AutomationProperties.Name="{Binding [Help_SidebarName], Source={x:Static l:Loc.Instance}}">
+            <ListBox.Styles>
+              <Style Selector="ListBoxItem" x:DataType="h:HelpSectionViewModel">
+                <Setter Property="AutomationProperties.Name" Value="{Binding Title}" />
+              </Style>
+            </ListBox.Styles>
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="h:HelpSectionViewModel">
+                <StackPanel>
+                  <TextBlock Classes="section" Text="{Binding GroupTitle}" IsVisible="{Binding GroupTitle, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                  <Border Classes="sideItem">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                      <Border Classes="tile" Background="{Binding Tile, Converter={x:Static ds:ResourceKeyConverter.Instance}}">
+                        <PathIcon Data="{Binding IconGeometry}" />
+                      </Border>
+                      <TextBlock Text="{Binding Title}" VerticalAlignment="Center" Foreground="{DynamicResource Loom.Text}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                  </Border>
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+
+          <DockPanel IsVisible="{Binding IsSearching}">
+            <TextBlock DockPanel.Dock="Top" x:Name="NoResults" Classes="section" TextWrapping="Wrap"
+                       Text="{Binding [Help_SearchNone], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding !Results.Count}" />
+            <ListBox x:Name="ResultList" Classes="sidebar" ItemsSource="{Binding Results}"
+                     AutomationProperties.Name="{Binding [Search_Results], Source={x:Static l:Loc.Instance}}">
+              <ListBox.Styles>
+                <Style Selector="ListBoxItem" x:DataType="h:HelpSearchResult">
+                  <Setter Property="AutomationProperties.Name" Value="{Binding Title}" />
+                </Style>
+              </ListBox.Styles>
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="h:HelpSearchResult">
+                  <Border Classes="sideItem">
+                    <StackPanel Spacing="1">
+                      <TextBlock Text="{Binding Title}" Foreground="{DynamicResource Loom.Text}" TextWrapping="Wrap" />
+                      <TextBlock Text="{Binding Snippet}" FontSize="{DynamicResource Loom.Font.Caption}"
+                                 Foreground="{DynamicResource Loom.TextSecondary}" TextWrapping="Wrap" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </DockPanel>
+        </Panel>
+      </DockPanel>
+    </Border>
+
+    <ScrollViewer x:Name="ContentScroll" Grid.Column="1" HorizontalScrollBarVisibility="Disabled" Focusable="True"
+                  Background="{DynamicResource Loom.Background}">
+      <StackPanel x:Name="SectionContent" DataContext="{Binding SelectedSection}" x:DataType="h:HelpSectionViewModel"
+                  Margin="28,20,28,32" Spacing="{DynamicResource Loom.Space.L}" MaxWidth="760" HorizontalAlignment="Left">
+        <TextBlock x:Name="SectionTitle" Text="{Binding Title}" FontSize="{DynamicResource Loom.Font.PageTitle}" FontWeight="SemiBold"
+                   Foreground="{DynamicResource Loom.Text}" TextWrapping="Wrap" />
+
+        <!-- Übersicht: Einleitung und Kacheln aller Abschnitte. -->
+        <StackPanel IsVisible="{Binding IsOverview}" Spacing="{DynamicResource Loom.Space.L}">
+          <TextBlock Classes="body" Text="{Binding Intro}" />
+          <ItemsControl x:Name="Tiles" ItemsSource="{Binding Tiles}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="h:HelpSectionViewModel">
+                <Button Classes="tileButton" Click="OnTileClick" AutomationProperties.Name="{Binding Title}">
+                  <StackPanel Spacing="8">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                      <Border Classes="tile" Background="{Binding Tile, Converter={x:Static ds:ResourceKeyConverter.Instance}}">
+                        <PathIcon Data="{Binding IconGeometry}" />
+                      </Border>
+                      <TextBlock Text="{Binding Title}" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource Loom.Text}"
+                                 TextWrapping="Wrap" MaxWidth="150" />
+                    </StackPanel>
+                    <TextBlock Classes="caption" Text="{Binding Intro}" MaxLines="3" TextTrimming="WordEllipsis" />
+                  </StackPanel>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+
+        <!-- Abschnitt: Illustration und Einleitung, Text, Screenshots, Links. -->
+        <StackPanel IsVisible="{Binding !IsOverview}" Spacing="{DynamicResource Loom.Space.L}">
+          <Grid ColumnDefinitions="Auto,*">
+            <h:HelpIllustration x:Name="Illustration" Width="256" Height="192" Source="{Binding Illustration}" VerticalAlignment="Top"
+                                AutomationProperties.Name="{Binding ImageAlt}" ToolTip.Tip="{Binding ImageAlt}" />
+            <TextBlock Grid.Column="1" Classes="body" Text="{Binding Intro}" Margin="20,4,0,0" VerticalAlignment="Center" FontSize="15" />
+          </Grid>
+
+          <ItemsControl x:Name="Lines" ItemsSource="{Binding Lines}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="h:HelpLine">
+                <Panel Margin="0,0,0,8">
+                  <TextBlock Classes="heading" Text="{Binding Text}" IsVisible="{Binding IsHeading}" TextWrapping="Wrap" />
+                  <Grid ColumnDefinitions="18,*" IsVisible="{Binding IsBullet}">
+                    <TextBlock Classes="body" Text="•" Foreground="{DynamicResource Loom.Accent}" />
+                    <TextBlock Grid.Column="1" Classes="body" Text="{Binding Text}" />
+                  </Grid>
+                  <TextBlock Classes="body" Text="{Binding Text}" IsVisible="{Binding IsParagraph}" />
+                </Panel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <ItemsControl x:Name="Shots" ItemsSource="{Binding Shots}" IsVisible="{Binding HasShots}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="h:HelpShotView">
+                <Border Classes="card" Margin="0,0,0,12">
+                  <StackPanel Spacing="10">
+                    <h:HelpScreenshot Shot="{Binding Shot.Name}" Stretch="Uniform" HorizontalAlignment="Left"
+                                      AutomationProperties.Name="{Binding Caption}" />
+                    <TextBlock Classes="caption" Text="{Binding Caption}" />
+                    <ItemsControl ItemsSource="{Binding Legend}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="h:HelpLegend">
+                          <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,6">
+                            <Border Classes="number" VerticalAlignment="Top"><TextBlock Text="{Binding Number}" /></Border>
+                            <TextBlock Grid.Column="1" Classes="body" Text="{Binding Text}" Margin="10,1,0,0" />
+                          </Grid>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <StackPanel IsVisible="{Binding HasLinks}" Spacing="4">
+            <TextBlock Classes="heading" Text="{Binding [Help_More], Source={x:Static l:Loc.Instance}}" />
+            <ItemsControl x:Name="Links" ItemsSource="{Binding Links}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="h:HelpLinkView">
+                  <Button Classes="link" Content="{Binding Label}" Click="OnLinkClick" ToolTip.Tip="{Binding Url}" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </StackPanel>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</Window>

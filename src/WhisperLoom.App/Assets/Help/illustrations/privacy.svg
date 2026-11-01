@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240" viewBox="0 0 320 240">
+  <path d="M18,0 h284 a18,18 0 0 1 18,18 v204 a18,18 0 0 1 -18,18 h-284 a18,18 0 0 1 -18,-18 v-204 a18,18 0 0 1 18,-18 z" fill="#E4E8EE" data-fill="SurfaceHigh"/>
+  <path d="M96,40 L150,56 V104 C150,146 128,172 96,188 C64,172 42,146 42,104 V56 Z" fill="#B4F2E6" data-fill="Selection" stroke="#0F5B50" data-stroke="Accent" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M12,17A2,2 0 0,0 14,15C14,13.89 13.1,13 12,13A2,2 0 0,0 10,15A2,2 0 0,0 12,17M18,8A2,2 0 0,1 20,10V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V10C4,8.89 4.9,8 6,8H7V6A5,5 0 0,1 12,1A5,5 0 0,1 17,6V8H18M12,3A3,3 0 0,0 9,6V8H15V6A3,3 0 0,0 12,3Z" fill="#00382F" data-fill="OnSelection" transform="translate(74 88) scale(1.83)"/>
+  <path d="M186,64 h108 a10,10 0 0 1 10,10 v92 a10,10 0 0 1 -10,10 h-108 a10,10 0 0 1 -10,-10 v-92 a10,10 0 0 1 10,-10 z" fill="#FFFFFF" data-fill="Surface" stroke="#B8C0CC" data-stroke="Separator" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M177,86 h126" fill="none" stroke="#B8C0CC" data-stroke="Separator" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M273,73 h0 a3,3 0 0 1 3,3 v0 a3,3 0 0 1 -3,3 h0 a3,3 0 0 1 -3,-3 v0 a3,3 0 0 1 3,-3 z" fill="#E4E8EE" data-fill="Sidebar"/>
+  <path d="M285,73 h0 a3,3 0 0 1 3,3 v0 a3,3 0 0 1 -3,3 h0 a3,3 0 0 1 -3,-3 v0 a3,3 0 0 1 3,-3 z" fill="#E4E8EE" data-fill="Sidebar"/>
+  <path d="M194,104 h92 a6,6 0 0 1 6,6 v14 a6,6 0 0 1 -6,6 h-92 a6,6 0 0 1 -6,-6 v-14 a6,6 0 0 1 6,-6 z" fill="#E4E8EE" data-fill="SurfaceHigh" stroke="#B8C0CC" data-stroke="Separator" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M198,117 a4,4 0 1 0 8,0 a4,4 0 1 0 -8,0 z" fill="#3A424D" data-fill="TextSecondary"/>
+  <path d="M212,117 a4,4 0 1 0 8,0 a4,4 0 1 0 -8,0 z" fill="#3A424D" data-fill="TextSecondary"/>
+  <path d="M226,117 a4,4 0 1 0 8,0 a4,4 0 1 0 -8,0 z" fill="#3A424D" data-fill="TextSecondary"/>
+  <path d="M240,117 a4,4 0 1 0 8,0 a4,4 0 1 0 -8,0 z" fill="#3A424D" data-fill="TextSecondary"/>
+  <path d="M254,117 a4,4 0 1 0 8,0 a4,4 0 1 0 -8,0 z" fill="#3A424D" data-fill="TextSecondary"/>
+  <path d="M268,117 a4,4 0 1 0 8,0 a4,4 0 1 0 -8,0 z" fill="#3A424D" data-fill="TextSecondary"/>
+  <path d="M190.5,146 h75 a2.5,2.5 0 0 1 2.5,2.5 v0 a2.5,2.5 0 0 1 -2.5,2.5 h-75 a2.5,2.5 0 0 1 -2.5,-2.5 v0 a2.5,2.5 0 0 1 2.5,-2.5 z" fill="#B8C0CC" data-fill="Separator"/>
+  <path d="M190.5,158 h51 a2.5,2.5 0 0 1 2.5,2.5 v0 a2.5,2.5 0 0 1 -2.5,2.5 h-51 a2.5,2.5 0 0 1 -2.5,-2.5 v0 a2.5,2.5 0 0 1 2.5,-2.5 z" fill="#B8C0CC" data-fill="Separator"/>
+</svg>

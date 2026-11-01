@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240" viewBox="0 0 320 240">
+  <path d="M18,0 h284 a18,18 0 0 1 18,18 v204 a18,18 0 0 1 -18,18 h-284 a18,18 0 0 1 -18,-18 v-204 a18,18 0 0 1 18,-18 z" fill="#E4E8EE" data-fill="SurfaceHigh"/>
+  <path d="M34,120 a30,30 0 1 0 60,0 a30,30 0 1 0 -60,0 z" fill="#0F5B50" data-fill="Accent"/>
+  <path d="M12,2A3,3 0 0,1 15,5V11A3,3 0 0,1 12,14A3,3 0 0,1 9,11V5A3,3 0 0,1 12,2M19,11C19,14.53 16.39,17.44 13,17.93V21H11V17.93C7.61,17.44 5,14.53 5,11H7A5,5 0 0,0 12,16A5,5 0 0,0 17,11H19Z" fill="#FFFFFF" data-fill="OnAccent" transform="translate(46.75 102.75) scale(1.44)"/>
+  <path d="M100,108 L176,70" fill="none" stroke="#0F5B50" data-stroke="Accent" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M172.24,78.14 L176,70 L167.23,68.12" fill="none" stroke="#0F5B50" data-stroke="Accent" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M100,132 L176,170" fill="none" stroke="#0F5B50" data-stroke="Accent" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M167.23,171.88 L176,170 L172.24,161.86" fill="none" stroke="#0F5B50" data-stroke="Accent" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M190,66 a22,22 0 1 0 44,0 a22,22 0 1 0 -44,0 z" fill="#FFFFFF" data-fill="Surface" stroke="#B8C0CC" data-stroke="Separator" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M210,56 a26,26 0 1 0 52,0 a26,26 0 1 0 -52,0 z" fill="#FFFFFF" data-fill="Surface" stroke="#B8C0CC" data-stroke="Separator" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M242,68 a20,20 0 1 0 40,0 a20,20 0 1 0 -40,0 z" fill="#FFFFFF" data-fill="Surface" stroke="#B8C0CC" data-stroke="Separator" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M205,66 h64 a11,11 0 0 1 11,11 v0 a11,11 0 0 1 -11,11 h-64 a11,11 0 0 1 -11,-11 v0 a11,11 0 0 1 11,-11 z" fill="#FFFFFF" data-fill="Surface"/>
+  <path d="M217.75,68 h0 a1.75,1.75 0 0 1 1.75,1.75 v4.5 a1.75,1.75 0 0 1 -1.75,1.75 h0 a1.75,1.75 0 0 1 -1.75,-1.75 v-4.5 a1.75,1.75 0 0 1 1.75,-1.75 z" fill="#0F5B50" data-fill="Accent"/>
+  <path d="M225.75,65 h0 a1.75,1.75 0 0 1 1.75,1.75 v10.5 a1.75,1.75 0 0 1 -1.75,1.75 h0 a1.75,1.75 0 0 1 -1.75,-1.75 v-10.5 a1.75,1.75 0 0 1 1.75,-1.75 z" fill="#0F5B50" data-fill="Accent"/>
+  <path d="M233.75,67 h0 a1.75,1.75 0 0 1 1.75,1.75 v6.5 a1.75,1.75 0 0 1 -1.75,1.75 h0 a1.75,1.75 0 0 1 -1.75,-1.75 v-6.5 a1.75,1.75 0 0 1 1.75,-1.75 z" fill="#0F5B50" data-fill="Accent"/>
+  <path d="M241.75,64 h0 a1.75,1.75 0 0 1 1.75,1.75 v12.5 a1.75,1.75 0 0 1 -1.75,1.75 h0 a1.75,1.75 0 0 1 -1.75,-1.75 v-12.5 a1.75,1.75 0 0 1 1.75,-1.75 z" fill="#0F5B50" data-fill="Accent"/>
+  <path d="M249.75,68 h0 a1.75,1.75 0 0 1 1.75,1.75 v4.5 a1.75,1.75 0 0 1 -1.75,1.75 h0 a1.75,1.75 0 0 1 -1.75,-1.75 v-4.5 a1.75,1.75 0 0 1 1.75,-1.75 z" fill="#0F5B50" data-fill="Accent"/>
+  <path d="M208,140 h48 a12,12 0 0 1 12,12 v40 a12,12 0 0 1 -12,12 h-48 a12,12 0 0 1 -12,-12 v-40 a12,12 0 0 1 12,-12 z" fill="#D8E7FA" data-fill="Managed"/>
+  <path d="M6,4H18V5H21V7H18V9H21V11H18V13H21V15H18V17H21V19H18V20H6V19H3V17H6V15H3V13H6V11H3V9H6V7H3V5H6V4M11,15V18H12V15H11M13,15V18H14V15H13M15,15V18H16V15H15Z" fill="#12304F" data-fill="OnManaged" transform="translate(208 148) scale(2)"/>
+</svg>

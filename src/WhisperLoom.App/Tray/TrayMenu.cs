@@ -26,10 +26,11 @@ public sealed class TrayMenu
     private readonly NativeMenuItem _history;
     private readonly NativeMenuItem _settings;
     private readonly NativeMenuItem _setup;
+    private readonly NativeMenuItem _help;
     private readonly NativeMenuItem _quit;
     private IReadOnlyList<HistoryEntry> _entries = [];
 
-    /// <param name="open">Fenster-Aktion: "stage", "history", "settings", "setup", "quit".</param>
+    /// <param name="open">Fenster-Aktion: "stage", "history", "settings", "setup", "help", "quit".</param>
     /// <param name="onRecent">Klick auf einen der letzten Einträge: einfügen bzw. kopieren.</param>
     /// <param name="onSelection">„Markierung verarbeiten …“ (W2-SEL); null = Eintrag fehlt.</param>
     public TrayMenu(DictationController controller, Action<string> open, Func<HistoryEntry, Task>? onRecent = null, Func<Task>? onSelection = null)
@@ -46,6 +47,7 @@ public sealed class TrayMenu
         _history = new NativeMenuItem { Command = new RelayCommand(() => open("history")) };
         _settings = new NativeMenuItem { Command = new RelayCommand(() => open("settings")) };
         _setup = new NativeMenuItem { Command = new RelayCommand(() => open("setup")) };
+        _help = new NativeMenuItem { Command = new RelayCommand(() => open("help")) };
         _quit = new NativeMenuItem { Command = new RelayCommand(() => open("quit")) };
         Menu = new NativeMenu();
         foreach (var item in new NativeMenuItemBase[]
@@ -53,7 +55,7 @@ public sealed class TrayMenu
             _toggle, new NativeMenuItemSeparator(),
             _stage, _recent, _selection, new NativeMenuItemSeparator(),
             _show, _history, new NativeMenuItemSeparator(),
-            _settings, _setup, new NativeMenuItemSeparator(),
+            _settings, _setup, _help, new NativeMenuItemSeparator(),
             _quit,
         })
         {
@@ -115,6 +117,7 @@ public sealed class TrayMenu
         _selection.Header = loc["Tray_Selection"];
         _settings.Header = loc["Tray_Settings"];
         _setup.Header = loc["Tray_Setup"];
+        _help.Header = loc["Tray_Help"];
         _quit.Header = loc["Tray_Quit"];
 
         _stage.Menu!.Items.Clear();
