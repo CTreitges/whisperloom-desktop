@@ -52,6 +52,16 @@ public sealed partial class ProfileRowViewModel : ObservableObject
     /// <summary>Hinweis bei ungültigem Regex; leer = gültig.</summary>
     public string TitleWarning => AppProfiles.IsValidPattern(TitlePattern) ? "" : "⚠ " + Loc.Instance["Profile_InvalidTitle"];
 
+    /// <summary>Jede Änderung einer Zeile meldet die Liste (Einstellungsfenster speichert sofort).</summary>
+    protected override void OnPropertyChanged(System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        base.OnPropertyChanged(e);
+        if (e.PropertyName != nameof(TitleWarning))
+        {
+            _owner.Changed?.Invoke();
+        }
+    }
+
     public AppProfile ToProfile() => new()
     {
         Name = Name.Trim(),
@@ -87,7 +97,11 @@ public sealed class ProfilesViewModel
         Rows = [.. desktop.Profiles.Select(p => new ProfileRowViewModel(this, p))];
         AddCommand = new RelayCommand(() => Rows.Add(new ProfileRowViewModel(this, new AppProfile())));
         AddSuggestionsCommand = new RelayCommand(AddSuggestions);
+        Rows.CollectionChanged += (_, _) => Changed?.Invoke();
     }
+
+    /// <summary>Nach jeder Änderung (Einstellungsfenster speichert sofort).</summary>
+    public Action? Changed { get; init; }
 
     public bool Available => OperatingSystem.IsWindows();
 
@@ -101,9 +115,18 @@ public sealed class ProfilesViewModel
 
     public IRelayCommand AddSuggestionsCommand { get; }
 
-    /// <summary>Übernimmt die Zeilen (ohne leere) in die Desktop-Einstellungen (vor dem Speichern).</summary>
-    public void Apply() =>
+    /// <summary>
+    /// Übernimmt die Zeilen (ohne leere) in die Desktop-Einstellungen (vor dem Speichern). Solange eine Zeile einen
+    /// ungültigen Fenstertitel hat, bleibt die gespeicherte Liste unverändert (Fehler steht an der Zeile).
+    /// </summary>
+    public void Apply()
+    {
+        if (Rows.Any(r => r.TitleWarning.Length > 0))
+        {
+            return;
+        }
         _desktop.Profiles = [.. Rows.Select(r => r.ToProfile()).Where(p => p.Process.Length > 0)];
+    }
 
     /// <summary>Fügt die Vorschläge hinzu, die es (nach Prozess) noch nicht gibt.</summary>
     private void AddSuggestions()

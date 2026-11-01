@@ -1,0 +1,39 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:WhisperLoom.App.ViewModels.Settings"
+             xmlns:ds="using:WhisperLoom.App.Design"
+             xmlns:l="using:WhisperLoom.App.Localization"
+             x:Class="WhisperLoom.App.Views.Settings.PrivacyPage"
+             x:DataType="vm:PrivacyPageViewModel">
+  <ds:SettingsPage TitleKey="Page_privacy">
+    <StackPanel Spacing="20">
+      <ds:SettingsGroup TitleKey="G_History" FooterKey="Settings_PrivacyNote">
+        <StackPanel>
+          <ds:SettingRow Path="history.enabled">
+            <ToggleSwitch x:Name="HistoryToggle" IsChecked="{Binding Session.HistoryEnabled}" OnContent="" OffContent="" />
+          </ds:SettingRow>
+          <ds:SettingRow x:Name="HistoryConfirm" TitleKey="History_OffConfirm" DescriptionKey="History_OffConfirm_Desc"
+                         IsVisible="{Binding Session.HistoryOffPending}">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button Content="{Binding [Action_Cancel], Source={x:Static l:Loc.Instance}}" Command="{Binding Session.CancelHistoryOffCommand}" />
+              <Button x:Name="HistoryOffButton" Content="{Binding [History_OffAction], Source={x:Static l:Loc.Instance}}"
+                      Command="{Binding Session.ConfirmHistoryOffCommand}" Foreground="{DynamicResource Loom.Error}" />
+            </StackPanel>
+          </ds:SettingRow>
+          <ds:SettingRow Path="history.size">
+            <ComboBox Classes="row" ItemsSource="{Binding Session.HistorySizes}" SelectedItem="{Binding Session.HistorySize}" />
+          </ds:SettingRow>
+        </StackPanel>
+      </ds:SettingsGroup>
+
+      <ds:SettingsGroup TitleKey="G_Keys">
+        <StackPanel>
+          <ds:SettingRow TitleKey="Settings_KeyStore" DescriptionKey="Set_KeyStore_Desc">
+            <TextBlock x:Name="SecretStoreKindText" Text="{Binding Session.SecretStoreKind}" Foreground="{DynamicResource Loom.TextSecondary}" />
+          </ds:SettingRow>
+          <ds:HintRow x:Name="SecretFileHint" Kind="Warning" TextKey="Settings_KeyFileHint" IsVisible="{Binding Session.SecretStoreIsFile}" Margin="14,0,14,10" />
+        </StackPanel>
+      </ds:SettingsGroup>
+    </StackPanel>
+  </ds:SettingsPage>
+</UserControl>

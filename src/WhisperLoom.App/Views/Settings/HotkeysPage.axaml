@@ -1,0 +1,44 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:WhisperLoom.App.ViewModels.Settings"
+             xmlns:avm="using:WhisperLoom.App.ViewModels"
+             xmlns:ds="using:WhisperLoom.App.Design"
+             xmlns:l="using:WhisperLoom.App.Localization"
+             x:Class="WhisperLoom.App.Views.Settings.HotkeysPage"
+             x:DataType="vm:HotkeysPageViewModel">
+  <!-- Ein Template für alle Aktionen (W2-UI1): Kombi, Aufnehmen, Konfliktwarnungen. -->
+  <ds:SettingsPage TitleKey="Page_hotkeys">
+    <StackPanel Spacing="20">
+      <StackPanel Spacing="8" IsVisible="{Binding IsLinux}">
+        <ds:HintRow TextKey="Setup_LinuxIntro" />
+        <SelectableTextBlock Text="{Binding ToggleCommand}" FontFamily="monospace" Margin="14,0" />
+      </StackPanel>
+      <ds:SettingsGroup TitleKey="G_HotkeysMain" IsVisible="{Binding !IsLinux}">
+        <StackPanel>
+          <ds:SettingRow Path="desktop.hotkeysEnabled">
+            <ToggleSwitch x:Name="HotkeysEnabledBox" IsChecked="{Binding Hotkeys.Enabled}" OnContent="" OffContent="" />
+          </ds:SettingRow>
+        </StackPanel>
+      </ds:SettingsGroup>
+      <ds:SettingsGroup TitleKey="G_Actions" IsVisible="{Binding !IsLinux}">
+        <ItemsControl x:Name="HotkeyRows" ItemsSource="{Binding Hotkeys.All}" IsEnabled="{Binding Hotkeys.Enabled}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="avm:HotkeyRowViewModel">
+              <ds:SettingRow Path="{Binding Path}" Error="{Binding Warnings}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Border Background="{DynamicResource Loom.SurfaceHigh}" CornerRadius="{DynamicResource Loom.Radius.Control}" Padding="10,5" MinWidth="150">
+                    <TextBlock Text="{Binding Value}" FontWeight="SemiBold" FontFamily="monospace" />
+                  </Border>
+                  <Button Content="{Binding [Hotkey_Record], Source={x:Static l:Loc.Instance}}" Command="{Binding RecordCommand}"
+                          IsVisible="{Binding CanRecord}" IsEnabled="{Binding !IsRecording}" AutomationProperties.HelpText="{Binding Label}" />
+                  <TextBlock Text="{Binding [Hotkey_Recording], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding IsRecording}"
+                             VerticalAlignment="Center" Foreground="{DynamicResource Loom.Accent}" TextWrapping="Wrap" MaxWidth="220" />
+                </StackPanel>
+              </ds:SettingRow>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ds:SettingsGroup>
+    </StackPanel>
+  </ds:SettingsPage>
+</UserControl>

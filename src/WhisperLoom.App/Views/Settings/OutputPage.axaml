@@ -1,0 +1,63 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:WhisperLoom.App.ViewModels.Settings"
+             xmlns:p="using:WhisperLoom.App.Features.Profiles"
+             xmlns:ds="using:WhisperLoom.App.Design"
+             xmlns:l="using:WhisperLoom.App.Localization"
+             x:Class="WhisperLoom.App.Views.Settings.OutputPage"
+             x:DataType="vm:OutputPageViewModel">
+  <ds:SettingsPage TitleKey="Page_output">
+    <StackPanel Spacing="20">
+      <ds:HintRow TextKey="Output_LinuxHint" IsVisible="{Binding IsLinux}" />
+      <ds:SettingsGroup TitleKey="G_Insert" IsVisible="{Binding IsWindows}">
+        <StackPanel>
+          <ds:SettingRow Path="desktop.insertMode">
+            <ComboBox x:Name="InsertModeBox" Classes="row" ItemsSource="{Binding Session.InsertModes}" SelectedItem="{Binding Session.InsertMode}" />
+          </ds:SettingRow>
+        </StackPanel>
+      </ds:SettingsGroup>
+
+      <ds:SettingsGroup TitleKey="G_Profiles" IsVisible="{Binding IsWindows}">
+        <StackPanel>
+          <ds:SettingRow Path="desktop.profiles" Stacked="True">
+            <StackPanel Spacing="8">
+              <ItemsControl x:Name="ProfileList" ItemsSource="{Binding Profiles.Rows}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="p:ProfileRowViewModel">
+                    <Border Background="{DynamicResource Loom.SurfaceHigh}" CornerRadius="{DynamicResource Loom.Radius.Control}" Padding="10" Margin="0,4">
+                      <StackPanel Spacing="6">
+                        <Grid ColumnDefinitions="2*,*,2*" ColumnSpacing="8">
+                          <TextBox Text="{Binding Process, UpdateSourceTrigger=LostFocus}" PlaceholderText="{Binding [Profile_Process], Source={x:Static l:Loc.Instance}}"
+                                   AutomationProperties.Name="{Binding [Profile_Process], Source={x:Static l:Loc.Instance}}" />
+                          <TextBox Grid.Column="1" Text="{Binding Name, UpdateSourceTrigger=LostFocus}" PlaceholderText="{Binding [Profile_Name], Source={x:Static l:Loc.Instance}}"
+                                   AutomationProperties.Name="{Binding [Profile_Name], Source={x:Static l:Loc.Instance}}" />
+                          <TextBox Grid.Column="2" Text="{Binding TitlePattern, UpdateSourceTrigger=LostFocus}" PlaceholderText="{Binding [Profile_Title], Source={x:Static l:Loc.Instance}}"
+                                   AutomationProperties.Name="{Binding [Profile_Title], Source={x:Static l:Loc.Instance}}" />
+                        </Grid>
+                        <WrapPanel ItemSpacing="8" LineSpacing="6">
+                          <ComboBox ItemsSource="{Binding Owner.Stages}" SelectedItem="{Binding Stage}" MinWidth="150"
+                                    AutomationProperties.Name="{Binding [Profile_Stage], Source={x:Static l:Loc.Instance}}" />
+                          <ComboBox ItemsSource="{Binding Owner.InsertModes}" SelectedItem="{Binding InsertMode}" MinWidth="180"
+                                    AutomationProperties.Name="{Binding [Profile_InsertMode], Source={x:Static l:Loc.Instance}}" />
+                          <CheckBox IsChecked="{Binding PressEnter}" Content="{Binding [Profile_PressEnter], Source={x:Static l:Loc.Instance}}" />
+                          <CheckBox IsChecked="{Binding Enabled}" Content="{Binding [Profile_Enabled], Source={x:Static l:Loc.Instance}}" />
+                          <Button Content="{Binding [Profile_Remove], Source={x:Static l:Loc.Instance}}" Command="{Binding RemoveCommand}" />
+                        </WrapPanel>
+                        <TextBlock Text="{Binding TitleWarning}" Foreground="{DynamicResource Loom.Error}" FontSize="{DynamicResource Loom.Font.Caption}"
+                                   IsVisible="{Binding TitleWarning.Length}" />
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button x:Name="ProfileAddButton" Content="{Binding [Profile_Add], Source={x:Static l:Loc.Instance}}" Command="{Binding Profiles.AddCommand}" />
+                <Button x:Name="ProfileSuggestionsButton" Content="{Binding [Profile_Suggestions], Source={x:Static l:Loc.Instance}}" Command="{Binding Profiles.AddSuggestionsCommand}" />
+              </StackPanel>
+            </StackPanel>
+          </ds:SettingRow>
+        </StackPanel>
+      </ds:SettingsGroup>
+    </StackPanel>
+  </ds:SettingsPage>
+</UserControl>

@@ -1,82 +1,109 @@
+using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Interactivity;
-using Avalonia.Platform.Storage;
-using WhisperLoom.App.Localization;
+using Avalonia.Input;
+using Avalonia.LogicalTree;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
+using WhisperLoom.App.Design;
 using WhisperLoom.App.ViewModels;
+using WhisperLoom.App.ViewModels.Settings;
 
 namespace WhisperLoom.App.Views;
 
+/// <summary>
+/// Einstellungsfenster = nur Hülle und Navigation (W2-UI1). Tastatur: Tab-Reihenfolge Suche → Seitenleiste → Seite,
+/// Pfeiltasten in der Seitenleiste, Strg+F = Suche, Esc leert die Suche bzw. schließt. Hell/Dunkel folgt dem System.
+/// </summary>
 public partial class SettingsWindow : Window
 {
-    // Doku: docs.avaloniaui.net/docs/concepts/services/storage-provider (abgerufen 2026-10-31).
-    private static readonly FilePickerFileType JsonFiles = new("JSON") { Patterns = ["*.json"], MimeTypes = ["application/json"] };
-
     public SettingsWindow() => InitializeComponent();
 
-    public SettingsWindow(SettingsViewModel viewModel) : this()
+    public SettingsWindow(SettingsViewModel session) : this(new SettingsShellViewModel(session))
     {
-        DataContext = viewModel;
     }
 
-    private SyncViewModel? Sync => (DataContext as SettingsViewModel)?.Sync;
-
-    private void OnClose(object? sender, RoutedEventArgs e) => Close();
-
-    private async void OnExport(object? sender, RoutedEventArgs e)
+    public SettingsWindow(SettingsShellViewModel shell) : this()
     {
-        if (Sync is not { } sync)
+        DataContext = shell;
+        shell.RevealRequested += Reveal;
+        ResultList.SelectionChanged += (_, _) =>
+        {
+            if (ResultList.SelectedItem is SearchResult result)
+            {
+                shell.Open(result);
+            }
+        };
+        SystemTheme.Follow(this, Application.Current?.PlatformSettings);
+        Closing += (_, _) => CommitFocusedText();
+        Closed += (_, _) => shell.Dispose();
+    }
+
+    public SettingsShellViewModel? Shell => DataContext as SettingsShellViewModel;
+
+    /// <summary>Für Bestand und Tests: die Arbeitskopie (Session) des Fensters.</summary>
+    public SettingsViewModel? Settings => Shell?.Session;
+
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        base.OnKeyDown(e);
+        if (e.Handled)
         {
             return;
         }
-        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        if (e.Key == Key.F && e.KeyModifiers == KeyModifiers.Control)
         {
-            Title = Loc.Instance["Sync_Export"],
-            SuggestedFileName = SyncViewModel.SuggestedFileName,
-            DefaultExtension = "json",
-            FileTypeChoices = [JsonFiles],
-        });
-        if (file is null)
-        {
-            return;
+            SearchBox.Focus(NavigationMethod.Tab);
+            e.Handled = true;
         }
-        try
+        else if (e.Key == Key.Escape)
         {
-            await using var stream = await file.OpenWriteAsync();
-            await using var writer = new StreamWriter(stream);
-            await writer.WriteAsync(sync.ExportJson());
-            sync.ExportDone(file.Name);
+            e.Handled = true;
+            if (Shell is { IsSearching: true } shell)
+            {
+                shell.SearchText = "";
+                SearchBox.Focus(NavigationMethod.Tab);
+            }
+            else if (Settings?.Hotkeys.All.Any(r => r.IsRecording) != true)
+            {
+                Close();
+            }
         }
-        catch (IOException)
+        else if (e.Key == Key.Down && e.Source == SearchBox && Shell?.IsSearching == true && ResultList.ItemCount > 0)
         {
-            sync.Status = Loc.Instance["Sync_Invalid"];
+            ResultList.SelectedIndex = 0;
+            (ResultList.ContainerFromIndex(0) as InputElement)?.Focus(NavigationMethod.Directional);
+            e.Handled = true;
         }
     }
 
-    private async void OnImport(object? sender, RoutedEventArgs e)
+    /// <summary>Zeile mit dem Pfad ins Bild holen und ihr Steuerelement fokussieren (nach dem Seitenwechsel).</summary>
+    private void Reveal(string path)
     {
-        if (Sync is not { } sync)
+        Dispatcher.UIThread.Post(() =>
         {
-            return;
-        }
-        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            var row = PageHost.GetVisualDescendants().OfType<SettingRow>().FirstOrDefault(r => r.Path == path)
+                ?? PageHost.GetLogicalDescendants().OfType<SettingRow>().FirstOrDefault(r => r.Path == path);
+            if (row is null)
+            {
+                return;
+            }
+            if (row.FindAncestorOfType<Expander>() is { } expander)
+            {
+                expander.IsExpanded = true;
+            }
+            row.BringIntoView();
+            var target = (row.Content as Control)?.GetVisualDescendants().OfType<InputElement>().FirstOrDefault(i => i.Focusable && i.IsEffectivelyEnabled)
+                ?? row.Content as InputElement;
+            target?.Focus(NavigationMethod.Tab);
+        }, DispatcherPriority.Loaded);
+    }
+
+    /// <summary>Textfelder speichern beim Verlassen; beim Schließen per Esc gilt die letzte Eingabe auch.</summary>
+    private void CommitFocusedText()
+    {
+        if (FocusManager?.GetFocusedElement() is TextBox box)
         {
-            Title = Loc.Instance["Sync_Import"],
-            AllowMultiple = false,
-            FileTypeFilter = [JsonFiles],
-        });
-        if (files.Count == 0)
-        {
-            return;
-        }
-        try
-        {
-            await using var stream = await files[0].OpenReadAsync();
-            using var reader = new StreamReader(stream);
-            await sync.Preview(await reader.ReadToEndAsync());
-        }
-        catch (IOException)
-        {
-            sync.Status = Loc.Instance["Sync_Invalid"];
+            Avalonia.Data.BindingOperations.GetBindingExpressionBase(box, TextBox.TextProperty)?.UpdateSource();
         }
     }
 }

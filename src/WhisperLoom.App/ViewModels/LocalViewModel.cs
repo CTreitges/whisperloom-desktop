@@ -137,7 +137,46 @@ public sealed partial class LocalViewModel : ObservableObject
     [ObservableProperty] private string _ollamaStatus = "";
     [ObservableProperty] private bool _ollamaMissing;
 
-    public bool Accurate { get => _s.Offline.Accurate; set => _s.Offline.Accurate = value; }
+    public bool Accurate
+    {
+        get => _s.Offline.Accurate;
+        set
+        {
+            if (_s.Offline.Accurate != value)
+            {
+                _s.Offline.Accurate = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    /// <summary>Begleitprozess endet nach so vielen Minuten ohne Erkennung (Abschnitt <c>local</c>).</summary>
+    public int IdleMinutes
+    {
+        get => _local.IdleMinutes;
+        set
+        {
+            if (_local.IdleMinutes != value)
+            {
+                _local.IdleMinutes = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    /// <summary>Adresse von Ollama; "" = Standard (127.0.0.1:11434).</summary>
+    public string OllamaUrl
+    {
+        get => _local.OllamaUrl;
+        set
+        {
+            if (_local.OllamaUrl != value)
+            {
+                _local.OllamaUrl = value;
+                OnPropertyChanged();
+            }
+        }
+    }
 
     /// <summary>Womit zuletzt erkannt wurde, z. B. „vulkan · NVIDIA GeForce GTX 1080 Ti“.</summary>
     public string BackendInfo => _parts?.Stt.LastBackend is { } b ? $"{b.Backend} · {b.Device}" : Loc.Instance["Local_NotStarted"];
@@ -149,7 +188,7 @@ public sealed partial class LocalViewModel : ObservableObject
     public async Task RefreshOllama()
     {
         if (_parts is null) return;
-        var models = await OllamaLocalRefiner.ListModelsAsync(_parts.OllamaHttp, LocalParts.OllamaUrl(_s));
+        var models = await OllamaLocalRefiner.ListModelsAsync(_parts.OllamaHttp, _local.OllamaUrl.Length > 0 ? _local.OllamaUrl : OllamaLocalRefiner.DefaultBaseUrl);
         var chosen = OllamaModel ?? "";
         OllamaMissing = models is null;
         OllamaModels.Clear();

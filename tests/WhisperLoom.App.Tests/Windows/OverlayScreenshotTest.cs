@@ -73,7 +73,7 @@ public class OverlayScreenshotTest
         var svm = new SettingsViewModel(f.Controller, new MemorySecretStore(), new FakeAccessChecker(), recordHotkey: () => Task.FromResult<string?>(null));
         var settings = new Views.SettingsWindow(svm) { Width = 900, Height = 680 };
         settings.Show();
-        settings.FindControl<TabItem>("TabHotkeys")!.IsSelected = true;
+        Settings.SettingsUi.Show(settings, "hotkeys");
         Dispatcher.UIThread.RunJobs();
         await Task.Yield();
         Save(settings, "p3-settings-hotkeys.png");

@@ -1,0 +1,99 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Klassen-Styles des Designsystems (docs/design-system.md). Gelten nur, wo die Klasse gesetzt ist. -->
+
+  <!-- Fenster mit Designsystem: Grundfarben und Schrift. -->
+  <Style Selector="Window.loom">
+    <Setter Property="Background" Value="{DynamicResource Loom.Background}" />
+    <Setter Property="Foreground" Value="{DynamicResource Loom.Text}" />
+    <Setter Property="FontSize" Value="{DynamicResource Loom.Font.Body}" />
+  </Style>
+
+  <!-- Text-Knopf (z. B. „Auf Firmenvorgabe zurücksetzen“). -->
+  <Style Selector="Button.link">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Foreground" Value="{DynamicResource Loom.Accent}" />
+    <Setter Property="FontSize" Value="{DynamicResource Loom.Font.Caption}" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <Style Selector="Button.link:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource Loom.Accent}" />
+  </Style>
+
+  <!-- Hauptaktion einer Seite. -->
+  <Style Selector="Button.accent">
+    <Setter Property="Background" Value="{DynamicResource Loom.Accent}" />
+    <Setter Property="Foreground" Value="{DynamicResource Loom.OnAccent}" />
+  </Style>
+
+  <!-- Steuerelemente in Zeilen: einheitliche Breite rechts. -->
+  <Style Selector="ComboBox.row, TextBox.row">
+    <Setter Property="MinWidth" Value="260" />
+    <Setter Property="MaxWidth" Value="320" />
+  </Style>
+  <Style Selector="TextBox.wide">
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+  </Style>
+
+  <!-- „Erweitert“ in einer Gruppe: schlicht, ohne eigenen Rahmen. -->
+  <Style Selector="Expander.advanced">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0,1,0,0" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Loom.Separator}" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="Padding" Value="0" />
+  </Style>
+
+  <!-- Seitenleiste. -->
+  <Style Selector="ListBox.sidebar">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="ListBox.sidebar ListBoxItem">
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Margin" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="ListBox.sidebar ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter, ListBox.sidebar ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="Border.sideItem">
+    <Setter Property="CornerRadius" Value="{DynamicResource Loom.Radius.Control}" />
+    <Setter Property="Padding" Value="8,6" />
+    <Setter Property="Margin" Value="8,1" />
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="ListBoxItem:pointerover Border.sideItem">
+    <Setter Property="Background" Value="{DynamicResource Loom.SurfaceHigh}" />
+  </Style>
+  <Style Selector="ListBoxItem:selected Border.sideItem">
+    <Setter Property="Background" Value="{DynamicResource Loom.Selection}" />
+  </Style>
+  <Style Selector="ListBoxItem:selected Border.sideItem TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource Loom.OnSelection}" />
+  </Style>
+  <Style Selector="ListBoxItem:focus-visible Border.sideItem">
+    <Setter Property="BorderBrush" Value="{DynamicResource Loom.Accent}" />
+    <Setter Property="BorderThickness" Value="2" />
+  </Style>
+  <Style Selector="TextBlock.section">
+    <Setter Property="FontSize" Value="{DynamicResource Loom.Font.Caption}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Loom.TextSecondary}" />
+    <Setter Property="Margin" Value="18,12,0,4" />
+  </Style>
+  <Style Selector="Border.tile">
+    <Setter Property="Width" Value="24" />
+    <Setter Property="Height" Value="24" />
+    <Setter Property="CornerRadius" Value="6" />
+  </Style>
+  <Style Selector="Border.tile PathIcon">
+    <Setter Property="Width" Value="14" />
+    <Setter Property="Height" Value="14" />
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+
+</Styles>

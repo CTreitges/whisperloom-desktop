@@ -1,0 +1,194 @@
+using System.Runtime.CompilerServices;
+using System.Text.Json.Nodes;
+using CommunityToolkit.Mvvm.Input;
+using WhisperLoom.App.Localization;
+using WhisperLoom.App.Services;
+using WhisperLoom.Core.Contracts.Settings;
+using WhisperLoom.Core.Settings;
+
+namespace WhisperLoom.App.ViewModels;
+
+/// <summary>
+/// Sofort speichern (W2-UI1): jede gültige Änderung überträgt nur die geänderten Pfade auf den aktuellen Stand der App
+/// (<see cref="SettingsMerge"/>), damit Änderungen anderer Stellen erhalten bleiben. Commits laufen nacheinander.
+/// </summary>
+public sealed partial class SettingsViewModel
+{
+    private readonly Func<SettingsViewModel> _reopen;
+    private WhisperLoomSettings _baseline;
+    private IReadOnlyList<string> _policyErrorPaths = [];
+    private bool _historyOffPending;
+
+    /// <summary>Einstellungsfenster: jede gültige Änderung gilt sofort. Aus (Assistent): erst <see cref="Save"/>.</summary>
+    public bool AutoSave { get; set; }
+
+    /// <summary>Letzter laufender Commit (Tests und Schließen warten darauf).</summary>
+    public Task Pending { get; private set; } = Task.CompletedTask;
+
+    /// <summary>Neue Arbeitskopie vom aktuellen Stand der App (z. B. nach „Auf Firmenvorgabe zurücksetzen“).</summary>
+    public SettingsViewModel Reopen() => _reopen();
+
+    /// <summary>Verlauf an/aus. Im Fenster fragt „aus“ erst nach (<see cref="HistoryOffPending"/>), denn es löscht den Verlauf.</summary>
+    public bool HistoryEnabled
+    {
+        get => !_historyOffPending && _s.History.Enabled;
+        set
+        {
+            if (AutoSave && !value && _s.History.Enabled)
+            {
+                HistoryOffPending = true;
+                return;
+            }
+            HistoryOffPending = false;
+            SetPlain(() => _s.History.Enabled = value);
+        }
+    }
+
+    /// <summary>Rückfrage „Verlauf löschen?“ sichtbar.</summary>
+    public bool HistoryOffPending
+    {
+        get => _historyOffPending;
+        private set
+        {
+            if (SetProperty(ref _historyOffPending, value))
+            {
+                OnPropertyChanged(nameof(HistoryEnabled));
+            }
+        }
+    }
+
+    [RelayCommand]
+    private void ConfirmHistoryOff()
+    {
+        HistoryOffPending = false;
+        SetPlain(() => _s.History.Enabled = false);
+        OnPropertyChanged(nameof(HistoryEnabled));
+    }
+
+    [RelayCommand]
+    private void CancelHistoryOff() => HistoryOffPending = false;
+
+    /// <summary>Setzt den Firmenwert eines Pfades (Vorgabe) und speichert sofort.</summary>
+    public async Task ResetToDefaultAsync(string path, JsonNode? value)
+    {
+        await Pending;
+        var json = SettingsMerge.ToJson(_controller.Settings);
+        SettingsMerge.Set(json, path, value?.DeepClone());
+        await ApplyAsync(SettingsMerge.FromJson(json));
+    }
+
+    /// <summary>Gültige Änderung an der Kopie: im Fenster sofort speichern.</summary>
+    internal void Touch()
+    {
+        if (!_ready || !AutoSave)
+        {
+            return;
+        }
+        var previous = Pending;
+        Pending = Run();
+
+        async Task Run()
+        {
+            await previous;
+            await CommitAsync();
+        }
+    }
+
+    /// <summary>Schreibt ohne Prüfung, meldet die Eigenschaft und speichert.</summary>
+    private void SetPlain(Action write, [CallerMemberName] string? property = null)
+    {
+        write();
+        OnPropertyChanged(property);
+        Touch();
+    }
+
+    /// <summary>Gültig → schreiben und speichern; ungültig → nur Fehler am Pfad, die Kopie bleibt (Eingabe bleibt stehen).</summary>
+    private void SetChecked(string path, string value, Func<string, string?> check, Action<string> write, [CallerMemberName] string? property = null)
+    {
+        var error = check(value);
+        Errors.Set(path, error);
+        if (error is null)
+        {
+            write(value);
+            OnPropertyChanged(property);
+            Touch();
+        }
+    }
+
+    private async Task CommitAsync()
+    {
+        var candidate = BuildResult();
+        var changed = SettingsMerge.Changed(_baseline, candidate);
+        if (changed.Count == 0)
+        {
+            return;
+        }
+        if (await ApplyAsync(SettingsMerge.Apply(_controller.Settings, candidate, changed)))
+        {
+            _baseline = candidate;
+        }
+    }
+
+    /// <summary>Auswahlen und Unterseiten in die Kopie schreiben; Ergebnis ist eine eigenständige Kopie.</summary>
+    private WhisperLoomSettings BuildResult()
+    {
+        _s.Stt.ProviderId = SttProvider.Value;
+        _s.SttFallback.ProviderId = SttFallbackProvider.Value;
+        _s.Llm.ProviderId = LlmProvider.Value;
+        _s.LlmFallback.ProviderId = LlmFallbackProvider.Value;
+        _s.Language = Language.Value;
+        _s.Refine.Stage = Stage.Value;
+        _s.History.Size = HistorySize;
+        _desktop.ProxyMode = ProxyMode.Value;
+        _desktop.Output = Output.Value;
+        _desktop.Microphone = Microphone.Value;
+        _desktop.UiLanguage = UiLanguage.Value;
+        _desktop.InsertMode = InsertMode.Value;
+        Hotkeys.Apply();
+        Profiles.Apply();
+        SettingsStore.SetDesktop(_s, _desktop);
+        Local.Apply();
+        return SettingsJson.Deserialize(SettingsJson.Serialize(_s));
+    }
+
+    /// <summary>Wie ein Import: gesperrte Felder bleiben, fester Verlauf gilt, nicht freigegebene Anbieter werden abgelehnt.</summary>
+    private async Task<bool> ApplyAsync(WhisperLoomSettings result)
+    {
+        if (_policy.IsActive)
+        {
+            var preview = SyncImport.ApplyPolicy(_controller.Settings, result, _policy);
+            ShowPolicyErrors(preview.Errors);
+            if (!preview.CanApply)
+            {
+                SaveStatus = string.Join(Environment.NewLine, preview.Errors);
+                return false;
+            }
+            result = preview.Settings!;
+        }
+        Loc.Instance.SetLanguage(SettingsStore.Desktop(result).UiLanguage);
+        try
+        {
+            await _controller.ApplySettingsAsync(result);
+            SaveStatus = Loc.Instance["Settings_Saved"];
+        }
+        catch (IOException)
+        {
+            SaveStatus = Loc.Instance["Settings_HistoryClearError"];
+        }
+        return true;
+    }
+
+    /// <summary>Verstöße („stt.baseUrl: …“) als Inline-Fehler am Pfad.</summary>
+    private void ShowPolicyErrors(IReadOnlyList<string> errors)
+    {
+        foreach (var path in _policyErrorPaths)
+        {
+            Errors.Set(path, null);
+        }
+        _policyErrorPaths = [.. errors.Select(e => e.Split(':')[0].Trim()).Distinct()];
+        foreach (var path in _policyErrorPaths)
+        {
+            Errors.Set(path, Loc.Instance["Validation_Policy"]);
+        }
+    }
+}
