@@ -30,6 +30,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 - **Settings window** (W3-PERF): Tab right after ↑/↓ in the sidebar no longer leaves nothing focused (focus returns to
   the sidebar); pre-built pages are no longer exposed to screen readers (UIA/AT-SPI) and never inherit the window's
   data for a moment; the Providers page reads its keys once instead of on every visit.
+- **Command line** (W3-FUND): redirected output (scripts, pipes) is now UTF-8 on Windows too; umlauts in `warn`/`error`
+  lines no longer arrive as replacement characters.
 
 ## [1.0.0] – 2026-11-02
 
