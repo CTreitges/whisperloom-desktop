@@ -55,6 +55,14 @@ class PackTest(unittest.TestCase):
         lines = [line.strip() for line in workflow.splitlines() if line.strip().startswith('version="$base-test.')]
         self.assertEqual(lines, ['version="$base-test.$RUN_NUMBER.$slug" ;;'])
 
+    def test_release_workflow_prueft_dry_run(self):
+        # Prüfer W3-CHAN (D3): dry_run entscheidet über einen echten Release, nur genau true|false durchlassen.
+        workflow = (pack.ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+        meta = workflow[workflow.index("jobs:"):workflow.index("  test:")]
+        self.assertIn('case "$dry_run" in', meta)
+        self.assertIn("true|false) ;;", meta)
+        self.assertLess(meta.index('case "$dry_run" in'), meta.index('echo "dry_run=$dry_run" >> "$GITHUB_OUTPUT"'))
+
     def test_publish_setzt_version_und_rid(self):
         cmd = pack.publish_cmd("0.9.1", "linux-x64", Path("pub"))
         self.assertIn("-p:Version=0.9.1", cmd)

@@ -110,6 +110,11 @@ jobs:
           if ! is "$version" "^${core}(-[0-9A-Za-z.-]+)?$"; then
             echo "::error::Version ist kein SemVer: $version"; exit 1
           fi
+          # dry_run steuert, ob ein Release entsteht: nur genau true oder false, alles andere bricht ab.
+          case "$dry_run" in
+            true|false) ;;
+            *) echo "::error::dry_run muss true oder false sein"; exit 1 ;;
+          esac
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "channel=$channel" >> "$GITHUB_OUTPUT"
           echo "dry_run=$dry_run" >> "$GITHUB_OUTPUT"
