@@ -155,6 +155,19 @@ Vorrang: ein Profil mit passendem `titlePattern` vor einem Profil nur mit `proce
 Liste. Der Stufen-Hotkey ändert die Stufe des passenden Profils (Vordergrundfenster bzw. Ziel des laufenden Diktats) und
 speichert sie hier; ohne passendes Profil ändert er `refine.stage`.
 
+### Update-Kanal (`desktop`, W3-CHAN)
+
+Zwei weitere Felder im Abschnitt `desktop` (Seite „Allgemein“, Gruppe „Updates“):
+
+| Feld | Typ | Standard | Bedeutung |
+|---|---|---|---|
+| `updateChannel` | Text | `"stable"` | `stable`/`beta`/`test`; Unbekanntes gilt als `stable`. Velopack-Kanal: `win`/`linux` (stabil, wie 1.0.0), `win-beta`/`linux-beta`, `win-test`/`linux-test` |
+| `updatePrereleaseAuto` | bool | `false` | `false`: Die automatische Prüfung bietet nur stabile Versionen an, auch im Kanal Beta/Test. `true`: zusätzlich die Vorabversionen des gewählten Kanals (die höhere Version gewinnt) |
+
+Die automatische Prüfung installiert nie eine niedrigere Version. Niedrigere Versionen und der Rückweg zu Stabil gehen nur
+über „Version wählen …“ (Tray, Seite „Allgemein“) mit Rückfrage. `policy.updatesEnabled = false` sperrt auch Kanalwahl,
+Schalter und Versionsliste. Ältere Versionen ignorieren beide Felder und geben sie beim Speichern unverändert zurück.
+
 ## Provisioning-Zusatz
 
 Nur in Dateien für `WhisperLoom provision <datei>` (siehe [provisioning.md](provisioning.md)). Ein normaler Import

@@ -1,11 +1,17 @@
 name: Release
-# Tag v* → Tests → publish + vpk pack (win-x64, linux-x64) → GitHub-Release als Entwurf (Veröffentlichen erst nach OK).
+# Update-Kanäle (W3-CHAN): stabil (Velopack-Kanal win/linux wie 1.0.0), beta (win-beta/linux-beta), test (win-test/linux-test).
+# - Tag vX.Y.Z → stabil → GitHub-Release als Entwurf (Veröffentlichen erst nach Christofs OK).
+# - Tag vX.Y.Z-beta.N → beta → Pre-Release, direkt veröffentlicht (Velopack sieht keine Entwürfe; der Tag ist die Freigabe).
+# - workflow_dispatch → Kanal wählbar; test baut X.Y.Z-test.<run_number>.<branch-slug> aus dem gewählten Ref (--ref),
+#   Pre-Release, direkt veröffentlicht. Nie je Push.
 # Ohne Signierschritt: die Firma signiert selbst (docs/signing.md).
 # Probelauf: workflow_dispatch mit dry_run=true (Standard) und jeder PR, der Release-Dateien ändert; baut und packt alles,
 # lädt die Pakete nur als Workflow-Artefakte hoch, nie als Release.
 # Doku: docs.velopack.io/distributing/github-actions, docs.velopack.io/packaging/cross-compiling (abgerufen 2026-11-01),
+# Context7 /velopack/velopack.docs, Kanäle (abgerufen 2026-11-02),
 # docs.github.com/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows,
-# cli.github.com/manual/gh_release_create (abgerufen 2026-11-01).
+# docs.github.com/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions
+# (Script-Injection: Eingaben über env) (abgerufen 2026-11-02), cli.github.com/manual/gh_release_create (abgerufen 2026-11-01).
 on:
   push:
     tags: ["v*"]
@@ -15,10 +21,15 @@ on:
         description: "Probelauf: nichts als Release hochladen"
         type: boolean
         default: true
+      channel:
+        description: "Update-Kanal (test = Test-Build aus dem gewählten Branch)"
+        type: choice
+        options: [test, beta, stable]
+        default: test
       version:
-        description: "Version (SemVer, ohne v)"
+        description: "Version ohne v: stable X.Y.Z, beta X.Y.Z-beta.N; test: nur X.Y.Z (leer = nächste Minor nach dem letzten stabilen Tag)"
         type: string
-        default: "0.0.1-dryrun"
+        default: ""
   pull_request:
     paths:
       - ".github/workflows/release.yml"
@@ -38,32 +49,76 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.v.outputs.version }}
+      channel: ${{ steps.v.outputs.channel }}
       dry_run: ${{ steps.v.outputs.dry_run }}
     steps:
       - id: v
         shell: bash
-        # Eingaben nur über env, nie direkt in das Skript (Script-Injection).
+        # Eingaben (Ref, Branch-Name, Version, Kanal) nur über env, nie direkt in das Skript (Script-Injection);
+        # alles, was in Version oder Tag landet, prüft eine Regex.
         env:
           EVENT: ${{ github.event_name }}
           REF_TYPE: ${{ github.ref_type }}
           REF_NAME: ${{ github.ref_name }}
           IN_VERSION: ${{ inputs.version }}
+          IN_CHANNEL: ${{ inputs.channel }}
           IN_DRY_RUN: ${{ inputs.dry_run }}
           RUN_NUMBER: ${{ github.run_number }}
+          REPO: ${{ github.repository }}
         run: |
+          set -euo pipefail
+          core='[0-9]+\.[0-9]+\.[0-9]+'
+          # [[ =~ ]] prüft den ganzen Wert; grep -E prüfte zeilenweise (Zeilenumbruch in einer Eingabe käme durch).
+          is() { [[ "$1" =~ $2 ]]; }
           if [ "$EVENT" = push ] && [ "$REF_TYPE" = tag ]; then
             version="${REF_NAME#v}"; dry_run=false
+            if is "$version" "^${core}$"; then channel=stable
+            elif is "$version" "^${core}-beta\.[0-9]+$"; then channel=beta
+            else echo "::error::Tag muss vX.Y.Z oder vX.Y.Z-beta.N sein (Test-Builds nur per workflow_dispatch)"; exit 1
+            fi
           elif [ "$EVENT" = workflow_dispatch ]; then
-            version="$IN_VERSION"; dry_run="$IN_DRY_RUN"
+            channel="$IN_CHANNEL"; dry_run="$IN_DRY_RUN"
+            case "$channel" in
+              stable) is "$IN_VERSION" "^${core}$" || { echo "::error::stable braucht version X.Y.Z"; exit 1; }
+                      version="$IN_VERSION" ;;
+              beta)   is "$IN_VERSION" "^${core}-beta\.[0-9]+$" || { echo "::error::beta braucht version X.Y.Z-beta.N"; exit 1; }
+                      version="$IN_VERSION" ;;
+              test)
+                if [ -n "$IN_VERSION" ]; then
+                  is "$IN_VERSION" "^${core}$" || { echo "::error::test: version nur X.Y.Z oder leer"; exit 1; }
+                  base="$IN_VERSION"
+                else
+                  # Nächste Minor nach dem höchsten stabilen Tag (ohne Checkout, öffentliches Repo).
+                  last=$(git ls-remote --tags --refs "https://github.com/$REPO" 'v*' | sed 's#.*refs/tags/v##' \
+                    | grep -E "^${core}$" | sort -V | tail -n 1 || true)
+                  if [ -z "$last" ]; then base=0.1.0
+                  else IFS=. read -r major minor _ <<< "$last"; base="$major.$((minor + 1)).0"
+                  fi
+                fi
+                # Branch-Slug: klein, nur a-z0-9 und Bindestrich, höchstens 30 Zeichen; rein numerisch → Präfix b (SemVer).
+                slug=$(printf '%s' "$REF_NAME" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//' | cut -c1-30 | sed -E 's/-+$//')
+                if is "$slug" '^[0-9]+$'; then slug="b$slug"; fi
+                is "$slug" '^[a-z0-9]+(-[a-z0-9]+)*$' || { echo "::error::Branch-Slug ungültig"; exit 1; }
+                # Laufnummer vor dem Slug: SemVer vergleicht Kennungen von links, so ist der spätere Lauf immer höher
+                # (sonst stünde test.main.50 über test.feat-a.51).
+                version="$base-test.$RUN_NUMBER.$slug" ;;
+              *) echo "::error::Kanal unbekannt"; exit 1 ;;
+            esac
           else
-            version="0.0.1-dryrun.$RUN_NUMBER"; dry_run=true
+            version="0.0.1-dryrun.$RUN_NUMBER"; channel=test; dry_run=true
           fi
-          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+          if ! is "$version" "^${core}(-[0-9A-Za-z.-]+)?$"; then
             echo "::error::Version ist kein SemVer: $version"; exit 1
           fi
+          # dry_run steuert, ob ein Release entsteht: nur genau true oder false, alles andere bricht ab.
+          case "$dry_run" in
+            true|false) ;;
+            *) echo "::error::dry_run muss true oder false sein"; exit 1 ;;
+          esac
           echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "channel=$channel" >> "$GITHUB_OUTPUT"
           echo "dry_run=$dry_run" >> "$GITHUB_OUTPUT"
-          echo "Version $version, dry_run=$dry_run"
+          echo "Version $version, Kanal $channel, dry_run=$dry_run"
 
   test:
     needs: meta
@@ -101,8 +156,11 @@ jobs:
         shell: bash
         env:
           VERSION: ${{ needs.meta.outputs.version }}
+          CHANNEL: ${{ needs.meta.outputs.channel }}
           RID: ${{ matrix.rid }}
-        run: python build/pack.py --version "$VERSION" --rid "$RID" --out Releases --work work
+        run: |
+          python build/pack.py --version "$VERSION" --rid "$RID" --out Releases --work work --channel "$CHANNEL"
+          ls -la Releases
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: packages-${{ matrix.rid }}
@@ -122,13 +180,20 @@ jobs:
           pattern: packages-*
           path: Releases
           merge-multiple: true
-      # Entwurf: Velopack (GithubSource) sieht erst den veröffentlichten Release; veröffentlichen nach Christofs OK.
-      - name: GitHub-Release (Entwurf)
+      # Stabil als Entwurf: Velopack (GitHub-Quelle) sieht erst den veröffentlichten Release; veröffentlichen nach
+      # Christofs OK. Beta/Test als Pre-Release direkt veröffentlicht (der manuelle Auslöser bzw. Tag ist die Freigabe).
+      - name: GitHub-Release
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.meta.outputs.version }}
+          CHANNEL: ${{ needs.meta.outputs.channel }}
         run: |
           ls -la Releases
-          gh release create "v$VERSION" Releases/* --draft --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-            --title "WhisperLoom $VERSION" \
-            --notes "Windows: WhisperLoom-win-Setup.exe (pro Benutzer, ohne Admin) oder WhisperLoom-$VERSION-win-x64-portable.zip. Linux: WhisperLoom.AppImage. Unsigniert, siehe docs/signing.md."
+          if [ "$CHANNEL" = stable ]; then
+            mode=--draft; setup=WhisperLoom-win-Setup.exe; kind=""
+          else
+            mode=--prerelease; setup="WhisperLoom-win-$CHANNEL-Setup.exe"; kind=" ($CHANNEL, Vorabversion)"
+          fi
+          gh release create "v$VERSION" Releases/* "$mode" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "WhisperLoom $VERSION$kind" \
+            --notes "Windows: $setup (pro Benutzer, ohne Admin) oder WhisperLoom-$VERSION-win-x64-portable.zip. Linux: AppImage. Unsigniert, siehe docs/signing.md. Update-Kanal: $CHANNEL."

@@ -18,7 +18,24 @@ internal static class UpdatePrompt
         return answer.Task;
     }
 
-    internal static Window Create(string version, TaskCompletionSource<bool> answer)
+    /// <summary>
+    /// Rückfrage der Versionsliste (W3-CHAN): Installieren einer gewählten Version; ein Downgrade (niedrigere Version,
+    /// Rückweg zu Stabil) bekommt einen eigenen Hinweis.
+    /// </summary>
+    public static Task<bool> AskInstallAsync(string version, bool downgrade)
+    {
+        var answer = new TaskCompletionSource<bool>();
+        CreateInstall(version, downgrade, answer).Show();
+        return answer.Task;
+    }
+
+    internal static Window CreateInstall(string version, bool downgrade, TaskCompletionSource<bool> answer) =>
+        Build(Loc.Instance.Format(downgrade ? "Channel_ConfirmDowngrade" : "Channel_ConfirmInstall", version), answer);
+
+    internal static Window Create(string version, TaskCompletionSource<bool> answer) =>
+        Build(Loc.Instance.Format("Update_Available", version), answer);
+
+    private static Window Build(string text, TaskCompletionSource<bool> answer)
     {
         var loc = Loc.Instance;
         var install = new Button { Name = "Install", Content = loc["Update_Install"], IsDefault = true };
@@ -36,7 +53,7 @@ internal static class UpdatePrompt
                 MaxWidth = 480,
                 Children =
                 {
-                    new TextBlock { Text = loc.Format("Update_Available", version), TextWrapping = Avalonia.Media.TextWrapping.Wrap },
+                    new TextBlock { Text = text, TextWrapping = Avalonia.Media.TextWrapping.Wrap },
                     new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right, Children = { later, install } },
                 },
             },

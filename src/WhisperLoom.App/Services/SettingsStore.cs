@@ -50,6 +50,12 @@ public sealed class DesktopSettings
     /// <summary>Windows: letztes Diktat erneut ins Vordergrundfenster einfügen (WLD-P5b).</summary>
     public string HotkeyReinsert { get; set; } = "Ctrl+Alt+Shift+V";
 
+    /// <summary>Update-Kanal (W3-CHAN): "stable" (Standard), "beta" oder "test"; Unbekanntes gilt als "stable".</summary>
+    public string UpdateChannel { get; set; } = "stable";
+
+    /// <summary>W3-CHAN: Die automatische Prüfung bietet auch Vorabversionen des Kanals an; Standard aus (nur stabile).</summary>
+    public bool UpdatePrereleaseAuto { get; set; }
+
     /// <summary>App-Profile (WLD-P5b): Stufe, Ausgabemodus und Enter je Zielprogramm; Reihenfolge = Vorrang unter gleich genauen.</summary>
     public List<Features.Profiles.AppProfile> Profiles { get; set; } = [];
 
