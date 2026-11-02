@@ -121,6 +121,32 @@ def run(cmd: list[str]) -> None:
     subprocess.run(cmd, check=True, cwd=ROOT)
 
 
+def published_exe(publish_dir: Path, rid: str) -> Path:
+    return publish_dir / (f"{PACK_ID}.exe" if target_os(rid) == "win" else PACK_ID)
+
+
+def start_check(publish_dir: Path, rid: str, version: str, host: str) -> bool:
+    """Starttest der veröffentlichten Binärdatei vor dem Packen (W3-PERF R1): `<exe> --version`, Exit 0, stdout genau
+    `WhisperLoom <version>`.
+
+    Prüft genau die Dateien, die danach in Setup, AppImage und portable ZIP landen (ReadyToRun, self-contained).
+    Cross-Pack (Ziel-OS ≠ Host) lässt sich nicht starten: dann übersprungen, Rückgabe False. Fehlschlag → RuntimeError.
+    """
+    if target_os(rid) != host:
+        print(f"start-check {rid}: übersprungen (Cross-Pack von {host})", flush=True)
+        return False
+    exe = published_exe(publish_dir, rid)
+    print(f"+ {exe} --version", flush=True)
+    try:
+        result = subprocess.run([str(exe), "--version"], capture_output=True, text=True, timeout=120, cwd=ROOT)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        raise RuntimeError(f"start-check {rid}: {type(e).__name__}") from e
+    if result.returncode != 0 or result.stdout.strip() != f"{PACK_ID} {version}":
+        raise RuntimeError(f"start-check {rid}: exit={result.returncode} stdout={result.stdout.strip()!r}")
+    print(f"start-check {rid}: {result.stdout.strip()}", flush=True)
+    return True
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--version", required=True)
@@ -135,6 +161,11 @@ def main(argv: list[str] | None = None) -> int:
     publish_dir = ((args.work or out.parent / "publish").resolve()) / f"{args.rid}-{version}"
 
     run(publish_cmd(version, args.rid, publish_dir))
+    try:
+        start_check(publish_dir, args.rid, version, host_os())
+    except RuntimeError as e:
+        print(f"PACK FEHLER {e}", file=sys.stderr, flush=True)
+        return 1
     run(["dotnet", "tool", "restore"])
     run(vpk_cmd(version, args.rid, publish_dir, out, host_os(), args.channel))
     if args.rid.startswith("win"):

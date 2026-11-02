@@ -49,6 +49,7 @@ internal static class Program
                 "bench" => RunBench(request),
                 "key" => RunKeyCommand(request),
                 "version" => RunVersion(),
+                "usage" => RunUsage(Console.Out),
                 "update" => RunUpdate(request),
                 "join" => RunJoin(request, endpoint),
                 _ => RunSyncCommand(request, endpoint),
@@ -167,6 +168,13 @@ internal static class Program
             Console.Error.WriteLine($"bench: {e.GetType().Name}: {e.Message}");
             return 1;
         }
+    }
+
+    /// <summary><c>--help</c> bzw. <c>-h</c>: Aufrufübersicht auf stdout, Exit 0, ohne Instanz (W3-PERF N8).</summary>
+    internal static int RunUsage(TextWriter output)
+    {
+        output.WriteLine(CommandLine.Usage);
+        return 0;
     }
 
     private static int RunVersion()
