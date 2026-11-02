@@ -65,7 +65,12 @@ public sealed class PageViewCache(Control owner, Panel staging) : IDataTemplate
         {
             yield break;
         }
-        yield return () => staging.Children.Add(view);
+        yield return () =>
+        {
+            // Vor dem Anhängen setzen: sonst erbt die View kurz den DataContext des Fensters (Hülle) aus dem Staging-Panel.
+            view.DataContext = page;
+            staging.Children.Add(view);
+        };
         foreach (var group in view.GetLogicalDescendants().OfType<SettingsGroup>().Cast<Layoutable>().ToList())
         {
             yield return () =>

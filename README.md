@@ -86,7 +86,8 @@ Einstellungen vorgegeben, entfallen die gesperrten Schritte.
 | Markierung umschreiben | Strg+Alt+Umschalt+R, dann Anweisung sprechen | – |
 
 Weitere Befehle: `start`, `stop`, `cancel`, `pause`, `resume`, `show`, `setup`, `settings`, `help`, `status --json`, `reprocess <stufe>`,
-`recent-insert <n>`, `update`, `--version`, `quit`.
+`recent-insert <n>`, `update`, `--version`, `quit`. Aufrufübersicht aller Befehle: `WhisperLoom --help` (oder `-h`);
+`WhisperLoom help` öffnet dagegen das Hilfefenster.
 
 ### Lokale Modelle und eigene Anbieter
 Eigene Whisper-Dateien, lokale Server (LM Studio, llama.cpp, faster-whisper-server), mitgeliefertes Textmodell über
@@ -228,7 +229,8 @@ Skip it any time; run it again from tray → **Setup …** or with `WhisperLoom 
 | Rewrite the selection | Ctrl+Alt+Shift+R, then speak the instruction | – |
 
 More verbs: `start`, `stop`, `cancel`, `pause`, `resume`, `show`, `setup`, `settings`, `help`, `status --json`, `reprocess <stage>`,
-`recent-insert <n>`, `update`, `--version`, `quit`.
+`recent-insert <n>`, `update`, `--version`, `quit`. Overview of all commands: `WhisperLoom --help` (or `-h`);
+`WhisperLoom help` opens the help window instead.
 
 ### In companies
 - **Proxy:** system proxy incl. PAC and NTLM/Kerberos with the Windows account, manual, or off – [`docs/proxy.md`](docs/proxy.md).

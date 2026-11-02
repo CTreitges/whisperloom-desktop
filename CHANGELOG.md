@@ -23,6 +23,13 @@ versions follow [Semantic Versioning](https://semver.org/).
   version …“ in the tray and on the General page to install any version, including a confirmed downgrade back to
   stable. Test builds only on manual trigger (`X.Y.Z-test.<run>.<branch>`), betas from tags `vX.Y.Z-beta.N`; the
   update source now reads up to 100 GitHub releases (Velopack's default only saw the latest 10).
+- **`--help` / `-h`** (W3-PERF): print the command overview (exit 0) without starting the app; `help` still opens the
+  help window. `build/pack.py` now runs `WhisperLoom --version` on the published binary before packing and stops if it fails.
+
+### Fixed
+- **Settings window** (W3-PERF): Tab right after ↑/↓ in the sidebar no longer leaves nothing focused (focus returns to
+  the sidebar); pre-built pages are no longer exposed to screen readers (UIA/AT-SPI) and never inherit the window's
+  data for a moment; the Providers page reads its keys once instead of on every visit.
 
 ## [1.0.0] – 2026-11-02
 
