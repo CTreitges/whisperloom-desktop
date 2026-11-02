@@ -10,23 +10,27 @@ Test-Credential-Präfix, keine globalen Hotkeys, Lock-Datei, Beenden nur per eig
 Seiten, 5 Runden, Ruhe = 250 ms ohne Pixeländerung im Client-Bereich). Start: `measure.py startup` (10 Warmstarts, Verb `show`).
 Untergrenze der Abtastung in dieser Sitzung ≈ 34 ms (für alle Fenster gleich, Anzeige-/Abtastpfad).
 
-## Ampel je Faktorgruppe (Baseline)
+## Ampel je Faktorgruppe
 
-| Faktorgruppe | Baseline | Grundlage |
-|---|---|---|
-| UI-Thread / Dispatcher | 🔴 rot | Klick „Erkennung“ (erstes Öffnen) UI-Blockade 141 ms |
-| async/await-Fallen | 🟢 grün | 2 Befunde niedrig |
-| I/O auf dem UI-Thread | 🟢 grün | 0 Befunde |
-| GC / Allokationen | 🟡 gelb | `Views/Help/HelpIllustration.cs:118` neuer `Pen` je Shape und Render |
-| Binding / Compiled Bindings | 🟢 grün | 1 Befund niedrig |
-| Layout / Measure / Arrange | 🟢 grün | 0 Befunde |
-| Styles / Selektoren / Ressourcen | 🟢 grün | 0 Befunde |
-| Virtualisierung | 🟢 grün | nur kurze, feste Listen (herabgestuft) |
-| Rendering / Compositor / GPU | 🟢 grün | 0 Befunde |
-| Hover-/Pointer-Pfad, Transitions | 🔴 rot | Klick „Erkennung“ erste Reaktion 266 ms; Hover sonst ≈ 34 ms p95 |
-| Startzeit (JIT/R2R/AOT/Trimming) | 🟡 gelb | bereit p50 1567 ms (dotnet build), kein ReadyToRun |
-| DPI / Multi-Monitor | 🟢 grün | 0 Befunde |
-| Treiber / Energieprofil | 🟢 grün | Endlos-Animationen nur bei `.recording` (herabgestuft) |
+Baseline = main caf0ed7 + Messzugang (`dotnet build`), Endstand = main 9f62039 als Publish win-x64 mit den Schaltern aus
+`build/pack.py` (wie das Release), Abschlussmessung unten.
+
+| Faktorgruppe | Baseline | Endstand | Grundlage Endstand |
+|---|---|---|---|
+| UI-Thread / Dispatcher | rot | 🟡 gelb | Klick „Erkennung“ UI-Blockade 54,9 ms; Vorbau nach dem Öffnen 76,5 ms (Ausnahme A1) |
+| async/await-Fallen | grün | 🟢 grün | 2 Befunde niedrig |
+| I/O auf dem UI-Thread | grün | 🟢 grün | 0 Befunde |
+| GC / Allokationen | gelb | 🟢 grün | 0 Befunde (PERF-4), GC während Hover 0–2 Sammlungen |
+| Binding / Compiled Bindings | grün | 🟢 grün | 1 Befund niedrig |
+| Layout / Measure / Arrange | grün | 🟢 grün | 0 Befunde |
+| Styles / Selektoren / Ressourcen | grün | 🟢 grün | 0 Befunde |
+| Virtualisierung | grün | 🟢 grün | nur kurze, feste Listen (herabgestuft) |
+| Rendering / Compositor / GPU | grün | 🟢 grün | 0 Befunde |
+| Hover-/Pointer-Pfad, Transitions | rot | 🟢 grün | langsamstes Element erste Reaktion p95 34,7 ms; Klick „Erkennung“ 34,2 ms |
+| Startzeit (JIT/R2R/AOT/Trimming) | gelb | 🟡 gelb | bereit p50 1002,2 ms, p95 1098,5 ms (Ausnahme A2) |
+| DPI / Multi-Monitor | grün | 🟢 grün | 0 Befunde |
+| Treiber / Energieprofil | grün | 🟢 grün | Endlos-Animationen nur bei `.recording` (herabgestuft) |
+| Linux (alle Messgruppen) | nicht gemessen | ⚪ nicht gemessen | Skill-Lücke: keine UI-Messung unter Linux |
 
 Hover Baseline (erste Reaktion p95 des langsamsten Elements): Bühne 34,6 ms · Einrichtung 34,7 ms · Einstellungen 34,8 ms ·
 Hilfe 34,6 ms — überall grün, UI-Blockade ≤ 8 ms.
@@ -60,8 +64,8 @@ nicht vorgebaute Seite und kostet wie vorher. Wiederholte Wechsel werden nicht s
 Binden kostet bei „Erkennung“ etwa so viel wie der Neubau, dazu ein Frame Verzögerung durch die Hintergrund-Priorität.
 Sichtbare Nebenwirkung: Scroll-Stand und aufgeklappte „Erweitert“-Bereiche bleiben über Seitenwechsel erhalten.
 
-Ampel-Wirkung allein (ohne R2R): Hover-/Pointer-Pfad 🔴 → 🟢 (Klick erste Reaktion ≤ 34 ms); UI-Thread bleibt 🔴
-(Vorbau 156,5 ms nach dem Öffnen). Erst mit PERF-3 (ReadyToRun) sinkt der Vorbau auf 77,6 ms (🟡, siehe Abschlussmessung).
+Ampel-Wirkung allein (ohne R2R): Hover-/Pointer-Pfad rot → grün (Klick erste Reaktion ≤ 34 ms); UI-Thread bleibt rot
+(Vorbau 156,5 ms nach dem Öffnen). Erst mit PERF-3 (ReadyToRun) sinkt der Vorbau auf 77,6 ms (gelb, siehe Abschlussmessung).
 
 ### PERF-3 ReadyToRun im Publish (Windows ohne, Linux mit Composite)
 
@@ -99,11 +103,44 @@ Vorher/Nachher headless (1000 × `Render` der Illustration „recognition“, 18
 Die Hover-Messung zeichnet die Illustration nicht neu (Allokation dort unverändert, Rauschen); der Fix wirkt beim Scrollen,
 bei Größenänderung und beim Theme-Wechsel.
 
+## Abschlussmessung (main 9f62039, Publish win-x64 wie Release)
+
+| Messung | Baseline | Endstand |
+|---|---|---|
+| Start sichtbar p50 | 1200,3 ms | 672,8 ms |
+| Start bereit p50 / p95 | 1567,2 / 1696,5 ms | 1002,2 / 1098,5 ms |
+| Hover Bühne / Einrichtung / Einstellungen / Hilfe: erste Reaktion p95 (max) | 34,6 / 34,7 / 34,8 / 34,6 ms | 34,7 / 34,4 / 34,4 / 34,3 ms |
+| Hover: UI-Blockade max (alle Fenster) | 8,3 ms | 25,8 ms |
+| Klick „Erkennung“ (erstes Öffnen nach ≥ 3 s): erste Reaktion / UI-Blockade | 266,5 / 141,4 ms | 34,2 / 54,9 ms |
+| Klick „Text & Stufen“: erste Reaktion / UI-Blockade | 133,4 / 58,1 ms | 17,5 / 34,2 ms |
+| Seitenwechsel wiederholt (alle Seiten): erste Reaktion p95 / Ruhe p95 / Blockade max | 51,7 / 117,6 / 30,7 ms | 35,7 / 134,3 / 34,6 ms |
+| Seitenwechsel erstes Öffnen (max über 11 Seiten): Ruhe / Blockade | 316,5 / 158,2 ms | 150,5 / 65,5 ms |
+| UI-Blockade nach dem Öffnen der Einstellungen (Vorbau, 3 s) | – | 76,5 ms |
+
+Hinweis Startzeit: Mehrere Läufe desselben Builds lagen bei 979,3 / 1002,2 ms (bereit p50) – die Grenze 1000 ms liegt im
+Streubereich. Hover-Blockade 25,8 ms fällt in die Einstellungen (Seitenleiste), grün.
+
 ## Ausnahmen
 
-_(werden nach der Abschlussmessung eingetragen)_
+Gelb bleibt, wo grün nur mit Großumbau ginge (Zielwert des Runs, Christof 2026-11-02).
+
+- **A1 UI-Thread / Dispatcher (🟡 gelb):** Messwert: Klick „Erkennung“ UI-Blockade 54,9 ms (Grenze grün 50 ms),
+  Seitenwechsel erstes Öffnen max 65,5 ms, ein Vorbau-Schritt direkt nach dem Öffnen 76,5 ms. Ursache: Anhängen der großen
+  Seite „Erkennung“ (`Views/Settings/RecognitionPage.axaml`, 5 Gruppen, 7 Auswahllisten, 6 Textfelder) wendet Styles an
+  und bindet alle Steuerelemente in einem Dispatcher-Durchlauf. Verworfene Wege: (a) alle Seiten dauerhaft angehängt und
+  gebunden lassen – Auswahl-Listen verborgener Seiten schreiben beim Austausch ihrer Listen `null` in die Einstellungen
+  (im Test als NRE aufgefallen, Datenrisiko); (b) die Seite in Teil-Views je Gruppe zerlegen und schrittweise anhängen –
+  Umbau aller 11 Seiten und sichtbares Nachladen beim Wechsel; (c) Composite-ReadyToRun unter Windows (weniger JIT) –
+  entfernt Microsoft-Signaturen (Entscheidung Christof). Grund: Großumbau ohne fühlbaren Gewinn (alle Reaktionen ≤ 1 Frame
+  der Abtast-Untergrenze, Blockaden < 80 ms).
+- **A2 Startzeit (🟡 gelb):** Messwert: bereit p50 1002,2 ms, p95 1098,5 ms (Grenze grün 1000 ms; Vorlauf desselben Builds
+  979,3 ms), sichtbar 672,8 ms. Verworfene Wege: Composite-ReadyToRun (bereit 828–872 ms, grün) – entfernt unter Windows
+  die Microsoft-Signatur von ~175 Laufzeit-DLLs (WDAC/AppLocker, `docs/signing.md`), Entscheidung Christof 2026-11-02;
+  Native AOT – nicht kompatibel ohne Umbau (Avalonia-XAML-Reflexion, Velopack, PortAudio; Kompatibilitätsnachweis fehlt);
+  `TieredPGO=false` – ohne Wirkung (978 ms). Grund: der verbleibende Weg zu grün ist eine Signatur- bzw. AOT-Frage, kein
+  Code-Fix.
 
 ## Grenzen
 
-- Linux: keine UI-Messung (⚪, Skill-Lücke); Verlaufsfenster nur per Tray erreichbar (nicht gemessen); nur Warmstarts.
+- Linux: keine UI-Messung (⚪ nicht gemessen, Skill-Lücke; AppImage mit Composite-R2R nur im CI gebaut); Verlaufsfenster nur per Tray erreichbar (nicht gemessen); nur Warmstarts.
 - Statische Befunde sind Verdachtsstellen; Fehlalarme gestrichen (Sync-over-async in `Program.cs`: CLI vor dem UI-Start).

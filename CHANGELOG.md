@@ -5,7 +5,7 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [1.0.0] – 2026-11-01
+## [1.0.0] – 2026-11-02
 
 ### Added
 - **Company manager** (`server/`, self-hosted, Docker or systemd): multi-tenant web portal with device approval by
@@ -62,6 +62,19 @@ versions follow [Semantic Versioning](https://semver.org/).
   other providers and own servers are left alone. A fixed company value is moved too and logged (path only).
 - „German + English“ (`de+en`) is a new value of `language`: an older WhisperLoom rejects such a settings file on
   import and, if downgraded, would send `de+en` to the provider. Pick another language before downgrading.
+
+### Performance
+Measured with `desktop-perf-review` on one PC (Windows 11, 179 Hz), report: `docs/perf/2026-11-02-perf-review.md`.
+- **Faster start**: release packages are compiled ReadyToRun (Linux additionally as composite; Windows without composite
+  so the .NET runtime keeps Microsoft's signatures). Ready after start p50 1572 → 979 ms, window visible 1205 → 652 ms.
+  Packages are ≈ 17–18 MB larger.
+- **Snappier settings**: pages are built once and reused, prepared in small steps right after the window opens, and the
+  sidebar highlight shows before the page is attached. Clicking „Recognition“ the first time: first visible reaction
+  266 → 34 ms, longest UI-thread block 141 → 55 ms. Scroll position and opened „Advanced“ sections now stay when you
+  switch pages.
+- **Help illustrations** resolve brushes and pens once per theme instead of on every render (11 KB → 0.7 KB allocated
+  per render).
+- New verbs `settings` and `help` open the settings and the help window (also used for the measurements).
 
 ## [0.1.0-demo.1] – 2026-10-31 (demo pre-release)
 
