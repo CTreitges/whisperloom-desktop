@@ -26,10 +26,24 @@ public sealed class HelpIllustration : Control
     private static readonly Dictionary<string, IReadOnlyList<IllustrationShape>> Cache = [];
     private IReadOnlyList<IllustrationShape> _shapes = [];
 
+    /// <summary>Füllung und Stift je Shape in der aktuellen Variante (PERF-4); null = neu auflösen.</summary>
+    private (IBrush? Fill, IPen? Pen)[]? _paint;
+
     static HelpIllustration() => AffectsRender<HelpIllustration>(SourceProperty);
 
-    /// <summary>Hell/Dunkel gewechselt: mit den Pinseln der neuen Variante neu zeichnen.</summary>
-    public HelpIllustration() => ActualThemeVariantChanged += (_, _) => InvalidateVisual();
+    /// <summary>Hell/Dunkel gewechselt: Pinsel der neuen Variante auflösen und neu zeichnen.</summary>
+    public HelpIllustration()
+    {
+        ActualThemeVariantChanged += (_, _) => Repaint();
+        // Prüfer PR #33 N3: auch geänderte Ressourcen (z. B. Tokens zur Laufzeit) neu auflösen.
+        ResourcesChanged += (_, _) => Repaint();
+    }
+
+    private void Repaint()
+    {
+        _paint = null;
+        InvalidateVisual();
+    }
 
     /// <summary>avares-URI der SVG-Datei.</summary>
     public string? Source { get => GetValue(SourceProperty); set => SetValue(SourceProperty, value); }
@@ -99,6 +113,7 @@ public sealed class HelpIllustration : Control
         if (change.Property == SourceProperty)
         {
             _shapes = Source is { } uri ? Load(uri) : [];
+            _paint = null;
         }
     }
 
@@ -110,16 +125,25 @@ public sealed class HelpIllustration : Control
             return;
         }
         using var _ = context.PushTransform(Matrix.CreateScale(scale, scale));
-        foreach (var shape in _shapes)
+        var paint = Paint();
+        for (var i = 0; i < _shapes.Count; i++)
         {
+            var shape = _shapes[i];
             using var transform = shape.Transform is { } m ? context.PushTransform(m) : default(DrawingContext.PushedState?);
-            var fill = Brush(shape.Fill);
-            var pen = Brush(shape.Stroke) is { } stroke
-                ? new Pen(stroke, shape.StrokeWidth, lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round)
-                : null;
-            context.DrawGeometry(fill, pen, shape.Geometry);
+            context.DrawGeometry(paint[i].Fill, paint[i].Pen, shape.Geometry);
         }
     }
+
+    /// <summary>
+    /// Füllungen und Stifte aller Shapes, aufgelöst einmal je Quelle und Theme-Variante statt bei jedem Render
+    /// (vorher: <c>TryFindResource</c> zweimal und ein neuer <see cref="Pen"/> je Shape und Frame).
+    /// </summary>
+    internal (IBrush? Fill, IPen? Pen)[] Paint() => _paint ??=
+    [
+        .. _shapes.Select(shape => (Brush(shape.Fill), Brush(shape.Stroke) is { } stroke
+            ? (IPen?)new Pen(stroke, shape.StrokeWidth, lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round)
+            : null)),
+    ];
 
     /// <summary>Pinsel des Tokens in der aktuellen Variante; unbekannt → nichts.</summary>
     public IBrush? Brush(string? token) =>

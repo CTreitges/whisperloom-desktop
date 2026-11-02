@@ -44,7 +44,8 @@ Wer das Setup (Installation pro Benutzer, Startmenü-Eintrag) verteilen will, ba
 Signiert wird **vor bzw. während `vpk pack`**, denn `vpk pack` packt die Dateien in das Paket (`.nupkg`) und das
 Setup; danach lässt sich nichts mehr signieren, ohne die Prüfsummen im Feed zu brechen.
 
-1. `dotnet publish src/WhisperLoom.App -c Release -r win-x64 --self-contained -p:Version=<x.y.z> -o publish`
+1. `dotnet publish src/WhisperLoom.App -c Release -r win-x64 --self-contained -p:PublishReadyToRun=true -p:Version=<x.y.z> -o publish`
+   (wie `build/pack.py`; ReadyToRun ohne Composite, die Microsoft-Signaturen der .NET-Laufzeit bleiben erhalten)
 2. Signieren, am einfachsten durch Velopack selbst: Es signiert dann die App-Dateien, `Update.exe`, den Start-Stub
    und `Setup.exe` in einem Durchgang mit `signtool`:
 
@@ -123,7 +124,8 @@ To distribute Setup (per-user install, Start menu entry), build it from source. 
 `vpk pack`**: `vpk pack` puts the files into the package (`.nupkg`) and into Setup; signing afterwards would break the
 checksums in the feed.
 
-1. `dotnet publish src/WhisperLoom.App -c Release -r win-x64 --self-contained -p:Version=<x.y.z> -o publish`
+1. `dotnet publish src/WhisperLoom.App -c Release -r win-x64 --self-contained -p:PublishReadyToRun=true -p:Version=<x.y.z> -o publish`
+   (same as `build/pack.py`; ReadyToRun without composite keeps Microsoft's signatures on the .NET runtime)
 2. Sign, most simply through Velopack itself. It then signs the app files, `Update.exe`, the launcher stub and
    `Setup.exe` in one pass with `signtool`:
 

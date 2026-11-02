@@ -63,6 +63,42 @@ Sichtbare Nebenwirkung: Scroll-Stand und aufgeklappte „Erweitert“-Bereiche b
 Ampel-Wirkung allein (ohne R2R): Hover-/Pointer-Pfad 🔴 → 🟢 (Klick erste Reaktion ≤ 34 ms); UI-Thread bleibt 🔴
 (Vorbau 156,5 ms nach dem Öffnen). Erst mit PERF-3 (ReadyToRun) sinkt der Vorbau auf 77,6 ms (🟡, siehe Abschlussmessung).
 
+### PERF-3 ReadyToRun im Publish (Windows ohne, Linux mit Composite)
+
+Ursache: kein ReadyToRun (`build/pack.py:42`), Start und erstes Öffnen jeder Seite JIT-lastig. Fix: `build/pack.py`
+`readytorun_args` (Release-Pakete) und CI-Publish. Composite nur unter Linux: unter Windows entfernt Composite die
+Microsoft-Signatur von ~175 Laufzeit-DLLs (WDAC/AppLocker, `docs/signing.md`) – Entscheidung Christof 2026-11-02.
+
+Vorher = Publish win-x64 ohne R2R, Nachher = Publish mit den Schaltern aus `pack.py`, gleicher Commit (main 3da9c25 +
+PERF-3/4), gleiche Umgebung:
+
+| Messung | Vorher | Nachher |
+|---|---|---|
+| Start sichtbar p50 | 1205,3 ms | 651,8 ms |
+| Start bereit p50 / p95 | 1572,1 / 1609,7 ms | 979,3 / 991,6 ms |
+| Klick „Erkennung“: erste Reaktion / UI-Blockade | 34,4 / 81,9 ms | 34,2 / 56,5 ms |
+| Klick „Text & Stufen“: UI-Blockade | 66,3 ms | 32,2 ms |
+| Publish-Größe win-x64 | 211 MB | 228 MB |
+
+Verworfen: Composite unter Windows (bereit p50 828–872 ms, 257 MB; Signaturen, s. o.); `TieredPGO=false` ohne Wirkung
+(978 ms gegenüber 982 ms).
+
+### PERF-4 Hilfe-Illustration: Pinsel und Stifte einmal je Theme/Quelle
+
+Ursache: `src/WhisperLoom.App/Views/Help/HelpIllustration.cs:118/126` – je Render zweimal `TryFindResource` und ein neuer
+`Pen` je Shape. Fix: `Paint()`-Cache, verworfen bei Theme-, Ressourcen- und Quellwechsel.
+
+Vorher/Nachher headless (1000 × `Render` der Illustration „recognition“, 18 Shapes, gleicher PC):
+
+| Messung | Vorher | Nachher |
+|---|---|---|
+| Allokation je Render | 11 072 Bytes | 688 Bytes |
+| Zeit je Render | 285,1 µs | 184,4 µs |
+| Hover Hilfe: erste Reaktion p95 (max) / Allokation während der Messung | 34,6 ms / 419 KB | 34,3 ms / 448 KB |
+
+Die Hover-Messung zeichnet die Illustration nicht neu (Allokation dort unverändert, Rauschen); der Fix wirkt beim Scrollen,
+bei Größenänderung und beim Theme-Wechsel.
+
 ## Ausnahmen
 
 _(werden nach der Abschlussmessung eingetragen)_
