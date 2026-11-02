@@ -27,6 +27,15 @@ internal sealed class GatedRefinePipeline : IDictationPipeline, ISkippablePipeli
 
     public void Release(int n) => Gate(n).TrySetResult();
 
+    /// <summary>Diktat <paramref name="n"/> scheitert wiederholbar (Netz), sobald es freigegeben ist.</summary>
+    public void FailWithNetwork(int n)
+    {
+        _fail[n] = true;
+        Release(n);
+    }
+
+    private readonly ConcurrentDictionary<int, bool> _fail = new();
+
     public Task<DictationResult> RunAsync(DictationRequest request, CancellationToken ct) =>
         throw new InvalidOperationException("ohne Ausweg aufgerufen");
 
@@ -42,8 +51,12 @@ internal sealed class GatedRefinePipeline : IDictationPipeline, ISkippablePipeli
         {
             await Task.Delay(5, ct);
         }
-        var text = skip.IsSkipped ? raw : "[KI] " + raw;
         _finished[n] = true;
+        if (_fail.ContainsKey(n))
+        {
+            throw new ApiNetworkException("Fake-Netzfehler");
+        }
+        var text = skip.IsSkipped ? raw : "[KI] " + raw;
         return new DictationResult(raw, "de", request.Audio.DurationMs,
             new RefinedText(request.Refinement, text, skip.IsSkipped ? null : "Fake-LLM"), "Fake-STT");
     }

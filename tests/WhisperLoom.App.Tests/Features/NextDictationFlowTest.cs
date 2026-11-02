@@ -79,6 +79,23 @@ public sealed class NextDictationFlowTest : IDisposable
         await Waits.For(() => HistoryCount() == 2);
     }
 
+    [AvaloniaFact]
+    public async Task Fertiges_Diktat_1_schliesst_das_Overlay_von_Diktat_2_nicht_waehrend_2_noch_verarbeitet_wird()
+    {
+        var send1 = await ToggleDictationAsync(1);
+        var send2 = await ToggleDictationAsync(2); // Aufnahme 2 begonnen und gesendet, wartet auf die Verbesserung
+        Assert.Equal(OverlayState.Processing, _flow.Overlay.State);
+        _pipeline.Release(1);
+        await send1.Within();
+        Assert.True(_ui.Overlay); // gehört Diktat 2, das noch verarbeitet wird
+        Assert.Equal(OverlayState.Processing, _flow.Overlay.State);
+        _pipeline.Release(2);
+        await send2.Within();
+        Assert.False(_ui.Overlay);
+        Assert.Equal("[KI] Diktat 1[KI] Diktat 2", _rig.Keys.Target);
+        await Waits.For(() => HistoryCount() == 2);
+    }
+
     // (b) Halten
 
     [AvaloniaFact]
@@ -179,6 +196,18 @@ public sealed class NextDictationFlowTest : IDisposable
         // Mit Modifier (z. B. Strg+Umschalt+Esc = Task-Manager) bleibt Escape der App.
         machine.OnKey(new KeyInput(Hotkey.VkLControl, true));
         Assert.Equal(new HookDecision(false), machine.OnKey(new KeyInput(Hotkey.VkEscape, true)));
+    }
+
+    [Fact]
+    public void Escape_beim_Halten_ueberspringt_und_die_gehaltene_Aufnahme_laeuft_weiter()
+    {
+        var machine = new HotkeyStateMachine(Hotkey.DefaultHold, Hotkey.DefaultToggle, null) { SkipKeyActive = () => true };
+        machine.OnKey(new KeyInput(Hotkey.VkLControl, true));
+        Assert.Equal(HotkeyAction.HoldStart, machine.OnKey(new KeyInput(Hotkey.VkLWin, true)).Action);
+        Assert.Equal(new HookDecision(true, HotkeyAction.SkipRefine), machine.OnKey(new KeyInput(Hotkey.VkEscape, true)));
+        Assert.True(machine.Holding);
+        Assert.True(machine.OnKey(new KeyInput(Hotkey.VkEscape, false)).Swallow);
+        Assert.Equal(HotkeyAction.HoldEnd, machine.OnKey(new KeyInput(Hotkey.VkLWin, false)).Action);
     }
 
     // (f) Reihenfolge und eigenes Ziel

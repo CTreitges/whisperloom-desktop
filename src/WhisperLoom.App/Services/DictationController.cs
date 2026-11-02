@@ -195,15 +195,21 @@ public sealed partial class DictationController : ObservableObject
     }
 
     /// <summary>Beendet die Aufnahme und wartet, bis das Ergebnis ausgegeben ist.</summary>
-    public async Task<string> StopAsync()
+    public async Task<string> StopAsync() => (await StopDictationAsync()).Code;
+
+    /// <summary>
+    /// Wie <see cref="StopAsync"/>, mit Fehler und Ergebnis genau dieses Diktats (W3-NEXT: <see cref="LastErrorKey"/> und
+    /// <see cref="LastRefined"/> können inzwischen zum nächsten Diktat gehören).
+    /// </summary>
+    public async Task<StopOutcome> StopDictationAsync()
     {
         if (!IsRecording)
         {
-            return State == DictationState.Processing ? "busy" : "not-recording";
+            return new StopOutcome(State == DictationState.Processing ? "busy" : "not-recording");
         }
         if (DiscardIfTap())
         {
-            return "tap";
+            return new StopOutcome("tap");
         }
         _nextPressAt = null;
         if (State == DictationState.Recording)
@@ -213,11 +219,11 @@ public sealed partial class DictationController : ObservableObject
         var audio = _recorder.Stop();
         if (DiscardIfTooShort(audio))
         {
-            return "too-short";
+            return new StopOutcome("too-short");
         }
         var job = StartJob(audio);
         await job.Done;
-        return job.ErrorClass is null ? "done" : "error";
+        return new StopOutcome(job.ErrorClass is null ? "done" : "error", job.ErrorKey, job.Refined);
     }
 
     /// <summary>Verwirft die Aufnahme (Diktate im Hintergrund laufen weiter) bzw. bricht die Verarbeitung ab.</summary>
@@ -310,16 +316,17 @@ public sealed partial class DictationController : ObservableObject
     {
         var ct = job.Cts.Token;
         var watch = Stopwatch.StartNew();
-        var refinement = RefinementOf(EffectiveRefine());
         try
         {
+            // Im try: auch ein Fehler hier gibt die Ausgabe-Reihenfolge frei (finally), sonst warteten alle späteren Diktate.
+            var refinement = RefinementOf(EffectiveRefine());
             var result = await RunPipelineAsync(new DictationRequest(audio, Settings.Language, refinement), job);
             await previous;
             // Abgebrochen, während es fertig auf das vorige Diktat wartete: nichts mehr ausgeben.
             ct.ThrowIfCancellationRequested();
             LastRaw = result.Raw;
             LastResult = result.Text;
-            LastRefined = result.Result;
+            LastRefined = job.Refined = result.Result;
             try
             {
                 await job.Output.WriteAsync(result.Text, CancellationToken.None);
@@ -355,7 +362,7 @@ public sealed partial class DictationController : ObservableObject
                                       or IOException)
         {
             Fail(ErrorKey(e), ErrorClass(e), job);
-            KeepForRetry(e, audio);
+            KeepForRetry(e, audio, job);
             _log.Event(
                 "dictation",
                 ("status", "error"),
@@ -377,7 +384,11 @@ public sealed partial class DictationController : ObservableObject
     {
         LastErrorKey = key;
         LastErrorClass = errorClass;
-        job?.ErrorClass = errorClass;
+        if (job is not null)
+        {
+            job.ErrorClass = errorClass;
+            job.ErrorKey = key;
+        }
     }
 
     private static string? StringOrNull(string value) => value.Length == 0 ? null : value;

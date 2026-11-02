@@ -169,8 +169,16 @@ public sealed partial class DictationController
     }
 
     /// <summary>Wiederholbarer Fehler (Android <c>ApiErrors.kt:104-108</c>): Audio für „Erneut senden“ im Speicher behalten.</summary>
-    private void KeepForRetry(Exception e, AudioBuffer audio)
+    /// <remarks>
+    /// W3-NEXT: nur das zuletzt gestartete Diktat ohne neue Aufnahme danach – sonst schickte „Erneut senden“ das Audio eines
+    /// älteren Diktats ins Ziel des neueren bzw. löschte ein älterer Fehler das Audio des neueren.
+    /// </remarks>
+    private void KeepForRetry(Exception e, AudioBuffer audio, Job job)
     {
+        if (job != _latestJob || IsRecording)
+        {
+            return;
+        }
         _retryAudio = e.IsRetryable() ? audio : null;
     }
 }

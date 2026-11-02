@@ -11,12 +11,19 @@ public interface IBindableOutput
     IOutputSink Bind();
 }
 
+/// <summary>Ergebnis eines Stopps für genau dieses Diktat (W3-NEXT).</summary>
+/// <param name="Code">"done", "error", "tap", "too-short", "busy" oder "not-recording".</param>
+/// <param name="ErrorKey">Lokalisierungs-Schlüssel des Fehlers dieses Diktats; null = keiner.</param>
+/// <param name="Refined">Verarbeitetes Ergebnis dieses Diktats; null ohne Ausgabe.</param>
+public sealed record StopOutcome(string Code, string? ErrorKey = null, RefinedText? Refined = null);
+
 /// <summary>
 /// Nächstes Diktat während der Verarbeitung (W3-NEXT, bewusste Abweichung von Android, <c>docs/parity-exceptions.md</c>):
-/// Ein Start (Kürzel, Tray, IPC <c>toggle</c>), während noch ein Diktat verarbeitet wird, beginnt sofort die nächste Aufnahme.
+/// Ein Start (Kürzel, IPC <c>toggle</c>), während noch ein Diktat verarbeitet wird, beginnt sofort die nächste Aufnahme.
 /// Die laufenden Diktate laufen im Hintergrund zu Ende; ihre Ausgaben kommen streng in Diktat-Reihenfolge. Ein zweiter Druck
 /// innerhalb von <see cref="DoublePressWindow"/> nach dem Druck, der die neue Aufnahme gestartet hat, verwirft diese Aufnahme
-/// und überspringt die laufende Verbesserung (Rohtext). OS-neutral: Windows-Kürzel und Linux-<c>toggle</c> landen hier.
+/// und überspringt die laufende Verbesserung (Rohtext). OS-neutral: Windows-Kürzel und Linux-<c>toggle</c> landen hier
+/// (das Tray-Menü sperrt seinen Eintrag, solange sein eigener Aufruf läuft).
 /// </summary>
 public sealed partial class DictationController
 {
@@ -27,6 +34,9 @@ public sealed partial class DictationController
     private Task _outputTurn = Task.CompletedTask;
     private DateTimeOffset? _nextPressAt;
     private int _refining;
+
+    /// <summary>Zuletzt gestartetes Diktat: nur sein Audio darf für „Erneut senden“ bleiben.</summary>
+    private Job? _latestJob;
 
     /// <summary>Diktate in Verarbeitung, deren Ausgabe noch aussteht (auch während schon die nächste Aufnahme läuft).</summary>
     public int Pending => _jobs.Count;
@@ -102,6 +112,7 @@ public sealed partial class DictationController
         State = DictationState.Processing;
         var job = new Job(_output is IBindableOutput bindable ? bindable.Bind() : _output);
         _jobs.Add(job);
+        _latestJob = job;
         var previous = _outputTurn;
         var turn = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         _outputTurn = turn.Task;
@@ -137,6 +148,10 @@ public sealed partial class DictationController
         public volatile bool Refining;
 
         public string? ErrorClass { get; set; }
+
+        public string? ErrorKey { get; set; }
+
+        public RefinedText? Refined { get; set; }
 
         public Task Done { get; set; } = Task.CompletedTask;
     }

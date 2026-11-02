@@ -171,6 +171,57 @@ public sealed class NextDictationTest
         await stop1.Within();
     }
 
+    // Review-Befunde: Ergebnis und Retry-Audio gehören genau einem Diktat
+
+    [Fact]
+    public async Task Stopp_liefert_Fehler_und_Ergebnis_genau_dieses_Diktats()
+    {
+        using var f = Fixture();
+        Assert.Equal("recording", f.Controller.Start());
+        f.Now += TimeSpan.FromSeconds(1);
+        var stop1 = f.Controller.StopDictationAsync();
+        await Waits.For(() => _pipeline.Refining(1));
+        Assert.Equal("recording", f.Controller.Start());
+        f.Now += TimeSpan.FromSeconds(1);
+        var stop2 = f.Controller.StopDictationAsync();
+        await Waits.For(() => _pipeline.Refining(2));
+        _pipeline.FailWithNetwork(2); // Diktat 2 scheitert zuerst, Diktat 1 gelingt danach
+        await Waits.For(() => _pipeline.Finished(2));
+        _pipeline.Release(1);
+        var first = await stop1.Within();
+        var second = await stop2.Within();
+        Assert.Equal(("done", null, "[KI] Diktat 1"), (first.Code, first.ErrorKey, first.Refined?.Text));
+        Assert.Equal(("error", "Error_Network", null), (second.Code, second.ErrorKey, second.Refined?.Text));
+    }
+
+    [Fact]
+    public async Task Fehler_eines_aelteren_Diktats_haelt_kein_Audio_fuer_Erneut_senden()
+    {
+        using var f = Fixture();
+        var stop1 = await RecordAndStopAsync(f, 1);
+        Assert.Equal("recording", f.Controller.Start());
+        _pipeline.FailWithNetwork(1); // scheitert wiederholbar, während Aufnahme 2 läuft
+        Assert.Equal("error", await stop1.Within());
+        f.Now += TimeSpan.FromSeconds(1);
+        var stop2 = f.Controller.StopAsync();
+        await Waits.For(() => _pipeline.Refining(2));
+        _pipeline.Release(2);
+        Assert.Equal("done", await stop2.Within());
+        // Sonst schickte „Erneut senden“ das Audio von Diktat 1 ins Ziel von Diktat 2.
+        Assert.False(f.Controller.CanRetry);
+        Assert.Equal("nothing", await f.Controller.RetryAsync());
+    }
+
+    [Fact]
+    public async Task Wiederholbarer_Fehler_des_letzten_Diktats_haelt_sein_Audio_weiter()
+    {
+        using var f = Fixture();
+        var stop1 = await RecordAndStopAsync(f, 1);
+        _pipeline.FailWithNetwork(1);
+        Assert.Equal("error", await stop1.Within());
+        Assert.True(f.Controller.CanRetry);
+    }
+
     // (g) Linux: zwei toggle-Aufrufe über das IPC-Verb
 
     [AvaloniaFact]

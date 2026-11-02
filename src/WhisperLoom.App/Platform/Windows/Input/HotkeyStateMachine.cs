@@ -187,6 +187,12 @@ public sealed class HotkeyStateMachine
         {
             return HookDecision.Pass;
         }
+        if (vk == Hotkey.VkEscape && IsSkipKey(mods))
+        {
+            // Vor dem Halten-Abbruch: Esc überspringt nur die Verbesserung, die gehaltene Aufnahme läuft weiter (W3-NEXT).
+            _swallowed.Add(vk);
+            return new HookDecision(true, HotkeyAction.SkipRefine);
+        }
         if (_holding)
         {
             // Andere Taste während des Haltens (z. B. Strg+Win+Pfeil): Aufnahme verwerfen, Taste durchlassen.
@@ -207,12 +213,12 @@ public sealed class HotkeyStateMachine
         return new HookDecision(true, action);
     }
 
+    /// <summary>Esc gehört WhisperLoom: Verbesserung läuft, ohne Modifier – beim Halten mit genau dessen Modifiern.</summary>
+    private bool IsSkipKey(HotkeyModifiers mods) =>
+        (mods == HotkeyModifiers.None || (_holding && mods == Hold?.Modifiers)) && SkipKeyActive?.Invoke() == true;
+
     private HotkeyAction Match(int vk, HotkeyModifiers mods)
     {
-        if (vk == Hotkey.VkEscape && mods == HotkeyModifiers.None && SkipKeyActive?.Invoke() == true)
-        {
-            return HotkeyAction.SkipRefine;
-        }
         if (OverlayKeysActive)
         {
             if (vk == Hotkey.VkReturn && mods == HotkeyModifiers.None)

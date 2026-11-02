@@ -1,7 +1,9 @@
+using WhisperLoom.App.Features.Profiles;
 using WhisperLoom.App.Localization;
 using WhisperLoom.App.Platform.Windows.Overlay;
 using WhisperLoom.App.Platform.Windows.TextOutput;
 using WhisperLoom.App.Services;
+using WhisperLoom.Core.Contracts;
 
 namespace WhisperLoom.App.Platform.Windows.Input;
 
@@ -14,6 +16,9 @@ public sealed partial class InputFlow
 {
     /// <summary>So lange bleibt das Overlay nach einem wiederholbaren Fehler offen (Knopf „Erneut senden“).</summary>
     public static readonly TimeSpan RetryWindow = TimeSpan.FromSeconds(12);
+
+    /// <summary>Zählt jedes per Kürzel begonnene Diktat (<see cref="Begin"/>, W3-NEXT): wem gehören Overlay und Pille?</summary>
+    private int _run;
 
     /// <summary>
     /// Kürzel (Umschalten oder Halten) während „Wird verarbeitet …“ (W3-NEXT): sofort die nächste Aufnahme; das laufende Diktat
@@ -44,32 +49,32 @@ public sealed partial class InputFlow
     }
 
     /// <summary>
-    /// Läuft schon die nächste Aufnahme per Kürzel (W3-NEXT), gehören Overlay, Pille und gemerktes Ziel ihr: vom fertigen Diktat
-    /// bleibt nur ein Fehler-Hinweis.
+    /// Hat nach <paramref name="run"/> schon das nächste Diktat per Kürzel begonnen (W3-NEXT; auch wenn es inzwischen selbst
+    /// verarbeitet wird), gehören Overlay, Pille und gemerktes Ziel ihm: vom fertigen Diktat bleibt nur ein Fehler-Hinweis.
     /// </summary>
-    private bool Superseded(string result)
+    private bool Superseded(int run, StopOutcome outcome)
     {
-        if (_mode == Mode.None)
+        if (run == _run)
         {
             return false;
         }
-        if (result == "error")
+        if (outcome.Code == "error")
         {
-            ErrorToast(_controller.LastErrorKey ?? "Overlay_Error");
+            ErrorToast(outcome.ErrorKey ?? "Overlay_Error");
         }
         return true;
     }
 
-    /// <summary>Hinweis nach dem Halten: Fehler bzw. „ohne KI eingefügt“.</summary>
-    private void AfterResult(string result)
+    /// <summary>Hinweis nach dem Halten: Fehler bzw. „ohne KI eingefügt“ – aus dem Ergebnis genau dieses Diktats.</summary>
+    private void AfterResult(StopOutcome outcome)
     {
-        if (result == "error")
+        if (outcome.Code == "error")
         {
-            ErrorToast(_controller.LastErrorKey ?? "Overlay_Error");
+            ErrorToast(outcome.ErrorKey ?? "Overlay_Error");
         }
-        else if (result == "done")
+        else if (outcome.Code == "done")
         {
-            HintIfRawOnly();
+            HintIfRawOnly(outcome.Refined);
         }
     }
 
@@ -77,9 +82,9 @@ public sealed partial class InputFlow
     /// KI gescheitert, Rohtext eingefügt (Android: Rohtext mit Hinweis, W2-OUT): Hinweis, sofern kein anderer wichtiger ist
     /// (Kopiert, Passwortfeld).
     /// </summary>
-    private void HintIfRawOnly()
+    private void HintIfRawOnly(Core.Contracts.RefinedText? refined)
     {
-        if (_controller.LastRefined?.Skipped is not null && _sink.LastOutcome is { } outcome && outcome.Hint() == Core.Output.OutputHint.None)
+        if (refined?.Skipped is not null && _sink.LastOutcome is { } outcome && outcome.Hint() == Core.Output.OutputHint.None)
         {
             Toast("Output_Hint_RawOnly");
         }
@@ -120,8 +125,9 @@ public sealed partial class InputFlow
         Overlay.ErrorKey = null;
         Overlay.State = OverlayState.Processing;
         _sink.Arm(_target, null, null, trailingSpace: _controller.Settings.Polish.TrailingSpace, leadingSpace: true);
+        var run = _run;
         var result = await _controller.RetryAsync();
-        if (Superseded(result))
+        if (Superseded(run, new StopOutcome(result, _controller.LastErrorKey)))
         {
             return;
         }
@@ -156,5 +162,14 @@ public sealed partial class InputFlow
     {
         var text = Loc.Instance[key];
         _ui.ShowHint("toast", "WhisperLoom", _controller.CanRetry ? Loc.Instance.Format("Error_WithRetry", text) : text, ErrorDuration, _target);
+    }
+
+    private void Toast(string key) => _ui.ShowHint("toast", "WhisperLoom", Loc.Instance[key], ToastDuration, _target);
+
+    /// <summary>Stufe des laufenden Diktats; mit Profil als „Profil · Stufe“.</summary>
+    private string StageLabel()
+    {
+        var stage = Loc.Instance["Stage_" + _controller.EffectiveStage.Key()];
+        return _controller.ActiveProfile is { } m ? $"{AppProfiles.DisplayName(m.Profile)} · {stage}" : stage;
     }
 }

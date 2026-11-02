@@ -128,13 +128,14 @@ public sealed partial class InputFlow
                 // Modus zuerst zurück: das Ende kommt von uns, nicht von außen (OnControllerChanged).
                 _mode = Mode.None;
                 _ui.SetPill(0, processing: true);
-                var result = await _controller.StopAsync();
-                if (!Superseded(result))
+                var run = _run;
+                var outcome = await _controller.StopDictationAsync();
+                if (!Superseded(run, outcome))
                 {
                     // Nichts eingefügt (Fehler, Abbruch): das nächste Ergebnis (Tray, CLI) darf nicht ins alte Ziel.
                     _sink.Disarm();
                     _ui.HidePill();
-                    AfterResult(result);
+                    AfterResult(outcome);
                 }
                 break;
             case HotkeyAction.HoldCancel when _mode == Mode.Hold:
@@ -239,6 +240,7 @@ public sealed partial class InputFlow
             return false;
         }
         _mode = mode;
+        _run++;
         return true;
     }
 
@@ -265,17 +267,20 @@ public sealed partial class InputFlow
         _overlayKeys(false);
         Overlay.IsStagePickerOpen = false;
         Overlay.State = OverlayState.Processing;
-        var result = rewrite ? await _controller.StopAndRewriteAsync(_selection) : await _controller.StopAsync();
-        if (Superseded(result))
+        var run = _run;
+        var outcome = rewrite
+            ? new StopOutcome(await _controller.StopAndRewriteAsync(_selection), _controller.LastErrorKey)
+            : await _controller.StopDictationAsync();
+        if (Superseded(run, outcome))
         {
             return;
         }
         _selection = "";
         // Nichts eingefügt (Fehler, Abbruch): das nächste Ergebnis (Tray, CLI) darf nicht ins alte Ziel gehen.
         _sink.Disarm();
-        if (result == "error")
+        if (outcome.Code == "error")
         {
-            Overlay.ErrorKey = _controller.LastErrorKey;
+            Overlay.ErrorKey = outcome.ErrorKey;
             Overlay.CanRetry = _controller.CanRetry;
             Overlay.State = OverlayState.Error;
             await Task.Delay(Overlay.CanRetry ? RetryWindow : ErrorDuration);
@@ -286,9 +291,9 @@ public sealed partial class InputFlow
             return;
         }
         _ui.HideOverlay();
-        if (!rewrite && result == "done")
+        if (!rewrite && outcome.Code == "done")
         {
-            HintIfRawOnly();
+            HintIfRawOnly(outcome.Refined);
         }
     }
 
@@ -385,14 +390,5 @@ public sealed partial class InputFlow
             Overlay.Stage = label;
         }
         _ui.ShowHint("stage", Loc.Instance["Stage_Label"], label, StageHintDuration, _foreground());
-    }
-
-    private void Toast(string key) => _ui.ShowHint("toast", "WhisperLoom", Loc.Instance[key], ToastDuration, _target);
-
-    /// <summary>Stufe des laufenden Diktats; mit Profil als „Profil · Stufe“.</summary>
-    private string StageLabel()
-    {
-        var stage = Loc.Instance["Stage_" + _controller.EffectiveStage.Key()];
-        return _controller.ActiveProfile is { } m ? $"{AppProfiles.DisplayName(m.Profile)} · {stage}" : stage;
     }
 }
