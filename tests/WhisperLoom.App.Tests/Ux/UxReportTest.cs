@@ -119,5 +119,9 @@ public sealed class UxReportTest
                 .Select(g => $"{F(g.Key)} ({g.Count()}: {string.Join(", ", g.Take(3).Select(e => (e.Bordered ? "▭" : "") + e.Sample))})");
             md.Append(CultureInfo.InvariantCulture, $"- Kanten [{(region.Key == "main" ? "Hauptbereich" : region.Key)}]: {string.Join(" · ", xs)}\n");
         }
+        // Tab-Reihenfolge mit Namen (Grundlage für die Narrator-Liste in H2).
+        var order = UxFocus.TabOrder(root).OfType<Avalonia.Controls.Control>()
+            .Select(c => $"{c.GetType().Name}{(string.IsNullOrEmpty(c.Name) ? "" : "#" + c.Name)} „{Short(UxProbe.NameOf(c))}“");
+        md.Append(CultureInfo.InvariantCulture, $"- Tab-Reihenfolge: {string.Join(" → ", order)}\n");
     }
 }
