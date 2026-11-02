@@ -92,6 +92,9 @@
       </DockPanel>
     </Border>
 
+    <!-- PERF-2: Vorlage = PageViewCache (Code-Behind), Views werden je Seite wiederverwendet. -->
+    <!-- Vorbau (PERF-2): Seiten hängen hier nur kurz (wenige Dispatcher-Durchläufe), unsichtbar, ohne Treffer und Tab-Stopps. -->
+    <Panel x:Name="Staging" Grid.Column="1" IsHitTestVisible="False" Opacity="0" KeyboardNavigation.TabNavigation="None" />
     <ContentControl x:Name="PageHost" Grid.Column="1" Content="{Binding SelectedPage}" />
   </Grid>
 </Window>

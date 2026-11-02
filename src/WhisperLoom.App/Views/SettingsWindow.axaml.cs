@@ -7,6 +7,7 @@ using Avalonia.VisualTree;
 using WhisperLoom.App.Design;
 using WhisperLoom.App.ViewModels;
 using WhisperLoom.App.ViewModels.Settings;
+using WhisperLoom.App.Views.Settings;
 
 namespace WhisperLoom.App.Views;
 
@@ -24,6 +25,10 @@ public partial class SettingsWindow : Window
 
     public SettingsWindow(SettingsShellViewModel shell) : this()
     {
+        // PERF-2: Seiten-Views einmal bauen und wiederverwenden; nach dem Öffnen im Leerlauf vorbauen.
+        PageHost.ContentTemplate = Pages = new PageViewCache(this, Staging);
+        shell.Pages.CollectionChanged += (_, _) => Pages.Clear();
+        Opened += (_, _) => Prebuild(shell);
         DataContext = shell;
         shell.RevealRequested += Reveal;
         ResultList.SelectionChanged += (_, _) =>
@@ -42,6 +47,32 @@ public partial class SettingsWindow : Window
 
     /// <summary>Für Bestand und Tests: die Arbeitskopie (Session) des Fensters.</summary>
     public SettingsViewModel? Settings => Shell?.Session;
+
+    /// <summary>Gebaute Seiten-Views (PERF-2).</summary>
+    internal PageViewCache Pages { get; } = null!;
+
+    /// <summary>
+    /// Baut die übrigen Seiten nach dem Öffnen im Leerlauf vor (<see cref="PageViewCache.PrepareSteps"/>): ein Schritt je
+    /// Dispatcher-Durchlauf mit Hintergrund-Priorität, Eingaben und Rendern gehen vor. Der erste Klick auf eine Seite kostet
+    /// dann nur noch das Anhängen wie jeder weitere Wechsel.
+    /// </summary>
+    private void Prebuild(SettingsShellViewModel shell)
+    {
+        var pages = shell.Pages.ToList();
+        var steps = pages.SelectMany(p => Pages.PrepareSteps(p, () => PageHost.Bounds.Size)).GetEnumerator();
+        void Step()
+        {
+            // Fenster zu oder Seiten neu aufgebaut (Zurücksetzen, Import): Vorbau endet, der Rest entsteht beim Klick.
+            if (!IsVisible || !pages.SequenceEqual(shell.Pages) || !steps.MoveNext())
+            {
+                steps.Dispose();
+                return;
+            }
+            steps.Current();
+            Dispatcher.UIThread.Post(Step, DispatcherPriority.Background);
+        }
+        Dispatcher.UIThread.Post(Step, DispatcherPriority.Background);
+    }
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
