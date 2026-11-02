@@ -20,14 +20,16 @@ public interface ISkippablePipeline
 public sealed partial class DictationController
 {
     private RecordingLength _lengthNotice;
-    private RefineSkip? _skip;
     private AudioBuffer? _retryAudio;
 
     /// <summary>Höchstlänge erreicht: die Aufnahme ist angehalten, „Weiter“ gesperrt, nur noch Senden oder Verwerfen.</summary>
     public bool Capped { get; private set; }
 
-    /// <summary>Die Textverbesserung läuft gerade (ab hier wirkt <see cref="SkipRefine"/>).</summary>
-    public bool IsRefining { get; private set; }
+    /// <summary>
+    /// Eine Textverbesserung läuft gerade (ab hier wirkt <see cref="SkipRefine"/>), auch im Hintergrund während der nächsten
+    /// Aufnahme (W3-NEXT). Aus jedem Thread lesbar (Escape im Tastatur-Hook).
+    /// </summary>
+    public bool IsRefining => Volatile.Read(ref _refining) > 0;
 
     /// <summary>Das letzte Diktat scheiterte wiederholbar; sein Audio liegt im Speicher für <see cref="RetryAsync"/>.</summary>
     public bool CanRetry => _retryAudio is not null && State == DictationState.Idle;
@@ -62,15 +64,22 @@ public sealed partial class DictationController
         return null;
     }
 
-    /// <summary>Taste während der Verbesserung: sofort mit dem Text ohne KI weiter (ohne Hinweis, wie Android).</summary>
+    /// <summary>
+    /// Escape während der Verbesserung (W3-NEXT; früher die Diktat-Taste, wie Android): laufende Verbesserungen enden sofort mit
+    /// dem Text ohne KI (ohne Hinweis). Eine gleichzeitig laufende Aufnahme läuft weiter.
+    /// </summary>
     /// <returns>true, wenn eine laufende Verbesserung übersprungen wird.</returns>
     public bool SkipRefine()
     {
-        if (State != DictationState.Processing || _skip is null || !IsRefining)
+        var refining = _jobs.Where(j => j.Refining).ToList();
+        if (refining.Count == 0)
         {
             return false;
         }
-        _skip.Skip();
+        foreach (var job in refining)
+        {
+            job.Skip.Skip();
+        }
         _log.Event("refine.skipped");
         return true;
     }
@@ -90,12 +99,10 @@ public sealed partial class DictationController
         _retryAudio = null;
         LastErrorKey = null;
         LastErrorClass = null;
-        State = DictationState.Processing;
-        _processing = new CancellationTokenSource();
-        _processingTask = ProcessAsync(audio, _processing.Token);
-        await _processingTask;
-        _log.Event("dictation.retry", ("status", LastErrorClass is null ? "ok" : "error"));
-        return LastErrorClass is null ? "done" : "error";
+        var job = StartJob(audio);
+        await job.Done;
+        _log.Event("dictation.retry", ("status", job.ErrorClass is null ? "ok" : "error"));
+        return job.ErrorClass is null ? "done" : "error";
     }
 
     /// <summary>Neue Aufnahme: Längen-Hinweise zurück, altes Retry-Audio verwerfen (es gehört zum alten Diktat).</summary>
@@ -110,9 +117,9 @@ public sealed partial class DictationController
     /// Ging die Ausgabe in ein Passwortfeld (UI Automation), bleibt vom Diktat nichts: kein Verlauf, kein „erneut einfügen“
     /// (wie Android <c>HistoryPolicy</c>, W2-OUT).
     /// </summary>
-    private bool ForgetIfPrivate()
+    private bool ForgetIfPrivate(IOutputSink output)
     {
-        if (_output is not IPrivateAwareOutput { LastWasPrivate: true })
+        if (output is not IPrivateAwareOutput { LastWasPrivate: true })
         {
             return false;
         }
@@ -130,27 +137,34 @@ public sealed partial class DictationController
         }
         _recorded = TimeSpan.Zero;
         ActiveProfile = null;
-        State = DictationState.Idle;
+        State = Settled;
         _log.Event("recording.too-short", ("durationMs", audio.DurationMs));
         return true;
     }
 
     /// <summary>Pipeline mit Ausweg, wenn sie ihn kann; sonst wie bisher.</summary>
-    private async Task<DictationResult> RunPipelineAsync(DictationRequest request, CancellationToken ct)
+    private async Task<DictationResult> RunPipelineAsync(DictationRequest request, Job job)
     {
         if (_pipeline is not ISkippablePipeline skippable)
         {
-            return await _pipeline.RunAsync(request, ct);
+            return await _pipeline.RunAsync(request, job.Cts.Token);
         }
-        _skip = new RefineSkip();
         try
         {
-            return await skippable.RunAsync(request, _skip, () => IsRefining = true, ct);
+            // Aus dem Thread der Pipeline: nur Zähler und Merker, kein PropertyChanged (Tray und Fenster hängen daran).
+            return await skippable.RunAsync(request, job.Skip, () =>
+            {
+                job.Refining = true;
+                Interlocked.Increment(ref _refining);
+            }, job.Cts.Token);
         }
         finally
         {
-            _skip = null;
-            IsRefining = false;
+            if (job.Refining)
+            {
+                job.Refining = false;
+                Interlocked.Decrement(ref _refining);
+            }
         }
     }
 

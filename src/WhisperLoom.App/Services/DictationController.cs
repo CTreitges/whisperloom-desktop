@@ -32,7 +32,6 @@ public sealed partial class DictationController : ObservableObject
     private readonly Action<WhisperLoomSettings> _saveSettings;
     private readonly Func<DateTimeOffset> _now;
     private CancellationTokenSource? _processing;
-    private Task _processingTask = Task.CompletedTask;
     private DateTimeOffset _segmentStart;
     private TimeSpan _recorded;
 
@@ -127,22 +126,29 @@ public sealed partial class DictationController : ObservableObject
             RefineKeys.FormFromKey(refine.SummarizeForm));
     }
 
+    /// <summary>Umschalten (Tray, IPC <c>toggle</c>): während der Verarbeitung startet die nächste Aufnahme (W3-NEXT).</summary>
     /// <returns>Kurzer Status für die CLI.</returns>
     public async Task<string> ToggleAsync()
     {
         return State switch
         {
-            DictationState.Idle => Start(),
-            DictationState.Recording or DictationState.Paused => await StopAsync(),
-            _ => "busy",
+            DictationState.Idle or DictationState.Processing => Start(),
+            _ when TryDoublePress() => "skipped",
+            _ => await StopAsync(),
         };
     }
 
+    /// <returns>"recording", "already-recording", "busy", "skipped" (Doppeldruck, W3-NEXT) oder "audio-unavailable".</returns>
     public string Start()
     {
-        if (State != DictationState.Idle)
+        var next = State == DictationState.Processing;
+        if (next && StartDuringProcessing() is { } refused)
         {
-            return State == DictationState.Processing ? "busy" : "already-recording";
+            return refused;
+        }
+        if (State is DictationState.Recording or DictationState.Paused)
+        {
+            return "already-recording";
         }
         LastErrorKey = null;
         LastErrorClass = null;
@@ -158,8 +164,9 @@ public sealed partial class DictationController : ObservableObject
         _recorded = TimeSpan.Zero;
         ResetComfort();
         _segmentStart = _now();
+        _nextPressAt = next ? _segmentStart : null;
         State = DictationState.Recording;
-        _log.Event("recording.start");
+        _log.Event("recording.start", ("next", next));
         return "recording";
     }
 
@@ -194,6 +201,11 @@ public sealed partial class DictationController : ObservableObject
         {
             return State == DictationState.Processing ? "busy" : "not-recording";
         }
+        if (DiscardIfTap())
+        {
+            return "tap";
+        }
+        _nextPressAt = null;
         if (State == DictationState.Recording)
         {
             _recorded += _now() - _segmentStart;
@@ -203,14 +215,12 @@ public sealed partial class DictationController : ObservableObject
         {
             return "too-short";
         }
-        State = DictationState.Processing;
-        _processing = new CancellationTokenSource();
-        _processingTask = ProcessAsync(audio, _processing.Token);
-        await _processingTask;
-        return LastErrorClass is null ? "done" : "error";
+        var job = StartJob(audio);
+        await job.Done;
+        return job.ErrorClass is null ? "done" : "error";
     }
 
-    /// <summary>Verwirft die Aufnahme bzw. bricht die Verarbeitung ab.</summary>
+    /// <summary>Verwirft die Aufnahme (Diktate im Hintergrund laufen weiter) bzw. bricht die Verarbeitung ab.</summary>
     public string Cancel()
     {
         switch (State)
@@ -218,12 +228,17 @@ public sealed partial class DictationController : ObservableObject
             case DictationState.Recording or DictationState.Paused:
                 _recorder.Cancel();
                 _recorded = TimeSpan.Zero;
+                _nextPressAt = null;
                 ActiveProfile = null;
-                State = DictationState.Idle;
+                State = Settled;
                 _log.Event("recording.cancel");
                 return "cancelled";
             case DictationState.Processing:
                 _processing?.Cancel();
+                foreach (var job in _jobs)
+                {
+                    job.Cts.Cancel();
+                }
                 return "cancelled";
             default:
                 return "idle";
@@ -289,25 +304,31 @@ public sealed partial class DictationController : ObservableObject
         }
     }
 
-    private async Task ProcessAsync(AudioBuffer audio, CancellationToken ct)
+    /// <param name="previous">Ausgabe des vorigen Diktats: erst danach wird ausgegeben (Diktat-Reihenfolge, W3-NEXT).</param>
+    /// <param name="turn">Wird gesetzt, wenn dieses Diktat fertig ist und das nächste ausgeben darf.</param>
+    private async Task ProcessAsync(AudioBuffer audio, Job job, Task previous, TaskCompletionSource turn)
     {
+        var ct = job.Cts.Token;
         var watch = Stopwatch.StartNew();
         var refinement = RefinementOf(EffectiveRefine());
         try
         {
-            var result = await RunPipelineAsync(new DictationRequest(audio, Settings.Language, refinement), ct);
+            var result = await RunPipelineAsync(new DictationRequest(audio, Settings.Language, refinement), job);
+            await previous;
+            // Abgebrochen, während es fertig auf das vorige Diktat wartete: nichts mehr ausgeben.
+            ct.ThrowIfCancellationRequested();
             LastRaw = result.Raw;
             LastResult = result.Text;
             LastRefined = result.Result;
             try
             {
-                await _output.WriteAsync(result.Text, CancellationToken.None);
+                await job.Output.WriteAsync(result.Text, CancellationToken.None);
             }
             catch (IOException)
             {
-                Fail("Error_Output", "OutputFailed");
+                Fail("Error_Output", "OutputFailed", job);
             }
-            if (ForgetIfPrivate())
+            if (ForgetIfPrivate(job.Output))
             {
                 _log.Event("dictation", ("status", "private-field"), ("processingMs", watch.ElapsedMilliseconds));
                 return;
@@ -333,7 +354,7 @@ public sealed partial class DictationController : ObservableObject
         catch (Exception e) when (e is ApiHttpException or ApiNetworkException or ApiNotConfiguredException or LocalNotAvailableException
                                       or IOException)
         {
-            Fail(ErrorKey(e), ErrorClass(e));
+            Fail(ErrorKey(e), ErrorClass(e), job);
             KeepForRetry(e, audio);
             _log.Event(
                 "dictation",
@@ -344,11 +365,10 @@ public sealed partial class DictationController : ObservableObject
         }
         finally
         {
-            _processing?.Dispose();
-            _processing = null;
-            _recorded = TimeSpan.Zero;
-            ActiveProfile = null;
-            State = DictationState.Idle;
+            // Auch ohne Ausgabe (Fehler, Abbruch) darf das nächste Diktat erst nach dem vorigen ausgeben.
+            await previous;
+            turn.TrySetResult();
+            FinishJob(job);
         }
     }
 
@@ -381,10 +401,12 @@ public sealed partial class DictationController : ObservableObject
         }
     }
 
-    private void Fail(string key, string errorClass)
+    /// <param name="job">Diktat, dem der Fehler gehört (sein Ergebnis für <see cref="StopAsync"/>); null = keins.</param>
+    private void Fail(string key, string errorClass, Job? job = null)
     {
         LastErrorKey = key;
         LastErrorClass = errorClass;
+        job?.ErrorClass = errorClass;
     }
 
     private static string? StringOrNull(string value) => value.Length == 0 ? null : value;

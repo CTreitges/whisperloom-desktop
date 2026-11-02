@@ -10,7 +10,7 @@ namespace WhisperLoom.App.Platform.Windows.TextOutput;
 /// </summary>
 /// <param name="output">Aktuelle Ausgabe-Einstellungen; null = beides aus.</param>
 public sealed class InsertOutputSink(IOutputSink inner, TextInserter inserter, Func<InsertMode> mode, Func<OutputSettings>? output = null)
-    : IOutputSink, IPrivateAwareOutput
+    : IOutputSink, IPrivateAwareOutput, Services.IBindableOutput
 {
     private IntPtr _target;
     private bool? _pressEnter;
@@ -66,20 +66,59 @@ public sealed class InsertOutputSink(IOutputSink inner, TextInserter inserter, F
     /// <summary>Profil-Wert oder, bei Erben, die globale Einstellung.</summary>
     public static bool EffectivePressEnter(bool? profile, OutputSettings? settings) => profile ?? settings?.PressEnter ?? false;
 
+    /// <summary>
+    /// Bindet das gemerkte Ziel an ein Diktat (W3-NEXT): dessen Ausgabe geht später dorthin, auch wenn inzwischen das nächste
+    /// Diktat ein neues Ziel gemerkt hat. Danach ist diese Senke wieder frei.
+    /// </summary>
+    public IOutputSink Bind()
+    {
+        var arming = _armed ? new Arming(_target, _pressEnter, _mode, _keepCopy, _trailingSpace, _leadingSpace, _guard) : null;
+        _armed = false;
+        return new BoundSink(this, arming);
+    }
+
     public async Task WriteAsync(string text, CancellationToken ct)
     {
+        var arming = _armed ? new Arming(_target, _pressEnter, _mode, _keepCopy, _trailingSpace, _leadingSpace, _guard) : null;
+        _armed = false;
+        await WriteCoreAsync(arming, text, ct).ConfigureAwait(false);
+    }
+
+    /// <returns>Die Ausgabe ging in ein Passwortfeld.</returns>
+    private async Task<bool> WriteCoreAsync(Arming? a, string text, CancellationToken ct)
+    {
         LastWasPrivate = false;
-        if (!_armed)
+        if (a is null)
         {
             await inner.WriteAsync(text, ct).ConfigureAwait(false);
-            return;
+            return false;
         }
-        _armed = false;
         var settings = output?.Invoke();
         var outcome = await inserter.InsertAsync(
-            _target, Core.Output.OutputDecision.WithTrailingSpace(text, _trailingSpace), _mode ?? mode(), EffectivePressEnter(_pressEnter, settings), ct, _keepCopy || (settings?.AlwaysCopy ?? false), _leadingSpace, _guard).ConfigureAwait(false);
+            a.Target, Core.Output.OutputDecision.WithTrailingSpace(text, a.TrailingSpace), a.Mode ?? mode(), EffectivePressEnter(a.PressEnter, settings), ct,
+            a.KeepCopy || (settings?.AlwaysCopy ?? false), a.LeadingSpace, a.Guard).ConfigureAwait(false);
         LastOutcome = outcome;
         LastWasPrivate = outcome == InsertOutcome.PasswordField;
         Inserted?.Invoke(outcome);
+        return LastWasPrivate;
+    }
+
+    private sealed record Arming(IntPtr Target, bool? PressEnter, InsertMode? Mode, bool KeepCopy, bool TrailingSpace, bool LeadingSpace, InsertGuard? Guard);
+
+    /// <summary>Ausgabe eines Diktats mit dem beim Stopp gebundenen Ziel (<see cref="Bind"/>); einmalig wie <see cref="Arm"/>.</summary>
+    private sealed class BoundSink(InsertOutputSink owner, Arming? arming) : IOutputSink, IPrivateAwareOutput
+    {
+        private Arming? _arming = arming;
+
+        public string Kind => owner.Kind;
+
+        public bool LastWasPrivate { get; private set; }
+
+        public async Task WriteAsync(string text, CancellationToken ct)
+        {
+            var a = _arming;
+            _arming = null;
+            LastWasPrivate = await owner.WriteCoreAsync(a, text, ct).ConfigureAwait(false);
+        }
     }
 }

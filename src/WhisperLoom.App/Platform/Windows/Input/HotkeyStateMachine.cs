@@ -20,6 +20,9 @@ public enum HotkeyAction
     Dismiss,
     OverlaySend,
     OverlayDiscard,
+
+    /// <summary>Escape während einer Textverbesserung (W3-NEXT): ohne KI weiter, Escape wird geschluckt.</summary>
+    SkipRefine,
     Recorded,
     RecordCancelled,
 }
@@ -83,6 +86,12 @@ public sealed class HotkeyStateMachine
 
     /// <summary>Overlay offen und in Aufnahme/Pause: Enter, Strg+Enter und Rücktaste gehören dem Overlay.</summary>
     public bool OverlayKeysActive { get; set; }
+
+    /// <summary>
+    /// Läuft gerade eine Textverbesserung (W3-NEXT)? Dann gehört Escape ohne Modifier WhisperLoom (<see cref="HotkeyAction.SkipRefine"/>,
+    /// geschluckt), sonst läuft es unverändert an die Vordergrund-App. Wird im Hook-Thread abgefragt.
+    /// </summary>
+    public Func<bool>? SkipKeyActive { get; set; }
 
     /// <summary>Rekorder aktiv: alle Tasten werden geschluckt, bis alles losgelassen ist (Esc bricht ab).</summary>
     public bool Recording { get; private set; }
@@ -200,6 +209,10 @@ public sealed class HotkeyStateMachine
 
     private HotkeyAction Match(int vk, HotkeyModifiers mods)
     {
+        if (vk == Hotkey.VkEscape && mods == HotkeyModifiers.None && SkipKeyActive?.Invoke() == true)
+        {
+            return HotkeyAction.SkipRefine;
+        }
         if (OverlayKeysActive)
         {
             if (vk == Hotkey.VkReturn && mods == HotkeyModifiers.None)

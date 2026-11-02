@@ -112,7 +112,7 @@ public sealed partial class InputFlow
         {
             return;
         }
-        if (SkipIfProcessing(action))
+        if (StartNext(action))
         {
             return;
         }
@@ -129,16 +129,12 @@ public sealed partial class InputFlow
                 _mode = Mode.None;
                 _ui.SetPill(0, processing: true);
                 var result = await _controller.StopAsync();
-                // Nichts eingefügt (Fehler, Abbruch): das nächste Ergebnis (Tray, CLI) darf nicht ins alte Ziel.
-                _sink.Disarm();
-                _ui.HidePill();
-                if (result == "error")
+                if (!Superseded(result))
                 {
-                    ErrorToast(_controller.LastErrorKey ?? "Overlay_Error");
-                }
-                else if (result == "done")
-                {
-                    HintIfRawOnly();
+                    // Nichts eingefügt (Fehler, Abbruch): das nächste Ergebnis (Tray, CLI) darf nicht ins alte Ziel.
+                    _sink.Disarm();
+                    _ui.HidePill();
+                    AfterResult(result);
                 }
                 break;
             case HotkeyAction.HoldCancel when _mode == Mode.Hold:
@@ -148,8 +144,17 @@ public sealed partial class InputFlow
                 _ui.HidePill();
                 break;
             case HotkeyAction.Toggle when _mode == Mode.Toggle && _controller.IsRecording:
+                // Doppeldruck (W3-NEXT): die Aufnahme endet ohne Senden, das Overlay schließt über OnControllerChanged.
+                if (!_controller.TryDoublePress())
+                {
+                    await SendAsync();
+                }
+                break;
             case HotkeyAction.Selection when _mode == Mode.Rewrite && _controller.IsRecording:
                 await SendAsync();
+                break;
+            case HotkeyAction.SkipRefine:
+                _controller.SkipRefine();
                 break;
             case HotkeyAction.Toggle when _controller.State == DictationState.Idle:
                 if (Begin(Mode.Toggle, _foreground()))
@@ -226,7 +231,10 @@ public sealed partial class InputFlow
         {
             _controller.ActiveProfile = null;
             _sink.Disarm();
-            Toast(_controller.LastErrorKey ?? "Overlay_Error");
+            if (started != "skipped") // Doppeldruck (W3-NEXT): gewollt, kein Fehler
+            {
+                Toast(_controller.LastErrorKey ?? "Overlay_Error");
+            }
             return false;
         }
         _mode = mode;
@@ -257,6 +265,10 @@ public sealed partial class InputFlow
         Overlay.IsStagePickerOpen = false;
         Overlay.State = OverlayState.Processing;
         var result = rewrite ? await _controller.StopAndRewriteAsync(_selection) : await _controller.StopAsync();
+        if (Superseded(result))
+        {
+            return;
+        }
         _selection = "";
         // Nichts eingefügt (Fehler, Abbruch): das nächste Ergebnis (Tray, CLI) darf nicht ins alte Ziel gehen.
         _sink.Disarm();
@@ -276,18 +288,6 @@ public sealed partial class InputFlow
         if (!rewrite && result == "done")
         {
             HintIfRawOnly();
-        }
-    }
-
-    /// <summary>
-    /// KI gescheitert, Rohtext eingefügt (Android: Rohtext mit Hinweis, W2-OUT): Hinweis, sofern kein anderer wichtiger ist
-    /// (Kopiert, Passwortfeld).
-    /// </summary>
-    private void HintIfRawOnly()
-    {
-        if (_controller.LastRefined?.Skipped is not null && _sink.LastOutcome is { } outcome && outcome.Hint() == Core.Output.OutputHint.None)
-        {
-            Toast("Output_Hint_RawOnly");
         }
     }
 
@@ -384,18 +384,6 @@ public sealed partial class InputFlow
             Overlay.Stage = label;
         }
         _ui.ShowHint("stage", Loc.Instance["Stage_Label"], label, StageHintDuration, _foreground());
-    }
-
-    /// <summary>Hinweis nach der Ausgabe: „Kopiert – Strg+V“ bzw. „Passwortfeld – nicht eingefügt“.</summary>
-    public void ShowFallback(InsertOutcome outcome) => ShowHint(outcome.Hint());
-
-    /// <summary>Hinweis anzeigen (auch für Tray-Kopieren und Ausgaben ohne Einfügen).</summary>
-    public void ShowHint(Core.Output.OutputHint hint)
-    {
-        if (hint != Core.Output.OutputHint.None)
-        {
-            _ui.ShowHint("toast", "WhisperLoom", Loc.Instance[Output.OutputHints.Key(hint)], ToastDuration, _target);
-        }
     }
 
     private void Toast(string key) => _ui.ShowHint("toast", "WhisperLoom", Loc.Instance[key], ToastDuration, _target);
