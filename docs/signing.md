@@ -63,6 +63,8 @@ Setup; danach lässt sich nichts mehr signieren, ohne die Prüfsummen im Feed zu
 3. Updates abschalten (`updatesEnabled=false`, wie oben) **oder** einen eigenen Feed betreiben: Eine signierte
    Installation, die sich aus den GitHub-Releases aktualisiert, holt sich sonst die unsignierte Fassung.
    Zum Testen eines Feeds: `"%LocalAppData%\WhisperLoom\WhisperLoom.exe" update --feed <ordner|url>`.
+   Den eigenen Feed ohne `--channel` packen (`build/pack.py --channel stable`): Installationen suchen im Kanal
+   `win`. Mit `updatesEnabled=false` sind auch Update-Kanal und „Version wählen …“ gesperrt.
 
 `build/pack.py` macht Schritt 1 und 2 ohne Signatur; es eignet sich als Vorlage.
 
@@ -145,6 +147,8 @@ checksums in the feed.
 3. Turn updates off (`updatesEnabled=false`, as above) **or** run your own feed: a signed installation that updates
    from GitHub Releases would otherwise fetch the unsigned build. To test a feed:
    `"%LocalAppData%\WhisperLoom\WhisperLoom.exe" update --feed <folder|url>`.
+   Pack your own feed without `--channel` (`build/pack.py --channel stable`): installations look in channel `win`.
+   With `updatesEnabled=false` the update channel and „Choose version …“ are locked too.
 
 `build/pack.py` runs steps 1 and 2 without signing; use it as a template.
 

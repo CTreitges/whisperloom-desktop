@@ -5,6 +5,7 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
 - Company proxy: vocabulary (`keywords[]`) and “German + English” (two `languages[]`) now reach the upstream provider
   like with direct access (OpenAI gpt-transcribe, Mistral `context_bias[]`, ElevenLabs `keyterms`); strict field checks
   in the proxy. An own key stored (CLI `key set` or key field) while the company fixes the target is no longer sent to
@@ -14,6 +15,11 @@ versions follow [Semantic Versioning](https://semver.org/).
   `toggle`) during the AI improvement now starts the next recording right away; the running dictation is still improved
   and inserted into its own window, results arrive in dictation order. Skip the improvement with a double-press (< 400 ms)
   or Esc (Windows). Deliberate deviation from Android (`docs/parity-exceptions.md`).
+- **Update channels** (W3-CHAN): Stable, Beta and Test (Velopack channels `win`/`linux`, `*-beta`, `*-test`), setting
+  „Update channel“ and „Install pre-releases automatically“ (default off: automatic updates stay stable), „Choose
+  version …“ in the tray and on the General page to install any version, including a confirmed downgrade back to
+  stable. Test builds only on manual trigger (`X.Y.Z-test.<run>.<branch>`), betas from tags `vX.Y.Z-beta.N`; the
+  update source now reads up to 100 GitHub releases (Velopack's default only saw the latest 10).
 
 ## [1.0.0] – 2026-11-02
 

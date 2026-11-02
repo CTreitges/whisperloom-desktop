@@ -48,6 +48,20 @@ Die Builds sind **unsigniert**; Windows SmartScreen fragt beim ersten Start nach
 Empfohlene Linux-Pakete: `wl-clipboard` (Wayland) bzw. `xclip` (X11), `libsecret` für den Schlüsselbund. Details:
 [`docs/DEMO.md`](docs/DEMO.md).
 
+### Update-Kanäle
+Einstellungen → Allgemein → **Updates**:
+
+- **Update-Kanal**: *Stabil* (Standard, geprüfte Releases), *Beta* (Vorabversionen vor einem Release) oder *Test*
+  (einzelne Test-Builds aus Entwicklungszweigen).
+- **Vorabversionen automatisch installieren** (Standard aus): Aus bietet die automatische Prüfung nur stabile Versionen
+  an, auch im Kanal Beta oder Test. An bietet zusätzlich die neueste Vorabversion des Kanals an.
+- **Version wählen …** (auch im Tray-Menü): Liste aller Versionen aus den GitHub-Releases mit Kanal, Datum und
+  „installiert“. Jede Version lässt sich nach Rückfrage installieren; eine ältere Version ist ein Downgrade mit eigenem
+  Hinweis. **Zurück zu Stabil** installiert die neueste stabile Version. Einstellungen und Keys bleiben erhalten.
+
+Die IT-Richtlinie `updatesEnabled=false` sperrt auch Kanal, Schalter und Versionsliste. `WhisperLoom update` prüft
+Stabil und den eingestellten Kanal.
+
 ### Erster Start: Einrichtungs-Assistent
 Beim ersten Start führt ein Assistent in wenigen Schritten zum ersten Diktat:
 
@@ -121,6 +135,21 @@ dotnet run --project src/WhisperLoom.App
 Aufbau: `src/WhisperLoom.Core` (Fachlogik, OS-frei), `src/WhisperLoom.App` (Avalonia-App), `tests/`, `tools/`
 (Paritäts-Checks, Fake-API, Smokes). Schnittstellen: [`docs/contracts.md`](docs/contracts.md).
 
+### Releases und Kanäle (Maintainer)
+Workflow `.github/workflows/release.yml`, Velopack-Kanäle: stabil `win`/`linux` (wie 1.0.0), beta `win-beta`/`linux-beta`,
+test `win-test`/`linux-test`.
+
+| Kanal | Auslöser | Version | GitHub-Release |
+|---|---|---|---|
+| Stabil | Tag `vX.Y.Z` | `X.Y.Z` | Entwurf; veröffentlicht erst nach Christofs OK |
+| Beta | Tag `vX.Y.Z-beta.N` | `X.Y.Z-beta.N` | Pre-Release, sofort veröffentlicht |
+| Test | nur manuell: `gh workflow run release.yml --ref <branch> -f channel=test -f dry_run=false` | `X.Y.Z-test.<lauf>.<branch>` (X.Y.Z = nächste Minor nach dem letzten stabilen Tag oder `-f version=X.Y.Z`) | Pre-Release, sofort veröffentlicht |
+
+Probelauf ohne Release: `-f dry_run=true` (Standard). Lokal: `py -3 -X utf8 build/pack.py --version <v> --rid win-x64
+--out <ordner> --channel stable|beta|test`.
+Velopack fragt in Versionen bis 1.0.x nur die letzten 10 GitHub-Releases ab: Vor dem nächsten stabilen Release höchstens
+9 neuere Beta-/Test-Releases stehen lassen (alte Test-Releases löschen), sonst finden installierte 1.0.x ihn nicht.
+
 ### Lizenz
 MIT, siehe [`LICENSE`](LICENSE). Komponenten von Dritten: [`THIRD_PARTY.md`](THIRD_PARTY.md). Änderungen:
 [`CHANGELOG.md`](CHANGELOG.md).
@@ -168,6 +197,20 @@ themselves: `docs/signing.md`. Updates can be turned off by IT policy (`updatesE
 
 Recommended Linux packages: `wl-clipboard` (Wayland) or `xclip` (X11), `libsecret` for the keyring. Details:
 [`docs/DEMO.md`](docs/DEMO.md).
+
+### Update channels
+Settings → General → **Updates**:
+
+- **Update channel**: *Stable* (default, tested releases), *Beta* (pre-releases before a release) or *Test* (single test
+  builds from development branches).
+- **Install pre-releases automatically** (default off): off, the automatic check only offers stable versions, even in
+  the beta or test channel. On, it also offers the channel's newest pre-release.
+- **Choose version …** (also in the tray menu): all versions from GitHub Releases with channel, date and “installed”.
+  Any version installs after a confirmation; an older version is a downgrade with its own warning. **Back to stable**
+  installs the newest stable version. Settings and keys are kept.
+
+The IT policy `updatesEnabled=false` also locks the channel, the switch and the version list. `WhisperLoom update`
+checks stable plus the chosen channel.
 
 ### First start: setup wizard
 On first start a wizard takes you to your first dictation: **language**, **microphone** with a level test,
@@ -228,6 +271,21 @@ dotnet run --project src/WhisperLoom.App
 
 Layout: `src/WhisperLoom.Core` (OS-independent logic), `src/WhisperLoom.App` (Avalonia app), `tests/`, `tools/`
 (parity checks, fake API, smoke tests). Interfaces: [`docs/contracts.md`](docs/contracts.md).
+
+### Releases and channels (maintainers)
+Workflow `.github/workflows/release.yml`, Velopack channels: stable `win`/`linux` (as in 1.0.0), beta
+`win-beta`/`linux-beta`, test `win-test`/`linux-test`.
+
+| Channel | Trigger | Version | GitHub release |
+|---|---|---|---|
+| Stable | tag `vX.Y.Z` | `X.Y.Z` | draft; published only after the maintainer's OK |
+| Beta | tag `vX.Y.Z-beta.N` | `X.Y.Z-beta.N` | pre-release, published right away |
+| Test | manual only: `gh workflow run release.yml --ref <branch> -f channel=test -f dry_run=false` | `X.Y.Z-test.<run>.<branch>` (X.Y.Z = next minor after the last stable tag or `-f version=X.Y.Z`) | pre-release, published right away |
+
+Dry run without a release: `-f dry_run=true` (default). Locally: `py -3 -X utf8 build/pack.py --version <v> --rid
+win-x64 --out <folder> --channel stable|beta|test`.
+Velopack in versions up to 1.0.x only reads the latest 10 GitHub releases: before the next stable release keep at most
+9 newer beta/test releases (delete old test releases), otherwise installed 1.0.x will not find it.
 
 ### License
 MIT, see [`LICENSE`](LICENSE). Third-party components: [`THIRD_PARTY.md`](THIRD_PARTY.md). Changes:

@@ -31,6 +31,9 @@ Port des WhisperLoom-Kerns (Android) als Hintergrund-App für Windows und Linux:
 - Prompts aus `RefinePrompt.kt` nur portieren, nicht verbessern; Abweichungen nur über `docs/parity-exceptions.md`.
 - Dateien ≤ ~400 Zeilen, ein Zweck je Datei. Warnungen sind Fehler (`Directory.Build.props`).
 - Bibliotheks-Doku per Context7 bzw. offizieller Doku, Quelle als Kommentar `// Doku: <quelle> (abgerufen <datum>)`.
+- Release-Nachfrage (nur dieses Repo): Nach gemergten Änderungen fragt Claude „Beta/Pre-Release machen?“ (Tag
+  `vX.Y.Z-beta.N` bzw. Test-Build per `workflow_dispatch`, README „Releases und Kanäle“). Einen stabilen Release
+  (Tag `vX.Y.Z`, Entwurf veröffentlichen) entscheidet nur Christof.
 
 ## Repo-Etikette
 - Default-Branch `main`, öffentlich (MIT). Je Phase ein Branch + PR; Merge nur nach Christofs OK.

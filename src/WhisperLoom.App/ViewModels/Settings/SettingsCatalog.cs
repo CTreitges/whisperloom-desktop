@@ -25,6 +25,8 @@ public static class SettingsCatalog
         new("desktop.uiLanguage", "general", "G_Language", "Settings_UiLanguage"),
         new("desktop.microphone", "general", "G_Language", "Settings_Microphone"),
         new("desktop.stageFontSize", "general", "G_Stage", "Set_StageFontSize", "Set_StageFontSize_Desc"),
+        new("desktop.updateChannel", "general", "Channel_Group", "Channel_Setting", "Channel_Setting_Desc"),
+        new("desktop.updatePrereleaseAuto", "general", "Channel_Group", "Channel_PrereleaseAuto", "Channel_PrereleaseAuto_Desc"),
         // Erkennung
         new("engine", "recognition", "G_Engine", "Set_Engine", "Set_Engine_Desc"),
         new("language", "recognition", "G_Engine", "Set_Language"),

@@ -27,6 +27,24 @@
         </StackPanel>
       </ds:SettingsGroup>
 
+      <!-- W3-CHAN: Update-Kanal, Vorabversionen automatisch, Versionsliste; policy updatesEnabled=false sperrt alles. -->
+      <ds:SettingsGroup TitleKey="Channel_Group" FooterKey="Channel_Footer">
+        <StackPanel>
+          <StackPanel IsEnabled="{Binding UpdatesAllowed}">
+            <ds:SettingRow Path="desktop.updateChannel">
+              <ComboBox x:Name="UpdateChannelBox" Classes="row" ItemsSource="{Binding UpdateChannels}" SelectedItem="{Binding UpdateChannel}" />
+            </ds:SettingRow>
+            <ds:SettingRow Path="desktop.updatePrereleaseAuto" IsEnabled="{Binding IsPrereleaseChannel}">
+              <ToggleSwitch x:Name="UpdatePrereleaseAutoBox" IsChecked="{Binding UpdatePrereleaseAuto}" OnContent="" OffContent="" />
+            </ds:SettingRow>
+            <ds:SettingRow TitleKey="Channel_Versions" DescriptionKey="Channel_Versions_Desc">
+              <Button x:Name="OpenVersionsButton" Content="{Binding [Channel_OpenVersions], Source={x:Static l:Loc.Instance}}" Command="{Binding OpenVersionsCommand}" />
+            </ds:SettingRow>
+          </StackPanel>
+          <ds:HintRow x:Name="UpdatesDisabledHint" Text="{Binding [Channel_Disabled], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding !UpdatesAllowed}" Margin="14,0,14,10" />
+        </StackPanel>
+      </ds:SettingsGroup>
+
       <ds:SettingsGroup TitleKey="G_Transfer" FooterKey="Sync_Hint">
         <StackPanel DataContext="{Binding Sync}" x:DataType="avm:SyncViewModel">
           <ds:SettingRow TitleKey="Sync_ExportTitle" DescriptionKey="Sync_ExportDesc">
