@@ -2,7 +2,7 @@ name: Release
 # Update-Kanäle (W3-CHAN): stabil (Velopack-Kanal win/linux wie 1.0.0), beta (win-beta/linux-beta), test (win-test/linux-test).
 # - Tag vX.Y.Z → stabil → GitHub-Release als Entwurf (Veröffentlichen erst nach Christofs OK).
 # - Tag vX.Y.Z-beta.N → beta → Pre-Release, direkt veröffentlicht (Velopack sieht keine Entwürfe; der Tag ist die Freigabe).
-# - workflow_dispatch → Kanal wählbar; test baut X.Y.Z-test.<branch-slug>.<run_number> aus dem gewählten Ref (--ref),
+# - workflow_dispatch → Kanal wählbar; test baut X.Y.Z-test.<run_number>.<branch-slug> aus dem gewählten Ref (--ref),
 #   Pre-Release, direkt veröffentlicht. Nie je Push.
 # Ohne Signierschritt: die Firma signiert selbst (docs/signing.md).
 # Probelauf: workflow_dispatch mit dry_run=true (Standard) und jeder PR, der Release-Dateien ändert; baut und packt alles,
@@ -99,7 +99,9 @@ jobs:
                 slug=$(printf '%s' "$REF_NAME" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//' | cut -c1-30 | sed -E 's/-+$//')
                 if is "$slug" '^[0-9]+$'; then slug="b$slug"; fi
                 is "$slug" '^[a-z0-9]+(-[a-z0-9]+)*$' || { echo "::error::Branch-Slug ungültig"; exit 1; }
-                version="$base-test.$slug.$RUN_NUMBER" ;;
+                # Laufnummer vor dem Slug: SemVer vergleicht Kennungen von links, so ist der spätere Lauf immer höher
+                # (sonst stünde test.main.50 über test.feat-a.51).
+                version="$base-test.$RUN_NUMBER.$slug" ;;
               *) echo "::error::Kanal unbekannt"; exit 1 ;;
             esac
           else

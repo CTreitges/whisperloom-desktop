@@ -325,12 +325,27 @@ public partial class App : Application
         if (_versionsWindow is null)
         {
             var client = _updateClient ??= new VelopackUpdateClient(feed: null, restartArgs: [.. Environment.GetCommandLineArgs().Skip(1)]);
-            var vm = new ViewModels.Updates.VersionListViewModel(client, host.Log, () => host.Controller.Policy, UpdatePrompt.AskInstallAsync);
+            var vm = new ViewModels.Updates.VersionListViewModel(client, host.Log, () => host.Controller.Policy, UpdatePrompt.AskInstallAsync,
+                channelChosen: channel => SaveUpdateChannelAsync(host, channel));
             _versionsWindow = new Views.Updates.VersionListWindow(vm);
             _versionsWindow.Closed += (_, _) => _versionsWindow = null;
             _ = vm.LoadAsync();
         }
         Activate(_versionsWindow);
+    }
+
+    /// <summary>Speichert den Update-Kanal der manuell installierten Version (W3-CHAN), bevor die App neu startet.</summary>
+    private static async Task SaveUpdateChannelAsync(AppHost host, UpdateChannel channel)
+    {
+        var settings = host.Controller.Settings;
+        var desktop = SettingsStore.Desktop(settings);
+        if (desktop.UpdateChannel == channel.Key())
+        {
+            return;
+        }
+        desktop.UpdateChannel = channel.Key();
+        SettingsStore.SetDesktop(settings, desktop);
+        await host.Controller.ApplySettingsAsync(settings);
     }
 
     /// <summary>Verlauf (W2-OUT): Kopieren mit Gegenprobe, Einfügen wie im Tray, Neu verarbeiten als Fassung im Hintergrund.</summary>

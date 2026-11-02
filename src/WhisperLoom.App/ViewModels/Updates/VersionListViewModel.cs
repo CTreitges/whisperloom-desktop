@@ -36,12 +36,17 @@ public sealed class VersionRow(UpdateChannel channel, UpdateRelease release, boo
 /// <c>updatesEnabled=false</c> sperrt Laden und Installieren.
 /// </summary>
 /// <param name="confirm">Rückfrage: (Version, Downgrade) → true = installieren und neu starten.</param>
+/// <param name="channelChosen">
+/// Nach erfolgreichem Laden, vor dem Neustart: Update-Kanal = Kanal der installierten Version. Sonst böte die
+/// automatische Prüfung nach „Zurück zu Stabil“ mit Vorab-Schalter sofort wieder die Beta an.
+/// </param>
 public sealed partial class VersionListViewModel(
     IUpdateClient client,
     AppLog log,
     Func<PolicySettings> policy,
     Func<string, bool, Task<bool>> confirm,
-    string? os = null) : ObservableObject
+    string? os = null,
+    Func<UpdateChannel, Task>? channelChosen = null) : ObservableObject
 {
     private readonly string _os = os ?? UpdateChannels.CurrentOs;
 
@@ -109,8 +114,9 @@ public sealed partial class VersionListViewModel(
             Status = Loc.Instance["Channel_NotInstalled"];
             return UpdateOutcome.NotInstalled;
         }
-        if (row.IsInstalled)
+        if (row.IsInstalled || IsBusy)
         {
+            // IsBusy: zweiter Klick während eines Downloads (Velopacks Update-Sperre ließe ihn scheitern).
             return UpdateOutcome.Current;
         }
         if (!await confirm(row.Version, row.IsDowngrade))
@@ -124,6 +130,10 @@ public sealed partial class VersionListViewModel(
         {
             await client.DownloadAsync(row.Release, row.IsDowngrade, CancellationToken.None);
             log.Event("update.apply", ("version", row.Version), ("channel", row.Release.Channel), ("downgrade", row.IsDowngrade), ("source", "list"));
+            if (channelChosen is not null)
+            {
+                await channelChosen(row.Channel);
+            }
             client.ApplyAndRestart(row.Release);
             return UpdateOutcome.Applied;
         }

@@ -112,7 +112,7 @@ public sealed class ChannelUiTest
         var client = new FakeUpdateClient { CurrentVersion = current };
         client.Feeds[FakeUpdateClient.Stable] = ["1.0.0", "1.0.1"];
         client.Feeds[FakeUpdateClient.Beta] = ["1.1.0-beta.1", "1.1.0-beta.2"];
-        client.Feeds[FakeUpdateClient.Test] = ["1.1.0-test.feat-channels.12"];
+        client.Feeds[FakeUpdateClient.Test] = ["1.1.0-test.12.feat-channels"];
         var dir = Path.Combine(Path.GetTempPath(), "wl-chan-ui-" + Guid.NewGuid().ToString("N"));
         return new VersionListViewModel(client, new AppLog(dir), () => policy ?? PolicySettings.None, (_, _) => Task.FromResult(false));
     }
@@ -128,7 +128,7 @@ public sealed class ChannelUiTest
         Dispatcher.UIThread.RunJobs();
         var texts = UiTest.TextsOf(window);
         Assert.Contains("Version wählen", texts);
-        Assert.Contains("1.1.0-test.feat-channels.12", texts);
+        Assert.Contains("1.1.0-test.12.feat-channels", texts);
         Assert.Contains("installiert", texts);
         Assert.Contains("2026-11-02", texts);
         var install = window.GetLogicalDescendants().OfType<Button>().Where(b => b.IsVisible && Equals(b.Content, "Installieren")).ToList();

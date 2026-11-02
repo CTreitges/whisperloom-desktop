@@ -49,6 +49,12 @@ class PackTest(unittest.TestCase):
         with self.assertRaises(SystemExit):
             pack.main(["--version", "1.0.0", "--rid", "win-x64", "--out", "o", "--channel", "nightly"])
 
+    def test_release_workflow_test_version_mit_laufnummer_vor_branch(self):
+        # Review W3-CHAN: SemVer vergleicht Kennungen von links; mit dem Branch vorn stünde test.main.50 über test.feat-a.51.
+        workflow = (pack.ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+        lines = [line.strip() for line in workflow.splitlines() if line.strip().startswith('version="$base-test.')]
+        self.assertEqual(lines, ['version="$base-test.$RUN_NUMBER.$slug" ;;'])
+
     def test_publish_setzt_version_und_rid(self):
         cmd = pack.publish_cmd("0.9.1", "linux-x64", Path("pub"))
         self.assertIn("-p:Version=0.9.1", cmd)

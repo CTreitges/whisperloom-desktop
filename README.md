@@ -143,7 +143,7 @@ test `win-test`/`linux-test`.
 |---|---|---|---|
 | Stabil | Tag `vX.Y.Z` | `X.Y.Z` | Entwurf; veröffentlicht erst nach Christofs OK |
 | Beta | Tag `vX.Y.Z-beta.N` | `X.Y.Z-beta.N` | Pre-Release, sofort veröffentlicht |
-| Test | nur manuell: `gh workflow run release.yml --ref <branch> -f channel=test -f dry_run=false` | `X.Y.Z-test.<branch>.<lauf>` (X.Y.Z = nächste Minor nach dem letzten stabilen Tag oder `-f version=X.Y.Z`) | Pre-Release, sofort veröffentlicht |
+| Test | nur manuell: `gh workflow run release.yml --ref <branch> -f channel=test -f dry_run=false` | `X.Y.Z-test.<lauf>.<branch>` (X.Y.Z = nächste Minor nach dem letzten stabilen Tag oder `-f version=X.Y.Z`) | Pre-Release, sofort veröffentlicht |
 
 Probelauf ohne Release: `-f dry_run=true` (Standard). Lokal: `py -3 -X utf8 build/pack.py --version <v> --rid win-x64
 --out <ordner> --channel stable|beta|test`.
@@ -280,7 +280,7 @@ Workflow `.github/workflows/release.yml`, Velopack channels: stable `win`/`linux
 |---|---|---|---|
 | Stable | tag `vX.Y.Z` | `X.Y.Z` | draft; published only after the maintainer's OK |
 | Beta | tag `vX.Y.Z-beta.N` | `X.Y.Z-beta.N` | pre-release, published right away |
-| Test | manual only: `gh workflow run release.yml --ref <branch> -f channel=test -f dry_run=false` | `X.Y.Z-test.<branch>.<run>` (X.Y.Z = next minor after the last stable tag or `-f version=X.Y.Z`) | pre-release, published right away |
+| Test | manual only: `gh workflow run release.yml --ref <branch> -f channel=test -f dry_run=false` | `X.Y.Z-test.<run>.<branch>` (X.Y.Z = next minor after the last stable tag or `-f version=X.Y.Z`) | pre-release, published right away |
 
 Dry run without a release: `-f dry_run=true` (default). Locally: `py -3 -X utf8 build/pack.py --version <v> --rid
 win-x64 --out <folder> --channel stable|beta|test`.

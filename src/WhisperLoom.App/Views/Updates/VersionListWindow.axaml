@@ -24,7 +24,7 @@
                  Foreground="{DynamicResource Loom.TextSecondary}" Margin="0,0,12,0" />
     </DockPanel>
     <Border Background="{DynamicResource Loom.Surface}" CornerRadius="8" Padding="4">
-      <ListBox x:Name="Versions" ItemsSource="{Binding Rows}" Background="Transparent"
+      <ListBox x:Name="Versions" ItemsSource="{Binding Rows}" Background="Transparent" IsEnabled="{Binding !IsBusy}"
                AutomationProperties.Name="{Binding [Channel_ListTitle], Source={x:Static l:Loc.Instance}}">
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="u:VersionRow">

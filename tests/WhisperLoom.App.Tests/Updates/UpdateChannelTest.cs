@@ -58,8 +58,11 @@ public sealed class UpdateChannelTest : IDisposable
     [InlineData("1.1.0-beta.1", "1.0.1", 1)]
     [InlineData("1.1.0-beta.1", "1.1.0", -1)]
     [InlineData("1.1.0-beta.2", "1.1.0-beta.10", -1)]
-    [InlineData("1.1.0-beta.1", "1.1.0-test.feat-x.3", -1)]
+    [InlineData("1.1.0-beta.1", "1.1.0-test.3.feat-x", -1)]
     [InlineData("1.1.0-alpha", "1.1.0-alpha.1", -1)]
+    // Test-Builds (release.yml): Laufnummer vor dem Branch, damit der spätere Lauf höher ist, egal aus welchem Branch.
+    [InlineData("1.1.0-test.50.main", "1.1.0-test.51.feat-a", -1)]
+    [InlineData("1.1.0-test.9.zzz", "1.1.0-test.10.aaa", -1)]
     [InlineData("1.0.0+abc", "1.0.0", 0)]
     [InlineData("2.0.0", "10.0.0", -1)]
     public void Versionen_nach_SemVer(string a, string b, int expected)
@@ -153,14 +156,14 @@ public sealed class UpdateChannelTest : IDisposable
     public async Task Cli_nutzt_den_eingestellten_Kanal()
     {
         var client = new FakeUpdateClient { CurrentVersion = "1.0.0" };
-        client.Newer[FakeUpdateClient.Test] = "1.1.0-test.feat-x.7";
+        client.Newer[FakeUpdateClient.Test] = "1.1.0-test.7.feat-x";
         using var output = new StringWriter();
         using var error = new StringWriter();
         var code = await UpdateCommand.RunAsync(client, PolicySettings.None, new AppLog(_dir), output, error, CancellationToken.None,
             new UpdatePreferences(UpdateChannel.Test, false));
         Assert.Equal(0, code);
         Assert.Equal([FakeUpdateClient.Stable, FakeUpdateClient.Test], client.Checked);
-        Assert.Contains("1.1.0-test.feat-x.7", output.ToString());
+        Assert.Contains("1.1.0-test.7.feat-x", output.ToString());
     }
 
     [Fact]

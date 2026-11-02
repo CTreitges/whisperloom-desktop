@@ -28,15 +28,21 @@ public sealed class VersionListTest : IDisposable
         var client = new FakeUpdateClient { CurrentVersion = current };
         client.Feeds[FakeUpdateClient.Stable] = ["1.0.0", "1.0.1"];
         client.Feeds[FakeUpdateClient.Beta] = ["1.1.0-beta.1", "1.1.0-beta.2"];
-        client.Feeds[FakeUpdateClient.Test] = ["1.1.0-test.feat-x.7"];
+        client.Feeds[FakeUpdateClient.Test] = ["1.1.0-test.7.feat-x"];
         return client;
     }
+
+    private readonly List<UpdateChannel> _chosen = [];
 
     private VersionListViewModel Vm(IUpdateClient client, bool answer = true, PolicySettings? policy = null) =>
         new(client, new AppLog(_dir), () => policy ?? PolicySettings.None, (v, down) =>
         {
             _asked.Add((v, down));
             return Task.FromResult(answer);
+        }, channelChosen: c =>
+        {
+            _chosen.Add(c);
+            return Task.CompletedTask;
         });
 
     [AvaloniaFact]
@@ -45,7 +51,7 @@ public sealed class VersionListTest : IDisposable
         var vm = Vm(Client("1.1.0-beta.1"));
         await vm.LoadAsync();
         // SemVer: „test“ steht alphabetisch nach „beta“, also 1.1.0-test.* über 1.1.0-beta.*.
-        Assert.Equal(["1.1.0-test.feat-x.7", "1.1.0-beta.2", "1.1.0-beta.1", "1.0.1", "1.0.0"], vm.Rows.Select(r => r.Version));
+        Assert.Equal(["1.1.0-test.7.feat-x", "1.1.0-beta.2", "1.1.0-beta.1", "1.0.1", "1.0.0"], vm.Rows.Select(r => r.Version));
         Assert.Equal([UpdateChannel.Test, UpdateChannel.Beta, UpdateChannel.Beta, UpdateChannel.Stable, UpdateChannel.Stable], vm.Rows.Select(r => r.Channel));
         Assert.Equal(["1.1.0-beta.1"], vm.Rows.Where(r => r.IsInstalled).Select(r => r.Version));
         Assert.Equal(["1.0.1", "1.0.0"], vm.Rows.Where(r => r.IsDowngrade).Select(r => r.Version));
@@ -76,12 +82,53 @@ public sealed class VersionListTest : IDisposable
         Assert.Equal([("1.0.1", true)], _asked);
         Assert.Empty(client.Downloaded);
         Assert.Equal(0, client.Restarts);
+        Assert.Empty(_chosen);
 
         var yes = Vm(client, answer: true);
         await yes.LoadAsync();
         Assert.Equal(UpdateOutcome.Applied, await yes.BackToStableAsync());
         Assert.Equal([("1.0.1", FakeUpdateClient.Stable, true)], client.Downloaded);
         Assert.Equal(["1.0.1"], client.Applied);
+        // Review W3-CHAN: Kanal geht mit zurück auf Stabil, sonst böte die Auto-Prüfung (Vorab-Schalter an) gleich wieder die Beta an.
+        Assert.Equal([UpdateChannel.Stable], _chosen);
+    }
+
+    /// <summary>Wartet im Download, bis der Test ihn freigibt (zweiter Klick währenddessen).</summary>
+    private sealed class SlowClient(FakeUpdateClient inner) : IUpdateClient
+    {
+        public TaskCompletionSource Release { get; } = new();
+        public bool IsInstalled => inner.IsInstalled;
+        public string? CurrentVersion => inner.CurrentVersion;
+        public Task<UpdateRelease?> CheckAsync(string channel, CancellationToken ct) => inner.CheckAsync(channel, ct);
+        public Task<IReadOnlyList<UpdateRelease>> ListAsync(string channel, CancellationToken ct) => inner.ListAsync(channel, ct);
+        public async Task DownloadAsync(UpdateRelease release, bool downgrade, CancellationToken ct)
+        {
+            await inner.DownloadAsync(release, downgrade, ct);
+            await Release.Task;
+        }
+        public void ApplyAndRestart(UpdateRelease release) => inner.ApplyAndRestart(release);
+        public void ApplyAndExit(UpdateRelease release) => inner.ApplyAndExit(release);
+    }
+
+    [AvaloniaFact]
+    public async Task Zweiter_Klick_waehrend_Download_installiert_nicht_doppelt()
+    {
+        var inner = Client("1.0.0");
+        var slow = new SlowClient(inner);
+        var vm = Vm(slow);
+        await vm.LoadAsync();
+        var first = vm.InstallAsync(vm.Rows[0]);
+        Assert.True(vm.IsBusy);
+        // Der zweite Klick muss sofort zurückkommen, ohne Rückfrage und ohne zweiten Download.
+        var second = vm.InstallAsync(vm.Rows[1]);
+        var secondDone = second.IsCompleted;
+        slow.Release.TrySetResult();
+        Assert.True(secondDone, "zweiter Klick wartet auf einen Download");
+        Assert.Equal(UpdateOutcome.Current, await second);
+        Assert.Equal(UpdateOutcome.Applied, await first);
+        Assert.Single(inner.Downloaded);
+        Assert.Single(_asked);
+        Assert.Equal([UpdateChannel.Test], _chosen);
     }
 
     [AvaloniaFact]
