@@ -132,6 +132,71 @@ public sealed class KeyIsolationTest
         Assert.False(File.Exists(new OwnKeyTargets(r.F.DataDir).FilePath));
     }
 
+    private const string Gateway = "https://gateway.firma.example.test/v1";
+
+    private static async Task<ManagementRig> FixedGatewayAsync()
+    {
+        var r = Distribute();
+        r.Server.Settings["stt"] = new JsonObject { ["providerId"] = "custom", ["baseUrl"] = Gateway };
+        r.Server.Levels["stt.providerId"] = "fixed";
+        r.Server.Levels["stt.baseUrl"] = "fixed";
+        Assert.Equal(SyncOutcome.Synced, await r.JoinAsync());
+        return r;
+    }
+
+    [Fact]
+    public async Task P1b_key_set_per_CLI_unter_Fest_Ziel_geht_nach_Verlassen_nicht_ans_Firmen_Ziel()
+    {
+        using var r = await FixedGatewayAsync();
+        var errors = new StringWriter();
+
+        Assert.Equal(0, await KeyCommand.RunAsync("set", SecretNames.Stt, () => "test-key-not-real-CLI", r.User, r.F.DataDir,
+            new StringWriter(), errors, CancellationToken.None));
+        Assert.Equal((Gateway, ""), await SttRoute(r));
+
+        Assert.Equal(LeaveOutcome.Left, await r.Service.LeaveAsync(CancellationToken.None));
+
+        var (url, key) = await SttRoute(r);
+        Assert.Equal(Gateway, url);
+        Assert.Equal("", key);
+        Assert.False(r.User.Values.ContainsKey(SecretNames.Stt));
+        Assert.Contains("warn Ziel von stt legt die Firma fest", errors.ToString());
+    }
+
+    [Fact]
+    public async Task P1b_Key_im_Feld_unter_Fest_Ziel_geht_nach_Verlassen_nicht_ans_Firmen_Ziel()
+    {
+        using var r = await FixedGatewayAsync();
+
+        await r.Secrets.SetAsync(SecretNames.Stt, "test-key-not-real-UI", ("custom", Gateway), CancellationToken.None);
+        Assert.Equal("", (await SttRoute(r)).Key);
+
+        Assert.Equal(LeaveOutcome.Left, await r.Service.LeaveAsync(CancellationToken.None));
+
+        Assert.Equal((Gateway, ""), await SttRoute(r));
+        Assert.False(r.User.Values.ContainsKey(SecretNames.Stt));
+    }
+
+    [Fact]
+    public async Task P1b_nur_Anbieter_Fest_Adresse_vom_Nutzer_ueberschrieben_Key_bleibt_nach_Verlassen()
+    {
+        using var r = Distribute();
+        r.Server.Settings["stt"] = new JsonObject { ["providerId"] = "custom", ["baseUrl"] = Gateway };
+        r.Server.Levels["stt.providerId"] = "fixed";
+        r.Server.Levels["stt.baseUrl"] = "default";
+        Assert.Equal(SyncOutcome.Synced, await r.JoinAsync());
+        var changed = Copy(r.Settings);
+        changed.Stt.BaseUrl = "https://eigener.example.test/v1";
+        changed.Management.Overrides = [.. changed.Management.Overrides, "stt.baseUrl"];
+        await r.F.Controller.ApplySettingsAsync(changed);
+
+        Assert.Equal(0, await KeyCommand.RunAsync("set", SecretNames.Stt, () => "test-key-not-real-CLI", r.User, r.F.DataDir,
+            new StringWriter(), new StringWriter(), CancellationToken.None));
+        Assert.Equal(LeaveOutcome.Left, await r.Service.LeaveAsync(CancellationToken.None));
+
+        Assert.Equal(("https://eigener.example.test/v1", "test-key-not-real-CLI"), await SttRoute(r));
+    }
+
     [Fact]
     public async Task Tiefe_Ziel_aendert_sich_ohne_Abgleich_eigener_Key_wird_zurueckgehalten()
     {

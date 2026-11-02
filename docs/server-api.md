@@ -269,6 +269,14 @@ Fehler: `401 device_unknown`, `403 device_blocked`, `403 budget_exhausted`, `413
 - **Modell ohne Preis (W2-FIXS, additiv):** Gilt für das Gerät ein Kostendeckel, nutzt der Server nur Zugänge, deren
   Modell (festes Zugangsmodell, sonst `model` der Anfrage) in der Preistabelle der Firma steht. Ein Zugang ohne Preis
   wird übersprungen, ohne den Anbieter zu fragen; der Ersatz-Zugang springt ein, sonst `403 budget_exhausted`.
+- **Vokabular und Sprachen (W3-REST, additiv):** `/audio/transcriptions` nimmt zusätzlich `keywords[]` (Vokabular als
+  Einzelbegriffe, höchstens 100 verschiedene, je 1–49 Zeichen, höchstens 5 Wörter, ohne `<`, `>`, `,`, Zeilenumbruch,
+  ohne Leerraum am Rand) und `languages[]` bis zu zweimal (verschiedene Codes `[a-z]{2,3}`, z. B. `de` und `en` für
+  „Deutsch + Englisch“); `language` und `languages[]` nicht zugleich. Abweichend von „jedes höchstens einmal“ dürfen nur
+  diese beiden Felder mehrfach vorkommen; alles andere → `400 invalid_request`. Der Server übersetzt je Anbieter des
+  Zugangs wie die App bei Direktzugang: OpenAI-Modelle `gpt-…transcribe` → `languages[]` und `keywords[]`; Mistral →
+  `context_bias[]` (Leerraum → `_`, höchstens 100); ElevenLabs → `keyterms` (ohne `{}[]\`), `language_code` nur bei
+  genau einer Sprache; alle anderen → `language` nur bei genau einer Sprache, kein Vokabular-Feld (`prompt` wie bisher).
 - **Weitere Fehler:** `400 invalid_request`, `403 device_pending`, `403 tenant_blocked`, `404 not_found` (§1.2).
 - **Datenschutz:** Audio und Text bleiben im Arbeitsspeicher der Anfrage. Der Server speichert je Gerät, Gruppe und Monat
   nur Zähler (Anfragen, Audio-Dauer, Tokens, geschätzte Kosten, Fehler je Klasse) und reicht Antworten des Anbieters nur

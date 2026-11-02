@@ -53,6 +53,21 @@ public static class CompanyProvider
             && proxy.AbsolutePath.TrimEnd('/') == access.AbsolutePath.TrimEnd('/');
     }
 
+    /// <summary>
+    /// Rückfall für ältere Firmen-Server (v1.0.0, W3-REST): Hat der Proxy eine Erkennung mit <c>400 invalid_request</c>
+    /// abgelehnt und enthielt sie <c>keywords[]</c> oder <c>languages[]</c>, die Felder ohne diese — „Deutsch + Englisch“
+    /// wird damit „auto“ wie bei Direktzugang ohne Mehrsprachigkeit. Sonst null (kein Rückfall).
+    /// </summary>
+    public static IReadOnlyList<(string Name, string Value)>? LegacyFields(ApiAccess access,
+        IReadOnlyList<(string Name, string Value)> fields, ApiHttpException e)
+    {
+        static bool New((string Name, string Value) f) => f.Name is "keywords[]" or "languages[]";
+        return access.Provider.Id == EntryId && e.StatusCode == 400
+            && e.Message.Contains("invalid_request", StringComparison.Ordinal) && fields.Any(New)
+            ? [.. fields.Where(f => !New(f))]
+            : null;
+    }
+
     /// <summary>Fehlerklasse <c>budget</c>: der Proxy meldet <c>403 budget_exhausted</c> (Text „Firmenbudget für diesen Monat erreicht – bitte IT fragen“; kein Ersatz-Anbieter).</summary>
     public static bool IsBudgetError(Exception e) =>
         e is ApiHttpException { StatusCode: 403 } h && h.Message.Contains(BudgetError, StringComparison.Ordinal);

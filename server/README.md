@@ -125,8 +125,10 @@ server {
 
 Dazu `WL_TRUSTED_PROXIES=127.0.0.1/32`, damit Rate-Limits die echte Client-IP sehen. **Achtung:** Dann vertraut der
 Server jedem Prozess auf diesem Rechner. Wer dort lokal Code ausführt (anderer Dienst, anderer Benutzer), kann
-`X-Forwarded-For` fälschen und so die IP-Limits für Login und Enrollment umgehen (die Grenzen je Benutzer, Gerät und
-Firma bleiben). Auf geteilten Rechnern den Proxy über eine eigene Loopback-Adresse anbinden (z. B. Server auf
+`X-Forwarded-For` fälschen und so die IP-Limits für Login und Enrollment umgehen. Die Grenze je Benutzer ist weich
+(ab 50 Fehlversuchen ein Versuch je Adresse und Stunde, neue Adressen bleiben frei); mit gefälschten Adressen hat ein
+solcher Prozess praktisch unbegrenzt viele Passwortversuche, gebremst nur durch argon2. Voraussetzung ist
+Code-Ausführung auf dem Server-Rechner. Auf geteilten Rechnern den Proxy über eine eigene Loopback-Adresse anbinden (z. B. Server auf
 `127.0.0.3`, `WL_TRUSTED_PROXIES` auf die Quelladresse des Proxys) oder Server und Proxy in ein eigenes Netz legen.
 
 ### Anmeldearten
@@ -208,6 +210,11 @@ Im Key-Modus „Proxy“ setzt der Server Erkennung und Textmodell fest auf den 
   kann); Geräte-Token, Sitzungen und Einladungen nur als Hash.
 
 ### Proxy (Key-Modus „Proxy“)
+
+**Firmen-Server vor den Apps aktualisieren, sonst ohne Vokabular/Mehrsprachigkeit.** Ab der Version nach 1.0.0
+schicken die Apps dem Proxy Vokabular (`keywords[]`) und bei „Deutsch + Englisch“ beide Sprachen; ein Server 1.0.0
+lehnt das mit `400 invalid_request` ab. Die App wiederholt dann einmal ohne diese Felder: Das Diktat kommt an, aber
+ohne Vokabular als Einzelbegriffe und bei „Deutsch + Englisch“ mit automatischer Spracherkennung.
 
 Geräte schicken Erkennung und Textverbesserung an `<WL_BASE_URL>/api/v1/proxy` (OpenAI-kompatibel, Anmeldung mit dem
 Geräte-Token); der Server ersetzt das Token durch den Key der Firma und spricht den Anbieter in dessen Protokoll an:
@@ -323,6 +330,13 @@ braucht man das Passwort) sperren das Konto 15 Minuten. Zähler und Sperre liege
 Neustart. **Wiederherstellung** per Kommandozeile: `python -m whisperloom_server admin-unlock <benutzer>` (Docker: `docker compose exec whisperloom-server python -m
 whisperloom_server admin-unlock <benutzer>`). Eine angenommene Einladung (`admin-invite`) hebt die Sperre ebenfalls auf.
 
+**Aussperren hinter gleicher IP:** Die Sperre gilt je Benutzer und Adresse. Teilen sich Angreifer und Admin dieselbe
+öffentliche IP (NAT im Firmennetz, Firmen-Proxy, Carrier-NAT, gleiches WLAN), kann ein Angreifer, der nur den
+Admin-Namen kennt, den echten Admin mit 5 falschen Passwörtern für 15 Minuten aussperren und das wiederholen. Abhilfe:
+von einer anderen Adresse anmelden (z. B. Mobilfunk), `admin-unlock` auf dem Server, nicht erratbare Admin-Namen, das
+Portal nur aus dem Firmennetz bzw. per VPN erreichbar machen. Der Reverse-Proxy muss die echte Client-IP liefern
+(`WL_TRUSTED_PROXIES`); sonst sehen alle Anfragen wie eine Adresse aus und jeder kann jeden aussperren.
+
 ---
 
 ## English
@@ -374,8 +388,10 @@ only from `WL_TRUSTED_PROXIES`.
 
 See the Caddy and nginx examples above; set `WL_TRUSTED_PROXIES=127.0.0.1/32` so rate limits see the real client IP.
 **Note:** the server then trusts every process on that machine. Anyone running code there (another service or user)
-can forge `X-Forwarded-For` and bypass the IP limits for sign-in and enrollment (limits per user, device and company
-stay). On shared machines connect the proxy via its own loopback address or put server and proxy into their own network.
+can forge `X-Forwarded-For` and bypass the IP limits for sign-in and enrollment. The per-user limit is soft (from 50
+failures one attempt per address and hour, new addresses stay free); with forged addresses such a process gets
+practically unlimited password attempts, slowed only by argon2. This requires code execution on the server machine.
+On shared machines connect the proxy via its own loopback address or put server and proxy into their own network.
 
 ### Sign-in methods
 
@@ -419,6 +435,11 @@ With “Approve new devices automatically” on, a blocked device that knows the
 points this out when you block a device.
 
 ### Proxy (key mode “proxy”)
+
+**Update the company server before the apps, otherwise without vocabulary/multiple languages.** From the version
+after 1.0.0 the apps send vocabulary (`keywords[]`) and, for “German + English”, both languages to the proxy; a 1.0.0
+server rejects that with `400 invalid_request`. The app then retries once without these fields: the dictation arrives,
+but without vocabulary as single terms and, for “German + English”, with automatic language detection.
 
 Devices send recognition and text refinement to `<WL_BASE_URL>/api/v1/proxy` (OpenAI-compatible, authenticated with
 the device token); the server swaps the token for the company's key and talks to the provider in its own protocol:
@@ -519,3 +540,10 @@ address, i.e. the real admin, still gets through. 5 wrong TOTP codes (which need
 `python -m whisperloom_server admin-unlock <user>` (Docker: `docker compose exec
 whisperloom-server python -m whisperloom_server admin-unlock <user>`). Accepting an invitation (`admin-invite`) also
 lifts the lock.
+
+**Lockout behind the same IP:** the lock applies per user and address. If an attacker and the admin share the same
+public IP (NAT in the company network, company proxy, carrier NAT, same Wi-Fi), an attacker who only knows the admin
+name can lock the real admin out for 15 minutes with 5 wrong passwords, and repeat that. Remedies: sign in from another
+address (e.g. mobile network), `admin-unlock` on the server, admin names that are hard to guess, portal reachable only
+from the company network or via VPN. The reverse proxy must pass the real client IP (`WL_TRUSTED_PROXIES`); otherwise
+all requests look like one address and anyone can lock out anyone.

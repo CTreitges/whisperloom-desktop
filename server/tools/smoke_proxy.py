@@ -7,6 +7,7 @@ Anfrage 403 budget_exhausted, Budget-Seite zeigt „Erreicht“.
 
 import json
 import re
+import urllib.request
 import uuid
 import wave
 from io import BytesIO
@@ -24,13 +25,34 @@ def _wav(sekunden: float = 1.0) -> bytes:
     return puffer.getvalue()
 
 
-def _multipart(felder: dict[str, str], datei: bytes) -> tuple[bytes, str]:
+def _multipart(felder: dict[str, str | list[str]], datei: bytes) -> tuple[bytes, str]:
     grenze = "----smoke" + uuid.uuid4().hex
-    teile = [f'--{grenze}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{v}\r\n'.encode() for k, v in felder.items()]
+    paare = [(k, w) for k, v in felder.items() for w in (v if isinstance(v, list) else [v])]
+    teile = [f'--{grenze}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{v}\r\n'.encode() for k, v in paare]
     teile.append(f'--{grenze}\r\nContent-Disposition: form-data; name="file"; filename="audio.wav"\r\n'
                  "Content-Type: audio/wav\r\n\r\n".encode() + datei + b"\r\n")
     teile.append(f"--{grenze}--\r\n".encode())
     return b"".join(teile), f"multipart/form-data; boundary={grenze}"
+
+
+def _vokabular(portal, api, h: dict, fake_basis: str, pruefe, csrf) -> None:
+    """W3-REST (4): Vokabular und „Deutsch + Englisch“ kommen je Anbieter beim Upstream an wie bei Direktzugang."""
+    erwartet = {"openai": ("gpt-transcribe", "keywords[]", ["WhisperLoom", "Firmen Manager"]),
+                "mistral": ("voxtral-mini-latest", "context_bias[]", ["WhisperLoom", "Firmen_Manager"])}
+    for anbieter, (modell, feld, begriffe) in erwartet.items():
+        _, _, html = portal.anfrage("GET", "/schluessel")
+        portal.anfrage("POST", "/schluessel", {"csrf": csrf(html), "name": "stt", "anbieter": anbieter,
+                                               "basis_url": fake_basis + "/v1", "modell": modell, "key": FAKE_KEY})
+        roh, typ = _multipart({"model": "egal", "languages[]": ["de", "en"], "response_format": "json",
+                               "keywords[]": ["WhisperLoom", "Firmen Manager"]}, _wav(1.0))
+        st, _, _ = api.anfrage("POST", "/api/v1/proxy/audio/transcriptions", daten=roh, headers={**h, "Content-Type": typ})
+        with urllib.request.urlopen(fake_basis + "/_letzte", timeout=10) as r:  # noqa: S310 (lokaler Fake)
+            felder = json.loads(r.read())["felder"]
+        sprachen = felder.get("languages[]") if anbieter == "openai" else felder.get("language")
+        print(f"     Fake-Upstream {anbieter}: {feld}={felder.get(feld)} sprachen={sprachen}")
+        pruefe(st == 200 and felder.get(feld) == begriffe
+               and (sprachen == ["de", "en"] if anbieter == "openai" else sprachen is None),
+               f"Vokabular und Sprachen über den Proxy an {anbieter} ({feld})")
 
 
 def pruefen(portal, api, token: str, fake_basis: str, pruefe, csrf) -> None:
@@ -59,9 +81,10 @@ def pruefen(portal, api, token: str, fake_basis: str, pruefe, csrf) -> None:
     st, _, body = api.anfrage("GET", "/api/v1/proxy/models", headers=h)
     pruefe(st == 200 and {m["id"] for m in json.loads(body)["data"]} == {"fake-whisper", "fake-llm"}, "Modellliste")
     pruefe(FAKE_KEY.encode() not in body, "Key nicht in der Antwort")
+    _vokabular(portal, api, h, fake_basis, pruefe, csrf)
 
     st, _, html = portal.anfrage("GET", "/nutzung")
-    pruefe(st == 200 and re.search(rb'<dd>2</dd>', html) is not None, "Portal „Nutzung“ zählt 2 Anfragen")
+    pruefe(st == 200 and re.search(rb'<dd>4</dd>', html) is not None, "Portal „Nutzung“ zählt 4 Anfragen")
     st, kopf, csv = portal.anfrage("GET", "/nutzung.csv")
     pruefe(st == 200 and kopf["content-type"].startswith("text/csv") and b"device" in csv, "CSV-Export")
 

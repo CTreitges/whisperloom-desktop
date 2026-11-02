@@ -31,7 +31,9 @@ ein (Pflicht); Firmen-Admins können es überspringen („Später einrichten“)
 - `WL_TRUSTED_PROXIES=127.0.0.1/32`: nur Caddy liefert `X-Forwarded-For` (Rate-Limits je Client). **Grenze
   (Review N-17):** Der Server kann Caddy nicht von anderen lokalen Prozessen unterscheiden. Wer auf dem VPS Code
   ausführt (anderer Dienst, anderer Benutzer), kann `X-Forwarded-For` fälschen und die IP-Limits für Login und
-  Enrollment umgehen; die Grenzen je Benutzer, Gerät und Firma bleiben. Die Demo nimmt das hin (Ein-Benutzer-VPS).
+  Enrollment umgehen. Die Grenze je Benutzer ist weich (ab 50 Fehlversuchen ein Versuch je Adresse und Stunde, neue
+  Adressen bleiben frei), ein solcher Prozess hat damit praktisch unbegrenzt viele Passwortversuche, gebremst nur durch
+  argon2. Voraussetzung ist Code-Ausführung auf dem VPS. Die Demo nimmt das hin (Ein-Benutzer-VPS).
   Strenger: Server an eine eigene Loopback-Adresse binden und nur die Quelladresse von Caddy vertrauen, oder Caddy
   und Server in ein eigenes Netz legen.
 - Login-Sperre aufheben (z. B. nach eigenen Tippfehlern oder einer TOTP-Sperre):

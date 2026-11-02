@@ -31,7 +31,11 @@ internal static class KeyCommand
         {
             // Unter Firmen-Verwaltung gilt der Key für das Ziel, das gerade eingestellt ist (W2-FIX K-1). Ohne lesbare
             // settings.json bleibt er unter Verwaltung zurückgehalten (fail-closed).
-            new Management.OwnKeyTargets(dataDir).Record(settings, name);
+            new Management.OwnKeyTargets(dataDir).Record(settings, name, policy);
+            if (Management.CompanySecretStore.CompanyChoseTarget(settings, policy, name))
+            {
+                errors.WriteLine($"warn Ziel von {name} legt die Firma fest: der eigene Key wird unter Verwaltung nicht genutzt und beim Verlassen gelöscht.");
+            }
         }
         return code;
     }

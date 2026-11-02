@@ -49,11 +49,22 @@ public sealed class OwnKeyTargets(string dataDir)
         return origins.Count == 0 || (Load().TryGetValue(name, out var recorded) && origins.All(recorded.Contains));
     }
 
-    /// <summary>Ziel von <paramref name="name"/> unter <paramref name="settings"/> festhalten (Nutzer hat den Key gerade gespeichert).</summary>
-    public void Record(WhisperLoomSettings settings, string name)
+    /// <summary>
+    /// Ziel von <paramref name="name"/> unter <paramref name="settings"/> festhalten (Nutzer hat den Key gerade gespeichert).
+    /// Legt die Firma das Ziel fest (<paramref name="policy"/>), hat der Nutzer es nicht gewählt: dann kein Ziel, und ein
+    /// früher festgehaltenes verfällt, weil der neue Key es ersetzt (W3-REST N-neu-1). Beim Verlassen wird der Key verworfen.
+    /// </summary>
+    public void Record(WhisperLoomSettings settings, string name, PolicySettings policy)
     {
         var all = Load().ToDictionary(e => e.Key, e => e.Value, StringComparer.Ordinal);
-        all[name] = KeyRoutes.OriginsOf(settings, name);
+        if (CompanySecretStore.CompanyChoseTarget(settings, policy, name))
+        {
+            all.Remove(name);
+        }
+        else
+        {
+            all[name] = KeyRoutes.OriginsOf(settings, name);
+        }
         Write(all);
     }
 
