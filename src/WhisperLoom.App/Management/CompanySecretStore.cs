@@ -50,9 +50,8 @@ public sealed class CompanySecretStore(ISecretStore user, ISecretStore company, 
         {
             return await user.GetAsync(name, ct).ConfigureAwait(false);
         }
-        var section = Section(name);
         var p = policy();
-        if (p.IsLocked(section + ".providerId") || p.IsLocked(section + ".baseUrl") || p.IsLocked("secrets." + name))
+        if (TargetFixed(p, name) || p.IsLocked("secrets." + name))
         {
             return null;
         }
@@ -71,7 +70,7 @@ public sealed class CompanySecretStore(ISecretStore user, ISecretStore company, 
         await user.SetAsync(name, value, ct).ConfigureAwait(false);
         if (SecretNames.All.Contains(name) && IsManaged(settings().Management))
         {
-            own.Record(settings(), name);
+            own.Record(settings(), name, policy());
         }
     }
 
@@ -86,7 +85,7 @@ public sealed class CompanySecretStore(ISecretStore user, ISecretStore company, 
         {
             var shown = SettingsJson.Deserialize(SettingsJson.Serialize(settings()));
             ConfigApply.Access(shown, Section(name)).Set(target.ProviderId, target.BaseUrl);
-            own.Record(shown, name);
+            own.Record(shown, name, policy());
         }
     }
 
@@ -101,6 +100,10 @@ public sealed class CompanySecretStore(ISecretStore user, ISecretStore company, 
         s.Management.Overrides.Contains(Section(access) + ".providerId") && s.Management.Overrides.Contains(Section(access) + ".baseUrl");
 
     public Task DeleteAsync(string name, CancellationToken ct) => user.DeleteAsync(name, ct);
+
+    /// <summary>Legt die Firma Anbieter oder Adresse des Zugangs <paramref name="access"/> fest (Fest)? Dann wählt der Nutzer das Ziel nicht.</summary>
+    public static bool TargetFixed(PolicySettings p, string access) =>
+        p.IsLocked(Section(access) + ".providerId") || p.IsLocked(Section(access) + ".baseUrl");
 
     /// <summary>An einen Firmen-Server angebunden (auch wartend, gesperrt oder widerrufen).</summary>
     public static bool IsManaged(ManagementSettings m) => m.ServerUrl.Length > 0 && m.State is "pending" or "approved" or "blocked" or "revoked";

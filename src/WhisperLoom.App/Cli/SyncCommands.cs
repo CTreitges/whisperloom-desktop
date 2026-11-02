@@ -84,7 +84,7 @@ internal sealed class SyncCommands(string dataDir, ISecretStore secrets, TextWri
             var own = new Management.OwnKeyTargets(dataDir);
             foreach (var name in keys.Keys.Where(SecretNames.All.Contains))
             {
-                own.Record(settings, name);
+                own.Record(settings, name, policy);
             }
         }
         _settings.Save(settings);
