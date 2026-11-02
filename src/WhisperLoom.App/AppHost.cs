@@ -376,6 +376,7 @@ public sealed partial class AppHost
                 ok = message == "copied";
                 break;
             case "show": ShowWindow?.Invoke("stage"); message = "shown"; break;
+            case "settings" or "help": ShowWindow?.Invoke(verb); message = "shown"; break;
             case "setup":
                 PendingJoin = args.Count == 2 ? new JoinLink(args[0], args[1]) : null;
                 ShowWindow?.Invoke("setup");

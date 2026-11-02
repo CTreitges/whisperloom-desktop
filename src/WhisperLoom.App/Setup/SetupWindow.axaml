@@ -113,13 +113,15 @@
           <!-- 0 Wie nutzt du WhisperLoom? -->
           <StackPanel x:Name="UsagePanel" IsVisible="{Binding ShowUsage}">
             <TextBlock Classes="intro" Text="{Binding [Setup_UsageIntro], Source={x:Static l:Loc.Instance}}" Margin="0,0,0,14" />
-            <RadioButton x:Name="UsagePersonal" Classes="choice" GroupName="usage" IsChecked="{Binding UsePersonal}">
+            <RadioButton x:Name="UsagePersonal" Classes="choice" GroupName="usage"
+                         AutomationProperties.Name="{Binding [Setup_UsagePersonal], Source={x:Static l:Loc.Instance}}" IsChecked="{Binding UsePersonal}">
               <StackPanel Spacing="2">
                 <TextBlock Classes="choiceTitle" Text="{Binding [Setup_UsagePersonal], Source={x:Static l:Loc.Instance}}" />
                 <TextBlock Classes="choiceText" Text="{Binding [Setup_UsagePersonalDesc], Source={x:Static l:Loc.Instance}}" />
               </StackPanel>
             </RadioButton>
-            <RadioButton x:Name="UsageCompany" Classes="choice" GroupName="usage" IsChecked="{Binding UseCompany}">
+            <RadioButton x:Name="UsageCompany" Classes="choice" GroupName="usage"
+                         AutomationProperties.Name="{Binding [Setup_UsageCompany], Source={x:Static l:Loc.Instance}}" IsChecked="{Binding UseCompany}">
               <StackPanel Spacing="2">
                 <TextBlock Classes="choiceTitle" Text="{Binding [Setup_UsageCompany], Source={x:Static l:Loc.Instance}}" />
                 <TextBlock Classes="choiceText" Text="{Binding [Setup_UsageCompanyDesc], Source={x:Static l:Loc.Instance}}" />
