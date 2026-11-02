@@ -36,6 +36,14 @@ class PackTest(unittest.TestCase):
         self.assertEqual(cmd[cmd.index("-r") + 1], "linux-x64")
         self.assertIn("--self-contained", cmd)
 
+    def test_publish_mit_readytorun(self):
+        # PERF-3: vorkompiliert (weniger JIT beim Start und beim ersten Öffnen jeder Seite), für beide RIDs.
+        for rid in pack.RIDS:
+            cmd = pack.publish_cmd("1.0.0", rid, Path("pub"))
+            self.assertIn("-p:PublishReadyToRun=true", cmd)
+            self.assertIn("-p:PublishReadyToRunComposite=true", cmd)
+            self.assertIn("--self-contained", cmd)  # Composite nur self-contained
+
     def test_version_muss_semver_sein(self):
         self.assertEqual(pack.check_version("0.0.1-dryrun.7"), "0.0.1-dryrun.7")
         for bad in ("v0.9.0", "0.9", "0.9.0+sha", ""):
