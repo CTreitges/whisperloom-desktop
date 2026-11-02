@@ -32,11 +32,18 @@ public sealed class HelpIllustration : Control
     static HelpIllustration() => AffectsRender<HelpIllustration>(SourceProperty);
 
     /// <summary>Hell/Dunkel gewechselt: Pinsel der neuen Variante auflösen und neu zeichnen.</summary>
-    public HelpIllustration() => ActualThemeVariantChanged += (_, _) =>
+    public HelpIllustration()
+    {
+        ActualThemeVariantChanged += (_, _) => Repaint();
+        // Prüfer PR #33 N3: auch geänderte Ressourcen (z. B. Tokens zur Laufzeit) neu auflösen.
+        ResourcesChanged += (_, _) => Repaint();
+    }
+
+    private void Repaint()
     {
         _paint = null;
         InvalidateVisual();
-    };
+    }
 
     /// <summary>avares-URI der SVG-Datei.</summary>
     public string? Source { get => GetValue(SourceProperty); set => SetValue(SourceProperty, value); }

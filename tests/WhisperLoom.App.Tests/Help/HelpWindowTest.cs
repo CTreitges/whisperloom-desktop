@@ -243,8 +243,14 @@ public sealed class HelpWindowTest
         var i = Array.FindIndex(light, p => p.Fill is not null);
         Assert.NotEqual(((ISolidColorBrush)light[i].Fill!).Color, ((ISolidColorBrush)dark[i].Fill!).Color);
 
+        // Geänderte Ressourcen (ohne Theme-Wechsel) lösen ebenfalls neu auf (Prüfer PR #33 N3).
+        ill.Resources["Loom.Accent"] = Brushes.Red;
+        var custom = ill.Paint();
+        Assert.NotSame(dark, custom);
+        Assert.Contains(custom, p => ReferenceEquals(p.Fill, Brushes.Red) || ReferenceEquals((p.Pen as Pen)?.Brush, Brushes.Red));
+
         ill.Source = HelpCatalog.Find("recognition")!.Illustration;
-        Assert.NotSame(dark, ill.Paint());
+        Assert.NotSame(custom, ill.Paint());
         Assert.Equal(ill.Shapes.Count, ill.Paint().Length);
         window.Close();
     }

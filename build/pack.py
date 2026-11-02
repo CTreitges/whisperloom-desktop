@@ -40,12 +40,24 @@ def check_version(version: str) -> str:
 
 
 def publish_cmd(version: str, rid: str, publish_dir: Path) -> list[str]:
-    # ReadyToRun als Composite (PERF-3), A/B am selben PC: Start bereit p50 1716 ms (ohne) → 982–1052 ms (R2R) → 828 ms
-    # (Composite), erstes Öffnen „Erkennung“ 267 → 201 ms (R2R). Kosten: Publish ≈ +46 MB (211 → 257 MB), längerer Build.
-    # Doku: Context7 /dotnet/docs, docs/core/deploying/ready-to-run.md (abgerufen 2026-11-02): braucht RID, Composite nur
-    # self-contained.
-    return ["dotnet", "publish", str(APP), "-c", "Release", "-r", rid, "--self-contained", "-p:PublishReadyToRun=true",
-            "-p:PublishReadyToRunComposite=true", f"-p:Version={version}", "-o", str(publish_dir)]
+    return ["dotnet", "publish", str(APP), "-c", "Release", "-r", rid, "--self-contained", *readytorun_args(rid),
+            f"-p:Version={version}", "-o", str(publish_dir)]
+
+
+def readytorun_args(rid: str) -> list[str]:
+    """ReadyToRun (PERF-3): vorkompiliert, weniger JIT beim Start und beim ersten Öffnen jeder Seite.
+
+    Windows ohne Composite: Composite schreibt die .NET-Laufzeit in ein eigenes Image und entfernt damit die
+    Microsoft-Signatur von ~175 Laufzeit-DLLs (WDAC/AppLocker „Herausgeber Microsoft“, docs/signing.md) – Entscheidung
+    Christof 2026-11-02. Linux mit Composite (keine Authenticode-Signaturen; Doku empfiehlt es dort für den besten Start).
+    Messung win-x64 am selben PC (Start bereit p50): ohne R2R 1774 ms, R2R 982–1052 ms, Composite 828–872 ms.
+    Doku: Context7 /dotnet/docs, docs/core/deploying/ready-to-run.md (abgerufen 2026-11-02): braucht RID, Composite nur
+    self-contained.
+    """
+    args = ["-p:PublishReadyToRun=true"]
+    if rid.startswith("linux"):
+        args.append("-p:PublishReadyToRunComposite=true")
+    return args
 
 
 def vpk_cmd(version: str, rid: str, publish_dir: Path, out: Path, host: str) -> list[str]:
