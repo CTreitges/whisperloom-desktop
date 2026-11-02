@@ -94,7 +94,8 @@
 
     <!-- PERF-2: Inhalt = SelectedPage (Code-Behind, einen Durchlauf nach der Markierung), Vorlage = PageViewCache. -->
     <!-- Vorbau (PERF-2): Seiten hängen hier nur kurz (wenige Dispatcher-Durchläufe), unsichtbar, ohne Treffer und Tab-Stopps. -->
-    <Panel x:Name="Staging" Grid.Column="1" IsHitTestVisible="False" Opacity="0" KeyboardNavigation.TabNavigation="None" />
+    <!-- W3-PERF N7: StagingPanel hält die Seiten auch aus dem Automation-Baum (UIA, AT-SPI) fern. -->
+    <vs:StagingPanel x:Name="Staging" Grid.Column="1" IsHitTestVisible="False" Opacity="0" KeyboardNavigation.TabNavigation="None" />
     <ContentControl x:Name="PageHost" Grid.Column="1" />
   </Grid>
 </Window>

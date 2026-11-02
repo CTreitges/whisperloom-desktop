@@ -37,7 +37,7 @@ public partial class SettingsWindow : Window
         {
             if (e.PropertyName == nameof(SettingsShellViewModel.SelectedPage))
             {
-                Dispatcher.UIThread.Post(() => PageHost.Content = shell.SelectedPage, DispatcherPriority.Background);
+                Dispatcher.UIThread.Post(() => ShowSelectedPage(shell), DispatcherPriority.Background);
             }
         };
         shell.RevealRequested += Reveal;
@@ -60,6 +60,20 @@ public partial class SettingsWindow : Window
 
     /// <summary>Gebaute Seiten-Views (PERF-2).</summary>
     internal PageViewCache Pages { get; } = null!;
+
+    /// <summary>
+    /// Hängt die gewählte Seite an. W3-PERF N6: Ein Tab direkt nach ↑/↓ kommt vor diesem Durchlauf an und fokussiert noch
+    /// die alte Seite; die wird hier abgehängt und der Fokus wäre weg. Dann geht er zurück auf die Seitenleiste.
+    /// </summary>
+    private void ShowSelectedPage(SettingsShellViewModel shell)
+    {
+        var focusInOldPage = FocusManager?.GetFocusedElement() is Visual focused && PageHost.IsVisualAncestorOf(focused);
+        PageHost.Content = shell.SelectedPage;
+        if (focusInOldPage)
+        {
+            (PageList.ContainerFromItem(shell.SelectedPage!) as InputElement ?? PageList).Focus(NavigationMethod.Tab);
+        }
+    }
 
     /// <summary>
     /// Baut die übrigen Seiten nach dem Öffnen im Leerlauf vor (<see cref="PageViewCache.PrepareSteps"/>): ein Schritt je
