@@ -22,8 +22,19 @@ public sealed class ApiTranscriber(HttpClient http, ApiAccess access, string pro
 
     private async Task<TranscriptResult> OpenAiAsync(WavUpload upload, string language, CancellationToken ct)
     {
-        var body = await MultipartAsync(TranscriptionRequest.Url(access), TranscriptionRequest.Fields(access, language, prompt),
-            "audio.wav", "audio/wav", upload.WavBytes(), new HttpCallOptions(access.ReadTimeoutMs), ct).ConfigureAwait(false);
+        var fields = TranscriptionRequest.Fields(access, language, prompt);
+        Task<string> Send(IReadOnlyList<(string Name, string Value)> f) => MultipartAsync(TranscriptionRequest.Url(access), f,
+            "audio.wav", "audio/wav", upload.WavBytes(), new HttpCallOptions(access.ReadTimeoutMs), ct);
+        string body;
+        try
+        {
+            body = await Send(fields).ConfigureAwait(false);
+        }
+        catch (ApiHttpException e) when (CompanyProvider.LegacyFields(access, fields, e) is { } legacy)
+        {
+            // W3-REST: älterer Firmen-Server (v1.0.0) kennt keywords[] und mehrfaches languages[] nicht → genau einmal ohne.
+            body = await Send(legacy).ConfigureAwait(false);
+        }
         var json = Parse(body);
         return new TranscriptResult(Text(json, "text").Trim(), TranscriptionRequest.DetectedLanguage(json));
     }

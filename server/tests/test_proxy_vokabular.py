@@ -10,7 +10,7 @@ import pytest
 
 from whisperloom_server import upload
 
-from .conftest import bearer, proxy_geraet, wav, zugang
+from .conftest import FAKE_KEY_2, bearer, proxy_geraet, wav, zugang
 
 URL = "/api/v1/proxy/audio/transcriptions"
 BEGRIFFE = ["WhisperLoom", "Treitges", "Firmen Manager"]
@@ -61,6 +61,22 @@ def test_mistral_context_bias_ohne_doppelte_nach_dem_ersetzen(pein, pclient, fak
     r = _senden(pclient, pein, fake, "mistral", "voxtral-mini-latest", **{"keywords[]": ["a b", "a_b", "c"]})
     assert r.status_code == 200, r.text
     assert fake.anfragen[0]["felder"]["context_bias[]"] == ["a_b", "c"]
+
+
+def test_ersatz_zugang_anderer_family_bekommt_eigene_felder(pein, pclient, fake, fake2):
+    """Review D-2: Primär OpenAI gpt-transcribe fällt aus, der Ersatz Mistral bekommt context_bias[] und keine
+    languages[]/keywords[] – die Übersetzung gilt je tatsächlich genutztem Zugang."""
+    f, g = proxy_geraet(pclient, pein)
+    zugang(pein, f["id"], "stt", "openai", fake.basis + "/v1", modell="gpt-transcribe")
+    zugang(pein, f["id"], "stt_fallback", "mistral", fake2.basis + "/v1", key=FAKE_KEY_2, modell="voxtral-mini-latest")
+    fake.modus = "fehler500"
+    r = pclient.post(URL, headers=bearer(g["deviceToken"]), files={"file": ("a.wav", wav(), "audio/wav")},
+                     data={"model": "x", "languages[]": ["de", "en"], "keywords[]": BEGRIFFE})
+    assert r.status_code == 200, r.text
+    assert fake.anfragen[0]["felder"]["languages[]"] == ["de", "en"]
+    ersatz = fake2.anfragen[0]["felder"]
+    assert ersatz["context_bias[]"] == ["WhisperLoom", "Treitges", "Firmen_Manager"]
+    assert not {"languages[]", "keywords[]", "language", "prompt"} & set(ersatz)
 
 
 def test_elevenlabs_bekommt_keyterms_und_bei_zwei_sprachen_keinen_code(pein, pclient, fake):

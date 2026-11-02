@@ -11,6 +11,9 @@ versions follow [Semantic Versioning](https://semver.org/).
   in the proxy. An own key stored (CLI `key set` or key field) while the company fixes the target is no longer sent to
   that target after leaving the company. Server README: lockout behind the same IP, precise note on forged
   `X-Forwarded-For` (W3-REST).
+- Company server upgrade note (W3-REST): update the company server before the apps, otherwise without vocabulary /
+  multiple languages. Against a 1.0.0 server the app retries a rejected recognition (`400 invalid_request`) once
+  without `keywords[]` and with automatic language detection instead of “German + English”.
 - **Next dictation while the text is being improved** (W3-NEXT): pressing the dictation hotkey (hold or toggle, Linux
   `toggle`) during the AI improvement now starts the next recording right away; the running dictation is still improved
   and inserted into its own window, results arrive in dictation order. Skip the improvement with a double-press (< 400 ms)

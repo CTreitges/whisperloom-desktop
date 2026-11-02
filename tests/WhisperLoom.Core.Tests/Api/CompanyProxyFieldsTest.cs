@@ -72,6 +72,53 @@ public sealed partial class CompanyProxyFieldsTest
         Assert.Contains(("keywords[]", "WhisperLoom"), f);
     }
 
+    /// <summary>Firmen-Server v1.0.0: lehnt keywords[] und mehrfaches languages[] mit 400 invalid_request ab.</summary>
+    private static List<FakeRequest> OldServer(FakeServer server)
+    {
+        var requests = new List<FakeRequest>();
+        server.Map("/api/v1/proxy/audio/transcriptions", r =>
+        {
+            lock (requests) requests.Add(r);
+            return r.Latin1.Contains("name=\"keywords[]\"") || r.Latin1.Contains("name=\"languages[]\"")
+                ? new FakeResponse(400, """{"error":"invalid_request"}""")
+                : new FakeResponse(200, """{"text":"ok"}""");
+        });
+        return requests;
+    }
+
+    [Fact]
+    public async Task Aelterer_Firmen_Server_einmal_ohne_neue_Felder_wiederholen()
+    {
+        await using var server = new FakeServer();
+        var requests = OldServer(server);
+
+        var result = await new ApiTranscriber(new HttpClient(), Company(server.Base), Vocabulary)
+            .TranscribeAsync(new WavUpload(new short[1600]), WhisperLoomSettings.LanguageDeEn, CancellationToken.None);
+
+        Assert.Equal("ok", result.Text);
+        Assert.Equal(2, requests.Count);
+        Assert.DoesNotContain("keywords[]", requests[1].Latin1);
+        Assert.DoesNotContain("languages[]", requests[1].Latin1);
+        Assert.DoesNotContain("name=\"language\"", requests[1].Latin1); // de+en ohne Mehrsprachigkeit: auto
+        Assert.Contains("name=\"prompt\"", requests[1].Latin1);
+    }
+
+    [Fact]
+    public async Task Ohne_neue_Felder_keine_Wiederholung_bei_400()
+    {
+        await using var server = new FakeServer();
+        var requests = new List<FakeRequest>();
+        server.Map("/api/v1/proxy/audio/transcriptions", r =>
+        {
+            lock (requests) requests.Add(r);
+            return new FakeResponse(400, """{"error":"invalid_request"}""");
+        });
+
+        await Assert.ThrowsAsync<WhisperLoom.Core.Contracts.ApiHttpException>(() => new ApiTranscriber(new HttpClient(), Company(server.Base), "")
+            .TranscribeAsync(new WavUpload(new short[1600]), "de", CancellationToken.None));
+        Assert.Single(requests);
+    }
+
     [Fact]
     public void Eine_Sprache_bleibt_language_und_ohne_Vokabular_keine_keywords()
     {

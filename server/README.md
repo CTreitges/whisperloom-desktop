@@ -211,6 +211,11 @@ Im Key-Modus „Proxy“ setzt der Server Erkennung und Textmodell fest auf den 
 
 ### Proxy (Key-Modus „Proxy“)
 
+**Firmen-Server vor den Apps aktualisieren, sonst ohne Vokabular/Mehrsprachigkeit.** Ab der Version nach 1.0.0
+schicken die Apps dem Proxy Vokabular (`keywords[]`) und bei „Deutsch + Englisch“ beide Sprachen; ein Server 1.0.0
+lehnt das mit `400 invalid_request` ab. Die App wiederholt dann einmal ohne diese Felder: Das Diktat kommt an, aber
+ohne Vokabular als Einzelbegriffe und bei „Deutsch + Englisch“ mit automatischer Spracherkennung.
+
 Geräte schicken Erkennung und Textverbesserung an `<WL_BASE_URL>/api/v1/proxy` (OpenAI-kompatibel, Anmeldung mit dem
 Geräte-Token); der Server ersetzt das Token durch den Key der Firma und spricht den Anbieter in dessen Protokoll an:
 OpenAI-kompatibel (OpenAI, Groq, Mistral, Together, DeepInfra, OpenRouter, DeepSeek, eigener Server), ElevenLabs,
@@ -430,6 +435,11 @@ With “Approve new devices automatically” on, a blocked device that knows the
 points this out when you block a device.
 
 ### Proxy (key mode “proxy”)
+
+**Update the company server before the apps, otherwise without vocabulary/multiple languages.** From the version
+after 1.0.0 the apps send vocabulary (`keywords[]`) and, for “German + English”, both languages to the proxy; a 1.0.0
+server rejects that with `400 invalid_request`. The app then retries once without these fields: the dictation arrives,
+but without vocabulary as single terms and, for “German + English”, with automatic language detection.
 
 Devices send recognition and text refinement to `<WL_BASE_URL>/api/v1/proxy` (OpenAI-compatible, authenticated with
 the device token); the server swaps the token for the company's key and talks to the provider in its own protocol:
