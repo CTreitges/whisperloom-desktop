@@ -31,6 +31,7 @@ Weitere Befehle für eigene Kürzel:
 | `stage prompt` | feste Stufe: `off`, `polish`, `beautify`, `summarize`, `readable`, `prompt` |
 | `show` | Bühnenansicht öffnen |
 | `setup` | Einrichtungs-Assistent erneut öffnen |
+| `settings` / `help` | Einstellungen bzw. Hilfe öffnen |
 | `status --json` | Zustand ausgeben (für Skripte) |
 | `process-selection` | markierten Text verarbeiten: Stufen-Wähler als kleines Fenster, Ergebnis in die Zwischenablage |
 | `process-selection --stage beautify` | markierten Text sofort mit dieser Stufe verarbeiten (`polish`, `beautify`, `summarize`, `prompt`) |
@@ -122,7 +123,7 @@ your desktop environment to a command instead. This works the same on **Wayland 
 **Command:** `"/path/to/WhisperLoom" toggle` – the setup wizard shows the exact path (step *Shortcuts*). For an AppImage
 use the `.AppImage` file. `toggle` starts or stops-and-processes a recording and starts the app if it is not running. The
 result is on the **clipboard** (paste with Ctrl+V). Other verbs: `start`, `stop`, `cancel`, `pause`, `resume`,
-`stage next`, `stage <off|polish|beautify|summarize|readable|prompt>`, `show`, `setup`, `status --json`. Push-to-talk is
+`stage next`, `stage <off|polish|beautify|summarize|readable|prompt>`, `show`, `setup`, `settings`, `help`, `status --json`. Push-to-talk is
 not possible with desktop shortcuts; use `toggle`.
 
 **Process selected text:** select text anywhere, then run `"/path/to/WhisperLoom" process-selection` from a shortcut.
