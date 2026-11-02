@@ -5,6 +5,12 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- Company proxy: vocabulary (`keywords[]`) and “German + English” (two `languages[]`) now reach the upstream provider
+  like with direct access (OpenAI gpt-transcribe, Mistral `context_bias[]`, ElevenLabs `keyterms`); strict field checks
+  in the proxy. An own key stored (CLI `key set` or key field) while the company fixes the target is no longer sent to
+  that target after leaving the company. Server README: lockout behind the same IP, precise note on forged
+  `X-Forwarded-For` (W3-REST).
+
 ## [1.0.0] – 2026-11-02
 
 ### Added

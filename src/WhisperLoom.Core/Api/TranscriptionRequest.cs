@@ -19,6 +19,11 @@ public static partial class TranscriptionRequest
     /// <summary>Sprachfeld von gpt-transcribe: Liste erwarteter Sprachen (<see cref="Contracts.ModelOption.LanguageField"/>).</summary>
     private const string LanguagesField = "languages[]";
 
+    private const string KeywordsField = "keywords[]";
+
+    /// <summary>Höchstzahl der Begriffe an den Firmen-Proxy (docs/server-api.md §3.7, W3-REST) — wie ElevenLabs/Mistral.</summary>
+    public const int MaxProxyKeywords = 100;
+
     private const int MaxTermChars = 49;
     private const int MaxTermWords = 5;
 
@@ -37,7 +42,9 @@ public static partial class TranscriptionRequest
     /// keine Sprache bei "auto", bei „Deutsch + Englisch“ an gpt-transcribe beide Codes, an alle anderen keinen (sie kennen
     /// nur einen und erkennen selbst), <c>prompt</c>/<c>response_format</c> nur, wenn der Anbieter sie kennt, kein leeres
     /// <c>model</c>. Das Vokabular zusätzlich als Einzelbegriffe: <c>keywords[]</c> (gpt-transcribe) bzw. statt
-    /// <c>prompt</c> als <c>context_bias</c> (Mistral).
+    /// <c>prompt</c> als <c>context_bias</c> (Mistral). Der Firmen-Proxy (<see cref="CompanyProvider.EntryId"/>) bekommt die
+    /// neutrale Form — <c>languages[]</c> bei „Deutsch + Englisch“, Vokabular als höchstens <see cref="MaxProxyKeywords"/>
+    /// <c>keywords[]</c> — und übersetzt je Anbieter seines Zugangs (W3-REST, docs/server-api.md §3.7).
     /// </summary>
     public static IReadOnlyList<(string Name, string Value)> Fields(ApiAccess access, string language, string prompt)
     {
@@ -45,7 +52,8 @@ public static partial class TranscriptionRequest
         if (!string.IsNullOrWhiteSpace(access.Model)) fields.Add(("model", access.Model));
         if (access.Provider.SttSendsResponseFormat) fields.Add(("response_format", "json"));
         var lang = language.Trim();
-        var field = access.ModelOption?.LanguageField ?? "language";
+        var proxy = access.Provider.Id == CompanyProvider.EntryId;
+        var field = access.ModelOption?.LanguageField ?? (proxy && lang == WhisperLoomSettings.LanguageDeEn ? LanguagesField : "language");
         if (lang == WhisperLoomSettings.LanguageDeEn)
         {
             if (field == LanguagesField)
@@ -60,6 +68,7 @@ public static partial class TranscriptionRequest
         }
         if (access.Provider.SttSendsPrompt && !string.IsNullOrWhiteSpace(prompt)) fields.Add(("prompt", prompt.Trim()));
         if (access.ModelOption?.KeywordsField is { } keywords) fields.AddRange(Keywords(prompt).Select(t => (keywords, t)));
+        else if (proxy) fields.AddRange(Keywords(prompt, MaxProxyKeywords).Select(t => (KeywordsField, t)));
         if (access.Provider.SttBiasField is { } bias) fields.AddRange(ContextBias(prompt).Select(t => (bias, t)));
         return fields;
     }
@@ -69,8 +78,8 @@ public static partial class TranscriptionRequest
     /// <c>&gt;</c> oder einen Zeilenumbruch enthält — solche Begriffe fallen weg, ebenso Freitext-Stücke.
     /// Quelle (laut Android): developers.openai.com/api/docs/guides/speech-to-text (Stand 2026-10-28).
     /// </summary>
-    public static IReadOnlyList<string> Keywords(string prompt) =>
-        Vocabulary.Terms(prompt, int.MaxValue, accept: t => IsTerm(t) && !KeywordForbidden().IsMatch(t));
+    public static IReadOnlyList<string> Keywords(string prompt, int limit = int.MaxValue) =>
+        Vocabulary.Terms(prompt, limit, accept: t => IsTerm(t) && !KeywordForbidden().IsMatch(t));
 
     /// <summary>
     /// Vokabular als <c>context_bias</c> für Mistral: höchstens <see cref="MaxContextBias"/> Einträge, je einer ohne

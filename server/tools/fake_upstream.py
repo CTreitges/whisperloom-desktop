@@ -74,6 +74,11 @@ class _Handler(BaseHTTPRequestHandler):
         self.wfile.write(roh)
 
     def do_GET(self):  # noqa: N802
+        if self.path == "/_letzte":  # Smoke (W3-REST): Textfelder der letzten Multipart-Anfrage (nur Fake-Werte)
+            with self.server._lock:
+                letzte = self.server.anfragen[-1] if self.server.anfragen else {}
+            self._senden(200, {"felder": letzte.get("felder", {})})
+            return
         self._senden(200 if self.path == "/healthz" else 404, {"status": "ok"})
 
     def do_POST(self):  # noqa: N802

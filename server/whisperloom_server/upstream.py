@@ -11,6 +11,7 @@ Doku: https://github.com/ollama/ollama/blob/main/docs/api.md (/api/chat, prompt_
 Doku: https://elevenlabs.io/docs/api-reference/speech-to-text/convert (model_id, language_code; abgerufen 2026-11-01)
 """
 
+import re
 from dataclasses import dataclass, field
 from urllib.parse import quote
 
@@ -35,6 +36,10 @@ NUR_ERKENNUNG = {"elevenlabs"}
 STT_OHNE_PROMPT = {"mistral", "openrouter"}
 STT_OHNE_FORMAT = {"mistral"}
 EIGENE_SERVER = {"custom", "ollama"}
+# W3-REST: wie ModelLists.GptTranscribe der App – diese OpenAI-Modelle nehmen languages[] und keywords[].
+GPT_TRANSCRIBE = re.compile(r"gpt-.*transcribe", re.IGNORECASE)
+MAX_CONTEXT_BIAS = 100  # Mistral (TranscriptionRequest.MaxContextBias)
+_KEYTERM_VERBOTEN = re.compile(r"[<>{}\[\]\\]")  # ElevenLabsStt.Forbidden
 ANTHROPIC_VERSION = "2026-10-21"
 MAX_TOKENS = 16384  # wie ChatPayload.MaxCompletionTokens der App
 # Felder, die die App an /chat/completions schickt (ChatPayload.cs); unbekannte lehnt der Proxy ab (Vertrag §1).
@@ -106,18 +111,41 @@ def _ollama_wurzel(url: str) -> str:
 # --- Erkennung ---
 
 
-def erkennung_anfrage(zugang: dict, felder: dict[str, str], wav: bytes) -> Anfrage:
-    """felder: geprüfte OpenAI-Felder des Geräts (model, language, prompt, response_format, …); Modell schon ersetzt."""
+def _sprachen(felder: dict) -> list[str]:
+    """Erwartete Sprachen des Geräts: zwei bei „Deutsch + Englisch“ (`languages[]`), sonst `language` (ohne „auto“)."""
+    if isinstance(liste := felder.get("languages[]"), list):
+        return liste
+    sprache = felder.get("language", "")
+    return [sprache] if isinstance(sprache, str) and sprache and sprache != "auto" else []
+
+
+def erkennung_anfrage(zugang: dict, felder: dict[str, str | list[str]], wav: bytes) -> Anfrage:
+    """felder: geprüfte Felder des Geräts (upload.multipart_lesen); Modell schon ersetzt. Sprachen und Vokabular
+    (`keywords[]`) übersetzt je Anbieter wie die App bei Direktzugang (W3-REST): gpt-transcribe bei OpenAI →
+    `languages[]` + `keywords[]`, Mistral → `context_bias[]`, ElevenLabs → `keyterms`; sonst nur eine Sprache als
+    `language` (bei zwei keine, der Anbieter erkennt selbst) und kein Vokabular-Feld."""
+    sprachen = _sprachen(felder)
+    begriffe = felder.get("keywords[]") or []
     if protokoll(zugang) == "elevenlabs":
         daten: dict[str, str | list[str]] = {"model_id": felder.get("model", ""), "tag_audio_events": "false",
                                              "timestamps_granularity": "none"}
-        sprache = felder.get("language", "")
-        if sprache and sprache != "auto":
-            daten["language_code"] = sprache
+        if len(sprachen) == 1:
+            daten["language_code"] = sprachen[0]
+        if keyterms := [b for b in begriffe if not _KEYTERM_VERBOTEN.search(b)]:
+            daten["keyterms"] = keyterms
         return Anfrage(url_bauen(basis(zugang), "/speech-to-text"), {"xi-api-key": zugang["key"]} if zugang["key"] else {},
                        daten=daten, datei=("audio.wav", wav, "audio/wav"))
     a = zugang["anbieter"]
-    daten = {k: v for k, v in felder.items() if v}
+    daten = {k: v for k, v in felder.items() if v and k not in ("language", "languages[]", "keywords[]")}
+    if a == "openai" and GPT_TRANSCRIBE.match(str(felder.get("model", ""))):
+        if sprachen:
+            daten["languages[]"] = sprachen
+        if begriffe:
+            daten["keywords[]"] = begriffe
+    elif len(sprachen) == 1:
+        daten["language"] = sprachen[0]
+    if a == "mistral" and begriffe:
+        daten["context_bias[]"] = [re.sub(r"\s+", "_", b) for b in begriffe][-MAX_CONTEXT_BIAS:]
     if a in STT_OHNE_PROMPT:
         daten.pop("prompt", None)
     if a in STT_OHNE_FORMAT:
