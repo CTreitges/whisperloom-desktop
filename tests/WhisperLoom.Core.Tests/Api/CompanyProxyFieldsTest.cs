@@ -59,6 +59,20 @@ public sealed partial class CompanyProxyFieldsTest
     }
 
     [Fact]
+    public void Modell_aus_der_Proxy_Liste_aendert_die_neutrale_Form_nicht()
+    {
+        // Review W3-REST: mit gecachter /proxy/models-Liste hat der Zugang ein ModelOption mit LanguageField "language".
+        var access = Company("https://wl.example.test", "gpt-transcribe") with
+        {
+            ModelOption = new WhisperLoom.Core.Contracts.ModelOption("gpt-transcribe", "gpt-transcribe", LanguageField: "language"),
+        };
+        var f = TranscriptionRequest.Fields(access, WhisperLoomSettings.LanguageDeEn, "WhisperLoom");
+        Assert.Contains(("languages[]", "de"), f);
+        Assert.Contains(("languages[]", "en"), f);
+        Assert.Contains(("keywords[]", "WhisperLoom"), f);
+    }
+
+    [Fact]
     public void Eine_Sprache_bleibt_language_und_ohne_Vokabular_keine_keywords()
     {
         var f = TranscriptionRequest.Fields(Company("https://wl.example.test"), "de", "");

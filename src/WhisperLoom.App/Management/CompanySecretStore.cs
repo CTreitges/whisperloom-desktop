@@ -105,6 +105,13 @@ public sealed class CompanySecretStore(ISecretStore user, ISecretStore company, 
     public static bool TargetFixed(PolicySettings p, string access) =>
         p.IsLocked(Section(access) + ".providerId") || p.IsLocked(Section(access) + ".baseUrl");
 
+    /// <summary>
+    /// Hat die Firma das Ziel des eigenen Keys gewählt (W3-REST N-neu-1)? Ja, wenn sie Anbieter oder Adresse festlegt und der
+    /// Nutzer die Adresse nicht selbst gegen eine Vorgabe überschrieben hat (Fest-Anbieter <c>custom</c> + eigene Adresse).
+    /// </summary>
+    public static bool CompanyChoseTarget(WhisperLoomSettings s, PolicySettings p, string access) =>
+        TargetFixed(p, access) && !s.Management.Overrides.Contains(Section(access) + ".baseUrl");
+
     /// <summary>An einen Firmen-Server angebunden (auch wartend, gesperrt oder widerrufen).</summary>
     public static bool IsManaged(ManagementSettings m) => m.ServerUrl.Length > 0 && m.State is "pending" or "approved" or "blocked" or "revoked";
 

@@ -178,6 +178,26 @@ public sealed class KeyIsolationTest
     }
 
     [Fact]
+    public async Task P1b_nur_Anbieter_Fest_Adresse_vom_Nutzer_ueberschrieben_Key_bleibt_nach_Verlassen()
+    {
+        using var r = Distribute();
+        r.Server.Settings["stt"] = new JsonObject { ["providerId"] = "custom", ["baseUrl"] = Gateway };
+        r.Server.Levels["stt.providerId"] = "fixed";
+        r.Server.Levels["stt.baseUrl"] = "default";
+        Assert.Equal(SyncOutcome.Synced, await r.JoinAsync());
+        var changed = Copy(r.Settings);
+        changed.Stt.BaseUrl = "https://eigener.example.test/v1";
+        changed.Management.Overrides = [.. changed.Management.Overrides, "stt.baseUrl"];
+        await r.F.Controller.ApplySettingsAsync(changed);
+
+        Assert.Equal(0, await KeyCommand.RunAsync("set", SecretNames.Stt, () => "test-key-not-real-CLI", r.User, r.F.DataDir,
+            new StringWriter(), new StringWriter(), CancellationToken.None));
+        Assert.Equal(LeaveOutcome.Left, await r.Service.LeaveAsync(CancellationToken.None));
+
+        Assert.Equal(("https://eigener.example.test/v1", "test-key-not-real-CLI"), await SttRoute(r));
+    }
+
+    [Fact]
     public async Task Tiefe_Ziel_aendert_sich_ohne_Abgleich_eigener_Key_wird_zurueckgehalten()
     {
         using var r = Distribute();

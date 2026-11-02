@@ -57,7 +57,7 @@ public sealed class OwnKeyTargets(string dataDir)
     public void Record(WhisperLoomSettings settings, string name, PolicySettings policy)
     {
         var all = Load().ToDictionary(e => e.Key, e => e.Value, StringComparer.Ordinal);
-        if (CompanySecretStore.TargetFixed(policy, name))
+        if (CompanySecretStore.CompanyChoseTarget(settings, policy, name))
         {
             all.Remove(name);
         }

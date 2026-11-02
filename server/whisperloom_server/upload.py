@@ -86,7 +86,7 @@ def multipart_lesen(typ: str, body: bytes) -> tuple[dict[str, str | list[str]], 
     return felder, datei
 
 
-async def multipart_im_thread(typ: str, body: bytes) -> tuple[dict[str, str], bytes]:
+async def multipart_im_thread(typ: str, body: bytes) -> tuple[dict[str, str | list[str]], bytes]:
     return await asyncio.to_thread(multipart_lesen, typ, body)
 
 

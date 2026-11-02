@@ -53,7 +53,10 @@ public static partial class TranscriptionRequest
         if (access.Provider.SttSendsResponseFormat) fields.Add(("response_format", "json"));
         var lang = language.Trim();
         var proxy = access.Provider.Id == CompanyProvider.EntryId;
-        var field = access.ModelOption?.LanguageField ?? (proxy && lang == WhisperLoomSettings.LanguageDeEn ? LanguagesField : "language");
+        // Beim Proxy zählt die neutrale Form, nicht ein Modell aus der Proxy-Liste (Familie custom, LanguageField "language").
+        var field = proxy
+            ? (lang == WhisperLoomSettings.LanguageDeEn ? LanguagesField : "language")
+            : access.ModelOption?.LanguageField ?? "language";
         if (lang == WhisperLoomSettings.LanguageDeEn)
         {
             if (field == LanguagesField)
@@ -67,8 +70,8 @@ public static partial class TranscriptionRequest
             fields.Add((field, lang));
         }
         if (access.Provider.SttSendsPrompt && !string.IsNullOrWhiteSpace(prompt)) fields.Add(("prompt", prompt.Trim()));
-        if (access.ModelOption?.KeywordsField is { } keywords) fields.AddRange(Keywords(prompt).Select(t => (keywords, t)));
-        else if (proxy) fields.AddRange(Keywords(prompt, MaxProxyKeywords).Select(t => (KeywordsField, t)));
+        if (proxy) fields.AddRange(Keywords(prompt, MaxProxyKeywords).Select(t => (KeywordsField, t)));
+        else if (access.ModelOption?.KeywordsField is { } keywords) fields.AddRange(Keywords(prompt).Select(t => (keywords, t)));
         if (access.Provider.SttBiasField is { } bias) fields.AddRange(ContextBias(prompt).Select(t => (bias, t)));
         return fields;
     }

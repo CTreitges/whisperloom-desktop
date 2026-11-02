@@ -145,7 +145,8 @@ def erkennung_anfrage(zugang: dict, felder: dict[str, str | list[str]], wav: byt
     elif len(sprachen) == 1:
         daten["language"] = sprachen[0]
     if a == "mistral" and begriffe:
-        daten["context_bias[]"] = [re.sub(r"\s+", "_", b) for b in begriffe][-MAX_CONTEXT_BIAS:]
+        # Wie ContextBias der App: erst Leerraum → _, dann Duplikate weg, die letzten 100.
+        daten["context_bias[]"] = list(dict.fromkeys(re.sub(r"\s+", "_", b) for b in begriffe))[-MAX_CONTEXT_BIAS:]
     if a in STT_OHNE_PROMPT:
         daten.pop("prompt", None)
     if a in STT_OHNE_FORMAT:

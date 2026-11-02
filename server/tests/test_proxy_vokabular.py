@@ -56,6 +56,13 @@ def test_mistral_bekommt_context_bias_statt_keywords(pein, pclient, fake):
     assert "keywords[]" not in felder and "prompt" not in felder
 
 
+def test_mistral_context_bias_ohne_doppelte_nach_dem_ersetzen(pein, pclient, fake):
+    """Wie TranscriptionRequest.ContextBias der App: erst Leerraum → _, dann Duplikate entfernen (Review W3-REST)."""
+    r = _senden(pclient, pein, fake, "mistral", "voxtral-mini-latest", **{"keywords[]": ["a b", "a_b", "c"]})
+    assert r.status_code == 200, r.text
+    assert fake.anfragen[0]["felder"]["context_bias[]"] == ["a_b", "c"]
+
+
 def test_elevenlabs_bekommt_keyterms_und_bei_zwei_sprachen_keinen_code(pein, pclient, fake):
     r = _senden(pclient, pein, fake, "elevenlabs", "scribe_v2", language=None, **{"languages[]": ["de", "en"]},
                 **{"keywords[]": BEGRIFFE + ["{klammer}"]})
