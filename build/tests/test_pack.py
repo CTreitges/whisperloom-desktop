@@ -1,11 +1,14 @@
 """Tests für build/pack.py: Befehle für publish und vpk, Version, portable ZIP. Aufruf: python -m unittest discover -s build/tests"""
 from __future__ import annotations
 
+import contextlib
+import io
 import sys
 import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pack  # noqa: E402
@@ -97,6 +100,65 @@ class PackTest(unittest.TestCase):
             self.assertEqual(target.name, "WhisperLoom-0.9.0-win-x64-portable.zip")
             with zipfile.ZipFile(target) as z:
                 self.assertEqual(sorted(z.namelist()), ["WhisperLoom.exe", "sub/lib.dll"])
+
+
+class StartCheckTest(unittest.TestCase):
+    """W3-PERF R1: pack.py startet nach dem Publish `<exe> --version` und bricht bei Fehlschlag vor vpk ab."""
+
+    def _main(self, rid: str, host: str, version_result=None, version_error=None):
+        calls: list[list[str]] = []
+
+        def fake_run(cmd, **kwargs):
+            calls.append(list(cmd))
+            if cmd[-1] == "--version":
+                if version_error is not None:
+                    raise version_error
+                return version_result
+            return mock.Mock(returncode=0, stdout="")
+
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(pack.subprocess, "run", side_effect=fake_run), \
+                mock.patch.object(pack, "host_os", return_value=host), \
+                mock.patch.object(pack, "zip_dir", return_value=0), \
+                contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as err:
+            code = pack.main(["--version", "1.2.3", "--rid", rid, "--out", str(Path(tmp) / "Releases")])
+        return code, calls, err.getvalue()
+
+    def test_startet_die_veroeffentlichte_exe_nach_publish_und_vor_vpk(self):
+        ok = mock.Mock(returncode=0, stdout="WhisperLoom 1.2.3\n")
+        code, calls, _ = self._main("win-x64", "win", ok)
+        self.assertEqual(code, 0)
+        kinds = [c[1] if c[0] == "dotnet" else Path(c[0]).name for c in calls]
+        self.assertEqual(kinds, ["publish", "WhisperLoom.exe", "tool", "vpk"])
+        exe = Path(calls[1][0])
+        self.assertEqual(exe.parent.name, "win-x64-1.2.3")
+        self.assertEqual(calls[1][1:], ["--version"])
+
+    def test_linux_startet_die_binaerdatei_ohne_endung(self):
+        ok = mock.Mock(returncode=0, stdout="WhisperLoom 1.2.3\n")
+        code, calls, _ = self._main("linux-x64", "linux", ok)
+        self.assertEqual(code, 0)
+        self.assertEqual(Path(calls[1][0]).name, "WhisperLoom")
+
+    def test_fehlschlag_bricht_vor_vpk_ab(self):
+        for bad in (mock.Mock(returncode=1, stdout=""), mock.Mock(returncode=0, stdout="WhisperLoom 1.2.4\n"),
+                    mock.Mock(returncode=0, stdout="WhisperLoom 1.2.3-beta.1\n")):
+            code, calls, err = self._main("win-x64", "win", bad)
+            self.assertEqual(code, 1)
+            self.assertIn("start-check win-x64", err)
+            self.assertFalse(any("vpk" in c for c in calls), calls)
+
+    def test_nicht_startbar_oder_zeitueberschreitung_bricht_ab(self):
+        for error in (FileNotFoundError("weg"), pack.subprocess.TimeoutExpired("x", 120)):
+            code, calls, err = self._main("win-x64", "win", version_error=error)
+            self.assertEqual(code, 1)
+            self.assertFalse(any("vpk" in c for c in calls), calls)
+
+    def test_cross_pack_ueberspringt_den_start(self):
+        code, calls, _ = self._main("linux-x64", "win")
+        self.assertEqual(code, 0)
+        self.assertFalse(any(c[-1] == "--version" for c in calls))
+        self.assertIn("vpk", calls[-1])
 
 
 if __name__ == "__main__":
