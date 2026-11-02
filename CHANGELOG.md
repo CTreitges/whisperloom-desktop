@@ -5,6 +5,13 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **Update channels** (W3-CHAN): Stable, Beta and Test (Velopack channels `win`/`linux`, `*-beta`, `*-test`), setting
+  „Update channel“ and „Install pre-releases automatically“ (default off: automatic updates stay stable), „Choose
+  version …“ in the tray and on the General page to install any version, including a confirmed downgrade back to
+  stable. Test builds only on manual trigger (`X.Y.Z-test.<branch>.<run>`), betas from tags `vX.Y.Z-beta.N`; the
+  update source now reads up to 100 GitHub releases (Velopack's default only saw the latest 10).
+
 ## [1.0.0] – 2026-11-02
 
 ### Added
