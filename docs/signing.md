@@ -45,7 +45,9 @@ Signiert wird **vor bzw. während `vpk pack`**, denn `vpk pack` packt die Dateie
 Setup; danach lässt sich nichts mehr signieren, ohne die Prüfsummen im Feed zu brechen.
 
 1. `dotnet publish src/WhisperLoom.App -c Release -r win-x64 --self-contained -p:PublishReadyToRun=true -p:Version=<x.y.z> -o publish`
-   (wie `build/pack.py`; ReadyToRun ohne Composite, die Microsoft-Signaturen der .NET-Laufzeit bleiben erhalten)
+   (wie `build/pack.py`; ReadyToRun ohne Composite, die Microsoft-Signaturen der .NET-Laufzeit bleiben erhalten;
+   ReadyToRun schreibt aber `SkiaSharp.dll`, `HarfBuzzSharp.dll` und `CommunityToolkit.Mvvm.dll` neu – deren
+   Herstellersignatur fehlt danach, die Firma signiert sie mit)
 2. Signieren, am einfachsten durch Velopack selbst: Es signiert dann die App-Dateien, `Update.exe`, den Start-Stub
    und `Setup.exe` in einem Durchgang mit `signtool`:
 
@@ -125,7 +127,9 @@ To distribute Setup (per-user install, Start menu entry), build it from source. 
 checksums in the feed.
 
 1. `dotnet publish src/WhisperLoom.App -c Release -r win-x64 --self-contained -p:PublishReadyToRun=true -p:Version=<x.y.z> -o publish`
-   (same as `build/pack.py`; ReadyToRun without composite keeps Microsoft's signatures on the .NET runtime)
+   (same as `build/pack.py`; ReadyToRun without composite keeps Microsoft's signatures on the .NET runtime;
+   ReadyToRun does re-write `SkiaSharp.dll`, `HarfBuzzSharp.dll` and `CommunityToolkit.Mvvm.dll`, so their vendor
+   signature is gone and the company signs them too)
 2. Sign, most simply through Velopack itself. It then signs the app files, `Update.exe`, the launcher stub and
    `Setup.exe` in one pass with `signtool`:
 
