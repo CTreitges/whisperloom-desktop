@@ -7,6 +7,7 @@ using Avalonia.VisualTree;
 using WhisperLoom.App.Design;
 using WhisperLoom.App.ViewModels;
 using WhisperLoom.App.ViewModels.Settings;
+using WhisperLoom.App.Views.Settings;
 
 namespace WhisperLoom.App.Views;
 
@@ -24,7 +25,21 @@ public partial class SettingsWindow : Window
 
     public SettingsWindow(SettingsShellViewModel shell) : this()
     {
+        // PERF-2: Seiten-Views einmal bauen und wiederverwenden; nach dem Öffnen im Leerlauf vorbauen.
+        PageHost.ContentTemplate = Pages = new PageViewCache(this, Staging);
+        shell.Pages.CollectionChanged += (_, _) => Pages.Clear();
+        Opened += (_, _) => Prebuild(shell);
         DataContext = shell;
+        // Seitenwechsel einen Dispatcher-Durchlauf nach der Auswahl (Hintergrund-Priorität): Die Markierung in der
+        // Seitenleiste wird zuerst gezeichnet, dann erst die Seite angehängt (Rückmeldung sofort statt nach dem Anhängen).
+        PageHost.Content = shell.SelectedPage;
+        shell.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(SettingsShellViewModel.SelectedPage))
+            {
+                Dispatcher.UIThread.Post(() => PageHost.Content = shell.SelectedPage, DispatcherPriority.Background);
+            }
+        };
         shell.RevealRequested += Reveal;
         ResultList.SelectionChanged += (_, _) =>
         {
@@ -42,6 +57,32 @@ public partial class SettingsWindow : Window
 
     /// <summary>Für Bestand und Tests: die Arbeitskopie (Session) des Fensters.</summary>
     public SettingsViewModel? Settings => Shell?.Session;
+
+    /// <summary>Gebaute Seiten-Views (PERF-2).</summary>
+    internal PageViewCache Pages { get; } = null!;
+
+    /// <summary>
+    /// Baut die übrigen Seiten nach dem Öffnen im Leerlauf vor (<see cref="PageViewCache.PrepareSteps"/>): ein Schritt je
+    /// Dispatcher-Durchlauf mit Hintergrund-Priorität, Eingaben und Rendern gehen vor. Der erste Klick auf eine Seite kostet
+    /// dann nur noch das Anhängen wie jeder weitere Wechsel.
+    /// </summary>
+    private void Prebuild(SettingsShellViewModel shell)
+    {
+        var pages = shell.Pages.ToList();
+        var steps = pages.SelectMany(p => Pages.PrepareSteps(p, () => PageHost.Bounds.Size)).GetEnumerator();
+        void Step()
+        {
+            // Fenster zu oder Seiten neu aufgebaut (Zurücksetzen, Import): Vorbau endet, der Rest entsteht beim Klick.
+            if (!IsVisible || !pages.SequenceEqual(shell.Pages) || !steps.MoveNext())
+            {
+                steps.Dispose();
+                return;
+            }
+            steps.Current();
+            Dispatcher.UIThread.Post(Step, DispatcherPriority.Background);
+        }
+        Dispatcher.UIThread.Post(Step, DispatcherPriority.Background);
+    }
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
@@ -97,7 +138,7 @@ public partial class SettingsWindow : Window
             var target = (row.Content as Control)?.GetVisualDescendants().OfType<InputElement>().FirstOrDefault(i => i.Focusable && i.IsEffectivelyEnabled)
                 ?? row.Content as InputElement;
             target?.Focus(NavigationMethod.Tab);
-        }, DispatcherPriority.Loaded);
+        }, DispatcherPriority.Background);
     }
 
     /// <summary>Textfelder speichern beim Verlassen; beim Schließen per Esc gilt die letzte Eingabe auch.</summary>
