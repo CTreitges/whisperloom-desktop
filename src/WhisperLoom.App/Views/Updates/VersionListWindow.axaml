@@ -1,0 +1,51 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:u="using:WhisperLoom.App.ViewModels.Updates"
+        xmlns:l="using:WhisperLoom.App.Localization"
+        x:Class="WhisperLoom.App.Views.Updates.VersionListWindow"
+        x:DataType="u:VersionListViewModel"
+        Classes="loom"
+        Title="{Binding [Channel_ListTitle], Source={x:Static l:Loc.Instance}}"
+        Icon="/Assets/whisperloom.ico"
+        Width="620" Height="480" MinWidth="460" MinHeight="320"
+        Background="{DynamicResource Loom.Background}">
+  <!-- Versionsliste (W3-CHAN): alle Kanäle dieses OS, neueste zuerst; Installieren fragt immer nach. -->
+  <DockPanel Margin="20">
+    <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,12">
+      <TextBlock Text="{Binding [Channel_ListTitle], Source={x:Static l:Loc.Instance}}" FontSize="{DynamicResource Loom.Font.PageTitle}"
+                 FontWeight="SemiBold" Foreground="{DynamicResource Loom.Text}" />
+      <TextBlock Text="{Binding [Channel_ListHint], Source={x:Static l:Loc.Instance}}" TextWrapping="Wrap"
+                 Foreground="{DynamicResource Loom.TextSecondary}" />
+    </StackPanel>
+    <DockPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
+      <Button x:Name="BackToStableButton" DockPanel.Dock="Right" Content="{Binding [Channel_BackToStable], Source={x:Static l:Loc.Instance}}"
+              Command="{Binding BackToStableCommand}" IsEnabled="{Binding Allowed}" />
+      <TextBlock x:Name="StatusText" Text="{Binding Status}" TextWrapping="Wrap" VerticalAlignment="Center"
+                 Foreground="{DynamicResource Loom.TextSecondary}" Margin="0,0,12,0" />
+    </DockPanel>
+    <Border Background="{DynamicResource Loom.Surface}" CornerRadius="8" Padding="4">
+      <ListBox x:Name="Versions" ItemsSource="{Binding Rows}" Background="Transparent"
+               AutomationProperties.Name="{Binding [Channel_ListTitle], Source={x:Static l:Loc.Instance}}">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="u:VersionRow">
+            <Grid ColumnDefinitions="90,*,100,Auto" Margin="4,2" MinHeight="34">
+              <Border Grid.Column="0" Background="{DynamicResource Loom.SurfaceHigh}" BorderBrush="{DynamicResource Loom.Separator}" BorderThickness="1"
+                      CornerRadius="4" Padding="6,1" HorizontalAlignment="Left" VerticalAlignment="Center">
+                <TextBlock Text="{Binding ChannelLabel}" FontSize="{DynamicResource Loom.Font.Caption}" Foreground="{DynamicResource Loom.Text}" />
+              </Border>
+              <TextBlock Grid.Column="1" Text="{Binding Version}" VerticalAlignment="Center" Foreground="{DynamicResource Loom.Text}"
+                         FontFamily="monospace" Margin="8,0" />
+              <TextBlock Grid.Column="2" Text="{Binding Date}" VerticalAlignment="Center" Foreground="{DynamicResource Loom.TextSecondary}" />
+              <Panel Grid.Column="3" MinWidth="110">
+                <TextBlock Text="{Binding [Channel_Installed], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding IsInstalled}"
+                           VerticalAlignment="Center" HorizontalAlignment="Right" FontWeight="SemiBold" Foreground="{DynamicResource Loom.Text}" />
+                <Button Content="{Binding [Channel_Install], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding CanInstall}"
+                        HorizontalAlignment="Right" Click="OnInstall" />
+              </Panel>
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </Border>
+  </DockPanel>
+</Window>

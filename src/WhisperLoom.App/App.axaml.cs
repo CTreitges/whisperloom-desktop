@@ -29,6 +29,8 @@ public partial class App : Application
     private SettingsWindow? _settingsWindow;
     private SetupWindow? _setupWindow;
     private Views.Help.HelpWindow? _helpWindow;
+    private Views.Updates.VersionListWindow? _versionsWindow;
+    private VelopackUpdateClient? _updateClient;
     private IDisposable? _input;
     private Platform.Windows.Input.InputFlow? _flow;
     private readonly CancellationTokenSource _updates = new();
@@ -204,9 +206,11 @@ public partial class App : Application
     /// <summary>Auto-Update (Phase 6): beim Start und täglich, Installation erst nach Bestätigung; Richtlinie schaltet ab.</summary>
     private void StartUpdates(AppHost host)
     {
-        var client = new VelopackUpdateClient(feed: null, restartArgs: [.. Environment.GetCommandLineArgs().Skip(1)]);
+        var client = _updateClient = new VelopackUpdateClient(feed: null, restartArgs: [.. Environment.GetCommandLineArgs().Skip(1)]);
+        // W3-CHAN: Kanal und Vorab-Schalter je Runde aus den aktuellen Einstellungen.
         var service = new UpdateService(client, host.Log, () => host.Controller.Policy,
-            version => Dispatcher.UIThread.InvokeAsync(() => UpdatePrompt.AskAsync(version)));
+            version => Dispatcher.UIThread.InvokeAsync(() => UpdatePrompt.AskAsync(version)),
+            preferences: () => UpdatePreferences.From(SettingsStore.Desktop(host.Controller.Settings)));
         // Auf dem Thread-Pool: die Feed-Abfrage soll den UI-Thread nie blockieren.
         _ = Task.Run(() => service.RunAsync(_updates.Token));
     }
@@ -298,6 +302,9 @@ public partial class App : Application
                 }
                 Activate(_setupWindow);
                 break;
+            case "versions":
+                OpenVersions(host);
+                break;
             case "help":
                 OpenHelp(Views.Help.HelpCatalog.Overview);
                 break;
@@ -310,6 +317,20 @@ public partial class App : Application
                 });
                 break;
         }
+    }
+
+    /// <summary>Fenster „Version wählen“ (W3-CHAN), aus Tray und Einstellungen; lädt die Liste bei jedem Öffnen neu.</summary>
+    private void OpenVersions(AppHost host)
+    {
+        if (_versionsWindow is null)
+        {
+            var client = _updateClient ??= new VelopackUpdateClient(feed: null, restartArgs: [.. Environment.GetCommandLineArgs().Skip(1)]);
+            var vm = new ViewModels.Updates.VersionListViewModel(client, host.Log, () => host.Controller.Policy, UpdatePrompt.AskInstallAsync);
+            _versionsWindow = new Views.Updates.VersionListWindow(vm);
+            _versionsWindow.Closed += (_, _) => _versionsWindow = null;
+            _ = vm.LoadAsync();
+        }
+        Activate(_versionsWindow);
     }
 
     /// <summary>Verlauf (W2-OUT): Kopieren mit Gegenprobe, Einfügen wie im Tray, Neu verarbeiten als Fassung im Hintergrund.</summary>
@@ -330,7 +351,7 @@ public partial class App : Application
     private SettingsViewModel CreateSettings(AppHost host) =>
         new(host.Controller, host.Secrets, new HttpAccessChecker(() => HttpClients.Create(SettingsStore.Desktop(host.Controller.Settings)),
                 () => Core.Api.ProviderDirectory.For(host.Controller.Settings)),
-            Microphones(host), host.Local, RecordHotkey) { Company = host.Manager };
+            Microphones(host), host.Local, RecordHotkey) { Company = host.Manager, OpenVersions = () => Open("versions") };
 
     /// <summary>Eigener Recorder für den Pegel-Test, damit ein laufendes Diktat unberührt bleibt.</summary>
     private static IAudioRecorder CreateTestRecorder(AppHost host) =>

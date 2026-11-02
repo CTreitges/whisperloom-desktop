@@ -189,8 +189,18 @@ internal static class Program
             Console.Error.WriteLine($"update: policy.json unlesbar ({e.GetType().Name}).");
             return 1;
         }
+        // W3-CHAN: eingestellter Update-Kanal; unlesbare settings.json → Stabil.
+        var preferences = UpdatePreferences.Default;
+        try
+        {
+            preferences = UpdatePreferences.From(Services.SettingsStore.Desktop(new Services.SettingsStore(request.Options.DataDir).Load()));
+        }
+        catch (Exception e) when (e is JsonException or IOException)
+        {
+            // Stabil bleibt.
+        }
         var client = new VelopackUpdateClient(request.Args.Count > 0 ? request.Args[0] : null, []);
-        return UpdateCommand.RunAsync(client, policy, log, Console.Out, Console.Error, CancellationToken.None).GetAwaiter().GetResult();
+        return UpdateCommand.RunAsync(client, policy, log, Console.Out, Console.Error, CancellationToken.None, preferences).GetAwaiter().GetResult();
     }
 
     /// <summary><c>join</c> (W2-ENR) im eigenen Prozess (Token nie über die IPC); danach lädt eine laufende Instanz neu und gleicht ab.</summary>

@@ -5,35 +5,6 @@ using WhisperLoom.Core.Settings;
 
 namespace WhisperLoom.App.Tests.Updates;
 
-/// <summary>Fake statt Velopack: zählt Aufrufe, liefert eine einstellbare neue Version.</summary>
-internal sealed class FakeUpdateClient : IUpdateClient
-{
-    public bool IsInstalled { get; set; } = true;
-    public string? CurrentVersion { get; set; } = "0.9.0";
-    public string? Available { get; set; }
-    public Exception? CheckError { get; set; }
-    public int Checks { get; private set; }
-    public int Downloads { get; private set; }
-    public int Restarts { get; private set; }
-    public int Exits { get; private set; }
-
-    public Task<string?> CheckAsync(CancellationToken ct)
-    {
-        Checks++;
-        return CheckError is null ? Task.FromResult(Available) : Task.FromException<string?>(CheckError);
-    }
-
-    public Task DownloadAsync(CancellationToken ct)
-    {
-        Downloads++;
-        return Task.CompletedTask;
-    }
-
-    public void ApplyAndRestart() => Restarts++;
-
-    public void ApplyAndExit() => Exits++;
-}
-
 public sealed class UpdateServiceTest : IDisposable
 {
     private readonly string _dir = Path.Combine(Path.GetTempPath(), "wl-update-" + Guid.NewGuid().ToString("N"));
