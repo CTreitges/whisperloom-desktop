@@ -57,6 +57,12 @@ public sealed class CompanyUiTest
         Assert.Equal(SetupStep.Usage, w.Vm.Current);
         Assert.Equal(Loc.Instance["Setup_Step_Usage"], Named<TextBlock>(window, "StepTitle").Text);
         Assert.True(Named<RadioButton>(window, "UsagePersonal").IsChecked);
+        // UIA-Name der Auswahl = Titel (Screenreader, Mess-Filter); ohne ihn meldet UIA nur „Avalonia.Controls.StackPanel“.
+        Assert.Equal(Loc.Instance["Setup_UsagePersonal"], Avalonia.Automation.AutomationProperties.GetName(Named<RadioButton>(window, "UsagePersonal")));
+        Assert.Equal(Loc.Instance["Setup_UsageCompany"], Avalonia.Automation.AutomationProperties.GetName(Named<RadioButton>(window, "UsageCompany")));
+        // Der Name verdrängt den Beschreibungstext; der Screenreader liest ihn als HelpText (Prüfer PR #31).
+        Assert.Equal(Loc.Instance["Setup_UsagePersonalDesc"], Avalonia.Automation.AutomationProperties.GetHelpText(Named<RadioButton>(window, "UsagePersonal")));
+        Assert.Equal(Loc.Instance["Setup_UsageCompanyDesc"], Avalonia.Automation.AutomationProperties.GetHelpText(Named<RadioButton>(window, "UsageCompany")));
         Assert.Equal([SetupStep.Usage, SetupStep.Language, SetupStep.Microphone, SetupStep.Recognition, SetupStep.Stage, SetupStep.Hotkey,
             SetupStep.Autostart, SetupStep.Done], w.Vm.Steps);
         w.Vm.Next();

@@ -71,7 +71,7 @@ Einstellungen vorgegeben, entfallen die gesperrten Schritte.
 | Letztes erneut einfügen | Strg+Alt+Umschalt+V oder Tray → Letzte Diktate | `WhisperLoom reinsert` |
 | Markierung umschreiben | Strg+Alt+Umschalt+R, dann Anweisung sprechen | – |
 
-Weitere Befehle: `start`, `stop`, `cancel`, `pause`, `resume`, `show`, `setup`, `status --json`, `reprocess <stufe>`,
+Weitere Befehle: `start`, `stop`, `cancel`, `pause`, `resume`, `show`, `setup`, `settings`, `help`, `status --json`, `reprocess <stufe>`,
 `recent-insert <n>`, `update`, `--version`, `quit`.
 
 ### Lokale Modelle und eigene Anbieter
@@ -184,7 +184,7 @@ Skip it any time; run it again from tray → **Setup …** or with `WhisperLoom 
 | Insert last again | Ctrl+Alt+Shift+V or tray → Recent dictations | `WhisperLoom reinsert` |
 | Rewrite the selection | Ctrl+Alt+Shift+R, then speak the instruction | – |
 
-More verbs: `start`, `stop`, `cancel`, `pause`, `resume`, `show`, `setup`, `status --json`, `reprocess <stage>`,
+More verbs: `start`, `stop`, `cancel`, `pause`, `resume`, `show`, `setup`, `settings`, `help`, `status --json`, `reprocess <stage>`,
 `recent-insert <n>`, `update`, `--version`, `quit`.
 
 ### In companies

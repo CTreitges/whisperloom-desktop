@@ -49,12 +49,13 @@ internal sealed record AppOptions(string DataDir, string? TestAudio = null, stri
 /// <summary>Fehler in der Befehlszeile; die Meldung geht an stderr, Exit-Code 2.</summary>
 internal sealed class UsageException(string message) : Exception(message);
 
-/// <summary>Zerlegt die Befehlszeile. Verben: toggle, start, stop, cancel, pause, resume, stage next|&lt;name&gt;, status [--json], show, setup, key set|delete &lt;name&gt;, quit,
+/// <summary>Zerlegt die Befehlszeile. Verben: toggle, start, stop, cancel, pause, resume, stage next|&lt;name&gt;, status [--json], show, setup,
+/// settings, help (wie Tray → Einstellungen bzw. Hilfe; auch Messzugang für Performance-Messungen), key set|delete &lt;name&gt;, quit,
 /// reprocess &lt;stufe&gt; [&lt;id&gt;], reinsert, recent-insert &lt;n&gt; (WLD-P5b), history-copy &lt;n&gt; (W2-OUT: wie „Kopieren“ im Verlauf), focus-probe (W2-OUT: Fokus-Klasse des Vordergrundfensters, nur lesen).</summary>
 internal static class CommandLine
 {
     public const string Usage =
-        "Aufruf: WhisperLoom [toggle|start|stop|cancel|pause|resume|stage next|stage <name>|status [--json]|show|setup|quit|key set <name>|key delete <name>]\n" +
+        "Aufruf: WhisperLoom [toggle|start|stop|cancel|pause|resume|stage next|stage <name>|status [--json]|show|setup|settings|help|quit|key set <name>|key delete <name>]\n" +
         "        [provision <datei>|import <datei> [--dry-run]|export <datei>]\n" +
         "        [reprocess <stufe> [<id>]|reinsert|recent-insert <n>|history-copy <n>|focus-probe|retry]\n" +
         "        [process-selection [--stage <stufe>]]\n" +
@@ -64,7 +65,7 @@ internal static class CommandLine
         "        WhisperLoom --version | update [--feed <ordner|url>]";
 
     private static readonly HashSet<string> Verbs =
-        ["toggle", "start", "stop", "cancel", "pause", "resume", "stage", "status", "show", "setup", "key", "quit", "bench", "provision", "import", "export",
+        ["toggle", "start", "stop", "cancel", "pause", "resume", "stage", "status", "show", "setup", "settings", "help", "key", "quit", "bench", "provision", "import", "export",
          "reprocess", "reinsert", "recent-insert", "history-copy", "focus-probe", "retry", "update", "join", "sync",
          "process-selection"];
 
