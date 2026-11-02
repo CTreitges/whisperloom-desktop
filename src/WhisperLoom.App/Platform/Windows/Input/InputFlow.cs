@@ -185,6 +185,7 @@ public sealed partial class InputFlow
     {
         Overlay.Elapsed = _controller.Elapsed;
         Overlay.Level = _controller.Level;
+        Overlay.PreviousPending = _controller.IsRecording && _controller.Pending > 0;
         if (_mode == Mode.Hold && _controller.State == DictationState.Recording)
         {
             _ui.SetPill(_controller.Level, processing: false);

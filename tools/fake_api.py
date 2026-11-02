@@ -7,8 +7,9 @@
   ".invalid" (z. B. http://fake-api.invalid:<port>) gehen an 127.0.0.1 — so erreicht die App die Fake-API nur über
   den Proxy (Loopback-Ziele umgehen jeden Proxy).
 - Steuerung: POST /_control {"fail": {"<pfad>": {"status": 500, "count": 1}}, "stt_text": "…", "llm_text": "…",
-  "record_text": true} — llm_text: feste Antwort statt "[fake-llm] <nutzer>"; record_text: /_requests enthält zusätzlich
-  die vollen Nachrichten (system, user), nur Fake-Daten
+  "record_text": true, "llm_delay": 4.0} — llm_text: feste Antwort statt "[fake-llm] <nutzer>"; record_text: /_requests
+  enthält zusätzlich die vollen Nachrichten (system, user), nur Fake-Daten; llm_delay: Sekunden, die jede Textverbesserung
+  wartet (langsame KI, W3-NEXT)
   GET /_requests → aufgezeichnete Anfragen (nur Metadaten: Pfad, Felder language/model, Prompt-Anfang,
   ob ein Key kam, ob über den Proxy) · POST /_reset
 
@@ -23,6 +24,7 @@ import json
 import re
 import sys
 import threading
+import time
 import urllib.error
 from collections import deque
 import urllib.parse
@@ -43,6 +45,7 @@ class State:
         self.stt_text = DEFAULT_STT_TEXT
         self.llm_text: str | None = None
         self.record_text = False
+        self.llm_delay = 0.0
 
     def take_failure(self, path: str) -> int | None:
         with self.lock:
@@ -125,6 +128,7 @@ def make_handler(state: State):
                     state.stt_text = ctl.get("stt_text", state.stt_text)
                     state.llm_text = ctl.get("llm_text", state.llm_text)
                     state.record_text = bool(ctl.get("record_text", state.record_text))
+                    state.llm_delay = float(ctl.get("llm_delay", state.llm_delay))
                 self._send(200, {"ok": True})
                 return
             if path == "/_reset":
@@ -134,6 +138,7 @@ def make_handler(state: State):
                     state.stt_text = DEFAULT_STT_TEXT
                     state.llm_text = None
                     state.record_text = False
+                    state.llm_delay = 0.0
                 self._send(200, {"ok": True})
                 return
 
@@ -162,6 +167,8 @@ def make_handler(state: State):
                 if failure:
                     self._send(failure, {"error": {"message": "fake failure"}})
                     return
+                if state.llm_delay > 0:
+                    time.sleep(state.llm_delay)  # eigener Thread je Anfrage (ThreadingHTTPServer)
                 text = state.llm_text if state.llm_text is not None else f"[fake-llm] {user}"
                 if path.endswith("/messages"):
                     self._send(200, {"content": [{"type": "text", "text": text}], "stop_reason": "end_turn"})

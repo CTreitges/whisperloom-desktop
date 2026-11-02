@@ -56,6 +56,8 @@ public sealed class NextDictationFlowTest : IDisposable
         Assert.Equal(DictationState.Recording, _f.Controller.State);
         Assert.True(_ui.Overlay);
         Assert.Equal(OverlayState.Recording, _flow.Overlay.State);
+        _flow.Tick();
+        Assert.True(_flow.Overlay.PreviousPending); // Hinweis: voriges Diktat wird noch verbessert, Esc = ohne KI
 
         _pipeline.Release(1);
         await send1.Within();
@@ -64,6 +66,8 @@ public sealed class NextDictationFlowTest : IDisposable
         Assert.Equal(DictationState.Recording, _f.Controller.State);
         Assert.True(_ui.Overlay);
         Assert.Equal(OverlayState.Recording, _flow.Overlay.State);
+        _flow.Tick();
+        Assert.False(_flow.Overlay.PreviousPending);
 
         _f.Now += TimeSpan.FromSeconds(1);
         var send2 = _flow.HandleAsync(HotkeyAction.Toggle);
@@ -111,6 +115,7 @@ public sealed class NextDictationFlowTest : IDisposable
     {
         var send1 = await ToggleDictationAsync(1);
         await _flow.HandleAsync(HotkeyAction.Toggle);
+        Assert.Equal(DictationState.Recording, _f.Controller.State); // der erste Druck hat Aufnahme 2 gestartet
         _f.Now += TimeSpan.FromMilliseconds(200);
         await _flow.HandleAsync(HotkeyAction.Toggle);
         await send1.Within();
@@ -132,6 +137,7 @@ public sealed class NextDictationFlowTest : IDisposable
         var end1 = _flow.HandleAsync(HotkeyAction.HoldEnd);
         await Waits.For(() => _pipeline.Refining(1));
         await _flow.HandleAsync(HotkeyAction.HoldStart);
+        Assert.Equal(DictationState.Recording, _f.Controller.State); // der erste Druck hat Aufnahme 2 gestartet
         _f.Now += TimeSpan.FromMilliseconds(100);
         await _flow.HandleAsync(HotkeyAction.HoldEnd);
         _f.Now += TimeSpan.FromMilliseconds(100);
