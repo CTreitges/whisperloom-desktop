@@ -137,4 +137,34 @@ public sealed partial class DictationController
             _log.Event("history", ("status", "error"));
         }
     }
+
+    /// <summary>Neuer Verlaufseintrag für ein ausgegebenes Diktat (je Diktat einer, W3-NEXT: auch im Hintergrund).</summary>
+    private async Task AddHistoryAsync(DictationResult result)
+    {
+        if (result.Raw.Length == 0)
+        {
+            return;
+        }
+        var now = _now();
+        var entry = new HistoryEntry(
+            FileHistoryStore.NewId(now),
+            now,
+            result.Language,
+            result.DurationMs,
+            result.Raw,
+            result.Text,
+            result.Result.Refinement,
+            result.SttLabel,
+            result.Result.Model,
+            result.Result.Skipped);
+        try
+        {
+            await _history.AddAsync(entry, CancellationToken.None);
+            HistoryChanged?.Invoke();
+        }
+        catch (IOException)
+        {
+            _log.Event("history", ("status", "error"));
+        }
+    }
 }

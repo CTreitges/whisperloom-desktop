@@ -63,6 +63,10 @@ public sealed partial class OverlayViewModel : ObservableObject
 
     public bool IsProcessing => State == OverlayState.Processing;
 
+    /// <summary>Ein voriges Diktat wird noch verarbeitet, während diese Aufnahme läuft (W3-NEXT): Hinweis mit Esc.</summary>
+    [ObservableProperty]
+    private bool _previousPending;
+
     /// <summary>Lokalisierungs-Schlüssel des Fehlers (<c>Error_*</c>).</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(StateText))]

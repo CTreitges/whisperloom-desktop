@@ -13,6 +13,7 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import smoke  # noqa: E402
 import smoke_input  # noqa: E402
+import smoke_next  # noqa: E402
 import smoke_winput as wi  # noqa: E402
 
 
@@ -212,6 +213,51 @@ class InputSuiteGateTest(unittest.TestCase):
                                    "--work-dir", d, "--lock", str(lock)])
         self.assertEqual(code, 0)
         self.assertIn("SMOKE input SKIP", out.getvalue())
+
+
+class NextDuringRefineTest(unittest.TestCase):
+    """W3-NEXT: Urteile der Teilprüfungen next-during-refine und next-double-press-raw."""
+
+    def test_refined_first_while_second_recording_runs_then_both_refined_is_ok(self):
+        ok, _ = smoke_next.next_verdict("recording", "recording", "[Fake-llm] This is a fake transcript.",
+                                        "[Fake-llm] This is a fake transcript. [fake-llm] This is a fake transcript.")
+        self.assertTrue(ok)
+
+    def test_raw_first_text_fails(self):
+        ok, why = smoke_next.next_verdict("recording", "recording", "", "This is a fake transcript.")
+        self.assertFalse(ok)
+        self.assertIn("nach1=''", why)
+
+    def test_second_recording_not_running_fails(self):
+        refined = "[fake-llm] x"
+        self.assertFalse(smoke_next.next_verdict("processing", "processing", refined, refined + refined)[0])
+        self.assertFalse(smoke_next.next_verdict("recording", "idle", refined, refined + refined)[0])
+
+    def test_double_press_raw_text_one_new_entry_is_ok(self):
+        status = {"state": "idle", "history": {"count": 4}, "input": {"overlay": False}}
+        self.assertTrue(smoke_next.double_verdict(status, "This is a fake transcript.", 3)[0])
+
+    def test_double_press_with_refined_text_or_second_entry_or_open_overlay_fails(self):
+        status = {"state": "idle", "history": {"count": 4}, "input": {"overlay": False}}
+        self.assertFalse(smoke_next.double_verdict(status, "[fake-llm] x", 3)[0])
+        self.assertFalse(smoke_next.double_verdict({**status, "history": {"count": 5}}, "raw", 3)[0])
+        self.assertFalse(smoke_next.double_verdict({**status, "input": {"overlay": True}}, "raw", 3)[0])
+        self.assertFalse(smoke_next.double_verdict({**status, "state": "recording"}, "raw", 3)[0])
+        self.assertFalse(smoke_next.double_verdict(status, "", 3)[0])
+
+    def test_start_app_writes_the_requested_stage(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            args = types.SimpleNamespace(id="T", app="app.exe")
+            smoke_mod = mock.Mock()
+            smoke_mod.fresh_dir.side_effect = lambda d: d.mkdir(parents=True, exist_ok=True)
+            fake = mock.Mock()
+            fake.app_base.return_value = "http://127.0.0.1:1"
+            smoke_input.start_app(args, work, smoke_mod, fake, "next", "paste", stage="polish")
+            settings = (work / "T" / "smoke-data-next" / "settings.json").read_text(encoding="utf-8")
+            self.assertIn('"stage": "polish"', settings)
+            smoke_input.start_app(args, work, smoke_mod, fake, "plain", "paste")
+            self.assertIn('"stage": "off"', (work / "T" / "smoke-data-plain" / "settings.json").read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

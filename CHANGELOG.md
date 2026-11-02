@@ -5,6 +5,11 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **Next dictation while the text is being improved** (W3-NEXT): pressing the dictation hotkey (hold or toggle, Linux
+  `toggle`) during the AI improvement now starts the next recording right away; the running dictation is still improved
+  and inserted into its own window, results arrive in dictation order. Skip the improvement with a double-press (< 400 ms)
+  or Esc (Windows). Deliberate deviation from Android (`docs/parity-exceptions.md`).
+
 ## [1.0.0] – 2026-11-02
 
 ### Added
