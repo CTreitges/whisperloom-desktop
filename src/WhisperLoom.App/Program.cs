@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Text.Json;
 using Avalonia;
 using Velopack;
@@ -23,6 +24,7 @@ internal static class Program
         // Kein Auto-Anwenden beim Start: ein Update wird nur nach Bestätigung bzw. per "update" installiert.
         // Doku: docs.velopack.io/getting-started/csharp, docs.velopack.io/integrating/hooks (abgerufen 2026-11-01).
         VelopackApp.Build().SetAutoApplyOnStartup(false).Run();
+        UseUtf8WhenRedirected();
 
         CliRequest request;
         try
@@ -282,6 +284,25 @@ internal static class Program
         if (OperatingSystem.IsWindows() && !Console.IsOutputRedirected)
         {
             AttachConsole(-1);
+        }
+    }
+
+    /// <summary>
+    /// Umgeleitete Ausgabe (Skripte, Smokes) als UTF-8 ohne BOM. Ohne das schreibt .NET unter Windows in der
+    /// Konsolen-Codepage (cp1252), und Umlaute in <c>warn</c>/<c>error</c>-Zeilen kommen als Ersatzzeichen an.
+    /// Eine echte Konsole bleibt unberührt: <c>Console.OutputEncoding</c> setzen würde die Codepage des Aufrufers ändern.
+    /// </summary>
+    // Doku: learn.microsoft.com/dotnet/api/system.console.setout und .../system.console.outputencoding (abgerufen 2026-11-02).
+    private static void UseUtf8WhenRedirected()
+    {
+        var utf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+        if (Console.IsOutputRedirected)
+        {
+            Console.SetOut(new StreamWriter(Console.OpenStandardOutput(), utf8) { AutoFlush = true });
+        }
+        if (Console.IsErrorRedirected)
+        {
+            Console.SetError(new StreamWriter(Console.OpenStandardError(), utf8) { AutoFlush = true });
         }
     }
 
