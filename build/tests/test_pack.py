@@ -30,6 +30,25 @@ class PackTest(unittest.TestCase):
     def test_linux_auf_linux_ohne_direktive(self):
         self.assertEqual(pack.vpk_cmd("1.0.0", "linux-x64", Path("p"), Path("o"), host="linux")[2], "pack")
 
+    def test_ohne_kanal_kein_channel(self):
+        # Stabil = Kanal wie das OS (win/linux), so wurde 1.0.0 gepackt; sonst fänden installierte 1.0.0 nichts mehr.
+        for channel in (None, "stable"):
+            for rid in pack.RIDS:
+                self.assertNotIn("--channel", pack.vpk_cmd("1.0.1", rid, Path("p"), Path("o"), host="win", channel=channel))
+
+    def test_beta_und_test_gehen_als_channel_je_os_an_vpk(self):
+        for channel in ("beta", "test"):
+            for rid, os_name in (("win-x64", "win"), ("linux-x64", "linux")):
+                cmd = pack.vpk_cmd("1.1.0-beta.1", rid, Path("p"), Path("o"), host="win", channel=channel)
+                self.assertEqual(cmd[cmd.index("--channel") + 1], f"{os_name}-{channel}")
+                self.assertEqual(cmd.count("--channel"), 1)
+
+    def test_unbekannter_kanal_abgelehnt(self):
+        with self.assertRaises(ValueError):
+            pack.channel_name("nightly", "win-x64")
+        with self.assertRaises(SystemExit):
+            pack.main(["--version", "1.0.0", "--rid", "win-x64", "--out", "o", "--channel", "nightly"])
+
     def test_publish_setzt_version_und_rid(self):
         cmd = pack.publish_cmd("0.9.1", "linux-x64", Path("pub"))
         self.assertIn("-p:Version=0.9.1", cmd)
