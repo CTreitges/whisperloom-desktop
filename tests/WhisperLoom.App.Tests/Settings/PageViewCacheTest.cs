@@ -84,6 +84,19 @@ public sealed class PageViewCacheTest
     }
 
     [AvaloniaFact]
+    public void Seite_folgt_einen_Durchlauf_nach_der_Markierung()
+    {
+        using var f = new ControllerFixture();
+        var window = Open(f);
+        var host = window.FindControl<ContentControl>("PageHost")!;
+        window.Shell!.SelectedPage = window.Shell.Page("privacy");
+        Assert.Same(window.Shell.Page("general"), host.Content); // erst rendert die Markierung …
+        Dispatcher.UIThread.RunJobs();
+        Assert.Same(window.Shell.Page("privacy"), host.Content); // … dann hängt die Seite
+        window.Close();
+    }
+
+    [AvaloniaFact]
     public void Vorlage_passt_nur_auf_Seiten()
     {
         var cache = new PageViewCache(new Window(), new Panel());

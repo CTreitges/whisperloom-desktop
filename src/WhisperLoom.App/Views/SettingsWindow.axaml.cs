@@ -30,6 +30,16 @@ public partial class SettingsWindow : Window
         shell.Pages.CollectionChanged += (_, _) => Pages.Clear();
         Opened += (_, _) => Prebuild(shell);
         DataContext = shell;
+        // Seitenwechsel einen Dispatcher-Durchlauf nach der Auswahl (Hintergrund-Priorität): Die Markierung in der
+        // Seitenleiste wird zuerst gezeichnet, dann erst die Seite angehängt (Rückmeldung sofort statt nach dem Anhängen).
+        PageHost.Content = shell.SelectedPage;
+        shell.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(SettingsShellViewModel.SelectedPage))
+            {
+                Dispatcher.UIThread.Post(() => PageHost.Content = shell.SelectedPage, DispatcherPriority.Background);
+            }
+        };
         shell.RevealRequested += Reveal;
         ResultList.SelectionChanged += (_, _) =>
         {
@@ -128,7 +138,7 @@ public partial class SettingsWindow : Window
             var target = (row.Content as Control)?.GetVisualDescendants().OfType<InputElement>().FirstOrDefault(i => i.Focusable && i.IsEffectivelyEnabled)
                 ?? row.Content as InputElement;
             target?.Focus(NavigationMethod.Tab);
-        }, DispatcherPriority.Loaded);
+        }, DispatcherPriority.Background);
     }
 
     /// <summary>Textfelder speichern beim Verlassen; beim Schließen per Esc gilt die letzte Eingabe auch.</summary>

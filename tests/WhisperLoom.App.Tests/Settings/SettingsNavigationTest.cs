@@ -45,6 +45,7 @@ public sealed class SettingsNavigationTest
         window.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.ArrowDown, null);
         window.KeyPress(Key.Up, RawInputModifiers.None, PhysicalKey.ArrowUp, null);
         Assert.Equal("recognition", window.Shell.SelectedPage!.Id);
+        Dispatcher.UIThread.RunJobs(); // PERF-2: Seite folgt einen Durchlauf nach der Markierung
         Assert.IsType<RecognitionPageViewModel>(window.FindControl<ContentControl>("PageHost")!.Content);
         window.Close();
     }
