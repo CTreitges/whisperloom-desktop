@@ -39,6 +39,11 @@ Weitere Befehle für eigene Kürzel:
 „Halten zum Sprechen“ geht über Kürzel der Desktop-Umgebung nicht, weil sie nur beim Drücken auslösen. Nimm
 `toggle`: einmal drücken = Aufnahme, nochmal drücken = fertig.
 
+**Während das vorige Diktat noch verbessert wird:** `toggle` startet sofort die nächste Aufnahme; das vorige Diktat wird
+fertig verbessert und kommt danach in die Zwischenablage (Ergebnisse in Diktat-Reihenfolge). Zweimal kurz hintereinander
+(innerhalb von 0,4 s) = sofort ohne KI: die neue Aufnahme wird verworfen, das vorige Diktat kommt als Rohtext. Escape
+zum Überspringen gibt es unter Linux nicht (kein globaler Tastatur-Hook) – nur unter Windows.
+
 ## KDE Plasma (6)
 
 1. **Systemeinstellungen → Tastatur → Kurzbefehle**.
@@ -125,6 +130,11 @@ use the `.AppImage` file. `toggle` starts or stops-and-processes a recording and
 result is on the **clipboard** (paste with Ctrl+V). Other verbs: `start`, `stop`, `cancel`, `pause`, `resume`,
 `stage next`, `stage <off|polish|beautify|summarize|readable|prompt>`, `show`, `setup`, `settings`, `help`, `status --json`. Push-to-talk is
 not possible with desktop shortcuts; use `toggle`.
+
+**While the previous dictation is still being improved,** `toggle` starts the next recording right away; the previous
+dictation is still improved and then put on the clipboard (results in dictation order). Running `toggle` twice within
+0.4 s inserts the previous one without AI and discards the new recording. Esc to skip exists on Windows only (Linux has
+no global keyboard hook).
 
 **Process selected text:** select text anywhere, then run `"/path/to/WhisperLoom" process-selection` from a shortcut.
 WhisperLoom reads the primary selection, shows the stage picker as a small window (click, ↑/↓, Tab, 1–9, Enter; Esc

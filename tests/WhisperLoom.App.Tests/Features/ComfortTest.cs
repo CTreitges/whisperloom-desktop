@@ -13,8 +13,8 @@ using WhisperLoom.Core.Testing;
 namespace WhisperLoom.App.Tests.Features;
 
 /// <summary>
-/// Komfort aus der Android-App (W2-OUT, Prüfrunde 1): &lt; 0,3 s verwerfen, 12-min-Deckel mit Hinweis ab 10 min, Kürzel während der
-/// Verbesserung = sofort ohne KI, „Erneut senden“ nach wiederholbarem Fehler.
+/// Komfort aus der Android-App (W2-OUT, Prüfrunde 1): &lt; 0,3 s verwerfen, 12-min-Deckel mit Hinweis ab 10 min, Escape während der
+/// Verbesserung = sofort ohne KI (W3-NEXT, vorher die Diktat-Taste), „Erneut senden“ nach wiederholbarem Fehler.
 /// </summary>
 public sealed class ComfortTest
 {
@@ -121,10 +121,10 @@ public sealed class ComfortTest
         await flow.HandleAsync(HotkeyAction.OverlayDiscard);
     }
 
-    // --- Kürzel während der Verbesserung = ohne KI ---------------------------------------------
+    // --- Escape während der Verbesserung = ohne KI (W3-NEXT; die Diktat-Taste startet jetzt die nächste Aufnahme) ---------
 
     [AvaloniaFact]
-    public async Task Kuerzel_waehrend_der_Verbesserung_fuegt_sofort_ohne_KI_ein()
+    public async Task Escape_waehrend_der_Verbesserung_fuegt_sofort_ohne_KI_ein()
     {
         var pipeline = new SlowRefinePipeline();
         var (f, rig, flow, _) = Flow(Polish(), pipeline);
@@ -132,7 +132,7 @@ public sealed class ComfortTest
         await flow.HandleAsync(HotkeyAction.Toggle);
         var send = flow.HandleAsync(HotkeyAction.OverlaySend);
         await WaitFor(() => f.Controller.IsRefining);
-        await flow.HandleAsync(HotkeyAction.Toggle);
+        await flow.HandleAsync(HotkeyAction.SkipRefine);
         // Zeitgrenze: ohne wirksamen Ausweg wartete die langsame Verbesserung sonst ewig (Test hinge statt rot zu werden).
         await send.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
         Assert.Equal("Hallo Welt", rig.Keys.Target);

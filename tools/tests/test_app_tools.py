@@ -5,6 +5,7 @@ import argparse
 import contextlib
 import datetime as dt
 import io
+import time
 import json
 import sys
 import tempfile
@@ -87,6 +88,17 @@ class FakeApiTest(unittest.TestCase):
     def requests(self):
         with self.direct.open(self.base + "/_requests", timeout=10) as r:
             return json.loads(r.read())["requests"]
+
+    def test_llm_delay_slows_only_the_refinement_and_reset_clears_it(self):
+        self.post("/_control", {"llm_delay": 0.4})
+        start = time.monotonic()
+        status, body = self.post("/v1/chat/completions", {"messages": [{"role": "user", "content": "hallo"}]})
+        self.assertGreaterEqual(time.monotonic() - start, 0.4)
+        self.assertEqual((status, body["choices"][0]["message"]["content"]), (200, "[fake-llm] hallo"))
+        self.post("/_reset", {})
+        start = time.monotonic()
+        self.post("/v1/chat/completions", {"messages": [{"role": "user", "content": "hallo"}]})
+        self.assertLess(time.monotonic() - start, 0.4)
 
     def test_stt_records_language_and_returns_text(self):
         boundary = "b0"

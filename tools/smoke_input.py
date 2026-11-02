@@ -7,7 +7,8 @@ wiederhergestellt. Prozesse nur über die eigene PID.
 
 Prüfungen: hold-insert, start-menu-suppressed, toggle-second-press, no-focus-steal, toggle-enter, ctrl-enter-no-enter,
 backspace-discard, pause, clipboard-restore, clipboard-history-excluded, stage-toast, type-mode; W2-OUT (smoke_focus.py):
-focus-textfield, focus-password, focus-button, leading-space, history-copy-20, focus-measure.
+focus-textfield, focus-password, focus-button, leading-space, history-copy-20, focus-measure; W3-NEXT (smoke_next.py):
+next-during-refine, next-double-press-raw.
 """
 from __future__ import annotations
 
@@ -154,19 +155,22 @@ def run_suite(args, work: Path, report, smoke) -> None:
         with smoke_full.FakeApi() as fake:
             guarded(report, ["paste-suite"], lambda: paste_checks(args, work, report, smoke, fake, keys, exe))
             guarded(report, ["type-mode"], lambda: type_checks(args, work, report, smoke, fake, keys, exe))
+            import smoke_next  # W3-NEXT: eigenes Modul (Dateigröße), nutzt die Helfer hier
+            guarded(report, ["next-during-refine", "next-double-press-raw"],
+                    lambda: smoke_next.next_checks(args, work, report, smoke, fake, keys, exe))
     finally:
         keys.release_all()
         if saved is not None:
             wi.set_clipboard(saved)
 
 
-def start_app(args, work: Path, smoke, fake, name: str, insert_mode: str):
+def start_app(args, work: Path, smoke, fake, name: str, insert_mode: str, stage: str = "off"):
     data = work / args.id / f"smoke-data-{name}"
     smoke.fresh_dir(data)
     wav = work / args.id / "smoke-test.wav"
     smoke.write_test_wav(wav)
     settings = smoke_full.fake_settings(fake, via_proxy=False)
-    settings["refine"] = {"stage": "off", "promptEnabled": True}
+    settings["refine"] = {"stage": stage, "promptEnabled": True}
     settings["desktop"] = {"insertMode": insert_mode}
     settings["polish"] = {**settings.get("polish", {}), "trailingSpace": False}  # Ziel == lastResult vergleichen (W2-OUT)
     (data / "settings.json").write_text(json.dumps(settings), encoding="utf-8")
