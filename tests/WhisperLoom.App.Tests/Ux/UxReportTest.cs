@@ -38,6 +38,7 @@ public sealed class UxReportTest
                     if (name == "dark")
                     {
                         Structure(md, root);
+                        await WriteBoxesAsync(view.Id, root);
                     }
                     var low = UxProbe.TextContrast(root).Where(c => c.Ratio < (c.Large ? 3 : 4.5)).ToList();
                     md.Append(CultureInfo.InvariantCulture, $"- Kontrast {name}: {(low.Count == 0 ? "alle Texte ok" : $"{low.Count} unter Grenze")}\n");
@@ -63,6 +64,30 @@ public sealed class UxReportTest
         {
             Loc.Instance.SetLanguage(before);
         }
+    }
+
+    /// <summary>
+    /// <c>WLD_UX_BOXES</c> = Ordner: je Ansicht <c>&lt;id&gt;.json</c> mit Lage und Größe aller Texte und bedienbaren Elemente
+    /// (Pixel im Screenshot) – für nummerierte Marker auf den Vorher-Bildern der Mockups.
+    /// </summary>
+    private static async Task WriteBoxesAsync(string id, Avalonia.Controls.Control root)
+    {
+        var dir = Environment.GetEnvironmentVariable("WLD_UX_BOXES");
+        if (dir is null)
+        {
+            return;
+        }
+        Directory.CreateDirectory(dir);
+        var texts = UxProbe.Visible(root).OfType<Avalonia.Controls.TextBlock>().Where(t => !string.IsNullOrWhiteSpace(t.Text))
+            .Select(t => (Kind: "text", Name: t.Name ?? "", Text: t.Text!, Box: UxProbe.BoxIn(t, root)));
+        var targets = UxProbe.Targets(root).Select(t => (Kind: t.Kind, Name: t.Control.Name ?? "", Text: t.Name, Box: t.Box));
+        var items = texts.Concat(targets).Select(e => new Dictionary<string, object>
+        {
+            ["kind"] = e.Kind, ["name"] = e.Name, ["text"] = e.Text,
+            ["x"] = Math.Round(e.Box.X), ["y"] = Math.Round(e.Box.Y), ["w"] = Math.Round(e.Box.Width), ["h"] = Math.Round(e.Box.Height),
+        });
+        await File.WriteAllTextAsync(Path.Combine(dir, id + ".json"),
+            System.Text.Json.JsonSerializer.Serialize(items, new System.Text.Json.JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }));
     }
 
     private static string Short(string? s) => s is null ? "" : s.Length <= 40 ? s.Replace('\n', ' ') : s[..39].Replace('\n', ' ') + "…";
