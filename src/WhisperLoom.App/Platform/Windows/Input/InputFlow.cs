@@ -112,7 +112,7 @@ public sealed partial class InputFlow
         {
             return;
         }
-        if (SkipIfProcessing(action))
+        if (StartNext(action))
         {
             return;
         }
@@ -128,17 +128,14 @@ public sealed partial class InputFlow
                 // Modus zuerst zurück: das Ende kommt von uns, nicht von außen (OnControllerChanged).
                 _mode = Mode.None;
                 _ui.SetPill(0, processing: true);
-                var result = await _controller.StopAsync();
-                // Nichts eingefügt (Fehler, Abbruch): das nächste Ergebnis (Tray, CLI) darf nicht ins alte Ziel.
-                _sink.Disarm();
-                _ui.HidePill();
-                if (result == "error")
+                var run = _run;
+                var outcome = await _controller.StopDictationAsync();
+                if (!Superseded(run, outcome))
                 {
-                    ErrorToast(_controller.LastErrorKey ?? "Overlay_Error");
-                }
-                else if (result == "done")
-                {
-                    HintIfRawOnly();
+                    // Nichts eingefügt (Fehler, Abbruch): das nächste Ergebnis (Tray, CLI) darf nicht ins alte Ziel.
+                    _sink.Disarm();
+                    _ui.HidePill();
+                    AfterResult(outcome);
                 }
                 break;
             case HotkeyAction.HoldCancel when _mode == Mode.Hold:
@@ -148,8 +145,17 @@ public sealed partial class InputFlow
                 _ui.HidePill();
                 break;
             case HotkeyAction.Toggle when _mode == Mode.Toggle && _controller.IsRecording:
+                // Doppeldruck (W3-NEXT): die Aufnahme endet ohne Senden, das Overlay schließt über OnControllerChanged.
+                if (!_controller.TryDoublePress())
+                {
+                    await SendAsync();
+                }
+                break;
             case HotkeyAction.Selection when _mode == Mode.Rewrite && _controller.IsRecording:
                 await SendAsync();
+                break;
+            case HotkeyAction.SkipRefine:
+                _controller.SkipRefine();
                 break;
             case HotkeyAction.Toggle when _controller.State == DictationState.Idle:
                 if (Begin(Mode.Toggle, _foreground()))
@@ -180,6 +186,7 @@ public sealed partial class InputFlow
     {
         Overlay.Elapsed = _controller.Elapsed;
         Overlay.Level = _controller.Level;
+        Overlay.PreviousPending = _controller.IsRecording && _controller.Pending > 0;
         if (_mode == Mode.Hold && _controller.State == DictationState.Recording)
         {
             _ui.SetPill(_controller.Level, processing: false);
@@ -226,10 +233,14 @@ public sealed partial class InputFlow
         {
             _controller.ActiveProfile = null;
             _sink.Disarm();
-            Toast(_controller.LastErrorKey ?? "Overlay_Error");
+            if (started != "skipped") // Doppeldruck (W3-NEXT): gewollt, kein Fehler
+            {
+                Toast(_controller.LastErrorKey ?? "Overlay_Error");
+            }
             return false;
         }
         _mode = mode;
+        _run++;
         return true;
     }
 
@@ -256,13 +267,20 @@ public sealed partial class InputFlow
         _overlayKeys(false);
         Overlay.IsStagePickerOpen = false;
         Overlay.State = OverlayState.Processing;
-        var result = rewrite ? await _controller.StopAndRewriteAsync(_selection) : await _controller.StopAsync();
+        var run = _run;
+        var outcome = rewrite
+            ? new StopOutcome(await _controller.StopAndRewriteAsync(_selection), _controller.LastErrorKey)
+            : await _controller.StopDictationAsync();
+        if (Superseded(run, outcome))
+        {
+            return;
+        }
         _selection = "";
         // Nichts eingefügt (Fehler, Abbruch): das nächste Ergebnis (Tray, CLI) darf nicht ins alte Ziel gehen.
         _sink.Disarm();
-        if (result == "error")
+        if (outcome.Code == "error")
         {
-            Overlay.ErrorKey = _controller.LastErrorKey;
+            Overlay.ErrorKey = outcome.ErrorKey;
             Overlay.CanRetry = _controller.CanRetry;
             Overlay.State = OverlayState.Error;
             await Task.Delay(Overlay.CanRetry ? RetryWindow : ErrorDuration);
@@ -273,21 +291,9 @@ public sealed partial class InputFlow
             return;
         }
         _ui.HideOverlay();
-        if (!rewrite && result == "done")
+        if (!rewrite && outcome.Code == "done")
         {
-            HintIfRawOnly();
-        }
-    }
-
-    /// <summary>
-    /// KI gescheitert, Rohtext eingefügt (Android: Rohtext mit Hinweis, W2-OUT): Hinweis, sofern kein anderer wichtiger ist
-    /// (Kopiert, Passwortfeld).
-    /// </summary>
-    private void HintIfRawOnly()
-    {
-        if (_controller.LastRefined?.Skipped is not null && _sink.LastOutcome is { } outcome && outcome.Hint() == Core.Output.OutputHint.None)
-        {
-            Toast("Output_Hint_RawOnly");
+            HintIfRawOnly(outcome.Refined);
         }
     }
 
@@ -384,26 +390,5 @@ public sealed partial class InputFlow
             Overlay.Stage = label;
         }
         _ui.ShowHint("stage", Loc.Instance["Stage_Label"], label, StageHintDuration, _foreground());
-    }
-
-    /// <summary>Hinweis nach der Ausgabe: „Kopiert – Strg+V“ bzw. „Passwortfeld – nicht eingefügt“.</summary>
-    public void ShowFallback(InsertOutcome outcome) => ShowHint(outcome.Hint());
-
-    /// <summary>Hinweis anzeigen (auch für Tray-Kopieren und Ausgaben ohne Einfügen).</summary>
-    public void ShowHint(Core.Output.OutputHint hint)
-    {
-        if (hint != Core.Output.OutputHint.None)
-        {
-            _ui.ShowHint("toast", "WhisperLoom", Loc.Instance[Output.OutputHints.Key(hint)], ToastDuration, _target);
-        }
-    }
-
-    private void Toast(string key) => _ui.ShowHint("toast", "WhisperLoom", Loc.Instance[key], ToastDuration, _target);
-
-    /// <summary>Stufe des laufenden Diktats; mit Profil als „Profil · Stufe“.</summary>
-    private string StageLabel()
-    {
-        var stage = Loc.Instance["Stage_" + _controller.EffectiveStage.Key()];
-        return _controller.ActiveProfile is { } m ? $"{AppProfiles.DisplayName(m.Profile)} · {stage}" : stage;
     }
 }

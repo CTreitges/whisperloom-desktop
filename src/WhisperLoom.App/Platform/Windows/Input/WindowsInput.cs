@@ -59,6 +59,8 @@ public sealed class WindowsInput : IDisposable
             ("process", sink.LastReport?.Process),
             ("sameTarget", sink.LastReport?.SameTarget),
             ("focusClass", sink.LastReport?.FocusClass)));
+        // Escape überspringt nur, solange eine Verbesserung läuft (W3-NEXT); abgefragt im Hook-Thread.
+        _machine.SkipKeyActive = () => controller.IsRefining;
         _hook = new KeyboardHook(_machine, OnHookAction);
         _tick.Tick += (_, _) =>
         {

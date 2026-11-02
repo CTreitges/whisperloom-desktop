@@ -57,6 +57,12 @@ public class OverlayScreenshotTest
             vm.ErrorKey = state == OverlayState.Error ? "Error_Network" : null;
             Save(OnDark(new OverlayWindow(vm)), $"p3-overlay-{name}.png");
         }
+        // W3-NEXT: nächste Aufnahme läuft, das vorige Diktat wird noch verbessert.
+        vm.State = OverlayState.Recording;
+        vm.ErrorKey = null;
+        vm.PreviousPending = true;
+        Save(OnDark(new OverlayWindow(vm)), "next-overlay-recording-previous-pending.png");
+        vm.PreviousPending = false;
 
         Save(OnDark(new PillWindow(new PillViewModel { Level = 0.6 })), "p3-pill.png");
         Save(OnDark(new PillWindow(new PillViewModel { Processing = true })), "p3-pill-processing.png");

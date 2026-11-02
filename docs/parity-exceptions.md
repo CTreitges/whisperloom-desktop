@@ -45,3 +45,13 @@ Bewusst nicht portierte Android-Funktionen ohne eigenes Prüfskript (Test-Fälle
 | CTR-273 „Sprache je Widget“ (`WidgetProfile.language`, `TranscriptionEngine.transcribe(language = …)`, Profil-Editor; Tests `WidgetProfileTest.dieSpracheUeberstehtDenRoundtrip`, `WidgetProfileTest.eineSpracheAusJsonNullIstWieDieApp`, `VoiceTaskPipelineFactoryTest.dieSpracheDesWidgetsGehtAnDieErkennungSonstDieDerApp`, `VoiceTaskPipelineFactoryTest.widgetMitAutoLaesstDieSpracheWeg`, `TranscriptionEngineTest.eigeneSpracheGewinntGegenDieDerApp`) | Der Desktop hat keine Widgets (Sprach-Command/Claude-Code-Widget sind Android-Startbildschirm-Funktionen). Die Sprache kommt je Diktat über `DictationRequest.Language` an die Pipeline, ein Override ist damit schon im Vertrag; App-Profile (W2/P5b) haben eine eigene Stufe, aber keine eigene Sprache — nicht Gegenstand von W2-PFIX. |
 | CTR-273 Wörterbuch-Hinweis „Geht als Wortliste an Mistral …“ (`DictionaryScreen`, Test `MainFlowTest.kontextFeldNenntBeiMistralDieWortliste`/`kontextFeldSagtBeiOpenRouterDassNichtsMitgeschicktWird`) | Die Desktop-Seite „Erkennung“ zeigt unter „Kontext-Wörter“ keine anbieterabhängigen Hinweise (auch nicht für ElevenLabs/OpenRouter); es gibt also keinen Text, der anzupassen wäre. Die Mistral-Notiz im Katalog (`providers.json`) nennt die Wortliste. |
 | CTR-273 Hilfe-Zeile `help_s5_mixed` (Offline + „Deutsch + Englisch“) | Hilfe-Views/Assets gehören W2-HELP (PR #26); der Offline-Hinweis steht direkt unter der Sprachauswahl (`Language_deEnOffline`). |
+
+## Verhalten: Diktat-Taste während der Verbesserung (W3-NEXT)
+
+Bewusste Abweichung vom Android-Verhalten (`RefineSkip.kt`: Taste während der Verbesserung = sofort ohne KI). Entscheidung
+Christof 02.11.2026 (Vorfall: das nächste Diktat sollte starten, eingefügt wurde der Rohtext des vorigen).
+
+| Android | Desktop | Begründung |
+|---|---|---|
+| Taste während der Verbesserung = Verbesserung überspringen, Rohtext einfügen | Taste (Halten oder Umschalten, Linux `toggle`) startet sofort die nächste Aufnahme; das laufende Diktat wird fertig verbessert und eingefügt. Ausgaben streng in Diktat-Reihenfolge, jedes ins eigene Ziel, eigener Verlaufseintrag | Am Desktop folgt das nächste Diktat oft Sekunden nach dem Stopp; der Druck meint dann „weiter diktieren“, nicht „überspringen“ |
+| — | Überspringen per Doppeldruck (zweiter Druck < 400 ms nach dem Druck, der die neue Aufnahme gestartet hat: Aufnahme verworfen, nichts gesendet) oder Esc (nur Windows, nur solange eine Verbesserung läuft, Esc wird dann geschluckt) | Der Ausweg bleibt, ohne die häufige Bedienung zu stören; Linux hat keinen globalen Hook, dort nur der Doppeldruck über `toggle` |
