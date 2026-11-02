@@ -40,8 +40,12 @@ def check_version(version: str) -> str:
 
 
 def publish_cmd(version: str, rid: str, publish_dir: Path) -> list[str]:
-    return ["dotnet", "publish", str(APP), "-c", "Release", "-r", rid, "--self-contained",
-            f"-p:Version={version}", "-o", str(publish_dir)]
+    # ReadyToRun als Composite (PERF-3), A/B am selben PC: Start bereit p50 1716 ms (ohne) → 982–1052 ms (R2R) → 828 ms
+    # (Composite), erstes Öffnen „Erkennung“ 267 → 201 ms (R2R). Kosten: Publish ≈ +46 MB (211 → 257 MB), längerer Build.
+    # Doku: Context7 /dotnet/docs, docs/core/deploying/ready-to-run.md (abgerufen 2026-11-02): braucht RID, Composite nur
+    # self-contained.
+    return ["dotnet", "publish", str(APP), "-c", "Release", "-r", rid, "--self-contained", "-p:PublishReadyToRun=true",
+            "-p:PublishReadyToRunComposite=true", f"-p:Version={version}", "-o", str(publish_dir)]
 
 
 def vpk_cmd(version: str, rid: str, publish_dir: Path, out: Path, host: str) -> list[str]:

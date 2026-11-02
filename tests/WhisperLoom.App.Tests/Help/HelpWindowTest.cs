@@ -222,6 +222,34 @@ public sealed class HelpWindowTest
     }
 
     [AvaloniaFact]
+    public void Illustration_resolves_brushes_and_pens_once_per_theme_and_source()
+    {
+        // PERF-4: Render zeichnet mit den einmal aufgelösten Pinseln/Stiften (vorher je Shape und Frame neu).
+        var window = Open("privacy");
+        var ill = Named<HelpIllustration>(window, "Illustration");
+        window.RequestedThemeVariant = ThemeVariant.Light;
+        Dispatcher.UIThread.RunJobs();
+        var light = ill.Paint();
+        Assert.Same(light, ill.Paint());
+        Assert.NotNull(window.CaptureRenderedFrame());
+        Assert.Same(light, ill.Paint());
+        Assert.Equal(ill.Shapes.Count, light.Length);
+        Assert.Contains(light, p => p.Pen is not null);
+
+        window.RequestedThemeVariant = ThemeVariant.Dark;
+        Dispatcher.UIThread.RunJobs();
+        var dark = ill.Paint();
+        Assert.NotSame(light, dark);
+        var i = Array.FindIndex(light, p => p.Fill is not null);
+        Assert.NotEqual(((ISolidColorBrush)light[i].Fill!).Color, ((ISolidColorBrush)dark[i].Fill!).Color);
+
+        ill.Source = HelpCatalog.Find("recognition")!.Illustration;
+        Assert.NotSame(dark, ill.Paint());
+        Assert.Equal(ill.Shapes.Count, ill.Paint().Length);
+        window.Close();
+    }
+
+    [AvaloniaFact]
     public void Illustration_renders_without_errors_at_any_size()
     {
         var window = Open("start");
