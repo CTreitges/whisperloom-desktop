@@ -37,7 +37,6 @@ public sealed class PageViewCache(Control owner, Panel staging) : IDataTemplate
             // zurück, sobald eine Auswahl-Liste ausgetauscht wird (z. B. ComboBox Anbieter/Modell nach „Anbieter“-Änderung).
             view.AttachedToLogicalTree += (_, _) => view.DataContext = page;
             view.DetachedFromLogicalTree += (_, _) => view.DataContext = null;
-            view.DataContext = page;
             _views[page] = view;
         }
         else if (view.Parent == staging)

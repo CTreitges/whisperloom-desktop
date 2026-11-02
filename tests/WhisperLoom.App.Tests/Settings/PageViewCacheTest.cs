@@ -129,6 +129,31 @@ public sealed class PageViewCacheTest
     }
 
     [AvaloniaFact]
+    public async Task Listen_austausch_bei_gecachter_Seite_schreibt_nichts_zurueck()
+    {
+        // Prüfer PR #32 N5: „Text & Stufen“ liegt abgehängt im Cache, auf „Anbieter“ entsteht ein eigener Anbieter →
+        // die Anbieter-Listen werden ersetzt. Die ComboBoxen der gecachten Seite dürfen dabei nichts auf null setzen.
+        Localization.Loc.Instance.SetLanguage("de");
+        using var f = new ControllerFixture();
+        var window = Open(f);
+        var vm = window.Settings!;
+        SettingsUi.Show(window, "text");
+        var llm = vm.LlmProvider;
+        SettingsUi.Show(window, "providers");
+        var page = (ProvidersPageViewModel)window.Shell!.Page("providers");
+        page.AddCommand.Execute(null);
+        var row = Assert.Single(page.Rows);
+        row.Name = "Labor";
+        row.BaseUrl = "https://lab.example/v1";
+        row.Models = "m-1";
+        await vm.Pending;
+        Assert.NotNull(vm.LlmProvider);
+        Assert.Equal(llm.Value, vm.LlmProvider.Value);
+        Assert.NotNull(vm.SttProvider);
+        window.Close();
+    }
+
+    [AvaloniaFact]
     public async Task Seiten_wechseln_aendert_keine_Einstellung()
     {
         // Abgehängte Seiten verlieren den DataContext: Auswahl-Steuerelemente dürfen dabei nichts in die Arbeitskopie schreiben.

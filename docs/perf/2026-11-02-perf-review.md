@@ -53,9 +53,15 @@ Vorher = Baseline (`dotnet build`, 6d6337a), Nachher = PERF-2 (`dotnet build`, a
 | UI-Blockade nach dem Öffnen (Vorbau, 3 s) | – | 156,5 ms |
 | Hover Einstellungen: erste Reaktion p95 (max) | 34,8 ms | 34,5 ms |
 
-Bewertung: Rückmeldung beim Klick und erstes Öffnen deutlich besser. Wiederholte Wechsel werden nicht schneller: Wieder-
-anhängen (Styles) + neu Binden kostet bei „Erkennung“ etwa so viel wie der Neubau, dazu ein Frame Verzögerung durch die
-Hintergrund-Priorität. Mit ReadyToRun (PERF-3) sinken erstes Öffnen und Vorbau weiter (siehe dort).
+Lesart (Prüfer PR #32): Die Klick-Messung startet ≥ 3 s nach dem Öffnen, trifft also eine **vorgebaute** Seite. Die Arbeit
+des ersten Öffnens ist nicht verschwunden, sondern läuft im Leerlauf direkt nach dem Öffnen (Zeile „UI-Blockade nach dem
+Öffnen“, ohne R2R 156,5 ms – mehr als die 141 ms der Baseline beim Klick). Ein Klick in der ersten Sekunde trifft eine noch
+nicht vorgebaute Seite und kostet wie vorher. Wiederholte Wechsel werden nicht schneller: Wiederanhängen (Styles) + neu
+Binden kostet bei „Erkennung“ etwa so viel wie der Neubau, dazu ein Frame Verzögerung durch die Hintergrund-Priorität.
+Sichtbare Nebenwirkung: Scroll-Stand und aufgeklappte „Erweitert“-Bereiche bleiben über Seitenwechsel erhalten.
+
+Ampel-Wirkung allein (ohne R2R): Hover-/Pointer-Pfad 🔴 → 🟢 (Klick erste Reaktion ≤ 34 ms); UI-Thread bleibt 🔴
+(Vorbau 156,5 ms nach dem Öffnen). Erst mit PERF-3 (ReadyToRun) sinkt der Vorbau auf 77,6 ms (🟡, siehe Abschlussmessung).
 
 ## Ausnahmen
 
