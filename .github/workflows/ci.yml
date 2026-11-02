@@ -55,6 +55,15 @@ jobs:
         with: { global-json-file: global.json }
       # Gleiche Schalter wie build/pack.py (PERF-3: ReadyToRun, Composite nur Linux), damit Fehler vor dem Release-Tag auffallen.
       - run: dotnet publish src/WhisperLoom.App -c Release -r ${{ matrix.rid }} --self-contained -p:PublishReadyToRun=true -p:PublishReadyToRunComposite=${{ startsWith(matrix.rid, 'linux') }} -o publish/${{ matrix.rid }}
+      # Starttest der vorkompilierten Binärdatei (Abschlussprüfung M1: Linux-Composite lief sonst nie): --version endet vor
+      # dem UI-Start und braucht kein Display.
+      - if: runner.os == 'Linux'
+        run: ./publish/linux-x64/WhisperLoom --version
+      - if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath publish/win-x64/WhisperLoom.exe -ArgumentList '--version' -Wait -PassThru -NoNewWindow
+          if ($p.ExitCode -ne 0) { throw "WhisperLoom --version: Exit $($p.ExitCode)" }
       - if: runner.os == 'Windows'
         shell: pwsh
         run: Compress-Archive -Path publish/win-x64/* -DestinationPath ${{ matrix.archive }}

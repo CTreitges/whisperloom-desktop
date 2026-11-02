@@ -65,7 +65,7 @@ Binden kostet bei „Erkennung“ etwa so viel wie der Neubau, dazu ein Frame Ve
 Sichtbare Nebenwirkung: Scroll-Stand und aufgeklappte „Erweitert“-Bereiche bleiben über Seitenwechsel erhalten.
 
 Ampel-Wirkung allein (ohne R2R): Hover-/Pointer-Pfad rot → grün (Klick erste Reaktion ≤ 34 ms); UI-Thread bleibt rot
-(Vorbau 156,5 ms nach dem Öffnen). Erst mit PERF-3 (ReadyToRun) sinkt der Vorbau auf 77,6 ms (gelb, siehe Abschlussmessung).
+(Vorbau 156,5 ms nach dem Öffnen). Erst mit PERF-3 (ReadyToRun) sinkt der Vorbau auf 76,5–78,9 ms (gelb, siehe Abschlussmessung).
 
 ### PERF-3 ReadyToRun im Publish (Windows ohne, Linux mit Composite)
 
@@ -126,7 +126,7 @@ Gelb bleibt, wo grün nur mit Großumbau ginge (Zielwert des Runs, Christof 2026
 
 - **A1 UI-Thread / Dispatcher (🟡 gelb):** Messwert: Klick „Erkennung“ UI-Blockade 54,9 ms (Grenze grün 50 ms),
   Seitenwechsel erstes Öffnen max 65,5 ms, ein Vorbau-Schritt direkt nach dem Öffnen 76,5 ms. Ursache: Anhängen der großen
-  Seite „Erkennung“ (`Views/Settings/RecognitionPage.axaml`, 5 Gruppen, 7 Auswahllisten, 6 Textfelder) wendet Styles an
+  Seite „Erkennung“ (`Views/Settings/RecognitionPage.axaml`, 5 Gruppen, 8 Auswahllisten, 6 Textfelder) wendet Styles an
   und bindet alle Steuerelemente in einem Dispatcher-Durchlauf. Verworfene Wege: (a) alle Seiten dauerhaft angehängt und
   gebunden lassen – Auswahl-Listen verborgener Seiten schreiben beim Austausch ihrer Listen `null` in die Einstellungen
   (im Test als NRE aufgefallen, Datenrisiko); (b) die Seite in Teil-Views je Gruppe zerlegen und schrittweise anhängen –

@@ -50,7 +50,7 @@ def readytorun_args(rid: str) -> list[str]:
     Windows ohne Composite: Composite schreibt die .NET-Laufzeit in ein eigenes Image und entfernt damit die
     Microsoft-Signatur von ~175 Laufzeit-DLLs (WDAC/AppLocker „Herausgeber Microsoft“, docs/signing.md) – Entscheidung
     Christof 2026-11-02. Linux mit Composite (keine Authenticode-Signaturen; Doku empfiehlt es dort für den besten Start).
-    Messung win-x64 am selben PC (Start bereit p50): ohne R2R 1774 ms, R2R 982–1052 ms, Composite 828–872 ms.
+    Messung win-x64 am selben PC (Start bereit p50): ohne R2R 1572–1774 ms, R2R 979–1052 ms, Composite 828–872 ms.
     Doku: Context7 /dotnet/docs, docs/core/deploying/ready-to-run.md (abgerufen 2026-11-02): braucht RID, Composite nur
     self-contained.
     """

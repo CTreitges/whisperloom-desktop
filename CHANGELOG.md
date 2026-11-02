@@ -63,14 +63,21 @@ versions follow [Semantic Versioning](https://semver.org/).
 - „German + English“ (`de+en`) is a new value of `language`: an older WhisperLoom rejects such a settings file on
   import and, if downgraded, would send `de+en` to the provider. Pick another language before downgrading.
 
+### Note for testers of the 1.0.0 pre-release
+The earlier 1.0.0 pre-release has the same version number and is **not** updated automatically. Uninstall it (or
+delete the portable folder) and install this release once; settings stay in place.
+
 ### Performance
 Measured with `desktop-perf-review` on one PC (Windows 11, 179 Hz), report: `docs/perf/2026-11-02-perf-review.md`.
 - **Faster start**: release packages are compiled ReadyToRun (Linux additionally as composite; Windows without composite
-  so the .NET runtime keeps Microsoft's signatures). Ready after start p50 1572 → 979 ms, window visible 1205 → 652 ms.
-  Packages are ≈ 17–18 MB larger.
+  so the .NET runtime keeps Microsoft's signatures). Ready after start p50 ≈ 1.57 s → ≈ 1.0 s (979–1002 ms over
+  several runs), window visible 1205 → 652 ms. Downloads grow by ≈ 8 MB (Windows) and ≈ 18 MB (Linux).
+  ReadyToRun also re-writes `SkiaSharp.dll`, `HarfBuzzSharp.dll` and `CommunityToolkit.Mvvm.dll`, which drops their
+  vendor signatures (see `docs/signing.md`).
 - **Snappier settings**: pages are built once and reused, prepared in small steps right after the window opens, and the
-  sidebar highlight shows before the page is attached. Clicking „Recognition“ the first time: first visible reaction
-  266 → 34 ms, longest UI-thread block 141 → 55 ms. Scroll position and opened „Advanced“ sections now stay when you
+  sidebar highlight shows before the page is attached. Clicking „Recognition“ the first time (page already prepared,
+  ≥ 3 s after opening): first visible reaction 266 → 34 ms, longest UI-thread block 141 → 55 ms; the preparation itself
+  blocks for up to ≈ 77 ms right after the window opens. Scroll position and opened „Advanced“ sections now stay when you
   switch pages.
 - **Help illustrations** resolve brushes and pens once per theme instead of on every render (11 KB → 0.7 KB allocated
   per render).
