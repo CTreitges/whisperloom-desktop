@@ -372,35 +372,6 @@ public sealed partial class DictationController : ObservableObject
         }
     }
 
-    private async Task AddHistoryAsync(DictationResult result)
-    {
-        if (result.Raw.Length == 0)
-        {
-            return;
-        }
-        var now = _now();
-        var entry = new HistoryEntry(
-            FileHistoryStore.NewId(now),
-            now,
-            result.Language,
-            result.DurationMs,
-            result.Raw,
-            result.Text,
-            result.Result.Refinement,
-            result.SttLabel,
-            result.Result.Model,
-            result.Result.Skipped);
-        try
-        {
-            await _history.AddAsync(entry, CancellationToken.None);
-            HistoryChanged?.Invoke();
-        }
-        catch (IOException)
-        {
-            _log.Event("history", ("status", "error"));
-        }
-    }
-
     /// <param name="job">Diktat, dem der Fehler gehört (sein Ergebnis für <see cref="StopAsync"/>); null = keins.</param>
     private void Fail(string key, string errorClass, Job? job = null)
     {
