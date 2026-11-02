@@ -164,6 +164,32 @@ public sealed class UpdateChannelTest : IDisposable
     }
 
     [Fact]
+    public void Vertrag_settings_json_Namen_Standard_und_Doku()
+    {
+        // docs/settings-format.md, Abschnitt „Update-Kanal“: desktop.updateChannel (Text, "stable"), desktop.updatePrereleaseAuto (bool, false).
+        var s = new Core.Contracts.Settings.WhisperLoomSettings();
+        SettingsStore.SetDesktop(s, new DesktopSettings());
+        var json = Core.Contracts.Settings.SettingsJson.Serialize(s);
+        Assert.Contains("\"updateChannel\": \"stable\"", json);
+        Assert.Contains("\"updatePrereleaseAuto\": false", json);
+
+        var back = SettingsStore.Desktop(SettingsStore.Read("""{"desktop": {"updateChannel": "test", "updatePrereleaseAuto": true}}"""));
+        Assert.Equal(new UpdatePreferences(UpdateChannel.Test, true), UpdatePreferences.From(back));
+        var unknown = SettingsStore.Desktop(SettingsStore.Read("""{"desktop": {"updateChannel": "nightly"}}"""));
+        Assert.Equal(UpdatePreferences.Default, UpdatePreferences.From(unknown));
+
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "WhisperLoom.slnx")))
+        {
+            dir = dir.Parent;
+        }
+        Assert.NotNull(dir);
+        var doc = File.ReadAllText(Path.Combine(dir.FullName, "docs", "settings-format.md"));
+        Assert.Contains("| `updateChannel` | Text | `\"stable\"` |", doc);
+        Assert.Contains("| `updatePrereleaseAuto` | bool | `false` |", doc);
+    }
+
+    [Fact]
     public void Einstellungen_Standard_ist_stabil_ohne_Vorab()
     {
         Assert.Equal(UpdatePreferences.Default, UpdatePreferences.From(new DesktopSettings()));
