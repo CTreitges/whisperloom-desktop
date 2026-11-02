@@ -11,7 +11,7 @@ internal sealed record CliRequest(string? Verb, IReadOnlyList<string> Args, AppO
         or "reprocess" or "reinsert" or "recent-insert" or "history-copy" or "focus-probe" or "retry" or "sync";
 
     /// <summary>Verben, die der aufrufende Prozess selbst erledigt (Key nie über die IPC).</summary>
-    public bool IsLocal => Verb is "key" or "bench" or "provision" or "import" or "export" or "version" or "update" or "join";
+    public bool IsLocal => Verb is "key" or "bench" or "provision" or "import" or "export" or "version" or "update" or "join" or "usage";
 }
 
 /// <summary>Start- und Test-Schalter. Gelten nur für die erste Instanz; ein zweiter Start nutzt sie zum Finden.</summary>
@@ -62,7 +62,7 @@ internal static class CommandLine
         "        [join --server <url> --code <code> [--device-name <name>]|sync|whisperloom://join?server=<url>&code=<code>]\n" +
         "        [--data-dir <pfad>] [--test-audio <wav>] [--output-file <pfad>] [--secret-prefix <präfix>] [--hotkeys] [--test-text-model <gguf>]\n" +
         "        WhisperLoom bench --model <tiny|base|small|large-v3-turbo> --seconds <n> [--backend auto|cpu]\n" +
-        "        WhisperLoom --version | update [--feed <ordner|url>]";
+        "        WhisperLoom --version | --help | -h | update [--feed <ordner|url>]";
 
     private static readonly HashSet<string> Verbs =
         ["toggle", "start", "stop", "cancel", "pause", "resume", "stage", "status", "show", "setup", "settings", "help", "key", "quit", "bench", "provision", "import", "export",
@@ -82,6 +82,7 @@ internal static class CommandLine
         var hotkeys = false;
         var dryRun = false;
         var version = false;
+        var help = false;
         var positional = new List<string>();
         var benchArgs = new List<string>();
         var joinArgs = new List<string>();
@@ -111,6 +112,8 @@ internal static class CommandLine
                 case "--hotkeys": hotkeys = true; break;
                 case "--dry-run": dryRun = true; break;
                 case "--version": version = true; break;
+                // W3-PERF N8: Aufrufübersicht (Exit 0); das Verb help öffnet dagegen das Hilfefenster.
+                case "--help" or "-h": help = true; break;
                 case "--feed": feed = Value(args, ref i, a); break;
                 case "--stage": stage = Value(args, ref i, a); break;
                 default:
@@ -135,6 +138,10 @@ internal static class CommandLine
             hotkeys,
             testTextModel is null ? null : Path.GetFullPath(testTextModel));
 
+        if (help)
+        {
+            return new CliRequest("usage", [], options, json);
+        }
         if (version)
         {
             return new CliRequest("version", [], options, json);
