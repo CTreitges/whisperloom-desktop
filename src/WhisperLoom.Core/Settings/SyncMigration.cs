@@ -31,7 +31,7 @@ public static class SyncMigration
         if (version > WhisperLoomSettings.CurrentSchemaVersion)
         {
             throw new NotSupportedException(
-                $"Die Datei hat Schema {version}, diese Version kennt nur bis {WhisperLoomSettings.CurrentSchemaVersion}. Bitte WhisperLoom aktualisieren.");
+                $"Die Datei hat Schema {version}, diese Version kennt nur bis {WhisperLoomSettings.CurrentSchemaVersion}. WhisperLoom aktualisieren und die Datei erneut importieren.");
         }
         for (var from = version; from < WhisperLoomSettings.CurrentSchemaVersion; from++)
         {

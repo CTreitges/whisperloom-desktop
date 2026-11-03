@@ -81,10 +81,10 @@ public sealed class InputPresenter : IInputPresenter
     /// <summary>Welche Hinweise stehen bleiben: Warnung und Fehler; Stufe, Kopiert und Auskunft verschwinden von selbst.</summary>
     internal static bool Sticks(HintTone tone) => tone is HintTone.Warning or HintTone.Error;
 
-    /// <summary>Ein neues Diktat nimmt einen stehenden Hinweis weg; er gehört zum vorigen.</summary>
     /// <summary>Läuft die Zeit des Hinweises (Tests: stehende Hinweise starten sie nicht).</summary>
     internal bool HintTimerRunning => _hintTimer.IsEnabled;
 
+    /// <summary>Ein neues Diktat nimmt einen stehenden Hinweis weg; er gehört zum vorigen.</summary>
     private void HideStickyHint()
     {
         if (_hint is { Sticky: true, IsVisible: true })
