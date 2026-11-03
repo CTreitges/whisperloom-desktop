@@ -51,7 +51,16 @@ public sealed partial class CompanyJoinViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(JoinCommand))]
     private JoinPhase _phase;
 
-    /// <summary>Fehler bzw. Hinweis unter dem Formular; leer = keiner.</summary>
+    /// <summary>Fehler am Feld „Server-Adresse“ (Eingabe prüfen, UX-6 N11); leer = keiner.</summary>
+    [ObservableProperty] private string _serverError = "";
+
+    /// <summary>Fehler am Feld „Firmencode“; leer = keiner.</summary>
+    [ObservableProperty] private string _codeError = "";
+
+    /// <summary>Nach einem Feldfehler: Name des ersten fehlerhaften Felds (<c>ServerBox</c> oder <c>CodeBox</c>) für den Fokus.</summary>
+    public event Action<string>? FocusField;
+
+    /// <summary>Antwort des Servers bzw. Hinweis unter dem Formular; leer = keiner.</summary>
     [ObservableProperty] private string _status = "";
 
     [ObservableProperty] private bool _statusIsError;
@@ -80,9 +89,12 @@ public sealed partial class CompanyJoinViewModel : ObservableObject
         Code = link.Code;
     }
 
+    partial void OnCodeChanged(string value) => CodeError = "";
+
     /// <summary>Ein eingefügter Einladungslink im Adressfeld füllt beide Felder.</summary>
     partial void OnServerChanged(string value)
     {
+        ServerError = "";
         if (JoinLink.TryParse(value) is { } link)
         {
             Prefill(link);
@@ -96,9 +108,14 @@ public sealed partial class CompanyJoinViewModel : ObservableObject
     {
         var (url, urlError) = EnrollInput.NormalizeServer(Server);
         var code = EnrollInput.NormalizeCode(Code);
+        ServerError = urlError is null ? "" : Loc.Instance[urlError];
+        CodeError = code is null ? Loc.Instance["Company_CodeInvalid"] : "";
         if (url is null || code is null)
         {
-            ShowError(Loc.Instance[urlError ?? "Company_CodeInvalid"]);
+            // Meldung am Feld, Fokus auf das erste fehlerhafte Feld (Richtlinie 03 §3.4); der Kasten bleibt Server-Antworten.
+            Status = "";
+            StatusIsError = false;
+            FocusField?.Invoke(url is null ? "ServerBox" : "CodeBox");
             return;
         }
         Phase = JoinPhase.Joining;

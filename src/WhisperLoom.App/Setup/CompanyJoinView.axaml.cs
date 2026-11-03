@@ -7,7 +7,26 @@ namespace WhisperLoom.App.Setup;
 /// <summary>Firmen-Beitritt (Assistent und Seite „Firma“); kopiert die Geräte-ID für die IT.</summary>
 public partial class CompanyJoinView : UserControl
 {
+    private CompanyJoinViewModel? _vm;
+
     public CompanyJoinView() => InitializeComponent();
+
+    /// <summary>Feldfehler: Fokus auf das erste fehlerhafte Feld (UX-6 N11).</summary>
+    protected override void OnDataContextChanged(EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+        if (_vm is not null)
+        {
+            _vm.FocusField -= OnFocusField;
+        }
+        _vm = DataContext as CompanyJoinViewModel;
+        if (_vm is not null)
+        {
+            _vm.FocusField += OnFocusField;
+        }
+    }
+
+    private void OnFocusField(string name) => this.FindControl<TextBox>(name)?.Focus();
 
     private async void OnCopyDevice(object? sender, RoutedEventArgs e)
     {
