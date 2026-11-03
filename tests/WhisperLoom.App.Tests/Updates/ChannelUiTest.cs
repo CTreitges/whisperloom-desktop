@@ -31,7 +31,7 @@ public sealed class ChannelUiTest
         var vm = new SettingsViewModel(f.Controller, new MemorySecretStore(), new FakeAccessChecker()) { AutoSave = true, OpenVersions = openVersions };
         var window = new SettingsWindow(new SettingsShellViewModel(vm)) { Width = 980, Height = 1100 };
         window.Show();
-        SettingsUi.Show(window, "general");
+        SettingsUi.Show(window, "system");
         return window;
     }
 
@@ -42,14 +42,17 @@ public sealed class ChannelUiTest
         using var f = new ControllerFixture();
         var opened = 0;
         var window = Open(f, () => opened++);
-        var page = (GeneralPageViewModel)window.Shell!.SelectedPage!;
+        var page = (SystemPageViewModel)window.Shell!.SelectedPage!;
         Assert.Equal("stable", page.UpdateChannel.Value);
         Assert.Equal(["Stabil", "Beta", "Test"], page.UpdateChannels.Select(c => c.Label));
         Assert.False(page.IsPrereleaseChannel);
-        Assert.False(SettingsUi.Row(window, "desktop.updatePrereleaseAuto").IsEnabled);
+        Assert.False(SettingsUi.Row(window, "desktop.updatePrereleaseAuto").IsVisible); // nur zeigen, was gilt (UX-2)
 
-        SettingsUi.Named<ComboBox>(window, "UpdateChannelBox").SelectedItem = page.UpdateChannels[1];
+        SettingsUi.Named<Design.OptionGroup>(window, "UpdateChannelBox").SelectedItem = page.UpdateChannels[1];
         Assert.True(page.IsPrereleaseChannel);
+        Dispatcher.UIThread.RunJobs();
+        window.UpdateLayout();
+        Assert.True(SettingsUi.Row(window, "desktop.updatePrereleaseAuto").IsVisible);
         SettingsUi.Named<ToggleSwitch>(window, "UpdatePrereleaseAutoBox").IsChecked = true;
         await window.Settings!.Pending;
         var saved = SettingsStore.Desktop(f.Store.Load());
@@ -77,11 +80,11 @@ public sealed class ChannelUiTest
         f.Controller.Policy = new PolicySettings { UpdatesEnabled = false };
         var opened = 0;
         var window = Open(f, () => opened++);
-        var page = (GeneralPageViewModel)window.Shell!.SelectedPage!;
+        var page = (SystemPageViewModel)window.Shell!.SelectedPage!;
         Assert.False(page.UpdatesAllowed);
         Assert.False(page.IsPrereleaseChannel);
         Assert.False(page.OpenVersionsCommand.CanExecute(null));
-        Assert.False(SettingsUi.Named<ComboBox>(window, "UpdateChannelBox").IsEffectivelyEnabled);
+        Assert.DoesNotContain(window.GetVisualDescendants().OfType<Design.OptionGroup>(), g => g.Name == "UpdateChannelBox" && g.IsEffectivelyVisible);
         Assert.True(SettingsUi.Named<Control>(window, "UpdatesDisabledHint").IsVisible);
         page.UpdateChannel = page.UpdateChannels[0];
         page.UpdatePrereleaseAuto = false;

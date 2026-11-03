@@ -31,18 +31,27 @@ public class SettingsGroup : HeaderedContentControl
 {
     public static readonly StyledProperty<string?> TitleKeyProperty = AvaloniaProperty.Register<SettingsGroup, string?>(nameof(TitleKey));
     public static readonly StyledProperty<string?> FooterKeyProperty = AvaloniaProperty.Register<SettingsGroup, string?>(nameof(FooterKey));
+    public static readonly StyledProperty<string?> IntroKeyProperty = AvaloniaProperty.Register<SettingsGroup, string?>(nameof(IntroKey));
 
     public static readonly DirectProperty<SettingsGroup, bool> IsShownProperty =
         AvaloniaProperty.RegisterDirect<SettingsGroup, bool>(nameof(IsShown), g => g.IsShown);
     public static readonly DirectProperty<SettingsGroup, string> FooterProperty =
         AvaloniaProperty.RegisterDirect<SettingsGroup, string>(nameof(Footer), g => g.Footer);
+    public static readonly DirectProperty<SettingsGroup, string> IntroProperty =
+        AvaloniaProperty.RegisterDirect<SettingsGroup, string>(nameof(Intro), g => g.Intro);
 
     private bool _isShown = true;
     private string _footer = "";
+    private string _intro = "";
 
     public string? TitleKey { get => GetValue(TitleKeyProperty); set => SetValue(TitleKeyProperty, value); }
 
     public string? FooterKey { get => GetValue(FooterKeyProperty); set => SetValue(FooterKeyProperty, value); }
+
+    /// <summary>Einleitungssatz unter dem Gruppentitel (TextSecondary, auf der Kante).</summary>
+    public string? IntroKey { get => GetValue(IntroKeyProperty); set => SetValue(IntroKeyProperty, value); }
+
+    public string Intro { get => _intro; private set => SetAndRaise(IntroProperty, ref _intro, value); }
 
     public bool IsShown { get => _isShown; private set => SetAndRaise(IsShownProperty, ref _isShown, value); }
 
@@ -64,7 +73,8 @@ public class SettingsGroup : HeaderedContentControl
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property == TitleKeyProperty || change.Property == FooterKeyProperty || change.Property == Managed.ContextProperty)
+        if (change.Property == TitleKeyProperty || change.Property == FooterKeyProperty || change.Property == IntroKeyProperty
+            || change.Property == Managed.ContextProperty)
         {
             Refresh();
         }
@@ -80,6 +90,8 @@ public class SettingsGroup : HeaderedContentControl
         }
         Footer = FooterKey is { } footer ? Loc.Instance[footer] : "";
         PseudoClasses.Set(":footer", Footer.Length > 0);
+        Intro = IntroKey is { } intro ? Loc.Instance[intro] : "";
+        PseudoClasses.Set(":intro", Intro.Length > 0);
         var rows = ManagedRows.Of(this).ToList();
         IsShown = rows.Count == 0 || rows.Any(r => ManagedRows.StateOf(this, r) != ManagedState.Fixed);
     }
@@ -112,10 +124,33 @@ public class SettingsPage : ContentControl
     private string _helpTip = "";
     private string _helpName = "";
 
-    /// <summary>W2-HELP: Der „?“-Knopf öffnet den Hilfe-Abschnitt dieser Seite (DataContext = ViewModel der Seite).</summary>
-    public SettingsPage() => HelpCommand = new RelayCommand(() => HelpLauncher.OpenForPage(DataContext as SettingsPageViewModel));
+    public static readonly StyledProperty<string?> IntroKeyProperty = AvaloniaProperty.Register<SettingsPage, string?>(nameof(IntroKey));
+
+    public static readonly DirectProperty<SettingsPage, string> IntroProperty =
+        AvaloniaProperty.RegisterDirect<SettingsPage, string>(nameof(Intro), p => p.Intro);
+    public static readonly DirectProperty<SettingsPage, ICommand> CompanyCommandProperty =
+        AvaloniaProperty.RegisterDirect<SettingsPage, ICommand>(nameof(CompanyCommand), p => p.CompanyCommand);
+
+    private string _intro = "";
+
+    /// <summary>
+    /// W2-HELP: Der Hilfe-Knopf öffnet den Hilfe-Abschnitt dieser Seite (DataContext = ViewModel der Seite); „Zur Firma“ in der
+    /// Verwaltet-Zeile springt zur Seite „Firma“.
+    /// </summary>
+    public SettingsPage()
+    {
+        HelpCommand = new RelayCommand(() => HelpLauncher.OpenForPage(DataContext as SettingsPageViewModel));
+        CompanyCommand = new RelayCommand(() => (DataContext as SettingsPageViewModel)?.GoToCommand.Execute(SettingsCatalog.AccountPage));
+    }
 
     public ICommand HelpCommand { get; }
+
+    public ICommand CompanyCommand { get; }
+
+    /// <summary>Einleitungssatz unter dem Titel (TextSecondary, auf der Kante); ohne Schlüssel keiner.</summary>
+    public string? IntroKey { get => GetValue(IntroKeyProperty); set => SetValue(IntroKeyProperty, value); }
+
+    public string Intro { get => _intro; private set => SetAndRaise(IntroProperty, ref _intro, value); }
 
     public string HelpTip { get => _helpTip; private set => SetAndRaise(HelpTipProperty, ref _helpTip, value); }
 
@@ -147,7 +182,7 @@ public class SettingsPage : ContentControl
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property == TitleKeyProperty || change.Property == Managed.ContextProperty)
+        if (change.Property == TitleKeyProperty || change.Property == IntroKeyProperty || change.Property == Managed.ContextProperty)
         {
             Refresh();
         }
@@ -158,6 +193,8 @@ public class SettingsPage : ContentControl
     private void Refresh()
     {
         Title = TitleKey is { } key ? Loc.Instance[key] : "";
+        Intro = IntroKey is { } intro ? Loc.Instance[intro] : "";
+        PseudoClasses.Set(":intro", Intro.Length > 0);
         HelpTip = Loc.Instance["Help_PageButton_Tip"];
         HelpName = Loc.Instance.Format("Help_PageButton_Name", Title);
         var source = Managed.GetContext(this)?.Source;

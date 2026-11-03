@@ -54,7 +54,7 @@ internal static class UxSettingsScenes
         var window = new SettingsWindow(new SettingsShellViewModel(vm)) { Width = Width, Height = 660, RequestedThemeVariant = theme };
         window.Show();
         SettingsUi.Show(window, page);
-        if (window.Shell!.SelectedPage is ProvidersPageViewModel providers)
+        if (window.Shell!.SelectedPage is ConnectionsPageViewModel providers)
         {
             await providers.LoadKeysAsync();
         }
@@ -63,7 +63,7 @@ internal static class UxSettingsScenes
             await setup.Act(window);
         }
         UxStage.FitHeight(window);
-        SettingsShellViewModel.LastPage = "general";
+        SettingsShellViewModel.LastPage = "dictation";
         return new UxScene(window, window, (IDisposable?)rig ?? f);
     }
 

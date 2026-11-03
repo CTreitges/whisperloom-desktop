@@ -5,13 +5,22 @@
              xmlns:l="using:WhisperLoom.App.Localization"
              x:Class="WhisperLoom.App.Views.Settings.ModelPickerView"
              x:DataType="vm:ModelPickerViewModel">
-  <!-- Modellwahl (W2-LOCAL): Katalog, Serverliste und „Eigenes Modell …“, dazu „Vom Server laden“ und Ergebnis. -->
-  <StackPanel Spacing="6">
+  <!--
+    Modellwahl (zielstruktur.md §7, B21/B35): Auswahlliste (Standard des Anbieters zuerst, „Eigenes Modell …“ zuletzt), darunter
+    der Textknopf „Modellliste aktualisieren“ (Höhe ≥ 24, Symbol 16) mit Status rechts.
+  -->
+  <StackPanel Spacing="{DynamicResource Loom.Space.2}">
     <ds:CustomChoiceBox x:Name="ChoiceBox" DataContext="{Binding Choice}" />
-    <StackPanel Orientation="Horizontal" Spacing="8">
-      <Button x:Name="LoadButton" Classes="link" Content="{Binding [Models_Load], Source={x:Static l:Loc.Instance}}" Command="{Binding LoadCommand}" />
-      <TextBlock x:Name="StatusText" Text="{Binding Status}" IsVisible="{Binding Status.Length}" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="240"
-                 FontSize="{DynamicResource Loom.Font.Caption}" Foreground="{DynamicResource Loom.TextSecondary}" Classes.error="{Binding StatusIsError}" />
-    </StackPanel>
+    <WrapPanel ItemSpacing="12" LineSpacing="4">
+      <Button x:Name="LoadButton" Classes="text" Command="{Binding LoadCommand}"
+              AutomationProperties.Name="{Binding [Models_Load], Source={x:Static l:Loc.Instance}}">
+        <StackPanel Orientation="Horizontal" Spacing="4">
+          <ds:LoomIcon Data="{DynamicResource Loom.Icon.Refresh}" VerticalAlignment="Center" />
+          <TextBlock Text="{Binding [Models_Load], Source={x:Static l:Loc.Instance}}" />
+        </StackPanel>
+      </Button>
+      <TextBlock x:Name="StatusText" Text="{Binding Status}" IsVisible="{Binding Status.Length}" VerticalAlignment="Center" TextWrapping="Wrap"
+                 Classes="caption" Classes.error="{Binding StatusIsError}" AutomationProperties.LiveSetting="Polite" />
+    </WrapPanel>
   </StackPanel>
 </UserControl>

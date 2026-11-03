@@ -1,0 +1,185 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:WhisperLoom.App.ViewModels.Settings"
+             xmlns:avm="using:WhisperLoom.App.ViewModels"
+             xmlns:v="using:WhisperLoom.App.Views"
+             xmlns:ds="using:WhisperLoom.App.Design"
+             xmlns:l="using:WhisperLoom.App.Localization"
+             x:Class="WhisperLoom.App.Views.Settings.ConnectionsPage"
+             x:DataType="vm:ConnectionsPageViewModel">
+  <!--
+    Seite „Verbindungen“ (UX-2, zielstruktur.md §1): eigene Anbieter und lokale Server als Liste einklappbarer Einträge (Kopf:
+    Name + Zusammenfassung; Körper: Felder einspaltig, Label über dem Feld; Fuß: Löschen in Fehlerfarbe mit Namen), dann der
+    eine Hauptknopf „… hinzufügen“. Proxy als Optionsfelder, Adresse nur bei „Eigener Proxy“.
+  -->
+  <ds:SettingsPage TitleKey="Page_connections" IntroKey="PageIntro_connections">
+    <StackPanel Spacing="{DynamicResource Loom.Space.5}">
+      <ds:SettingsGroup TitleKey="G_CustomProviders" IntroKey="G_CustomProviders_Intro">
+        <StackPanel>
+          <ds:SettingRow Path="providers.custom" Stacked="True" Bare="True">
+            <StackPanel Spacing="{DynamicResource Loom.Space.3}">
+              <TextBlock x:Name="EmptyText" Text="{Binding [Providers_Empty], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding IsEmpty}"
+                         Foreground="{DynamicResource Loom.TextSecondary}" TextWrapping="Wrap" />
+              <ItemsControl x:Name="ProviderList" ItemsSource="{Binding Rows}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Spacing="{DynamicResource Loom.Space.2}" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:CustomProviderRow">
+                    <Expander Classes="item">
+                      <Expander.Header>
+                        <StackPanel Spacing="2">
+                          <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                          <TextBlock Text="{Binding Summary}" Classes="caption" TextWrapping="Wrap" />
+                        </StackPanel>
+                      </Expander.Header>
+                      <StackPanel>
+                        <ds:SettingRow TitleKey="Provider_Name" Stacked="True">
+                          <TextBox Classes="field" Text="{Binding Name, UpdateSourceTrigger=LostFocus}" />
+                        </ds:SettingRow>
+                        <ds:SettingRow TitleKey="Provider_Protocol" Stacked="True">
+                          <ds:OptionGroup ItemsSource="{Binding Protocols}" SelectedItem="{Binding Protocol}" />
+                        </ds:SettingRow>
+                        <ds:SettingRow TitleKey="Set_BaseUrl" DescriptionKey="Provider_Url_Desc" Stacked="True" Error="{Binding Error}">
+                          <TextBox Classes="wide" Text="{Binding BaseUrl, UpdateSourceTrigger=LostFocus}" />
+                        </ds:SettingRow>
+                        <ds:HintRow Text="{Binding Hint}" IsVisible="{Binding Hint.Length}" Kind="Warning" Margin="16,0,16,12" />
+                        <ds:SettingRow TitleKey="Provider_Models" DescriptionKey="Provider_Models_Desc" Stacked="True">
+                          <TextBox Classes="wide" Text="{Binding Models, UpdateSourceTrigger=LostFocus}" />
+                        </ds:SettingRow>
+                        <ds:SettingRow TitleKey="Provider_KeyOptional">
+                          <ToggleSwitch IsChecked="{Binding KeyOptional}" OnContent="" OffContent="" />
+                        </ds:SettingRow>
+                        <ds:SettingRow TitleKey="Settings_ApiKey" DescriptionKey="Provider_Key_Desc" Stacked="True">
+                          <v:KeyFieldView DataContext="{Binding Key}" />
+                        </ds:SettingRow>
+                        <ds:SettingRow TitleKey="Provider_Id" Stacked="True">
+                          <SelectableTextBlock Text="{Binding Id}" FontFamily="monospace" Foreground="{DynamicResource Loom.TextSecondary}" />
+                        </ds:SettingRow>
+                        <!-- Fuß: Löschen mit Namen; fragt inline nach, weil der Key mit weg ist (nicht umkehrbar). -->
+                        <StackPanel Margin="16,4,16,12" Spacing="{DynamicResource Loom.Space.2}">
+                          <Button Classes="text danger" HorizontalAlignment="Left" Command="{Binding DeleteCommand}" IsVisible="{Binding !DeletePending}"
+                                  AutomationProperties.Name="{Binding DeleteLabel}">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                              <ds:LoomIcon Data="{DynamicResource Loom.Icon.Delete}" VerticalAlignment="Center" />
+                              <TextBlock Text="{Binding DeleteLabel}" />
+                            </StackPanel>
+                          </Button>
+                          <Border Classes="confirm" IsVisible="{Binding DeletePending}">
+                            <StackPanel Spacing="{DynamicResource Loom.Space.2}">
+                              <TextBlock Text="{Binding [Providers_DeleteConfirm], Source={x:Static l:Loc.Instance}}" TextWrapping="Wrap" />
+                              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.3}">
+                                <Button Classes="secondary danger" Content="{Binding [Providers_Delete], Source={x:Static l:Loc.Instance}}" Command="{Binding ConfirmDeleteCommand}" />
+                                <Button Classes="text" Content="{Binding [Action_Keep], Source={x:Static l:Loc.Instance}}" Command="{Binding CancelDeleteCommand}" />
+                              </StackPanel>
+                            </StackPanel>
+                          </Border>
+                        </StackPanel>
+                      </StackPanel>
+                    </Expander>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Text="{Binding Error}" IsVisible="{Binding Error.Length}" Foreground="{DynamicResource Loom.Error}" TextWrapping="Wrap" />
+              <Button x:Name="AddProviderButton" Classes="accent" HorizontalAlignment="Left" Command="{Binding AddCommand}"
+                      AutomationProperties.Name="{Binding [Providers_Add], Source={x:Static l:Loc.Instance}}">
+                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
+                  <ds:LoomIcon Data="{DynamicResource Loom.Icon.Add}" Width="16" Height="16" VerticalAlignment="Center" />
+                  <TextBlock Text="{Binding [Providers_Add], Source={x:Static l:Loc.Instance}}" />
+                </StackPanel>
+              </Button>
+            </StackPanel>
+          </ds:SettingRow>
+        </StackPanel>
+      </ds:SettingsGroup>
+
+      <ds:SettingsGroup TitleKey="G_LocalServers" IntroKey="G_LocalServers_Intro">
+        <StackPanel>
+          <ds:SettingRow Path="local.servers" Stacked="True" Bare="True">
+            <StackPanel Spacing="{DynamicResource Loom.Space.3}">
+              <TextBlock Text="{Binding [Servers_Empty], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding !Local.Servers.Count}"
+                         Foreground="{DynamicResource Loom.TextSecondary}" TextWrapping="Wrap" />
+              <ItemsControl x:Name="ServerList" ItemsSource="{Binding Local.Servers}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Spacing="{DynamicResource Loom.Space.2}" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="avm:LocalServerRow">
+                    <Expander Classes="item">
+                      <Expander.Header>
+                        <StackPanel Spacing="2">
+                          <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                          <TextBlock Text="{Binding Summary}" Classes="caption" TextWrapping="Wrap" />
+                        </StackPanel>
+                      </Expander.Header>
+                      <StackPanel>
+                        <ds:SettingRow TitleKey="Server_Name" Stacked="True">
+                          <TextBox Classes="field" Text="{Binding Name, UpdateSourceTrigger=LostFocus}" />
+                        </ds:SettingRow>
+                        <ds:SettingRow TitleKey="Server_Kind" Stacked="True">
+                          <ds:OptionGroup ItemsSource="{Binding Kinds}" SelectedItem="{Binding Kind}" />
+                        </ds:SettingRow>
+                        <ds:SettingRow TitleKey="Set_BaseUrl" DescriptionKey="Server_Url_Desc" Stacked="True" Error="{Binding Error}">
+                          <TextBox Classes="wide" Text="{Binding BaseUrl, UpdateSourceTrigger=LostFocus}" />
+                        </ds:SettingRow>
+                        <ds:SettingRow TitleKey="Set_Model" DescriptionKey="Server_ModelFirst" Stacked="True">
+                          <TextBox Classes="field" Text="{Binding Model, UpdateSourceTrigger=LostFocus}" />
+                        </ds:SettingRow>
+                        <StackPanel Margin="16,4,16,12" Spacing="{DynamicResource Loom.Space.3}">
+                          <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.3}">
+                            <Button Classes="secondary" Content="{Binding [Key_Check], Source={x:Static l:Loc.Instance}}" Command="{Binding CheckCommand}"
+                                    AutomationProperties.Name="{Binding CheckName}" />
+                            <TextBlock Text="{Binding Status}" Classes="caption" VerticalAlignment="Center" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+                          </StackPanel>
+                          <Button Classes="text danger" HorizontalAlignment="Left" Command="{Binding RemoveCommand}" IsVisible="{Binding !RemovePending}"
+                                  AutomationProperties.Name="{Binding RemoveName}">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                              <ds:LoomIcon Data="{DynamicResource Loom.Icon.Delete}" VerticalAlignment="Center" />
+                              <TextBlock Text="{Binding RemoveName}" />
+                            </StackPanel>
+                          </Button>
+                          <Border Classes="confirm" IsVisible="{Binding RemovePending}">
+                            <StackPanel Spacing="{DynamicResource Loom.Space.2}">
+                              <TextBlock Text="{Binding [Server_RemoveConfirm], Source={x:Static l:Loc.Instance}}" TextWrapping="Wrap" />
+                              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.3}">
+                                <Button Classes="secondary danger" Content="{Binding [Local_Remove], Source={x:Static l:Loc.Instance}}" Command="{Binding ConfirmRemoveCommand}"
+                                        AutomationProperties.Name="{Binding RemoveName}" />
+                                <Button Classes="text" Content="{Binding [Action_Keep], Source={x:Static l:Loc.Instance}}" Command="{Binding CancelRemoveCommand}" />
+                              </StackPanel>
+                            </StackPanel>
+                          </Border>
+                        </StackPanel>
+                      </StackPanel>
+                    </Expander>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <Button x:Name="AddServerButton" Classes="accent" HorizontalAlignment="Left" Command="{Binding Local.AddServerCommand}"
+                      AutomationProperties.Name="{Binding [Server_Add], Source={x:Static l:Loc.Instance}}">
+                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
+                  <ds:LoomIcon Data="{DynamicResource Loom.Icon.Add}" Width="16" Height="16" VerticalAlignment="Center" />
+                  <TextBlock Text="{Binding [Server_Add], Source={x:Static l:Loc.Instance}}" />
+                </StackPanel>
+              </Button>
+            </StackPanel>
+          </ds:SettingRow>
+        </StackPanel>
+      </ds:SettingsGroup>
+
+      <ds:SettingsGroup TitleKey="G_Proxy">
+        <StackPanel>
+          <ds:SettingRow Path="desktop.proxyMode" Stacked="True" Bare="True">
+            <ds:OptionGroup x:Name="ProxyModeBox" ItemsSource="{Binding Session.ProxyModes}" SelectedItem="{Binding Session.ProxyMode}" />
+          </ds:SettingRow>
+          <ds:SettingRow Path="desktop.proxyUrl" Stacked="True" Error="{Binding Session.Errors[desktop.proxyUrl]}" IsVisible="{Binding IsManual}">
+            <TextBox x:Name="ProxyUrlBox" Classes="wide" Text="{Binding Session.ProxyUrl, UpdateSourceTrigger=LostFocus}" />
+          </ds:SettingRow>
+        </StackPanel>
+      </ds:SettingsGroup>
+    </StackPanel>
+  </ds:SettingsPage>
+</UserControl>

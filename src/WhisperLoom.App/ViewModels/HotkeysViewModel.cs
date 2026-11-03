@@ -28,6 +28,9 @@ public sealed partial class HotkeyRowViewModel : ObservableObject
 
     public string Label => Loc.Instance[LabelKey];
 
+    /// <summary>Name des Knopfs „Ändern …“ für Screenreader: „Halten: Tastenkürzel ändern“.</summary>
+    public string RecordName => Loc.Instance.Format("Hotkey_RecordName", Label);
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Warnings))]
     private string _value;

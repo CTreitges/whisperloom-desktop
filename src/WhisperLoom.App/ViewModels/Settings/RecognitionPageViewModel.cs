@@ -7,16 +7,16 @@ using WhisperLoom.Core.Contracts.Settings;
 namespace WhisperLoom.App.ViewModels.Settings;
 
 /// <summary>
-/// Seite „Erkennung“: online und lokal auf einer Seite (Art, Sprache, Anbieter inkl. eigener Anbieter und lokaler Server,
-/// lokales Modell inkl. eigener Whisper-Dateien), Kontext-Wörter, Ersatzanbieter. Modelle als Auswahl aus Katalog,
-/// Serverliste („Vom Server laden“) und „Eigenes Modell …“. Downloads stehen auf der Seite „Lokale Modelle“.
+/// Seite „Erkennung“ (UX-2): Erkennungsweg (Online-/Lokale Erkennung) und Sprache, darunter nur der gewählte Weg – online
+/// Anbieter, API-Key und Modellwahl (Katalog, Serverliste, „Eigenes Modell …“), lokal die Modell-Liste mit Herunterladen,
+/// Löschen und eigenen Whisper-Dateien (B1–B3) –, Kontext-Wörter und der Ersatzanbieter (Zeilen erst nach dem Schalter).
 /// </summary>
 public sealed class RecognitionPageViewModel : SettingsPageViewModel
 {
     public const int MinTimeout = 30;
     public const int MaxTimeout = 1800;
 
-    public RecognitionPageViewModel(SettingsViewModel session) : base("recognition", "Dictation", "Red", session)
+    public RecognitionPageViewModel(SettingsViewModel session) : base("recognition", "Recognition", session)
     {
         SttModelPicker = new ModelPickerViewModel(() => SttOptions("stt", session.SttProvider.Value), () => session.SttModel, v => session.SttModel = v,
             ct => session.LoadServerModelsAsync("stt", ModelKind.Stt, ct));
@@ -36,6 +36,14 @@ public sealed class RecognitionPageViewModel : SettingsPageViewModel
         : Local.Engine.Value == "offline" ? "Language_deEnOffline" : "Language_deEnHint";
 
     public LocalViewModel Local => Session.Local;
+
+    /// <summary>Gewählter Erkennungsweg: online (sonst steht nur die Gruppe „Lokale Erkennung“ da).</summary>
+    public bool IsOnline => Local.Engine.Value != "offline";
+
+    public bool IsLocal => !IsOnline;
+
+    /// <summary>Datei aus der Dateiauswahl; Fehler steht danach an der Zeile (<see cref="LocalViewModel.CustomModelError"/>).</summary>
+    public string? AddCustomModel(string path) => Local.AddCustomModel(path);
 
     public ModelPickerViewModel SttModelPicker { get; }
 
@@ -89,7 +97,12 @@ public sealed class RecognitionPageViewModel : SettingsPageViewModel
 
     private void OnLocalChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(LocalViewModel.Engine)) OnPropertyChanged(nameof(LanguageHint));
+        if (e.PropertyName == nameof(LocalViewModel.Engine))
+        {
+            OnPropertyChanged(nameof(LanguageHint));
+            OnPropertyChanged(nameof(IsOnline));
+            OnPropertyChanged(nameof(IsLocal));
+        }
     }
 
     private IEnumerable<Choice> SttOptions(string slot, string providerId)

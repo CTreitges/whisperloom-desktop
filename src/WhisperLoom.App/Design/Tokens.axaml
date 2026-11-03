@@ -18,6 +18,7 @@
       <SolidColorBrush x:Key="Loom.Separator" Color="#3A424D" />
       <SolidColorBrush x:Key="Loom.Outline" Color="#8A95A3" />
       <SolidColorBrush x:Key="Loom.SurfaceEdge" Color="#00000000" />
+      <SolidColorBrush x:Key="Loom.CardEdge" Color="#3A424D" />
       <SolidColorBrush x:Key="Loom.Text" Color="#E4E8EE" />
       <SolidColorBrush x:Key="Loom.TextSecondary" Color="#B8C0CC" />
       <SolidColorBrush x:Key="Loom.Accent" Color="#6FD9C7" />
@@ -50,20 +51,20 @@
       <SolidColorBrush x:Key="ToggleSwitchKnobFillOnPressed" Color="#00382F" />
       <!-- Fluent: Auswahl in Listen und Feldern in Selection/OnSelection, Akzentflächen in Accent/OnAccent (Review UX-1). -->
       <SolidColorBrush x:Key="ComboBoxItemBackgroundSelected" Color="#0F5B50" />
-      <SolidColorBrush x:Key="ComboBoxItemBackgroundSelectedPointerOver" Color="#0F5B50" />
-      <SolidColorBrush x:Key="ComboBoxItemBackgroundSelectedPressed" Color="#0F5B50" />
+      <SolidColorBrush x:Key="ComboBoxItemBackgroundSelectedPointerOver" Color="#146B5E" />
+      <SolidColorBrush x:Key="ComboBoxItemBackgroundSelectedPressed" Color="#146B5E" />
       <SolidColorBrush x:Key="ComboBoxItemForegroundSelected" Color="#B4F2E6" />
       <SolidColorBrush x:Key="ComboBoxItemForegroundSelectedPointerOver" Color="#B4F2E6" />
       <SolidColorBrush x:Key="ComboBoxItemForegroundSelectedPressed" Color="#B4F2E6" />
       <SolidColorBrush x:Key="ToggleButtonBackgroundChecked" Color="#6FD9C7" />
-      <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedPointerOver" Color="#6FD9C7" />
-      <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedPressed" Color="#6FD9C7" />
+      <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedPointerOver" Color="#8FE3D5" />
+      <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedPressed" Color="#A9EADF" />
       <SolidColorBrush x:Key="ToggleButtonForegroundChecked" Color="#00382F" />
       <SolidColorBrush x:Key="ToggleButtonForegroundCheckedPointerOver" Color="#00382F" />
       <SolidColorBrush x:Key="ToggleButtonForegroundCheckedPressed" Color="#00382F" />
       <SolidColorBrush x:Key="RadioButtonOuterEllipseCheckedFill" Color="#6FD9C7" />
-      <SolidColorBrush x:Key="RadioButtonOuterEllipseCheckedFillPointerOver" Color="#6FD9C7" />
-      <SolidColorBrush x:Key="RadioButtonOuterEllipseCheckedFillPressed" Color="#6FD9C7" />
+      <SolidColorBrush x:Key="RadioButtonOuterEllipseCheckedFillPointerOver" Color="#8FE3D5" />
+      <SolidColorBrush x:Key="RadioButtonOuterEllipseCheckedFillPressed" Color="#A9EADF" />
       <SolidColorBrush x:Key="RadioButtonCheckGlyphFill" Color="#00382F" />
       <SolidColorBrush x:Key="RadioButtonCheckGlyphFillPointerOver" Color="#00382F" />
       <SolidColorBrush x:Key="RadioButtonCheckGlyphFillPressed" Color="#00382F" />
@@ -72,6 +73,13 @@
       <SolidColorBrush x:Key="SystemControlHighlightListAccentLowBrush" Color="#0F5B50" />
       <SolidColorBrush x:Key="SystemControlHighlightListAccentMediumBrush" Color="#0F5B50" />
       <SolidColorBrush x:Key="SystemControlHighlightListAccentHighBrush" Color="#0F5B50" />
+      <!-- Hover/Gedrückt auf Akzent- und Auswahlflächen: einen Ton abgesetzt, Text bleibt ≥ 4,5:1 (Review UX-1). -->
+      <SolidColorBrush x:Key="AccentButtonBackgroundPointerOver" Color="#8FE3D5" />
+      <SolidColorBrush x:Key="AccentButtonBackgroundPressed" Color="#A9EADF" />
+      <SolidColorBrush x:Key="ToggleSwitchFillOnPointerOver" Color="#8FE3D5" />
+      <SolidColorBrush x:Key="ToggleSwitchFillOnPressed" Color="#A9EADF" />
+      <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPointerOver" Color="#8FE3D5" />
+      <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPressed" Color="#A9EADF" />
     </ResourceDictionary>
     <ResourceDictionary x:Key="Light">
       <SolidColorBrush x:Key="Loom.Background" Color="#EEF1F5" />
@@ -81,6 +89,7 @@
       <SolidColorBrush x:Key="Loom.Separator" Color="#B8C0CC" />
       <SolidColorBrush x:Key="Loom.Outline" Color="#6B7480" />
       <SolidColorBrush x:Key="Loom.SurfaceEdge" Color="#00000000" />
+      <SolidColorBrush x:Key="Loom.CardEdge" Color="#00000000" />
       <SolidColorBrush x:Key="Loom.Text" Color="#0E1116" />
       <SolidColorBrush x:Key="Loom.TextSecondary" Color="#3A424D" />
       <SolidColorBrush x:Key="Loom.Accent" Color="#0F5B50" />
@@ -113,20 +122,20 @@
       <SolidColorBrush x:Key="ToggleSwitchKnobFillOnPressed" Color="#FFFFFF" />
       <!-- Fluent: Auswahl in Listen und Feldern in Selection/OnSelection, Akzentflächen in Accent/OnAccent (Review UX-1). -->
       <SolidColorBrush x:Key="ComboBoxItemBackgroundSelected" Color="#B4F2E6" />
-      <SolidColorBrush x:Key="ComboBoxItemBackgroundSelectedPointerOver" Color="#B4F2E6" />
-      <SolidColorBrush x:Key="ComboBoxItemBackgroundSelectedPressed" Color="#B4F2E6" />
+      <SolidColorBrush x:Key="ComboBoxItemBackgroundSelectedPointerOver" Color="#9DE6D9" />
+      <SolidColorBrush x:Key="ComboBoxItemBackgroundSelectedPressed" Color="#86DECF" />
       <SolidColorBrush x:Key="ComboBoxItemForegroundSelected" Color="#00382F" />
       <SolidColorBrush x:Key="ComboBoxItemForegroundSelectedPointerOver" Color="#00382F" />
       <SolidColorBrush x:Key="ComboBoxItemForegroundSelectedPressed" Color="#00382F" />
       <SolidColorBrush x:Key="ToggleButtonBackgroundChecked" Color="#0F5B50" />
-      <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedPointerOver" Color="#0F5B50" />
-      <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedPressed" Color="#0F5B50" />
+      <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedPointerOver" Color="#0B4C43" />
+      <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedPressed" Color="#083D36" />
       <SolidColorBrush x:Key="ToggleButtonForegroundChecked" Color="#FFFFFF" />
       <SolidColorBrush x:Key="ToggleButtonForegroundCheckedPointerOver" Color="#FFFFFF" />
       <SolidColorBrush x:Key="ToggleButtonForegroundCheckedPressed" Color="#FFFFFF" />
       <SolidColorBrush x:Key="RadioButtonOuterEllipseCheckedFill" Color="#0F5B50" />
-      <SolidColorBrush x:Key="RadioButtonOuterEllipseCheckedFillPointerOver" Color="#0F5B50" />
-      <SolidColorBrush x:Key="RadioButtonOuterEllipseCheckedFillPressed" Color="#0F5B50" />
+      <SolidColorBrush x:Key="RadioButtonOuterEllipseCheckedFillPointerOver" Color="#0B4C43" />
+      <SolidColorBrush x:Key="RadioButtonOuterEllipseCheckedFillPressed" Color="#083D36" />
       <SolidColorBrush x:Key="RadioButtonCheckGlyphFill" Color="#FFFFFF" />
       <SolidColorBrush x:Key="RadioButtonCheckGlyphFillPointerOver" Color="#FFFFFF" />
       <SolidColorBrush x:Key="RadioButtonCheckGlyphFillPressed" Color="#FFFFFF" />
@@ -135,6 +144,13 @@
       <SolidColorBrush x:Key="SystemControlHighlightListAccentLowBrush" Color="#B4F2E6" />
       <SolidColorBrush x:Key="SystemControlHighlightListAccentMediumBrush" Color="#B4F2E6" />
       <SolidColorBrush x:Key="SystemControlHighlightListAccentHighBrush" Color="#B4F2E6" />
+      <!-- Hover/Gedrückt auf Akzent- und Auswahlflächen: einen Ton abgesetzt, Text bleibt ≥ 4,5:1 (Review UX-1). -->
+      <SolidColorBrush x:Key="AccentButtonBackgroundPointerOver" Color="#0B4C43" />
+      <SolidColorBrush x:Key="AccentButtonBackgroundPressed" Color="#083D36" />
+      <SolidColorBrush x:Key="ToggleSwitchFillOnPointerOver" Color="#0B4C43" />
+      <SolidColorBrush x:Key="ToggleSwitchFillOnPressed" Color="#083D36" />
+      <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPointerOver" Color="#0B4C43" />
+      <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPressed" Color="#083D36" />
     </ResourceDictionary>
     <ResourceDictionary x:Key="{x:Static ds:SystemTheme.HighContrast}">
       <SolidColorBrush x:Key="Loom.Background" Color="#000000" />
@@ -144,6 +160,7 @@
       <SolidColorBrush x:Key="Loom.Separator" Color="#FFFFFF" />
       <SolidColorBrush x:Key="Loom.Outline" Color="#FFFFFF" />
       <SolidColorBrush x:Key="Loom.SurfaceEdge" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="Loom.CardEdge" Color="#FFFFFF" />
       <SolidColorBrush x:Key="Loom.Text" Color="#FFFFFF" />
       <SolidColorBrush x:Key="Loom.TextSecondary" Color="#FFFFFF" />
       <SolidColorBrush x:Key="Loom.Accent" Color="#6FD9C7" />

@@ -17,7 +17,7 @@ public sealed partial class CompanyPageViewModel : SettingsPageViewModel
     private readonly ManagementService? _service;
     private readonly Action _changed;
 
-    public CompanyPageViewModel(SettingsViewModel session) : base("company", "Company", "Blue", session)
+    public CompanyPageViewModel(SettingsViewModel session) : base("company", "Company", session)
     {
         _service = session.Company;
         _changed = () => Avalonia.Threading.Dispatcher.UIThread.Post(Refresh);

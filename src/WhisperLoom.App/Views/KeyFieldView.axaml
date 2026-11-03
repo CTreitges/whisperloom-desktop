@@ -1,23 +1,57 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:WhisperLoom.App.ViewModels"
+             xmlns:ds="using:WhisperLoom.App.Design"
              xmlns:l="using:WhisperLoom.App.Localization"
              x:Class="WhisperLoom.App.Views.KeyFieldView"
              x:DataType="vm:KeyFieldViewModel">
-  <!-- Key nur maskiert; kein Aufdecken. Die Ersetzen-Eingabe zeigt Maskenzeichen (RevealPassword bleibt aus). -->
-  <StackPanel Spacing="6">
-    <WrapPanel ItemSpacing="8" LineSpacing="6">
-      <TextBlock x:Name="MaskText" Text="{Binding MaskText}" FontFamily="monospace" MinWidth="160" VerticalAlignment="Center" />
-      <Button x:Name="ReplaceButton" Content="{Binding [Key_Replace], Source={x:Static l:Loc.Instance}}" Command="{Binding ReplaceCommand}" IsEnabled="{Binding Editable}" />
-      <Button x:Name="DeleteButton" Content="{Binding [Key_Delete], Source={x:Static l:Loc.Instance}}" Command="{Binding DeleteCommand}" IsEnabled="{Binding CanDelete}" />
-      <Button x:Name="CheckButton" Content="{Binding [Key_Check], Source={x:Static l:Loc.Instance}}" Command="{Binding CheckCommand}" />
-    </WrapPanel>
-    <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsReplacing}">
-      <TextBox x:Name="NewKeyBox" Text="{Binding NewValue}" PasswordChar="•" RevealPassword="False" Width="320"
-               PlaceholderText="{Binding [Key_NewWatermark], Source={x:Static l:Loc.Instance}}" />
-      <Button x:Name="SaveKeyButton" Content="{Binding [Action_Save], Source={x:Static l:Loc.Instance}}" Command="{Binding SaveKeyCommand}" />
-      <Button Content="{Binding [Action_Cancel], Source={x:Static l:Loc.Instance}}" Command="{Binding CancelReplaceCommand}" />
+  <!--
+    Key-Feld (UX-2, zielstruktur.md): Zustand als Satz mit Symbol, nie der Key und kein Aufdecken. Eine Hauptaktion je Zustand
+    („Verbindung testen“ als Sekundärknopf bzw. „Key eingeben …“ als Hauptknopf), Nebenaktionen als Textknöpfe „Ersetzen …“ und
+    „Löschen“ (Fehlerfarbe). Eingabe mit Label und Hinweis, Passwortmaske (RevealPassword bleibt aus). Statuszeile mit
+    „Rückgängig“ nach dem Löschen.
+  -->
+  <StackPanel Spacing="{DynamicResource Loom.Space.2}">
+    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
+      <Panel VerticalAlignment="Center">
+        <ds:LoomIcon Data="{DynamicResource Loom.Icon.Check}" Width="16" Height="16" Foreground="{DynamicResource Loom.Accent}" IsVisible="{Binding IsSet}" />
+        <ds:LoomIcon Data="{DynamicResource Loom.Icon.Info}" Width="16" Height="16" Foreground="{DynamicResource Loom.TextSecondary}" IsVisible="{Binding !IsSet}" />
+      </Panel>
+      <TextBlock x:Name="StateText" Text="{Binding StateText}" VerticalAlignment="Center" TextWrapping="Wrap" />
     </StackPanel>
-    <TextBlock Text="{Binding Status}" Foreground="{DynamicResource Loom.TextSecondary}" IsVisible="{Binding Status.Length}" />
+    <WrapPanel ItemSpacing="16" LineSpacing="8">
+      <Button x:Name="CheckButton" Classes="secondary" Content="{Binding [Key_Check], Source={x:Static l:Loc.Instance}}" Command="{Binding CheckCommand}"
+              IsVisible="{Binding ShowCheck}" />
+      <Button x:Name="EnterButton" Classes="accent" Content="{Binding [Key_Enter], Source={x:Static l:Loc.Instance}}" Command="{Binding ReplaceCommand}"
+              IsVisible="{Binding ShowEnter}" IsEnabled="{Binding Editable}" />
+      <Button x:Name="ReplaceButton" Classes="text" VerticalAlignment="Center" Content="{Binding [Key_Replace], Source={x:Static l:Loc.Instance}}"
+              Command="{Binding ReplaceCommand}" IsVisible="{Binding IsSet}" IsEnabled="{Binding Editable}" />
+      <Button x:Name="DeleteButton" Classes="text danger" VerticalAlignment="Center" Content="{Binding [Key_Delete], Source={x:Static l:Loc.Instance}}"
+              Command="{Binding DeleteCommand}" IsVisible="{Binding IsSet}" IsEnabled="{Binding Editable}" />
+    </WrapPanel>
+    <StackPanel Spacing="{DynamicResource Loom.Space.2}" IsVisible="{Binding IsReplacing}">
+      <StackPanel Spacing="2">
+        <TextBlock Text="{Binding [Key_NewLabel], Source={x:Static l:Loc.Instance}}" FontWeight="SemiBold" />
+        <TextBlock Text="{Binding [Key_NewHint], Source={x:Static l:Loc.Instance}}" Classes="caption" TextWrapping="Wrap" />
+      </StackPanel>
+      <TextBox x:Name="NewKeyBox" Classes="field" Text="{Binding NewValue}" PasswordChar="•" RevealPassword="False"
+               AutomationProperties.Name="{Binding [Key_NewLabel], Source={x:Static l:Loc.Instance}}" />
+      <WrapPanel ItemSpacing="16" LineSpacing="8">
+        <Button x:Name="SaveKeyButton" Classes="accent" Content="{Binding [Key_SaveNew], Source={x:Static l:Loc.Instance}}" Command="{Binding SaveKeyCommand}" />
+        <Button x:Name="CancelKeyButton" Classes="text" VerticalAlignment="Center" Content="{Binding [Action_Cancel], Source={x:Static l:Loc.Instance}}"
+                Command="{Binding CancelReplaceCommand}" />
+      </WrapPanel>
+    </StackPanel>
+    <WrapPanel ItemSpacing="12" LineSpacing="4" IsVisible="{Binding HasStatus}">
+      <TextBlock x:Name="KeyStatus" Text="{Binding Status}" TextWrapping="Wrap" VerticalAlignment="Center" Foreground="{DynamicResource Loom.TextSecondary}"
+                 AutomationProperties.LiveSetting="Polite" />
+      <Button x:Name="UndoKeyButton" Classes="text" Command="{Binding UndoCommand}" IsVisible="{Binding CanUndo}"
+              AutomationProperties.Name="{Binding [Action_Undo], Source={x:Static l:Loc.Instance}}">
+        <StackPanel Orientation="Horizontal" Spacing="4">
+          <ds:LoomIcon Data="{DynamicResource Loom.Icon.Undo}" VerticalAlignment="Center" />
+          <TextBlock Text="{Binding [Action_Undo], Source={x:Static l:Loc.Instance}}" />
+        </StackPanel>
+      </Button>
+    </WrapPanel>
   </StackPanel>
 </UserControl>

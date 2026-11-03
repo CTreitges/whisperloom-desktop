@@ -20,8 +20,10 @@ public sealed class SettingsExtrasTest
         var vm = new SettingsViewModel(f.Controller, new MemorySecretStore(), new FakeAccessChecker());
         Assert.Empty(vm.Profiles.Rows);
 
-        vm.Profiles.AddSuggestionsCommand.Execute(null);
-        vm.Profiles.AddSuggestionsCommand.Execute(null);
+        // Je fehlendem Programm ein Vorschlag (K2); übernommene verschwinden.
+        vm.Profiles.Suggestions[0].AddCommand.Execute(null);
+        vm.Profiles.Suggestions[0].AddCommand.Execute(null);
+        Assert.Empty(vm.Profiles.Suggestions);
         Assert.Equal(["WindowsTerminal.exe", "OUTLOOK.EXE"], vm.Profiles.Rows.Select(r => r.Process));
         vm.Profiles.AddCommand.Execute(null);
         var row = vm.Profiles.Rows[^1];
@@ -31,7 +33,7 @@ public sealed class SettingsExtrasTest
         Assert.Equal("", row.TitleWarning);
         vm.Profiles.Rows[0].InsertMode = vm.Profiles.InsertModes.Single(c => c.Value == "type");
         vm.Profiles.Rows[0].PressEnter = true;
-        vm.Profiles.Rows[1].RemoveCommand.Execute(null);
+        vm.Profiles.Rows[1].DeleteCommand.Execute(null);
         vm.Hotkeys.Selection.Value = "Ctrl+Alt+Shift+U";
 
         await vm.Save();
@@ -57,7 +59,8 @@ public sealed class SettingsExtrasTest
 
         var row = Assert.Single(vm.Profiles.Rows);
         Assert.Equal(Loc.Instance["Stage_beautify"], row.Stage.Label);
-        Assert.Equal(Loc.Instance["Profile_Default"], row.InsertMode.Label);
+        Assert.Equal("", row.InsertMode.Value);
+        Assert.Equal("Wie allgemein (zurzeit Einfügen)", row.InsertMode.Label);
         Assert.Equal(OperatingSystem.IsWindows(), vm.Profiles.Available);
         window.Close();
     }

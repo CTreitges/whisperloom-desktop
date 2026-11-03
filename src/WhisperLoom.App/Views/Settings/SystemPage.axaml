@@ -1,0 +1,95 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:WhisperLoom.App.ViewModels.Settings"
+             xmlns:avm="using:WhisperLoom.App.ViewModels"
+             xmlns:ds="using:WhisperLoom.App.Design"
+             xmlns:l="using:WhisperLoom.App.Localization"
+             x:Class="WhisperLoom.App.Views.Settings.SystemPage"
+             x:DataType="vm:SystemPageViewModel">
+  <!--
+    Seite „System“ (UX-2, zielstruktur.md §1): Oberfläche, Updates (W3-CHAN; Vorabversionen nur bei Beta/Test; policy
+    updatesEnabled=false sperrt alles), Einstellungen übertragen, Einrichtung (aus dem Tray hierher, B43, Entscheidung 20).
+  -->
+  <ds:SettingsPage TitleKey="Page_system" IntroKey="PageIntro_system">
+    <StackPanel Spacing="{DynamicResource Loom.Space.5}">
+      <ds:SettingsGroup TitleKey="G_Interface">
+        <StackPanel>
+          <ds:SettingRow Path="desktop.uiLanguage" Stacked="True">
+            <ds:OptionGroup x:Name="UiLanguageBox" ItemsSource="{Binding Session.UiLanguages}" SelectedItem="{Binding Session.UiLanguage}" />
+          </ds:SettingRow>
+        </StackPanel>
+      </ds:SettingsGroup>
+
+      <ds:SettingsGroup TitleKey="Channel_Group" FooterKey="Channel_Footer">
+        <StackPanel>
+          <ds:HintRow x:Name="UpdatesDisabledHint" Kind="Managed" TextKey="Channel_Disabled" IsVisible="{Binding !UpdatesAllowed}" Margin="16,12" />
+          <StackPanel IsVisible="{Binding UpdatesAllowed}">
+            <ds:SettingRow Path="desktop.updateChannel" Stacked="True">
+              <ds:OptionGroup x:Name="UpdateChannelBox" ItemsSource="{Binding UpdateChannels}" SelectedItem="{Binding UpdateChannel}" />
+            </ds:SettingRow>
+            <ds:SettingRow Path="desktop.updatePrereleaseAuto" IsVisible="{Binding IsPrereleaseChannel}">
+              <ToggleSwitch x:Name="UpdatePrereleaseAutoBox" IsChecked="{Binding UpdatePrereleaseAuto}" OnContent="" OffContent="" />
+            </ds:SettingRow>
+            <ds:SettingRow TitleKey="Channel_Versions" DescriptionKey="Channel_Versions_Desc">
+              <Button x:Name="OpenVersionsButton" Classes="secondary" Command="{Binding OpenVersionsCommand}"
+                      AutomationProperties.Name="{Binding [Channel_OpenVersions], Source={x:Static l:Loc.Instance}}">
+                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
+                  <ds:LoomIcon Data="{DynamicResource Loom.Icon.Update}" Width="16" Height="16" VerticalAlignment="Center" />
+                  <TextBlock Text="{Binding [Channel_OpenVersions], Source={x:Static l:Loc.Instance}}" />
+                </StackPanel>
+              </Button>
+            </ds:SettingRow>
+          </StackPanel>
+        </StackPanel>
+      </ds:SettingsGroup>
+
+      <ds:SettingsGroup TitleKey="G_Transfer" IntroKey="Sync_Hint">
+        <StackPanel DataContext="{Binding Sync}" x:DataType="avm:SyncViewModel">
+          <ds:SettingRow TitleKey="Sync_ExportTitle" DescriptionKey="Sync_ExportDesc">
+            <Button x:Name="ExportButton" Classes="secondary" Click="OnExport" AutomationProperties.Name="{Binding [Sync_Export], Source={x:Static l:Loc.Instance}}">
+              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
+                <ds:LoomIcon Data="{DynamicResource Loom.Icon.File}" Width="16" Height="16" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding [Sync_Export], Source={x:Static l:Loc.Instance}}" />
+              </StackPanel>
+            </Button>
+          </ds:SettingRow>
+          <ds:SettingRow TitleKey="Sync_ImportTitle" DescriptionKey="Sync_ImportDesc">
+            <Button x:Name="ImportButton" Classes="secondary" Click="OnImport" AutomationProperties.Name="{Binding [Sync_Import], Source={x:Static l:Loc.Instance}}">
+              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
+                <ds:LoomIcon Data="{DynamicResource Loom.Icon.Folder}" Width="16" Height="16" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding [Sync_Import], Source={x:Static l:Loc.Instance}}" />
+              </StackPanel>
+            </Button>
+          </ds:SettingRow>
+          <ds:SettingRow TitleKey="Sync_PreviewTitle" Stacked="True" IsVisible="{Binding Changes.Count}">
+            <StackPanel Spacing="{DynamicResource Loom.Space.2}">
+              <ListBox x:Name="SyncChanges" ItemsSource="{Binding Changes}" MaxHeight="220">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="avm:ChangeRow">
+                    <TextBlock Text="{Binding Text}" FontFamily="monospace" TextWrapping="Wrap" />
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+              <Button x:Name="ApplyImportButton" Classes="accent" HorizontalAlignment="Left" Content="{Binding [Sync_Apply], Source={x:Static l:Loc.Instance}}" Command="{Binding ApplyCommand}" />
+            </StackPanel>
+          </ds:SettingRow>
+          <ds:HintRow x:Name="SyncStatus" Text="{Binding Status}" IsVisible="{Binding Status.Length}" Margin="16,0,16,12" />
+        </StackPanel>
+      </ds:SettingsGroup>
+
+      <ds:SettingsGroup TitleKey="G_Setup">
+        <StackPanel>
+          <ds:SettingRow TitleKey="Setup_RowTitle" DescriptionKey="Setup_RowDesc">
+            <Button x:Name="OpenSetupButton" Classes="secondary" Command="{Binding OpenSetupCommand}"
+                    AutomationProperties.Name="{Binding [Setup_Start], Source={x:Static l:Loc.Instance}}">
+              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
+                <ds:LoomIcon Data="{DynamicResource Loom.Icon.Setup}" Width="16" Height="16" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding [Setup_Start], Source={x:Static l:Loc.Instance}}" />
+              </StackPanel>
+            </Button>
+          </ds:SettingRow>
+        </StackPanel>
+      </ds:SettingsGroup>
+    </StackPanel>
+  </ds:SettingsPage>
+</UserControl>

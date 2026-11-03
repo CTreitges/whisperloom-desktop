@@ -60,7 +60,7 @@ public class SyncUiTest
         Assert.True(SettingsUi.Row(window, "history.size").IsShown);
 
         // Seite ohne feste Zeile: kein Hinweis.
-        Assert.False(SettingsUi.Show(window, "network").HasManagedRows);
+        Assert.False(SettingsUi.Show(window, "connections").HasManagedRows);
         window.Close();
     }
 
@@ -103,7 +103,7 @@ public class SyncUiTest
         using var f = new ControllerFixture();
         f.Controller.Policy = new PolicySettings { Locked = ["refine.stage"] };
         var (window, vm) = Open(f);
-        SettingsUi.Show(window, "general");
+        SettingsUi.Show(window, "system");
         var applied = 0;
         vm.Sync.Applied += () => applied++;
 

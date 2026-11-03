@@ -1,0 +1,113 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:WhisperLoom.App.ViewModels.Settings"
+             xmlns:avm="using:WhisperLoom.App.ViewModels"
+             xmlns:ds="using:WhisperLoom.App.Design"
+             xmlns:l="using:WhisperLoom.App.Localization"
+             x:Class="WhisperLoom.App.Views.Settings.DictationPage"
+             x:DataType="vm:DictationPageViewModel">
+  <!--
+    Seite „Diktat“ (UX-2, zielstruktur.md §1): Tastenkürzel, Mikrofon, Markierten Text verarbeiten, Bühne. Tastenkürzel-Zeile:
+    Tastenkappe + Textknopf „Ändern …“; beim Ändern eine Statuszeile, Konflikte als Meldung unter der Zeile (B27).
+  -->
+  <ds:SettingsPage TitleKey="Page_dictation" IntroKey="PageIntro_dictation">
+    <StackPanel Spacing="{DynamicResource Loom.Space.5}">
+      <!-- Linux (vor allem Wayland): keine globalen Tastenkürzel, stattdessen ein Kürzel der Desktop-Umgebung auf den Befehl. -->
+      <ds:SettingsGroup TitleKey="G_HotkeysMain" IsVisible="{Binding IsLinux}">
+        <StackPanel>
+          <ds:SettingRow TitleKey="Hotkey_LinuxCommand" DescriptionKey="Setup_LinuxIntro" Stacked="True">
+            <SelectableTextBlock x:Name="ToggleCommandText" Text="{Binding ToggleCommand}" FontFamily="monospace" TextWrapping="Wrap" />
+          </ds:SettingRow>
+        </StackPanel>
+      </ds:SettingsGroup>
+
+      <ds:SettingsGroup TitleKey="G_HotkeysMain" IsVisible="{Binding !IsLinux}">
+        <StackPanel>
+          <ds:SettingRow Path="desktop.hotkeysEnabled">
+            <ToggleSwitch x:Name="HotkeysEnabledBox" IsChecked="{Binding Hotkeys.Enabled}" OnContent="" OffContent="" />
+          </ds:SettingRow>
+          <!-- Nur zeigen, was gilt: die Kürzel erst, wenn globale Tastenkürzel an sind. -->
+          <ItemsControl x:Name="HotkeyRows" ItemsSource="{Binding Hotkeys.All}" IsVisible="{Binding Hotkeys.Enabled}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="avm:HotkeyRowViewModel">
+                <ds:SettingRow Path="{Binding Path}" Error="{Binding Warnings}">
+                  <StackPanel Spacing="{DynamicResource Loom.Space.1}" HorizontalAlignment="Right">
+                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.3}" HorizontalAlignment="Right">
+                      <Border Classes="keycap">
+                        <TextBlock Text="{Binding Value}" />
+                      </Border>
+                      <Button Classes="text" Command="{Binding RecordCommand}" IsVisible="{Binding CanRecord}" IsEnabled="{Binding !IsRecording}"
+                              AutomationProperties.Name="{Binding RecordName}">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                          <ds:LoomIcon Data="{DynamicResource Loom.Icon.Hotkeys}" VerticalAlignment="Center" />
+                          <TextBlock Text="{Binding [Hotkey_Record], Source={x:Static l:Loc.Instance}}" />
+                        </StackPanel>
+                      </Button>
+                    </StackPanel>
+                    <TextBlock Text="{Binding [Hotkey_Recording], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding IsRecording}"
+                               Classes="caption" TextWrapping="Wrap" MaxWidth="260" AutomationProperties.LiveSetting="Polite" />
+                  </StackPanel>
+                </ds:SettingRow>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </ds:SettingsGroup>
+
+      <ds:SettingsGroup TitleKey="G_Microphone">
+        <StackPanel>
+          <ds:SettingRow Path="desktop.microphone">
+            <ComboBox x:Name="MicrophoneBox" Classes="row" ItemsSource="{Binding Session.Microphones}" SelectedItem="{Binding Session.Microphone}" />
+          </ds:SettingRow>
+        </StackPanel>
+      </ds:SettingsGroup>
+
+      <!-- Markierung verarbeiten (W2-SEL, Entscheidung 8: bleibt unter Diktat): drei Starter, jeder einzeln schaltbar. -->
+      <ds:SettingsGroup TitleKey="G_Selection" IntroKey="Selection_Intro" FooterKey="Selection_TrayHint">
+        <StackPanel>
+          <ds:SettingRow TitleKey="Hotkey_LinuxCommand" DescriptionKey="Selection_LinuxIntro" Stacked="True" IsVisible="{Binding IsLinux}">
+            <SelectableTextBlock x:Name="SelectionCommand" Text="{Binding SelectionCommand}" FontFamily="monospace" TextWrapping="Wrap" />
+          </ds:SettingRow>
+          <ds:SettingRow Path="selection.hotkeyCombo" IsVisible="{Binding !IsLinux}">
+            <ToggleSwitch x:Name="SelectionHotkeyToggle" IsChecked="{Binding Hotkeys.SelectionOn}" OnContent="" OffContent="" />
+          </ds:SettingRow>
+          <ds:SettingRow TitleKey="Hotkey_SelectionCombo" Error="{Binding Hotkeys.Selection.Warnings}" IsVisible="{Binding Hotkeys.SelectionOn}">
+            <StackPanel Spacing="{DynamicResource Loom.Space.1}" HorizontalAlignment="Right">
+              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.3}" HorizontalAlignment="Right">
+                <Border Classes="keycap">
+                  <TextBlock x:Name="SelectionHotkeyValue" Text="{Binding Hotkeys.Selection.Value}" />
+                </Border>
+                <Button Classes="text" Command="{Binding Hotkeys.Selection.RecordCommand}" IsEnabled="{Binding !Hotkeys.Selection.IsRecording}"
+                        AutomationProperties.Name="{Binding Hotkeys.Selection.RecordName}">
+                  <StackPanel Orientation="Horizontal" Spacing="4">
+                    <ds:LoomIcon Data="{DynamicResource Loom.Icon.Hotkeys}" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding [Hotkey_Record], Source={x:Static l:Loc.Instance}}" />
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+              <TextBlock Text="{Binding [Hotkey_Recording], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding Hotkeys.Selection.IsRecording}"
+                         Classes="caption" TextWrapping="Wrap" MaxWidth="260" AutomationProperties.LiveSetting="Polite" />
+            </StackPanel>
+          </ds:SettingRow>
+          <ds:SettingRow Path="selection.floatingButton" IsVisible="{Binding !IsLinux}">
+            <ToggleSwitch x:Name="FloatingButtonToggle" IsChecked="{Binding Session.FloatingButton}" OnContent="" OffContent="" />
+          </ds:SettingRow>
+          <ds:SettingRow Path="selection.ctrlRightClick" IsVisible="{Binding !IsLinux}">
+            <ToggleSwitch x:Name="CtrlRightClickToggle" IsChecked="{Binding Session.CtrlRightClick}" OnContent="" OffContent="" />
+          </ds:SettingRow>
+        </StackPanel>
+      </ds:SettingsGroup>
+
+      <ds:SettingsGroup TitleKey="G_Stage" FooterKey="Stage_Footer">
+        <StackPanel>
+          <ds:SettingRow Path="desktop.stageFontSize" Error="{Binding Session.Errors[desktop.stageFontSize]}">
+            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
+              <TextBox x:Name="StageFontSizeBox" Width="72" Text="{Binding StageFontSize, UpdateSourceTrigger=LostFocus}" />
+              <TextBlock Text="{Binding [Unit_Point], Source={x:Static l:Loc.Instance}}" Classes="caption" VerticalAlignment="Center" />
+            </StackPanel>
+          </ds:SettingRow>
+        </StackPanel>
+      </ds:SettingsGroup>
+    </StackPanel>
+  </ds:SettingsPage>
+</UserControl>

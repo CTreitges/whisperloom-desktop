@@ -4,10 +4,17 @@
              xmlns:l="using:WhisperLoom.App.Localization"
              x:Class="WhisperLoom.App.Design.CustomChoiceBox"
              x:DataType="ds:CustomChoiceViewModel">
-  <!-- Auswahlliste mit „Eigenes …“: das Textfeld erscheint nur beim letzten Eintrag und übernimmt beim Verlassen bzw. Enter. -->
-  <StackPanel Spacing="6" MinWidth="260" MaxWidth="320">
+  <!--
+    Auswahlliste mit „Eigenes …“: beim letzten Eintrag erscheint das Feld „Modell-ID“ mit sichtbarem Label und Hinweis (kein
+    Platzhalter, B11/B18); es übernimmt beim Verlassen bzw. Enter. Linksbündig, damit der Rahmen auf der Textkante liegt.
+  -->
+  <StackPanel Spacing="{DynamicResource Loom.Space.2}" MinWidth="260" MaxWidth="320" HorizontalAlignment="Left">
     <ComboBox x:Name="Box" HorizontalAlignment="Stretch" ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}" />
-    <TextBox x:Name="CustomBox" IsVisible="{Binding IsCustom}" Text="{Binding CustomText, UpdateSourceTrigger=LostFocus}"
-             PlaceholderText="{Binding [Custom_Placeholder], Source={x:Static l:Loc.Instance}}" />
+    <StackPanel Spacing="2" IsVisible="{Binding IsCustom}">
+      <TextBlock Text="{Binding [Custom_Label], Source={x:Static l:Loc.Instance}}" FontWeight="SemiBold" TextWrapping="Wrap" />
+      <TextBlock Text="{Binding [Custom_Hint], Source={x:Static l:Loc.Instance}}" Classes="caption" TextWrapping="Wrap" />
+      <TextBox x:Name="CustomBox" Text="{Binding CustomText, UpdateSourceTrigger=LostFocus}"
+               AutomationProperties.Name="{Binding [Custom_Label], Source={x:Static l:Loc.Instance}}" />
+    </StackPanel>
   </StackPanel>
 </UserControl>

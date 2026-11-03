@@ -8,19 +8,30 @@ using WhisperLoom.Core.Contracts;
 namespace WhisperLoom.App.ViewModels.Settings;
 
 /// <summary>
-/// Basis einer Einstellungsseite: Id (= Seite im <see cref="SettingsCatalog"/>), Titel, Symbol und die gemeinsame
-/// Arbeitskopie <see cref="Session"/>. Jede Seite hat genau eine View <c>Views/Settings/&lt;Seite&gt;Page.axaml</c>.
+/// Basis einer Einstellungsseite: Id (= Seite im <see cref="SettingsCatalog"/>), Titel, Symbol, Einleitungssatz und die
+/// gemeinsame Arbeitskopie <see cref="Session"/>. Jede Seite hat genau eine View <c>Views/Settings/&lt;Seite&gt;Page.axaml</c>.
 /// </summary>
 public abstract class SettingsPageViewModel : ObservableObject, IDisposable
 {
-    protected SettingsPageViewModel(string id, string icon, string tile, SettingsViewModel session)
+    protected SettingsPageViewModel(string id, string icon, SettingsViewModel session)
     {
         Id = id;
         Icon = "Loom.Icon." + icon;
-        Tile = "Loom.Tile." + tile;
         Session = session;
+        GoToCommand = new CommunityToolkit.Mvvm.Input.RelayCommand<string>(page =>
+        {
+            if (page is not null)
+            {
+                Navigate?.Invoke(page);
+            }
+        });
         Loc.Instance.PropertyChanged += OnLanguageChanged;
     }
+
+    /// <summary>Sprung zu einer anderen Seite („Zur Erkennung“, „Zur Firma“); setzt die Hülle.</summary>
+    internal Action<string>? Navigate { get; set; }
+
+    public CommunityToolkit.Mvvm.Input.IRelayCommand<string> GoToCommand { get; }
 
     public string Id { get; }
 
@@ -28,13 +39,14 @@ public abstract class SettingsPageViewModel : ObservableObject, IDisposable
 
     public string Title => Loc.Instance[TitleKey];
 
-    /// <summary>Überschrift des Abschnitts, wenn diese Seite ihn in der Seitenleiste eröffnet; sonst null.</summary>
-    public string? SectionTitle { get; internal set; }
+    /// <summary>Lokalisierungs-Schlüssel des Einleitungssatzes unter dem Titel (<c>PageIntro_&lt;Seite&gt;</c>).</summary>
+    public string IntroKey => "PageIntro_" + Id;
 
-    /// <summary>Ressourcen-Schlüssel der Glyphe bzw. der Kachelfarbe.</summary>
+    /// <summary>Konto-Eintrag am Ende der Seitenleiste (Firma), abgesetzt von den Aufgaben-Seiten.</summary>
+    public bool IsAccount => Id == SettingsCatalog.AccountPage;
+
+    /// <summary>Ressourcen-Schlüssel des Symbols.</summary>
     public string Icon { get; }
-
-    public string Tile { get; }
 
     public SettingsViewModel Session { get; }
 
@@ -44,15 +56,7 @@ public abstract class SettingsPageViewModel : ObservableObject, IDisposable
         GC.SuppressFinalize(this);
     }
 
-    protected virtual void OnLanguageChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        OnPropertyChanged(nameof(Title));
-        if (SectionTitle is not null)
-        {
-            SectionTitle = Loc.Instance["Section_" + SettingsCatalog.SectionOf(Id)];
-            OnPropertyChanged(nameof(SectionTitle));
-        }
-    }
+    protected virtual void OnLanguageChanged(object? sender, PropertyChangedEventArgs e) => OnPropertyChanged(nameof(Title));
 
     /// <summary>Zahl in einem Textfeld: gültig → schreiben und speichern, sonst nur Fehler am Pfad.</summary>
     protected void SetNumber(string path, string text, int min, int max, bool zeroAllowed, Action<int> write)

@@ -24,6 +24,7 @@ public class SettingRow : ContentControl
     public static readonly StyledProperty<string?> DescriptionKeyProperty = AvaloniaProperty.Register<SettingRow, string?>(nameof(DescriptionKey));
     public static readonly StyledProperty<string?> ErrorProperty = AvaloniaProperty.Register<SettingRow, string?>(nameof(Error));
     public static readonly StyledProperty<bool> StackedProperty = AvaloniaProperty.Register<SettingRow, bool>(nameof(Stacked));
+    public static readonly StyledProperty<bool> BareProperty = AvaloniaProperty.Register<SettingRow, bool>(nameof(Bare));
 
     public static readonly DirectProperty<SettingRow, string> TitleProperty =
         AvaloniaProperty.RegisterDirect<SettingRow, string>(nameof(Title), r => r.Title);
@@ -67,6 +68,12 @@ public class SettingRow : ContentControl
     /// <summary>Steuerelement unter dem Text in voller Breite (Listen, mehrzeilige Felder).</summary>
     public bool Stacked { get => GetValue(StackedProperty); set => SetValue(StackedProperty, value); }
 
+    /// <summary>
+    /// Ohne sichtbaren Titel und Beschreibung, wenn der Gruppentitel schon sagt, worum es geht (Optionsgruppe als erste
+    /// Zeile, z. B. „Erkennungsweg“); der Titel bleibt Name des Steuerelements für Screenreader.
+    /// </summary>
+    public bool Bare { get => GetValue(BareProperty); set => SetValue(BareProperty, value); }
+
     public string Title { get => _title; private set => SetAndRaise(TitleProperty, ref _title, value); }
 
     public string Description { get => _description; private set => SetAndRaise(DescriptionProperty, ref _description, value); }
@@ -107,6 +114,10 @@ public class SettingRow : ContentControl
         {
             PseudoClasses.Set(":stacked", Stacked);
         }
+        if (change.Property == BareProperty)
+        {
+            PseudoClasses.Set(":bare", Bare);
+        }
     }
 
     private void OnLanguageChanged(object? sender, PropertyChangedEventArgs e) => Refresh();
@@ -139,6 +150,16 @@ public class SettingRow : ContentControl
             target.SetValue(AutomationProperties.HelpTextProperty, string.IsNullOrEmpty(Error) ? Description : Error);
         }
     }
+
+    /// <summary>Nach dem Sprung aus der Suche: Zeile kurz in der Auswahlfarbe zeigen (zielstruktur.md §1).</summary>
+    public void Flash(TimeSpan? duration = null)
+    {
+        PseudoClasses.Set(":revealed", true);
+        Avalonia.Threading.DispatcherTimer.RunOnce(() => PseudoClasses.Set(":revealed", false), duration ?? TimeSpan.FromSeconds(1.5));
+    }
+
+    /// <summary>Ist die Zeile gerade markiert (Tests)?</summary>
+    public bool IsFlashing => PseudoClasses.Contains(":revealed");
 
     private Task ResetAsync() =>
         Path is { } path && Managed.GetContext(this) is { } context ? context.ResetToDefaultAsync(path) : Task.CompletedTask;

@@ -47,7 +47,7 @@ public sealed class ManagedLevelsTest
         Assert.True(page.HasManagedRows);
         Assert.Equal("Einige Einstellungen werden von Beispiel GmbH verwaltet.", page.ManagedText);
 
-        Assert.False(SettingsUi.Show(window, "general").HasManagedRows);
+        Assert.False(SettingsUi.Show(window, "system").HasManagedRows);
         window.Close();
     }
 
@@ -72,7 +72,7 @@ public sealed class ManagedLevelsTest
         window.Settings!.SttModel = "eigene-wahl";
         await window.Settings.Pending;
         Assert.Equal(["stt.model"], f.Controller.Settings.Management.Overrides);
-        SettingsUi.Show(window, "general");
+        SettingsUi.Show(window, "system");
         SettingsUi.Show(window, "recognition");
         Assert.Contains(":overridden", SettingsUi.Row(window, "stt.model").Classes);
 
@@ -146,7 +146,7 @@ public sealed class ManagedLevelsTest
         Assert.Equal(Loc.Instance["Managed_It"], source.ManagerName); // ohne Firmenname
 
         var window = Open(f);
-        SettingsUi.Show(window, "network");
+        SettingsUi.Show(window, "connections");
         Assert.All(SettingsUi.Rows(window), r => Assert.Equal(ManagedState.Free, r.Level));
         Assert.All(SettingsUi.Rows(window), r => Assert.DoesNotContain(":default", r.Classes));
         window.Close();

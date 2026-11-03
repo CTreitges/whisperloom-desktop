@@ -16,11 +16,11 @@ public sealed class TextPageViewModel : SettingsPageViewModel
     private static readonly string[] Cleanups = ["plain", "clean", "readable"];
     private static readonly string[] Forms = ["auto", "prose"];
 
-    public TextPageViewModel(SettingsViewModel session) : base("text", "TextStage", "Violet", session)
+    public TextPageViewModel(SettingsViewModel session) : base("text", "TextStage", session)
     {
         var loc = Loc.Instance;
-        CleanupChoices = [.. Cleanups.Select(c => new Choice(c, loc["Cleanup_" + c]))];
-        FormChoices = [.. Forms.Select(f => new Choice(f, loc["Form_" + f]))];
+        CleanupChoices = [.. Cleanups.Select(c => new Choice(c, loc["Cleanup_" + c], loc["Cleanup_" + c + "_Desc"]))];
+        FormChoices = [.. Forms.Select(f => new Choice(f, loc["Form_" + f], loc["Form_" + f + "_Desc"]))];
         LlmModelPicker = new ModelPickerViewModel(LlmOptions, () => session.LlmModel, v => session.LlmModel = v,
             ct => session.LoadServerModelsAsync("llm", ModelKind.Llm, ct), RefreshStagePickers);
         LlmFallbackModelPicker = new ModelPickerViewModel(FallbackOptions, () => session.LlmFallbackModel, v => session.LlmFallbackModel = v,
@@ -32,6 +32,7 @@ public sealed class TextPageViewModel : SettingsPageViewModel
         AdvancedOpen = session.LlmProvider.Value != LlmSettings.Same && NeedsUrl(session.LlmProvider.Value);
         FallbackAdvancedOpen = NeedsUrl(session.LlmFallbackProvider.Value);
         session.PropertyChanged += OnSessionChanged;
+        Local.PropertyChanged += OnLocalChanged;
     }
 
     public LocalViewModel Local => Session.Local;
@@ -74,6 +75,41 @@ public sealed class TextPageViewModel : SettingsPageViewModel
         set => Write(() => Refine.SummarizeForm = value.Value);
     }
 
+    /// <summary>„Bei lokaler Erkennung“ gilt nur, wenn die Erkennung lokal läuft; sonst eine Hinweiszeile mit Sprung (B25).</summary>
+    public bool IsLocalRecognition => Local.Engine.Value == "offline";
+
+    public bool IsOnlineRecognition => !IsLocalRecognition;
+
+    /// <summary>Ein lokales Textmodell braucht es nur, wenn lokal verbessert werden darf (nicht bei „Online, sonst ohne KI“).</summary>
+    public bool UsesLocalTextModel => Local.Rule.Value != "skip";
+
+    // Bereinigung (früher eigene Seite): Regeln ohne KI, laufen nach jedem Diktat.
+    private PolishSettings Polish => Session.Working.Polish;
+
+    public bool RemoveFillers
+    {
+        get => Polish.RemoveFillers;
+        set
+        {
+            Write(() => Polish.RemoveFillers = value);
+            OnPropertyChanged();
+        }
+    }
+
+    public bool AutoCapitalize { get => Polish.AutoCapitalize; set => Write(() => Polish.AutoCapitalize = value); }
+
+    public bool TrailingSpace { get => Polish.TrailingSpace; set => Write(() => Polish.TrailingSpace = value); }
+
+    /// <summary>Eigene Füllwörter, durch Komma getrennt; gespeichert klein geschrieben, ohne Duplikate.</summary>
+    public string CustomFillers { get => string.Join(", ", Polish.CustomFillers); set => Write(() => Polish.CustomFillers = Words(value)); }
+
+    /// <summary>Eingebaute Füllwörter, die stehen bleiben.</summary>
+    public string DisabledFillers { get => string.Join(", ", Polish.DisabledFillers); set => Write(() => Polish.DisabledFillers = Words(value)); }
+
+    internal static List<string> Words(string text) =>
+        [.. text.Split([',', '\n', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(w => w.ToLowerInvariant()).Distinct()];
+
     public bool ParagraphsPolish { get => Refine.ParagraphsPolish; set => Write(() => Refine.ParagraphsPolish = value); }
 
     public bool ParagraphsBeautify { get => Refine.ParagraphsBeautify; set => Write(() => Refine.ParagraphsBeautify = value); }
@@ -97,6 +133,7 @@ public sealed class TextPageViewModel : SettingsPageViewModel
     public override void Dispose()
     {
         Session.PropertyChanged -= OnSessionChanged;
+        Local.PropertyChanged -= OnLocalChanged;
         base.Dispose();
     }
 
@@ -116,6 +153,19 @@ public sealed class TextPageViewModel : SettingsPageViewModel
         else if (e.PropertyName == nameof(SettingsViewModel.LlmFallbackProvider))
         {
             LlmFallbackModelPicker.Refresh();
+        }
+    }
+
+    private void OnLocalChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(LocalViewModel.Engine))
+        {
+            OnPropertyChanged(nameof(IsLocalRecognition));
+            OnPropertyChanged(nameof(IsOnlineRecognition));
+        }
+        else if (e.PropertyName == nameof(LocalViewModel.Rule))
+        {
+            OnPropertyChanged(nameof(UsesLocalTextModel));
         }
     }
 

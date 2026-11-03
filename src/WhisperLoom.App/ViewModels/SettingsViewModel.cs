@@ -10,9 +10,11 @@ using WhisperLoom.Core.Settings;
 
 namespace WhisperLoom.App.ViewModels;
 
-/// <summary>Ein Eintrag einer Auswahlliste: gespeicherter Wert plus Anzeige.</summary>
-public sealed record Choice(string Value, string Label)
+/// <summary>Ein Eintrag einer Auswahlliste bzw. Optionsgruppe: gespeicherter Wert, Anzeige und optional eine Zeile Erklärung.</summary>
+public sealed record Choice(string Value, string Label, string? Description = null)
 {
+    public bool HasDescription => !string.IsNullOrEmpty(Description);
+
     public override string ToString() => Label;
 }
 
@@ -68,15 +70,14 @@ public sealed partial class SettingsViewModel : ObservableObject
         EnsureChoice(LlmProviders, _s.Llm.ProviderId);
         EnsureChoice(LlmFallbackProviders, _s.LlmFallback.ProviderId);
         Languages = [.. RecognitionLanguages.Select(l => new Choice(l, LanguageLabel(l)))];
-        Stages = [.. RefineModes.SettingsFor(true).Select(m => new Choice(m.Key(), loc["Stage_" + m.Key()]))];
-        ProxyModes = [.. new[] { "system", "off", "manual" }.Select(m => new Choice(m, loc["Proxy_" + m]))];
+        Stages = [.. RefineModes.SettingsFor(true).Select(m => new Choice(m.Key(), loc["Stage_" + m.Key()], loc["Stage_" + m.Key() + "_Desc"]))];
+        ProxyModes = [.. new[] { "system", "off", "manual" }.Select(m => new Choice(m, loc["Proxy_" + m], loc["Proxy_" + m + "_Desc"]))];
         HistorySizes = [.. HistorySettings.Sizes];
         Outputs = [new Choice("clipboard", loc["Output_clipboard"])];
-        UiLanguages = [new Choice("", loc["Ui_System"]), new Choice("de", "Deutsch"), new Choice("en", "English")];
+        UiLanguages = [new Choice("", loc["Ui_System"], loc["Ui_System_Desc"]), new Choice("de", "Deutsch"), new Choice("en", "English")];
         Microphones = [new Choice("", loc["Mic_Default"]), .. (microphones ?? []).Select(m => new Choice(m, m))];
-        InsertModes = [.. new[] { "paste", "type", "clipboard" }.Select(m => new Choice(m, loc["Insert_" + m]))];
+        InsertModes = [.. new[] { "paste", "type", "clipboard" }.Select(m => new Choice(m, loc["Insert_" + m], loc["Insert_" + m + "_Desc"]))];
         Hotkeys = new HotkeysViewModel(_desktop, recordHotkey, _s.Selection) { Changed = Touch };
-        Profiles = new Features.Profiles.ProfilesViewModel(_desktop) { Changed = Touch };
 
         _sttProvider = Pick(SttProviders, _s.Stt.ProviderId);
         _sttFallbackProvider = Pick(SttProviders, _s.SttFallback.ProviderId);
@@ -89,6 +90,15 @@ public sealed partial class SettingsViewModel : ObservableObject
         _uiLanguage = Pick(UiLanguages, _desktop.UiLanguage);
         _microphone = Pick(Microphones, _desktop.Microphone);
         _insertMode = Pick(InsertModes, _desktop.InsertMode);
+        // App-Profile erben Stufe, Ausgabe, Enter und schwebenden Knopf: „Wie allgemein (zurzeit …)“ folgt diesen Werten (K2).
+        Profiles = new Features.Profiles.ProfilesViewModel(_desktop, () => new(Stage.Value, InsertMode.Value, PressEnter, FloatingButton)) { Changed = Touch };
+        PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(Stage) or nameof(InsertMode) or nameof(PressEnter) or nameof(FloatingButton))
+            {
+                Profiles.RefreshDefaults();
+            }
+        };
         _historySize = HistorySizes.Contains(_s.History.Size) ? _s.History.Size : HistorySettings.DefaultSize;
 
         SttKey = new KeyFieldViewModel(SecretNames.Stt, secrets, checker, () => (SttProvider.Value, SttBaseUrl)) { Editable = KeyEditable(SecretNames.Stt), Policy = _policy };

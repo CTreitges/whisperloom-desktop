@@ -23,13 +23,13 @@ public sealed class HelpCatalogTest
     [Fact]
     public void Every_settings_page_of_the_ia_points_to_a_help_section()
     {
-        foreach (var (page, _) in SettingsCatalog.Pages)
+        foreach (var page in SettingsCatalog.Pages)
         {
             Assert.True(HelpCatalog.PageTopics.TryGetValue(page, out var topic), $"Seite {page} hat keinen Hilfe-Abschnitt");
             Assert.NotNull(HelpCatalog.Find(topic));
         }
         // Keine Leichen: jede zugeordnete Seite gibt es.
-        Assert.All(HelpCatalog.PageTopics.Keys, page => Assert.Contains(SettingsCatalog.Pages, p => p.Id == page));
+        Assert.All(HelpCatalog.PageTopics.Keys, page => Assert.Contains(page, SettingsCatalog.Pages));
     }
 
     [Fact]

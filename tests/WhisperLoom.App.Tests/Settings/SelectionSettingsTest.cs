@@ -41,7 +41,7 @@ public sealed class SelectionSettingsTest
         Loc.Instance.SetLanguage("de");
         using var f = new ControllerFixture();
         var window = Open(f, out var vm);
-        SettingsUi.Show(window, "hotkeys");
+        SettingsUi.Show(window, "dictation");
 
         var group = window.GetVisualDescendants().OfType<SettingsGroup>().Single(g => g.TitleKey == "G_Selection");
         Assert.True(group.IsShown);
@@ -76,9 +76,10 @@ public sealed class SelectionSettingsTest
     {
         using var f = new ControllerFixture();
         var vm = new SettingsViewModel(f.Controller, new MemorySecretStore(), new FakeAccessChecker());
-        vm.Profiles.AddSuggestionsCommand.Execute(null);
-        Assert.Equal("", vm.Profiles.Rows[0].Button.Value); // Wie eingestellt
-        vm.Profiles.Rows[1].Button = vm.Profiles.ButtonChoices.Single(c => c.Value == "off");
+        vm.Profiles.Suggestions[0].AddCommand.Execute(null);
+        vm.Profiles.Suggestions[0].AddCommand.Execute(null);
+        Assert.True(vm.Profiles.Rows[0].ShowFloatingButton); // Wie allgemein
+        vm.Profiles.Rows[1].ShowFloatingButton = false; // Schalter „Schwebenden Knopf zeigen“ aus = hier nie
 
         await vm.Save();
 
@@ -108,7 +109,7 @@ public sealed class SelectionSettingsTest
         f.Controller.Settings.Management.TenantName = "Beispiel GmbH";
         f.Controller.Policy = new PolicySettings { Locked = ["selection"] };
         var window = Open(f);
-        SettingsUi.Show(window, "hotkeys");
+        SettingsUi.Show(window, "dictation");
 
         Assert.False(SettingsUi.Row(window, "selection.floatingButton").IsShown);
         Assert.False(SettingsUi.Row(window, "selection.ctrlRightClick").IsShown);

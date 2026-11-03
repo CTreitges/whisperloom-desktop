@@ -30,7 +30,7 @@ Modelldateien, lokale Server und ein mitgeliefertes Textmodell nutzen. Alles ste
 ### Lokale Server (OpenAI-kompatibel)
 
 Ein Eintrag hat Name, Art (**Erkennung** = `/audio/transcriptions`, **Text** = `/chat/completions`), Adresse (endet
-meist auf `/v1`) und optional ein Modell (leer = erstes Modell des Servers). „Zugang prüfen“ ruft `/models` ab. Lokale
+meist auf `/v1`) und optional ein Modell (leer = erstes Modell des Servers). „Verbindung testen“ ruft `/models` ab. Lokale
 Server bekommen **nie** einen Key. `http://` ist nur zu Adressen im eigenen Netz erlaubt (localhost, LAN, VPN,
 Tailscale).
 

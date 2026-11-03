@@ -22,7 +22,7 @@ public sealed class SettingsPagesFollowUpTest
 {
     private static SettingsWindow Open(ControllerFixture f, ISecretStore? secrets = null, bool runJobs = true)
     {
-        SettingsShellViewModel.LastPage = "general";
+        SettingsShellViewModel.LastPage = "dictation";
         var window = new SettingsWindow(new SettingsViewModel(f.Controller, secrets ?? new MemorySecretStore(), new FakeAccessChecker()));
         window.Show();
         if (runJobs)
@@ -44,7 +44,7 @@ public sealed class SettingsPagesFollowUpTest
         // ↓ wechselt die Auswahl, die Seite folgt erst einen Durchlauf später; Tab kommt vorher an (schnelle Tastenfolge).
         // Direkt geroutet statt window.KeyPress: Das arbeitet den Dispatcher nach jeder Taste ab und verdeckte den Fall.
         Press(window, Key.Down);
-        Assert.IsType<GeneralPageViewModel>(host.Content);
+        Assert.IsType<DictationPageViewModel>(host.Content);
         Press(window, Key.Tab);
         Dispatcher.UIThread.RunJobs();
         window.UpdateLayout();
@@ -128,8 +128,8 @@ public sealed class SettingsPagesFollowUpTest
         var name = SecretNames.ForProvider(ProvidersSettings.CustomPrefix + "lab");
         foreach (var round in Enumerable.Range(0, 3))
         {
-            SettingsUi.Show(window, "providers");
-            SettingsUi.Show(window, "general");
+            SettingsUi.Show(window, "connections");
+            SettingsUi.Show(window, "dictation");
         }
         await window.Settings!.Pending;
         Assert.Equal(1, secrets.Reads.Count(r => r == name));

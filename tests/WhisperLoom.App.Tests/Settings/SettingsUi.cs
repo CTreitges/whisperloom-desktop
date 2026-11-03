@@ -9,7 +9,7 @@ namespace WhisperLoom.App.Tests.Settings;
 /// <summary>Helfer für Headless-Tests des Einstellungsfensters (Seitenleiste statt Tabs, W2-UI1).</summary>
 internal static class SettingsUi
 {
-    public static readonly IReadOnlyList<string> PageIds = [.. ViewModels.Settings.SettingsCatalog.Pages.Select(p => p.Id)];
+    public static readonly IReadOnlyList<string> PageIds = ViewModels.Settings.SettingsCatalog.Pages;
 
     /// <summary>Wählt eine Seite und lässt das Layout laufen; Rückgabe = die gezeigte Seiten-View.</summary>
     public static SettingsPage Show(SettingsWindow window, string pageId)
@@ -39,6 +39,8 @@ internal static class SettingsUi
 
     public static SettingRow Row(SettingsWindow window, string path) => Rows(window).Single(r => r.Path == path);
 
+    /// <summary>Steuerelement nach x:Name; auch in ausgeblendeten Zeilen (UX-2: nur zeigen, was gilt), die keinen sichtbaren Baum haben.</summary>
     public static T Named<T>(SettingsWindow window, string name) where T : Control =>
-        window.GetVisualDescendants().OfType<T>().First(c => c.Name == name);
+        window.GetVisualDescendants().OfType<T>().FirstOrDefault(c => c.Name == name)
+        ?? Avalonia.LogicalTree.LogicalExtensions.GetLogicalDescendants(window).OfType<T>().First(c => c.Name == name);
 }

@@ -41,13 +41,6 @@ public partial class SettingsWindow : Window
             }
         };
         shell.RevealRequested += Reveal;
-        ResultList.SelectionChanged += (_, _) =>
-        {
-            if (ResultList.SelectedItem is SearchResult result)
-            {
-                shell.Open(result);
-            }
-        };
         SystemTheme.Follow(this, Application.Current?.PlatformSettings);
         Closing += (_, _) => CommitFocusedText();
         Closed += (_, _) => shell.Dispose();
@@ -125,13 +118,22 @@ public partial class SettingsWindow : Window
         }
         else if (e.Key == Key.Down && e.Source == SearchBox && Shell?.IsSearching == true && ResultList.ItemCount > 0)
         {
-            ResultList.SelectedIndex = 0;
-            (ResultList.ContainerFromIndex(0) as InputElement)?.Focus(NavigationMethod.Directional);
+            // Erster Treffer bekommt den Fokus; springen erst mit Enter bzw. Klick.
+            ResultList.ContainerFromIndex(0)?.GetVisualDescendants().OfType<Button>().FirstOrDefault()?.Focus(NavigationMethod.Directional);
             e.Handled = true;
         }
     }
 
-    /// <summary>Zeile mit dem Pfad ins Bild holen und ihr Steuerelement fokussieren (nach dem Seitenwechsel).</summary>
+    private void OnClearSearch(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (Shell is { } shell)
+        {
+            shell.SearchText = "";
+        }
+        SearchBox.Focus(NavigationMethod.Tab);
+    }
+
+    /// <summary>Zeile mit dem Pfad ins Bild holen, kurz markieren und ihr Steuerelement fokussieren (nach dem Seitenwechsel).</summary>
     private void Reveal(string path)
     {
         Dispatcher.UIThread.Post(() =>
@@ -149,6 +151,7 @@ public partial class SettingsWindow : Window
                 UpdateLayout();
             }
             row.BringIntoView();
+            row.Flash();
             var target = (row.Content as Control)?.GetVisualDescendants().OfType<InputElement>().FirstOrDefault(i => i.Focusable && i.IsEffectivelyEnabled)
                 ?? row.Content as InputElement;
             target?.Focus(NavigationMethod.Tab);

@@ -23,7 +23,7 @@ public sealed class SettingsNavigationTest
 {
     private static SettingsWindow Open(ControllerFixture f)
     {
-        SettingsShellViewModel.LastPage = "general";
+        SettingsShellViewModel.LastPage = "dictation";
         var window = new SettingsWindow(new SettingsViewModel(f.Controller, new MemorySecretStore(), new FakeAccessChecker()));
         window.Show();
         Dispatcher.UIThread.RunJobs();
@@ -55,13 +55,13 @@ public sealed class SettingsNavigationTest
     {
         using var f = new ControllerFixture();
         var window = Open(f);
-        Assert.Equal("general", window.Shell!.SelectedPage!.Id);
+        Assert.Equal("dictation", window.Shell!.SelectedPage!.Id);
         SettingsUi.Show(window, "privacy");
         window.Close();
 
         var again = new SettingsWindow(new SettingsViewModel(f.Controller, new MemorySecretStore(), new FakeAccessChecker()));
         Assert.Equal("privacy", again.Shell!.SelectedPage!.Id);
-        SettingsShellViewModel.LastPage = "general";
+        SettingsShellViewModel.LastPage = "dictation";
     }
 
     [AvaloniaFact]
@@ -109,12 +109,12 @@ public sealed class SettingsNavigationTest
 
         shell.SearchText = "Proxy-Adresse";
         var hit = Assert.Single(shell.Results);
-        Assert.Equal(("desktop.proxyUrl", "Netzwerk › Proxy"), (hit.Entry.Path, hit.Location));
+        Assert.Equal(("desktop.proxyUrl", "Verbindungen › Proxy"), (hit.Entry.Path, hit.Location));
 
         // Treffer hinter „Erweitert“: Seite wechselt, „Erweitert“ klappt auf, das Feld bekommt den Fokus.
         shell.SearchText = "Zeitlimit";
         var timeout = Assert.Single(shell.Results);
-        window.FindControl<ListBox>("ResultList")!.SelectedItem = timeout;
+        shell.OpenCommand.Execute(timeout);
         Dispatcher.UIThread.RunJobs();
         Assert.Equal("recognition", shell.SelectedPage!.Id);
         var row = SettingsUi.Row(window, "stt.readTimeoutSec");

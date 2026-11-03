@@ -8,145 +8,104 @@ using WhisperLoom.Core.Contracts;
 
 namespace WhisperLoom.App.Features.Profiles;
 
-/// <summary>Eine Zeile der Profil-Liste in den Einstellungen.</summary>
-public sealed partial class ProfileRowViewModel : ObservableObject
+/// <summary>Allgemeine Werte, die ein Profil erbt (für „Wie allgemein (zurzeit …)“ und die Zusammenfassung).</summary>
+public sealed record ProfileDefaults(string Stage, string InsertMode, bool PressEnter, bool FloatingButton);
+
+/// <summary>Wohin die Ansicht nach einer Aktion den Fokus setzt (K2: Fokus bleibt am Profil bzw. springt zur Meldung).</summary>
+public enum ProfileFocus
 {
-    private readonly ProfilesViewModel _owner;
+    Header,
+    Name,
+    MoveUp,
+    MoveDown,
+    Status,
+}
 
-    internal ProfileRowViewModel(ProfilesViewModel owner, AppProfile profile)
-    {
-        _owner = owner;
-        _name = profile.Name;
-        _process = profile.Process;
-        _titlePattern = profile.TitlePattern;
-        _stage = Pick(owner.Stages, profile.Stage);
-        _insertMode = Pick(owner.InsertModes, profile.InsertMode);
-        _pressEnter = profile.PressEnter; // null = Erben (W2-C0)
-        _floatingButton = profile.FloatingButton; // null = wie eingestellt (W2-SEL)
-        _enabled = profile.Enabled;
-    }
+/// <summary>Vorschlag für ein Programm ohne Profil („Terminal-Profil anlegen“).</summary>
+public sealed class ProfileSuggestion(AppProfile profile, string text, string actionText, IRelayCommand add)
+{
+    public string Process => profile.Process;
 
-    public ProfilesViewModel Owner => _owner;
+    public string Text => text;
 
-    [ObservableProperty]
-    private string _name;
+    public string ActionText => actionText;
 
-    [ObservableProperty]
-    private string _process;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(TitleWarning))]
-    private string _titlePattern;
-
-    [ObservableProperty]
-    private Choice _stage;
-
-    [ObservableProperty]
-    private Choice _insertMode;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(Enter))]
-    private bool? _pressEnter;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(Button))]
-    private bool? _floatingButton;
-
-    [ObservableProperty]
-    private bool _enabled;
-
-    /// <summary>Hinweis bei ungültigem Regex; leer = gültig.</summary>
-    public string TitleWarning => AppProfiles.IsValidPattern(TitlePattern) ? "" : "⚠ " + Loc.Instance["Profile_InvalidTitle"];
-
-    /// <summary>Jede Änderung einer Zeile meldet die Liste (Einstellungsfenster speichert sofort).</summary>
-    protected override void OnPropertyChanged(System.ComponentModel.PropertyChangedEventArgs e)
-    {
-        base.OnPropertyChanged(e);
-        if (e.PropertyName != nameof(TitleWarning))
-        {
-            _owner.Changed?.Invoke();
-        }
-    }
-
-    /// <summary>„Enter danach“ als Auswahl Wie Standard / An / Aus (Erben = null, wird nicht geschrieben).</summary>
-    public Choice Enter
-    {
-        get => _owner.EnterChoices[PressEnter switch { null => 0, true => 1, false => 2 }];
-        set => PressEnter = value.Value switch { "on" => true, "off" => false, _ => null };
-    }
-
-    /// <summary>Schwebender Knopf (W2-SEL): Wie eingestellt (null) oder Hier nie (false).</summary>
-    public Choice Button
-    {
-        get => _owner.ButtonChoices[FloatingButton == false ? 1 : 0];
-        set => FloatingButton = value.Value == "off" ? false : null;
-    }
-
-    public AppProfile ToProfile() => new()
-    {
-        Name = Name.Trim(),
-        Process = Process.Trim(),
-        TitlePattern = TitlePattern.Trim(),
-        Stage = Stage.Value,
-        InsertMode = InsertMode.Value,
-        PressEnter = PressEnter,
-        FloatingButton = FloatingButton,
-        Enabled = Enabled,
-    };
-
-    [RelayCommand]
-    private void Remove() => _owner.Rows.Remove(this);
-
-    private static Choice Pick(IReadOnlyList<Choice> choices, string value) =>
-        choices.FirstOrDefault(c => c.Value == value) ?? choices[0];
+    public IRelayCommand AddCommand => add;
 }
 
 /// <summary>
-/// Einstellungsseite „App-Profile“ (nur Windows, WLD-P5b): Liste mit Prozess, Titel-Regex, Stufe, Ausgabe, Enter; dazu die
-/// Vorschläge Terminal → Prompt und Outlook → Verschönern. Schreibt in <see cref="DesktopSettings.Profiles"/>.
+/// App-Profile auf der Seite „Ausgabe“ (nur Windows, WLD-P5b; Aufbau nach K2): nummerierte Liste mit Reihenfolge per Pfeil,
+/// Löschen mit Rückgängig in der Statuszeile, Vorschläge nur für fehlende Programme, ein Hauptknopf „Profil hinzufügen“.
+/// Schreibt in <see cref="DesktopSettings.Profiles"/>; die Reihenfolge ist der Vorrang unter gleich genauen Profilen.
 /// </summary>
-public sealed class ProfilesViewModel
+public sealed partial class ProfilesViewModel : ObservableObject
 {
     private readonly DesktopSettings _desktop;
+    private readonly Func<ProfileDefaults> _defaults;
+    private readonly Func<IReadOnlyList<string>> _running;
+    private (ProfileRowViewModel Row, int Index)? _undo;
 
-    public ProfilesViewModel(DesktopSettings desktop)
+    public ProfilesViewModel(DesktopSettings desktop, Func<ProfileDefaults>? defaults = null, Func<IReadOnlyList<string>>? running = null)
     {
         _desktop = desktop;
-        var loc = Loc.Instance;
-        Stages = [new Choice("", loc["Profile_Default"]), .. RefineModes.SettingsFor(true).Select(m => new Choice(m.Key(), loc["Stage_" + m.Key()]))];
-        EnterChoices = [new Choice("", loc["Profile_Default"]), new Choice("on", loc["Profile_EnterOn"]), new Choice("off", loc["Profile_EnterOff"])];
-        ButtonChoices = [new Choice("", loc["Profile_FloatingButton_Inherit"]), new Choice("off", loc["Profile_FloatingButton_Off"])];
-        InsertModes = [new Choice("", loc["Profile_Default"]), .. new[] { "paste", "type", "clipboard" }.Select(m => new Choice(m, loc["Insert_" + m]))];
-        Rows = [.. desktop.Profiles.Select(p => new ProfileRowViewModel(this, p))];
-        AddCommand = new RelayCommand(() => Rows.Add(new ProfileRowViewModel(this, new AppProfile())));
-        AddSuggestionsCommand = new RelayCommand(AddSuggestions);
-        Rows.CollectionChanged += (_, _) => Changed?.Invoke();
+        _defaults = defaults ?? (() => new ProfileDefaults("", desktop.InsertMode, false, false));
+        _running = running ?? RunningPrograms.List;
+        BuildChoices();
+        Rows = [.. desktop.Profiles.Select(p => new ProfileRowViewModel(this, p, open: false))];
+        Rows.CollectionChanged += (_, _) =>
+        {
+            Renumber();
+            RefreshSuggestions();
+            OnPropertyChanged(nameof(IsEmpty));
+            Changed?.Invoke();
+        };
+        Renumber();
+        RefreshSuggestions();
     }
 
     /// <summary>Nach jeder Änderung (Einstellungsfenster speichert sofort).</summary>
     public Action? Changed { get; init; }
 
+    /// <summary>Die Ansicht setzt den Fokus (Zeile null = Statuszeile).</summary>
+    public event Action<ProfileRowViewModel?, ProfileFocus>? FocusRequested;
+
     public bool Available => OperatingSystem.IsWindows();
 
-    public IReadOnlyList<Choice> Stages { get; }
+    /// <summary>Stufen: „Wie allgemein (zurzeit …)“, dann alle Stufen.</summary>
+    [ObservableProperty]
+    private IReadOnlyList<Choice> _stages = [];
 
-    public IReadOnlyList<Choice> InsertModes { get; }
+    /// <summary>Ausgabe: „Wie allgemein (zurzeit …)“, Einfügen, Direkt tippen, Nur Zwischenablage.</summary>
+    [ObservableProperty]
+    private IReadOnlyList<Choice> _insertModes = [];
 
-    /// <summary>Enter danach: Wie Standard (erbt output.pressEnter), An, Aus.</summary>
-    public IReadOnlyList<Choice> EnterChoices { get; }
+    /// <summary>Enter nach dem Einfügen: Wie allgemein (erbt output.pressEnter), Enter drücken, Kein Enter.</summary>
+    [ObservableProperty]
+    private IReadOnlyList<Choice> _enterChoices = [];
 
-    /// <summary>Schwebender Knopf je Profil (W2-SEL): Wie eingestellt, Hier nie.</summary>
-    public IReadOnlyList<Choice> ButtonChoices { get; }
+    /// <summary>Schwebender Knopf allgemein an: nur dann zeigt ein Profil seinen Schalter.</summary>
+    [ObservableProperty]
+    private bool _floatingButtonOn;
+
+    /// <summary>Statuszeile unter der Liste („Profil ‚X‘ gelöscht.“ mit Rückgängig, „… angelegt.“).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasStatus))]
+    private string _status = "";
+
+    [ObservableProperty]
+    private bool _canUndo;
+
+    public bool HasStatus => Status.Length > 0;
 
     public ObservableCollection<ProfileRowViewModel> Rows { get; }
 
-    public IRelayCommand AddCommand { get; }
+    public ObservableCollection<ProfileSuggestion> Suggestions { get; } = [];
 
-    public IRelayCommand AddSuggestionsCommand { get; }
+    public bool IsEmpty => Rows.Count == 0;
 
     /// <summary>
     /// Übernimmt die Zeilen (ohne leere) in die Desktop-Einstellungen (vor dem Speichern). Solange eine Zeile einen
-    /// ungültigen Fenstertitel hat, bleibt die gespeicherte Liste unverändert (Fehler steht an der Zeile).
+    /// unlesbaren Fenstertitel hat, bleibt die gespeicherte Liste unverändert (Meldung steht am Feld).
     /// </summary>
     public void Apply()
     {
@@ -157,16 +116,135 @@ public sealed class ProfilesViewModel
         _desktop.Profiles = [.. Rows.Select(r => r.ToProfile()).Where(p => p.Process.Length > 0)];
     }
 
-    /// <summary>Fügt die Vorschläge hinzu, die es (nach Prozess) noch nicht gibt.</summary>
-    private void AddSuggestions()
+    /// <summary>Allgemeine Stufe, Ausgabe, Enter oder schwebender Knopf geändert: Listen und Zeilen neu.</summary>
+    public void RefreshDefaults()
     {
-        foreach (var suggestion in AppProfiles.Suggestions())
+        BuildChoices();
+        foreach (var row in Rows)
         {
-            var process = AppProfiles.NormalizeProcess(suggestion.Process);
-            if (Rows.All(r => AppProfiles.NormalizeProcess(r.Process) != process))
-            {
-                Rows.Add(new ProfileRowViewModel(this, suggestion));
-            }
+            row.RefreshDefaults();
         }
+    }
+
+    [RelayCommand]
+    private void Add()
+    {
+        var row = new ProfileRowViewModel(this, new AppProfile(), open: true);
+        Status = "";
+        _undo = null;
+        CanUndo = false;
+        Rows.Add(row);
+        FocusRequested?.Invoke(row, ProfileFocus.Name);
+    }
+
+    [RelayCommand]
+    private void Undo()
+    {
+        if (_undo is not { } undo)
+        {
+            return;
+        }
+        _undo = null;
+        CanUndo = false;
+        Rows.Insert(Math.Min(undo.Index, Rows.Count), undo.Row);
+        Status = Loc.Instance.Format("Profile_Restored", undo.Row.DisplayName);
+        FocusRequested?.Invoke(undo.Row, ProfileFocus.Header);
+    }
+
+    internal void Move(ProfileRowViewModel row, int delta)
+    {
+        var from = Rows.IndexOf(row);
+        var to = from + delta;
+        if (from < 0 || to < 0 || to >= Rows.Count)
+        {
+            return;
+        }
+        Rows.Move(from, to);
+        // Fokus bleibt am Profil: auf demselben Pfeil, sonst (am Rand) auf dem anderen.
+        var same = delta < 0 ? row.CanMoveUp : row.CanMoveDown;
+        FocusRequested?.Invoke(row, (delta < 0) == same ? ProfileFocus.MoveUp : ProfileFocus.MoveDown);
+    }
+
+    internal void Delete(ProfileRowViewModel row)
+    {
+        var index = Rows.IndexOf(row);
+        if (index < 0)
+        {
+            return;
+        }
+        Rows.RemoveAt(index);
+        _undo = (row, index);
+        CanUndo = true;
+        Status = Loc.Instance.Format("Profile_Deleted", row.DisplayName);
+        FocusRequested?.Invoke(null, ProfileFocus.Status);
+    }
+
+    internal IReadOnlyList<string> ReadRunning()
+    {
+        try
+        {
+            return _running();
+        }
+        catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception or UnauthorizedAccessException)
+        {
+            return [];
+        }
+    }
+
+    /// <summary>Eine Zeile hat sich geändert: speichern; ein neues Programm ändert die Vorschläge.</summary>
+    internal void RowChanged(ProfileRowViewModel row, string? property)
+    {
+        if (property == nameof(ProfileRowViewModel.Process))
+        {
+            RefreshSuggestions();
+        }
+        Changed?.Invoke();
+    }
+
+    private void AddSuggestion(AppProfile suggestion)
+    {
+        var row = new ProfileRowViewModel(this, suggestion, open: false);
+        Rows.Add(row);
+        Status = Loc.Instance.Format("Profile_Created", row.DisplayName);
+        CanUndo = false;
+        _undo = null;
+        FocusRequested?.Invoke(row, ProfileFocus.Header);
+    }
+
+    private void Renumber()
+    {
+        for (var i = 0; i < Rows.Count; i++)
+        {
+            Rows[i].Number = i + 1;
+            Rows[i].CanMoveUp = i > 0;
+            Rows[i].CanMoveDown = i < Rows.Count - 1;
+        }
+    }
+
+    private void RefreshSuggestions()
+    {
+        var loc = Loc.Instance;
+        var have = Rows.Select(r => AppProfiles.NormalizeProcess(r.Process)).ToHashSet();
+        Suggestions.Clear();
+        foreach (var s in AppProfiles.Suggestions().Where(s => !have.Contains(AppProfiles.NormalizeProcess(s.Process))))
+        {
+            Suggestions.Add(new ProfileSuggestion(s,
+                loc.Format("Profile_Suggestion", s.Name, s.Process, loc["Stage_" + s.Stage]),
+                loc.Format("Profile_SuggestionAdd", s.Name),
+                new RelayCommand(() => AddSuggestion(s))));
+        }
+    }
+
+    private void BuildChoices()
+    {
+        var loc = Loc.Instance;
+        var d = _defaults();
+        FloatingButtonOn = d.FloatingButton;
+        string Inherit(string current) => loc.Format("Profile_Inherit", current);
+        var generalStage = RefineModes.SettingsFor(true).Select(m => m.Key()).Contains(d.Stage) ? loc["Stage_" + d.Stage] : loc["Stage_off"];
+        Stages = [new Choice("", Inherit(generalStage)), .. RefineModes.SettingsFor(true).Select(m => new Choice(m.Key(), loc["Stage_" + m.Key()]))];
+        var modes = new[] { "paste", "type", "clipboard" };
+        InsertModes = [new Choice("", Inherit(loc["Insert_" + (modes.Contains(d.InsertMode) ? d.InsertMode : "paste")])), .. modes.Select(m => new Choice(m, loc["Insert_" + m]))];
+        EnterChoices = [new Choice("", Inherit(loc[d.PressEnter ? "Profile_EnterOn" : "Profile_Sum_EnterOff"])), new Choice("on", loc["Profile_EnterOn"]), new Choice("off", loc["Profile_EnterOff"])];
     }
 }

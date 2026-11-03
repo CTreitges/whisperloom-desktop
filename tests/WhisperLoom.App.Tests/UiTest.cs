@@ -59,14 +59,15 @@ public class UiTest
             Settings.SettingsUi.VisitAll(window, _ =>
             {
                 Assert.DoesNotContain(TextsOf(window), t => t.Contains(SecretValue, StringComparison.Ordinal));
-                masks.AddRange(window.GetVisualDescendants().OfType<TextBlock>().Where(t => t.Name == "MaskText").Select(t => (t.Text, t.DataContext)));
+                masks.AddRange(window.GetVisualDescendants().OfType<TextBlock>().Where(t => t.Name == "StateText").Select(t => (t.Text, t.DataContext)));
                 boxes.AddRange(window.GetLogicalDescendants().OfType<TextBox>().Where(b => b.Name == "NewKeyBox"));
                 buttonTexts.AddRange(window.GetVisualDescendants().OfType<Button>().Select(b => b.Content as string ?? ""));
             });
 
             Assert.NotEmpty(masks);
-            Assert.Contains(masks, m => m.Text == KeyFieldViewModel.Mask);
-            Assert.All(masks.Where(m => vm.SttKey.IsSet && m.Context == vm.SttKey), m => Assert.Matches("^•+$", m.Text!));
+            // UX-2: Zustand als Satz statt Maske; der Satz nennt den Key nie (auch keine Endung).
+            Assert.Contains(masks, m => m.Text == "Key gespeichert");
+            Assert.All(masks.Where(m => vm.SttKey.IsSet && m.Context == vm.SttKey), m => Assert.Equal("Key gespeichert", m.Text));
 
             // Kein Aufdecken: Ersetzen-Feld maskiert, RevealPassword aus, kein Knopf zum Anzeigen.
             Assert.NotEmpty(boxes);
@@ -74,7 +75,7 @@ public class UiTest
             Assert.DoesNotContain(buttonTexts, t => t.Contains("anzeig", StringComparison.OrdinalIgnoreCase)
                 || t.Contains("show", StringComparison.OrdinalIgnoreCase) || t.Contains("reveal", StringComparison.OrdinalIgnoreCase)
                 || t.Contains("aufdeck", StringComparison.OrdinalIgnoreCase));
-            Assert.Equal(["Ersetzen", "Löschen", "Zugang prüfen"], buttonTexts.Where(t => t is "Ersetzen" or "Löschen" or "Zugang prüfen").Distinct());
+            Assert.Equal(["Verbindung testen", "Ersetzen …", "Löschen"], buttonTexts.Where(t => t is "Ersetzen …" or "Löschen" or "Verbindung testen").Distinct());
             window.Close();
         }
     }
@@ -95,7 +96,7 @@ public class UiTest
 
             await vm.LlmKey.DeleteCommand.ExecuteAsync(null);
             Assert.False(store.Values.ContainsKey(SecretNames.Llm));
-            Assert.Equal("nicht gesetzt", vm.LlmKey.MaskText);
+            Assert.Equal("Kein Key gespeichert", vm.LlmKey.StateText);
             window.Close();
         }
     }

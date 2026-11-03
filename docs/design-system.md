@@ -1,4 +1,4 @@
-# Designsystem (W2-UI1)
+# Designsystem (W2-UI1, UX-1, UX-2)
 
 Gemeinsame Tokens, Styles und Bausteine für alle Fenster nach den eigenen UI/UX-Richtlinien (Skill ui-ux-guidelines, ohne
 fremden Hersteller-Look). Begründete Abweichungen für den Desktop: `docs/ux-exceptions.md`.
@@ -65,11 +65,22 @@ auf Akzentflächen mit `Loom.OnAccent`, die Auswahl in Auswahllisten, Listen (he
 | Hinweis-Zeile | `ds:HintRow TextKey=… Kind=Info|Warning` | Symbol + Text, kein Steuerelement |
 | Verwaltet-Zeile | `ds:HintRow Kind=Managed` | „Einige Einstellungen werden von … verwaltet“ – setzt die Seite selbst |
 | Erweitert | `Expander Classes="advanced"` | seltene Optionen (HIG „Disclosure controls“) |
+| Optionsgruppe | `ds:OptionGroup ItemsSource SelectedItem` | 2–7 Werte als Optionsfelder mit je einer Zeile Erklärung (`Choice.Description`); ein Tab-Stopp, Pfeiltasten wählen (APG „Radio Group“) |
+| Modell-Liste | `ModelList Models=… [Files=…]` | Name, Größe, „Empfohlen“, Herunterladen mit Fortschritt und Restzeit, „Anhalten“, Löschen mit Rückfrage |
+| Zeile ohne Text | `ds:SettingRow Bare="True"` | nur das Steuerelement; die Zeile bleibt Anker für Suche und Firmen-Stufe |
+| Gruppe ohne Karte | `ds:SettingsGroup Classes="bare"` + Zeile `Classes="flush"` | Inhalt bringt eigene Karten mit (App-Profile); Text der Karten liegt auf der Kante |
+| Einklappbarer Eintrag | `Expander Classes="item"` bzw. `Border Classes="card"` mit `ToggleButton Classes="disclosure"` | Anbieter, Server, App-Profile: Kopf mit Name und Zusammenfassung, Körper einspaltig, Fuß „… löschen“ |
+| Hinweis mit Aktion | `ds:HintRow Kind=Info|Warning|Error ActionKey ActionCommand` | Hinweis plus Textknopf (z. B. „Zur Erkennung“) |
+| Key-Feld | `v:KeyFieldView` + `KeyFieldViewModel` | Zustand als Satz, nie der Key; eine Hauptaktion; „Ersetzen …“, „Löschen“ mit Rückgängig |
 
 Regeln:
 - **Zeile mit `Path`**: Titel und Beschreibung kommen aus `SettingsCatalog` (eine Quelle für Seite, Suche und Abdeckungstest). Der Accessible Name des Steuerelements wird automatisch auf den Titel gesetzt.
 - **Fest / Vorgabe / Frei** (`Managed.cs`): Das Fenster setzt `ds:Managed.Context` einmal; jede Zeile fragt die Stufe ihres Pfades. Fest → Zeile weg (auch für Screenreader); Vorgabe → Etikett, nach einer Änderung des Nutzers (User-Override) zusätzlich „Auf Firmenvorgabe zurücksetzen“. Quelle: `PolicyManagedSource` über das `ManagedState`-Modell aus W2-C0 (`PolicySettings.StateOf`, Overrides und Zurücksetzen über `ManagedDefaults`); der Firmenname kommt aus `management.tenantName`, sonst „deine IT“. Tastenkürzel sind nie Fest.
 - **Sofort speichern**: Auswahl und Schalter speichern bei Änderung, Textfelder beim Verlassen bzw. Enter (`UpdateSourceTrigger=LostFocus`). Ungültige Werte zeigen den Fehler in der Zeile und werden nicht gespeichert. Zerstörende Änderungen (Verlauf aus) fragen inline nach.
+- **Knöpfe**: ein Hauptknopf je Bereich (`accent`), Nebenaktionen als `secondary` oder Textknopf (`text`), Zerstörendes als `text danger` mit Gegenstand im Namen („Profil ‚Terminal‘ löschen“). Symbolknöpfe `icon` (32 × 32) nur mit Namen.
+- **Rückgängig statt Rückfrage**, wo es geht: Statuszeile „… gelöscht.“ mit Textknopf „Rückgängig“, gilt bis zur nächsten Aktion (kein Timer, kein Stapel); der Fokus springt auf „Rückgängig“. Nicht umkehrbar (Anbieter samt Key, Verlauf) fragt inline nach.
+- **Nur zeigen, was gilt**: abhängige Zeilen erscheinen erst mit ihrer Voraussetzung (z. B. Proxy-Adresse nur bei „Eigener Proxy“).
+- **Hover und Gedrückt** auf Akzent- und Auswahlflächen sind einen Ton abgesetzt; Schrift darauf bleibt ≥ 4,5:1 (`DesignTokensTest`).
 - **Texte** nur über `Localization/*.json` (DE+EN), Schlüssel-Präfixe: `Page_`, `Section_`, `G_` (Gruppe), `Set_` (Zeile), `Validation_`, `Managed_`.
 
 ## Neue Seite anlegen

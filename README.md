@@ -67,7 +67,7 @@ Beim ersten Start führt ein Assistent in wenigen Schritten zum ersten Diktat:
 
 1. **Sprache** der Oberfläche und des Diktats
 2. **Mikrofon** wählen, mit Pegel-Test
-3. **Erkennung:** Cloud (Anbieter + Key, „Zugang prüfen“) oder Lokal (Modell laden)
+3. **Erkennung:** Cloud (Anbieter + Key, „Verbindung testen“) oder Lokal (Modell laden)
 4. **Stufe** wählen
 5. **Tastenkürzel:** Windows – Kombi testen; Linux – Anleitung fürs Desktop-Kürzel
 6. **Autostart** beim Anmelden (nur für den eigenen Benutzer)

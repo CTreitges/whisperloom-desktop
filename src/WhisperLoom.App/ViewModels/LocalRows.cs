@@ -27,11 +27,23 @@ public sealed partial class LocalServerRow : ObservableObject
         _changed = changed;
         _remove = remove;
         _http = http;
-        Kinds = [.. LocalServer.Kinds.Select(k => new Choice(k, Loc.Instance["ServerKind_" + k]))];
+        Kinds = [.. LocalServer.Kinds.Select(k => new Choice(k, Loc.Instance["ServerKind_" + k], Loc.Instance["ServerKind_" + k + "_Desc"]))];
         _kind = SettingsViewModel.Pick(Kinds, server.Kind);
     }
 
     public LocalServer Server { get; }
+
+    /// <summary>Kopf des eingeklappten Eintrags: „Text · http://127.0.0.1:1234/v1 · qwen2.5“.</summary>
+    public string Summary => string.Join(" · ", new[] { Kind.Label, Server.BaseUrl, Server.Model }.Where(s => !string.IsNullOrWhiteSpace(s)));
+
+    protected override void OnPropertyChanged(System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        base.OnPropertyChanged(e);
+        if (e.PropertyName is nameof(Kind) or nameof(BaseUrl) or nameof(Model))
+        {
+            base.OnPropertyChanged(new System.ComponentModel.PropertyChangedEventArgs(nameof(Summary)));
+        }
+    }
 
     public IReadOnlyList<Choice> Kinds { get; }
 
@@ -133,7 +145,7 @@ public sealed partial class LocalServerRow : ObservableObject
 }
 
 /// <summary>Ein mitgeliefertes Textmodell mit Größe, Lizenz, RAM-Hinweis, Download (fortsetzbar, SHA-256) und Löschen.</summary>
-public sealed partial class TextModelViewModel(TextModel model, LocalParts? parts, long deviceRam) : ObservableObject
+public sealed partial class TextModelViewModel(TextModel model, LocalParts? parts, long deviceRam) : ObservableObject, IModelRow
 {
     private CancellationTokenSource? _download;
 
@@ -152,11 +164,54 @@ public sealed partial class TextModelViewModel(TextModel model, LocalParts? part
 
     public string DownloadName => Loc.Instance.Format("A11y_ItemAction", Loc.Instance["Local_Download"], Model.Label);
 
-    public string CancelName => Loc.Instance.Format("A11y_ItemAction", Loc.Instance["Action_Cancel"], Model.Label);
+    public string CancelName => Loc.Instance.Format("A11y_ItemAction", Loc.Instance["Local_Pause"], Model.Label);
 
     public string DeleteName => Loc.Instance.Format("A11y_ItemAction", Loc.Instance["Local_Delete"], Model.Label);
 
+    /// <summary>Name ohne Größe, Lizenz und Sternchen (Modell-Liste, B5).</summary>
+    public string Name => Model.Label;
+
+    public string Size => Loc.Instance.Format("Model_Size", Model.File.Bytes / 1_000_000);
+
+    public bool Recommended => Model.File.Recommended;
+
+    /// <summary>Optionsfeld der Modell-Liste: gewählt ist <c>local.bundledModel</c>.</summary>
+    public bool IsSelected
+    {
+        get => CurrentId?.Invoke() == Model.Id;
+        set
+        {
+            if (value)
+            {
+                Choose?.Invoke(Model.Id);
+            }
+        }
+    }
+
+    internal Func<string>? CurrentId { get; set; }
+
+    internal Action<string>? Choose { get; set; }
+
+    internal void RefreshSelection() => OnPropertyChanged(nameof(IsSelected));
+
+    public string Note => RamNote;
+
+    /// <summary>Rückfrage vor dem Löschen (inline in der Zeile, nennt Name und Größe).</summary>
+    [ObservableProperty] private bool _deletePending;
+
+    public string DeleteQuestion => Loc.Instance.Format("Model_DeleteQuestion", Model.Label, Model.File.Bytes / 1_000_000);
+
+    [RelayCommand]
+    private void AskDelete() => DeletePending = true;
+
+    [RelayCommand]
+    private void Keep() => DeletePending = false;
+
     [ObservableProperty] private string _status = "";
+
+    [ObservableProperty] private bool _isDownloading;
+
+    [ObservableProperty] private double _progress;
 
     /// <summary>Lädt das Modell (Range-Fortsetzung, SHA-256, Platzprüfung, Wiederholungen) und <c>llama-server</c> (CPU, Vulkan optional).</summary>
     [RelayCommand]
@@ -164,11 +219,17 @@ public sealed partial class TextModelViewModel(TextModel model, LocalParts? part
     {
         if (parts is null || _download is not null || !Fits) return;
         _download = new CancellationTokenSource();
+        IsDownloading = true;
+        Progress = 0;
         try
         {
             Status = Loc.Instance["Local_Downloading"];
             var ok = await new ModelDownloader(parts.Download).DownloadAsync(Model.File, parts.Bundled.Models,
-                (bytes, total, _) => Avalonia.Threading.Dispatcher.UIThread.Post(() => Status = $"{bytes * 100 / Math.Max(1, total)} %"), _download.Token);
+                (bytes, total, rate) => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    Progress = bytes * 100.0 / Math.Max(1, total);
+                    Status = DownloadText.Of(bytes, total, rate);
+                }), _download.Token);
             if (ok)
             {
                 await parts.Bundled.Release.EnsureAsync(SidecarVariant.Cpu, null, _download.Token);
@@ -199,6 +260,7 @@ public sealed partial class TextModelViewModel(TextModel model, LocalParts? part
         {
             _download.Dispose();
             _download = null;
+            IsDownloading = false;
             OnPropertyChanged(nameof(Installed));
             OnPropertyChanged(nameof(CanDownload));
         }
@@ -210,6 +272,7 @@ public sealed partial class TextModelViewModel(TextModel model, LocalParts? part
     [RelayCommand]
     public async Task Delete()
     {
+        DeletePending = false;
         if (parts is null || _download is not null) return;
         await parts.Bundled.StopAsync();
         try
