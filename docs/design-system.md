@@ -7,7 +7,7 @@ Dateien: `src/WhisperLoom.App/Design/` – `Tokens.axaml` (Farben, Abstände, Sc
 (Vorlagen der Bausteine), `Styles.axaml` (Klassen), dazu die Bausteine als C#-Klassen. Eingebunden in `App.axaml`.
 
 ## Hell/Dunkel/Hochkontrast
-- Die App steht global auf Dunkel (Bühne, Overlay, Verlauf bleiben bis UX-3/UX-4 so).
+- Die App steht global auf Dunkel; Overlay, Pille und Hinweise bleiben bis UX-4 so. Einstellungen, Einrichtung, Verlauf, Hilfe, Versionsliste, Update-Nachfrage und Bühne folgen dem System (die Bühne zusätzlich mit „Dunkel für Beamer“, D7).
 - Ein Fenster mit Designsystem folgt dem System: im Konstruktor `SystemTheme.Follow(this, Application.Current?.PlatformSettings)` und `Classes="loom"` am Fenster. Ein Wechsel im System gilt sofort.
 - Hochkontrast: Ist im System ein Kontrastdesign an (`PlatformColorValues.ContrastPreference == High`), nimmt das Fenster die Variante `SystemTheme.HighContrast` (Rückfall Dunkel). Schwarz, Weiß, Akzent `#6FD9C7`, Gelb nur für den Fokus. Nur unter Windows: Avalonia liest unter Linux kein Kontrastdesign (`ContrastPreference` bleibt dort „keine Vorgabe“).
 - Farben nur als `{DynamicResource Loom.*}`, nie als feste Werte oder `StaticResource` – sonst wechselt die Farbe nicht mit.

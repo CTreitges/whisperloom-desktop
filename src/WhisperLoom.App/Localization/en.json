@@ -981,5 +981,14 @@
   "Update_Body": "Installing closes WhisperLoom briefly and restarts it; your settings stay.",
   "Update_Heading": "WhisperLoom {0} is available",
   "Update_InstallChosen": "Install and restart",
-  "Update_Notes": "What is new in {0}"
+  "Update_Notes": "What is new in {0}",
+  "Language_Current": "Language: {0}",
+  "Stage_CopyRaw": "Copy raw text",
+  "Stage_CopyResult": "Copy result",
+  "Stage_Current": "Stage: {0}",
+  "Stage_Dark": "Dark for projector",
+  "Stage_Larger": "Larger text (Ctrl+Plus)",
+  "Stage_NextHelp": "Click switches to the next stage",
+  "Stage_ResultBadge": "{0} · AI",
+  "Stage_Smaller": "Smaller text (Ctrl+Minus)"
 }

@@ -981,5 +981,14 @@
   "Update_Body": "Beim Installieren schließt WhisperLoom kurz und startet neu; deine Einstellungen bleiben.",
   "Update_Heading": "WhisperLoom {0} ist da",
   "Update_InstallChosen": "Installieren und neu starten",
-  "Update_Notes": "Was ist neu in {0}"
+  "Update_Notes": "Was ist neu in {0}",
+  "Language_Current": "Sprache: {0}",
+  "Stage_CopyRaw": "Rohtext kopieren",
+  "Stage_CopyResult": "Ergebnis kopieren",
+  "Stage_Current": "Stufe: {0}",
+  "Stage_Dark": "Dunkel für Beamer",
+  "Stage_Larger": "Schrift größer (Strg+Plus)",
+  "Stage_NextHelp": "Klick wechselt zur nächsten Stufe",
+  "Stage_ResultBadge": "{0} · KI",
+  "Stage_Smaller": "Schrift kleiner (Strg+Minus)"
 }

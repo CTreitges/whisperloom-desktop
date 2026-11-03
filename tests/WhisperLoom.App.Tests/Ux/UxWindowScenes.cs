@@ -112,13 +112,13 @@ internal static class UxWindowScenes
         return Task.FromResult(new UxScene(window, window, null));
     }
 
-    /// <summary>Bühne (immer dunkel, Beamer): Aufnahme läuft bzw. Ergebnis da.</summary>
+    /// <summary>Bühne (folgt dem System, UX-3): Aufnahme läuft bzw. Ergebnis da.</summary>
     public static async Task<UxScene> Stage(ThemeVariant theme, bool result)
     {
         var f = new ControllerFixture(new WhisperLoomSettings { Language = "de", Refine = new RefineSettings { Stage = "polish" } });
         f.Pipeline.RawText = "ähm also das meeting ist am donnerstag um zehn und bitte bringt die zahlen mit";
         var vm = new StageViewModel(f.Controller);
-        var window = new StageWindow(vm) { Width = 1200, Height = 700, RequestedThemeVariant = UxStage.AppFixed };
+        var window = new StageWindow(vm) { Width = 1200, Height = 700, RequestedThemeVariant = theme }; // UX-3: folgt dem System
         window.Show();
         f.Controller.Start();
         f.Now += TimeSpan.FromSeconds(6);
