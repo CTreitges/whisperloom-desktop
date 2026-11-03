@@ -169,17 +169,65 @@ public sealed class HistoryWindowTest : IDisposable
     }
 
     [AvaloniaFact]
-    public async Task Esc_verwirft_die_Bearbeitung()
+    public async Task Esc_ohne_Aenderung_beendet_die_Bearbeitung_sofort()
     {
         var vm = await Model();
         var w = await Show(vm);
         Press(w, Key.F2, physical: PhysicalKey.F2);
         await Settle();
-        vm.Detail!.EditText = "verworfen";
         Press(w, Key.Escape, physical: PhysicalKey.Escape);
         await Settle();
+        Assert.False(vm.Detail!.IsEditing);
+        Assert.False(vm.Detail.DiscardPending);
+        w.Close();
+    }
+
+    /// <summary>UX-6 N14: Esc mit geändertem Text fragt erst; „Weiter bearbeiten“ ist der Standard, Verwerfen nur ausdrücklich.</summary>
+    [AvaloniaFact]
+    public async Task Esc_mit_Aenderung_fragt_vor_dem_Verwerfen()
+    {
+        var vm = await Model();
+        var w = await Show(vm);
+        Press(w, Key.F2, physical: PhysicalKey.F2);
+        await Settle();
+        vm.Detail!.EditText = "verworfen?";
+        Press(w, Key.Escape, physical: PhysicalKey.Escape);
+        await Settle();
+        Assert.True(vm.Detail.IsEditing); // nichts still verloren
+        Assert.True(vm.Detail.DiscardPending);
+        Assert.True(w.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "KeepEditButton").IsFocused);
+
+        vm.Detail.KeepEditingCommand.Execute(null);
+        Assert.False(vm.Detail.DiscardPending);
+        Assert.Equal("verworfen?", vm.Detail.EditText);
+
+        vm.Detail.CancelEditCommand.Execute(null); // „Abbrechen“ fragt genauso
+        Assert.True(vm.Detail.DiscardPending);
+        vm.Detail.DiscardEditCommand.Execute(null);
         Assert.False(vm.Detail.IsEditing);
+        Assert.False(vm.Detail.DiscardPending);
         Assert.Equal("Vier heute.", (await _f.History.GetAsync(vm.Selected!.Entry.Id, CancellationToken.None))!.Text);
+        w.Close();
+    }
+
+    /// <summary>UX-6 N15/N16: „Löschen“ ist ein eigener Knopf (kein Ein-Eintrag-Menü), der Stufen-Wähler zeigt seine Tasten.</summary>
+    [AvaloniaFact]
+    public async Task Loeschen_als_Knopf_und_Tastenzeile_am_Waehler()
+    {
+        var vm = await Model();
+        var w = await Show(vm);
+        Assert.DoesNotContain(w.GetVisualDescendants().OfType<Button>(), b => b.Name == "MoreButton");
+        var delete = w.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "DeleteButton");
+        Assert.True(delete.IsEffectivelyVisible);
+        delete.Command!.Execute(null);
+        await Settle();
+        Assert.Equal(3, vm.Rows.Count);
+        Assert.True(vm.CanUndo);
+
+        w.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "ReprocessButton").Command!.Execute(null);
+        await Settle();
+        var keys = w.GetVisualDescendants().OfType<WhisperLoom.App.Design.KeycapText>().Single(k => k.Name == "ReprocessKeys");
+        Assert.True(keys.IsEffectivelyVisible);
         w.Close();
     }
 

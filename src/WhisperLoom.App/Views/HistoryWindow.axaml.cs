@@ -56,8 +56,16 @@ public partial class HistoryWindow : Window
             }
             else if (none && e.Key == Key.Escape)
             {
+                // Geänderter Text: erst fragen, Fokus auf „Weiter bearbeiten“ (zerstörend nie Standard).
                 vm.Detail?.CancelEdit();
-                FocusList();
+                if (vm.Detail is { DiscardPending: true })
+                {
+                    FocusNamed("KeepEditButton");
+                }
+                else
+                {
+                    FocusList();
+                }
                 e.Handled = true;
             }
             return;
@@ -163,6 +171,17 @@ public partial class HistoryWindow : Window
             Entries.Focus();
         }
     }, DispatcherPriority.Loaded);
+
+    /// <summary>Fokus auf ein benanntes Element im Detail (liegt in einem Template, darum über den Visual-Baum).</summary>
+    private void FocusNamed(string name) => Dispatcher.UIThread.Post(
+        () => this.GetVisualDescendants().OfType<Control>().FirstOrDefault(c => c.Name == name && c.IsEffectivelyVisible)?.Focus(),
+        DispatcherPriority.Loaded);
+
+    /// <summary>„Abbrechen“ mit Änderungen: Rückfrage erscheint, Fokus auf „Weiter bearbeiten“ (UX-6 N14).</summary>
+    private void OnCancelEditClick(object? sender, RoutedEventArgs e) => FocusNamed("KeepEditButton");
+
+    /// <summary>„Weiter bearbeiten“: zurück ins Textfeld.</summary>
+    private void OnKeepEditingClick(object? sender, RoutedEventArgs e) => FocusNamed("EditBox");
 
     /// <summary>Hilfe-Abschnitt „Verlauf“ (wie F1).</summary>
     private void OnHelp(object? sender, RoutedEventArgs e) => Help.HelpLauncher.Open("history");

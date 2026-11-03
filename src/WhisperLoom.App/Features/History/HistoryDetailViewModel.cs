@@ -71,15 +71,44 @@ public sealed partial class HistoryDetailViewModel : ObservableObject
     [ObservableProperty]
     private string _editText = "";
 
+    /// <summary>Rückfrage „Änderungen verwerfen?“ sichtbar (UX-6 N14: Abbrechen verliert keine Eingabe still).</summary>
+    [ObservableProperty]
+    private bool _discardPending;
+
+    /// <summary>Der Text im Bearbeitungsfeld weicht von der Fassung ab.</summary>
+    public bool EditChanged => IsEditing && EditText != Text;
+
     [RelayCommand]
     public void BeginEdit()
     {
         EditText = Text;
+        DiscardPending = false;
         IsEditing = true;
     }
 
+    /// <summary>Abbrechen (Knopf oder Esc): ohne Änderung sofort, sonst erst die Rückfrage.</summary>
     [RelayCommand]
-    public void CancelEdit() => IsEditing = false;
+    public void CancelEdit()
+    {
+        if (EditChanged)
+        {
+            DiscardPending = true;
+            return;
+        }
+        DiscardEdit();
+    }
+
+    /// <summary>Rückfrage bestätigt: Änderungen verwerfen.</summary>
+    [RelayCommand]
+    public void DiscardEdit()
+    {
+        DiscardPending = false;
+        IsEditing = false;
+    }
+
+    /// <summary>Rückfrage verneint: weiter bearbeiten.</summary>
+    [RelayCommand]
+    public void KeepEditing() => DiscardPending = false;
 
     [RelayCommand]
     public async Task SaveEdit()
@@ -90,6 +119,7 @@ public sealed partial class HistoryDetailViewModel : ObservableObject
         }
         var key = SelectedChip.Key == VersionChip.Origin ? HistoryVersions.Edited : SelectedChip.Key;
         var updated = await _actions.Edit(Entry.Id, key, EditText);
+        DiscardPending = false;
         IsEditing = false;
         if (updated is null)
         {

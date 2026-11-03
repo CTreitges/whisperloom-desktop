@@ -205,6 +205,9 @@
                       <StackPanel Grid.Column="1" Spacing="{DynamicResource Loom.Space.2}">
                         <TextBlock Text="{Binding [History_ReprocessTip], Source={x:Static l:Loc.Instance}}" TextWrapping="Wrap" />
                         <ds:StagePicker x:Name="StagePickerView" DataContext="{Binding StagePicker}" />
+                        <!-- Tastenwege wie im Markierungs-Wähler (UX-6 N16): der Wähler hält Tab, Esc/Enter verlassen ihn. -->
+                        <ds:KeycapText x:Name="ReprocessKeys" FontSize="{DynamicResource Loom.Font.Caption}" Foreground="{DynamicResource Loom.TextSecondary}"
+                                       Template="{Binding [Selection_PickerKeys], Source={x:Static l:Loc.Instance}}" Keys="{x:Static ds:StagePicker.KeyNames}" />
                       </StackPanel>
                     </Grid>
                   </Border>
@@ -224,10 +227,26 @@
                       </StackPanel>
                     </Grid>
                   </Border>
+                  <Border Classes="confirm" IsVisible="{Binding DiscardPending}" MaxWidth="460" HorizontalAlignment="Left">
+                    <Grid ColumnDefinitions="Auto,*">
+                      <ds:LoomIcon Data="{DynamicResource Loom.Icon.Warning}" Width="20" Height="20" Margin="0,0,10,0" VerticalAlignment="Top"
+                                   Foreground="{DynamicResource Loom.Warning}" />
+                      <StackPanel Grid.Column="1" Spacing="{DynamicResource Loom.Space.2}">
+                        <TextBlock Text="{Binding [History_DiscardQuestion], Source={x:Static l:Loc.Instance}}" TextWrapping="Wrap"
+                                   AutomationProperties.LiveSetting="Assertive" />
+                        <WrapPanel ItemSpacing="16" LineSpacing="8">
+                          <Button x:Name="KeepEditButton" Classes="accent" Content="{Binding [History_KeepEditing], Source={x:Static l:Loc.Instance}}"
+                                  Command="{Binding KeepEditingCommand}" Click="OnKeepEditingClick" />
+                          <Button x:Name="DiscardEditButton" Classes="text danger" VerticalAlignment="Center"
+                                  Content="{Binding [History_DiscardEdit], Source={x:Static l:Loc.Instance}}" Command="{Binding DiscardEditCommand}" />
+                        </WrapPanel>
+                      </StackPanel>
+                    </Grid>
+                  </Border>
                   <WrapPanel Margin="17,0,0,0" ItemSpacing="16" LineSpacing="8" IsVisible="{Binding IsEditing}">
                     <Button x:Name="SaveEditButton" Classes="accent" Content="{Binding [Action_Save], Source={x:Static l:Loc.Instance}}" Command="{Binding SaveEditCommand}" />
                     <Button x:Name="CancelEditButton" Classes="text" VerticalAlignment="Center" Content="{Binding [Action_Cancel], Source={x:Static l:Loc.Instance}}"
-                            Command="{Binding CancelEditCommand}" />
+                            Command="{Binding CancelEditCommand}" Click="OnCancelEditClick" />
                   </WrapPanel>
                   <TextBlock x:Name="DetailStatus" Margin="17,0,0,0" Text="{Binding Status}" TextWrapping="Wrap" Foreground="{DynamicResource Loom.TextSecondary}"
                              IsVisible="{Binding Status.Length}" AutomationProperties.LiveSetting="Polite" />
@@ -266,20 +285,15 @@
             </Button>
           </WrapPanel>
           <WrapPanel x:Name="Toolbar" HorizontalAlignment="Right" ItemSpacing="8" LineSpacing="8" IsVisible="{Binding ShowToolbar}">
-            <Button x:Name="MoreButton" Classes="icon" CornerRadius="{DynamicResource Loom.Radius.Control}"
-                    AutomationProperties.Name="{Binding [History_More], Source={x:Static l:Loc.Instance}}"
-                    ToolTip.Tip="{Binding [History_More], Source={x:Static l:Loc.Instance}}">
-              <ds:LoomIcon Data="{DynamicResource Loom.Icon.More}" Width="20" Height="20" />
-              <Button.Flyout>
-                <MenuFlyout Placement="TopEdgeAlignedLeft">
-                  <MenuItem x:Name="DeleteMenuItem" Classes="danger" Header="{Binding [Action_Delete], Source={x:Static l:Loc.Instance}}"
-                            InputGesture="Delete" Command="{Binding DeleteSelectedCommand}">
-                    <MenuItem.Icon>
-                      <ds:LoomIcon Data="{DynamicResource Loom.Icon.Delete}" Width="16" Height="16" Foreground="{DynamicResource Loom.Error}" />
-                    </MenuItem.Icon>
-                  </MenuItem>
-                </MenuFlyout>
-              </Button.Flyout>
+            <!-- Löschen als eigener Textknopf (UX-6 N15: ein Menü erst ab drei Einträgen); Rückgängig mit Strg+Z. -->
+            <Button x:Name="DeleteButton" Classes="text danger" VerticalAlignment="Center" Command="{Binding DeleteSelectedCommand}"
+                    AutomationProperties.Name="{Binding [Action_Delete], Source={x:Static l:Loc.Instance}}"
+                    AutomationProperties.AcceleratorKey="{Binding [History_KeyDelete], Source={x:Static l:Loc.Instance}}">
+              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
+                <ds:LoomIcon Data="{DynamicResource Loom.Icon.Delete}" Width="16" Height="16" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding [Action_Delete], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
+                <Border Classes="keycap"><TextBlock Text="{Binding [History_KeyDelete], Source={x:Static l:Loc.Instance}}" /></Border>
+              </StackPanel>
             </Button>
             <Button x:Name="EditButton" Classes="secondary" Click="OnEditClick"
                     AutomationProperties.Name="{Binding [History_Edit], Source={x:Static l:Loc.Instance}}"
