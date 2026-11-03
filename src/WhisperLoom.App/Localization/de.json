@@ -991,5 +991,6 @@
   "Stage_NextHelp": "Klick wechselt zur nächsten Stufe",
   "Stage_ResultBadge": "{0} · KI",
   "Stage_Smaller": "Schrift kleiner (Strg+Minus)",
-  "Set_StageDark_Desc": "Die Bühne bleibt dunkel, auch wenn das System hell ist; in der Bühne auch mit Strg+D"
+  "Set_StageDark_Desc": "Die Bühne bleibt dunkel, auch wenn das System hell ist; in der Bühne auch mit Strg+D",
+  "History_EmptyHintNoKeys": "Starte ein Diktat über das Tray-Menü (Aufnahme starten) oder die Bühne. Jedes Diktat erscheint danach hier."
 }

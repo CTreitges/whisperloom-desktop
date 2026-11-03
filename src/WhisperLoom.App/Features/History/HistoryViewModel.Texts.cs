@@ -15,8 +15,16 @@ public sealed partial class HistoryViewModel
     /// <summary>Rückfrage vor „Verlauf löschen“ mit Anzahl (Befund 7): „Alle 4 Diktate löschen? …“.</summary>
     public string ClearQuestion => Loc.Instance.Format(_all.Count == 1 ? "History_ClearConfirmOne" : "History_ClearConfirm", _all.Count);
 
-    /// <summary>Leerzustand: Satz mit den Tastenkürzeln als Tastenkappen (Windows) bzw. dem Desktop-Kürzel (Linux).</summary>
-    public string EmptyTemplate => Loc.Instance[actions.StartKeys is { Count: >= 2 } ? "History_EmptyHint" : "History_EmptyHintLinux"];
+    /// <summary>
+    /// Leerzustand: Satz mit den Tastenkürzeln als Tastenkappen (Windows), mit Tray-Menü und Bühne (Windows ohne Kürzel, leere
+    /// Liste) bzw. mit dem Desktop-Kürzel (Linux, null).
+    /// </summary>
+    public string EmptyTemplate => Loc.Instance[actions.StartKeys switch
+    {
+        { Count: >= 2 } => "History_EmptyHint",
+        not null => "History_EmptyHintNoKeys",
+        null => "History_EmptyHintLinux",
+    }];
 
     public IReadOnlyList<string> EmptyKeys => actions.StartKeys ?? [];
 

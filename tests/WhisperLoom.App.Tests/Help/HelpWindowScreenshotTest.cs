@@ -47,8 +47,7 @@ public sealed class HelpWindowScreenshotTest
                 Save(window, $"help-1-overview-{label}-{lang}.png");
                 window.ShowTopic("selection");
                 Save(window, $"help-2-section-{label}-{lang}.png");
-                window.Help!.SearchText = "Proxy";
-                window.Help.SelectedSection = window.Help.Results[0].Section;
+                window.Help!.SearchText = "Proxy"; // während der Suche ist kein Abschnitt gewählt (eine Wahl beendet sie)
                 Save(window, $"help-3-search-{label}-{lang}.png");
                 window.Close();
             }

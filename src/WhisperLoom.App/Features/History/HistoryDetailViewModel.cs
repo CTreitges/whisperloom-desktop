@@ -243,9 +243,9 @@ public sealed record HistoryActions(
     IReadOnlyList<string>? StartKeys = null)
 {
     /// <summary>
-    /// Starttasten für den Leerzustand: Halten und Umschalten unter Windows mit eingeschalteten Tastenkürzeln; sonst null
-    /// (der Satz kommt dann ohne Kürzel, Prüfer-Fund PR #42).
+    /// Starttasten für den Leerzustand: Halten und Umschalten unter Windows mit eingeschalteten Tastenkürzeln; Windows ohne
+    /// Kürzel leer (Satz mit Tray-Menü und Bühne); Linux null (Satz mit dem Desktop-Kürzel). Prüfer-Funde PR #42.
     /// </summary>
     public static IReadOnlyList<string>? StartKeysFor(Services.DesktopSettings desktop, bool windows) =>
-        windows && desktop.HotkeysEnabled ? [desktop.HotkeyHold, desktop.HotkeyToggle] : null;
+        !windows ? null : desktop.HotkeysEnabled ? [desktop.HotkeyHold, desktop.HotkeyToggle] : [];
 }

@@ -189,14 +189,23 @@ public sealed class HistoryTextsTest : IDisposable
         Assert.Equal(0, raised); // geschlossen: kein Abo mehr auf Loc.Instance
     }
 
-    [Fact]
-    public void Starttasten_nur_unter_Windows_mit_eingeschalteten_Tastenkuerzeln()
+    [AvaloniaFact]
+    public async Task Starttasten_nur_unter_Windows_mit_eingeschalteten_Tastenkuerzeln()
     {
-        // Prüfer-Fund PR #42: Der Leerzustand nannte die Kürzel auch bei desktop.hotkeysEnabled = false.
+        // Prüfer-Fund PR #42: Der Leerzustand nannte die Kürzel auch bei desktop.hotkeysEnabled = false; die Nachprüfung fand,
+        // dass Windows ohne Kürzel danach den Linux-Satz („Desktop-Kürzel“) bekam.
+        Loc.Instance.SetLanguage("de");
         var on = new Services.DesktopSettings { HotkeyHold = "Ctrl+Win", HotkeyToggle = "Ctrl+Space" };
         Assert.Equal(["Ctrl+Win", "Ctrl+Space"], HistoryActions.StartKeysFor(on, windows: true));
         Assert.Null(HistoryActions.StartKeysFor(on, windows: false));
         on.HotkeysEnabled = false;
-        Assert.Null(HistoryActions.StartKeysFor(on, windows: true));
+        var noKeys = HistoryActions.StartKeysFor(on, windows: true);
+        Assert.NotNull(noKeys);
+        Assert.Empty(noKeys);
+
+        var vm = new HistoryViewModel(_f.History, Actions(noKeys), () => Now);
+        await vm.LoadAsync();
+        Assert.Equal(Loc.Instance["History_EmptyHintNoKeys"], vm.EmptyTemplate);
+        Assert.Contains("Tray", vm.EmptyTemplate, StringComparison.Ordinal);
     }
 }

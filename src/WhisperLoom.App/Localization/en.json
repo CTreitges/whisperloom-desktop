@@ -991,5 +991,6 @@
   "Stage_NextHelp": "Click switches to the next stage",
   "Stage_ResultBadge": "{0} · AI",
   "Stage_Smaller": "Smaller text (Ctrl+Minus)",
-  "Set_StageDark_Desc": "Keeps the stage dark even when the system is light; on the stage also with Ctrl+D"
+  "Set_StageDark_Desc": "Keeps the stage dark even when the system is light; on the stage also with Ctrl+D",
+  "History_EmptyHintNoKeys": "Start a dictation from the tray menu (Start recording) or the stage. Every dictation then appears here."
 }

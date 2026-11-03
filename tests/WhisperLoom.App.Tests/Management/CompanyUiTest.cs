@@ -73,6 +73,38 @@ public sealed class CompanyUiTest
     }
 
     [AvaloniaFact]
+    public void Zuruecksprung_zur_Nutzung_fokussiert_die_gewaehlte_Option_und_Sprachwechsel_behaelt_sie()
+    {
+        // Nachprüfung PR #42: Der Fokus ging auf das erste Element („Für mich“) statt auf die gewählte Option der Gruppe;
+        // Leertaste hätte dort den Pfad gewechselt.
+        Loc.Instance.SetLanguage("de");
+        using var w = new Wizard();
+        var window = Show(w.Vm);
+        var usage = Named<WhisperLoom.App.Design.OptionGroup>(window, "UsageBox");
+        usage.Buttons.ElementAt(1).IsChecked = true;
+        Dispatcher.UIThread.RunJobs();
+        w.Vm.Next();
+        Dispatcher.UIThread.RunJobs();
+        var back = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(Named<ItemsControl>(window, "StepList"))
+            .OfType<Button>().Single(SetupUiTest.Shown);
+        back.Focus(Avalonia.Input.NavigationMethod.Tab);
+
+        Avalonia.Headless.HeadlessWindowExtensions.KeyPress(window, Avalonia.Input.Key.Enter, Avalonia.Input.RawInputModifiers.None,
+            Avalonia.Input.PhysicalKey.Enter, null);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(SetupStep.Usage, w.Vm.Current);
+        Assert.Same(usage.Buttons.ElementAt(1), window.FocusManager?.GetFocusedElement());
+
+        Loc.Instance.SetLanguage("en");
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(w.Vm.UseCompany);
+        Assert.True(usage.Buttons.ElementAt(1).IsChecked); // neue Liste nach Sprachwechsel: Wahl bleibt angehakt
+        Assert.Equal(Loc.Instance["Setup_UsageCompany"], Avalonia.Automation.AutomationProperties.GetName(usage.Buttons.ElementAt(1)));
+        window.Close();
+        Loc.Instance.SetLanguage("de");
+    }
+
+    [AvaloniaFact]
     public async Task Firmen_Pfad_wartet_auf_Freigabe_und_laeuft_danach_selbst_weiter()
     {
         Loc.Instance.SetLanguage("de");

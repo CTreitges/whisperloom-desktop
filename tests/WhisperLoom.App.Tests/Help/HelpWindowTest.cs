@@ -131,8 +131,17 @@ public sealed class HelpWindowTest
         Assert.True(window.Help.ShowSection);
         Assert.Equal("history", window.Help.SelectedSection!.Id);
 
-        // Suche leeren (Esc) bringt den vorherigen Abschnitt zurück.
+        // Tab aus der Suche (über × und die Seitenleiste) wählt nichts und beendet die Suche nicht.
         window.Help.SearchText = "Proxy";
+        Dispatcher.UIThread.RunJobs();
+        Named<TextBox>(window, "SearchBox").Focus(NavigationMethod.Tab);
+        for (var i = 0; i < 3; i++)
+        {
+            window.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
+            Assert.True(window.Help.IsSearching);
+        }
+
+        // Suche leeren (Esc) bringt den vorherigen Abschnitt zurück.
         window.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
         Assert.Equal("history", window.Help.SelectedSection!.Id);
         window.Close();
