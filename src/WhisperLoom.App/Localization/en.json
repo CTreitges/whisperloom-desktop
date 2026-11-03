@@ -392,7 +392,7 @@
   "Model_ProviderDefault": "Provider default",
   "Model_Recommended": "Recommended: {0}",
   "Model_SameAsAccess": "Same as AI access",
-  "Models_Http": "Server responded with HTTP {0}. Check address and key.",
+  "Models_Http": "The server refused the model list request. Check the address and key.",
   "Models_Load": "Refresh model list",
   "Models_Loaded": "{0} models from the server",
   "Models_Loading": "Loading …",
@@ -1016,5 +1016,6 @@
   "Channel_DownloadingProgress": "Downloading version {0} – {1}",
   "Download_Percent": "{0}%",
   "Channel_DownloadCanceled": "Download canceled; the installed version stays.",
-  "Hint_Close": "Close the notice"
+  "Hint_Close": "Close the notice",
+  "Sync_ExportFailed": "Export failed: the file could not be written. Choose another folder."
 }

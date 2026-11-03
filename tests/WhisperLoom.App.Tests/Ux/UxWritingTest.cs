@@ -26,9 +26,9 @@ public sealed partial class UxWritingTest
         Assert.True(hits.Count == 0, string.Join(Environment.NewLine, hits));
     }
 
-    [GeneratedRegex(@"\bbitte\b|ungültig|(?<!rechts)\bklick|anklick", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"\bbitte\b|ungültig|(?<!rechts)\bklick|anklick|HTTP \{\d\}", RegexOptions.IgnoreCase)]
     private static partial Regex GermanRule();
 
-    [GeneratedRegex(@"\bplease\b|\binvalid\b|(?<!right-)\bclick", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"\bplease\b|\binvalid\b|(?<!right-)\bclick|HTTP \{\d\}", RegexOptions.IgnoreCase)]
     private static partial Regex EnglishRule();
 }

@@ -392,7 +392,7 @@
   "Model_ProviderDefault": "Standard des Anbieters",
   "Model_Recommended": "Empfehlung: {0}",
   "Model_SameAsAccess": "Wie KI-Zugang",
-  "Models_Http": "Server antwortet mit HTTP {0}. Adresse und Key prüfen.",
+  "Models_Http": "Der Server hat die Abfrage der Modelle abgelehnt. Adresse und Key prüfen.",
   "Models_Load": "Modellliste aktualisieren",
   "Models_Loaded": "{0} Modelle vom Server",
   "Models_Loading": "Lädt …",
@@ -1016,5 +1016,6 @@
   "Channel_DownloadingProgress": "Version {0} wird geladen – {1}",
   "Download_Percent": "{0} %",
   "Channel_DownloadCanceled": "Laden abgebrochen; die installierte Version bleibt.",
-  "Hint_Close": "Hinweis schließen"
+  "Hint_Close": "Hinweis schließen",
+  "Sync_ExportFailed": "Export gescheitert: Die Datei ließ sich nicht schreiben. Einen anderen Ordner wählen."
 }

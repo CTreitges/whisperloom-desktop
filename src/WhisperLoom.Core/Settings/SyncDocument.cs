@@ -54,12 +54,12 @@ public sealed record SyncDocument(
         catch (JsonException e)
         {
             // Nur Zeile/Position, nicht der Text: die Datei kann Keys enthalten.
-            throw new SyncFormatException($"Kein gültiges JSON (Zeile {e.LineNumber + 1}, Position {e.BytePositionInLine + 1}).");
+            throw new SyncFormatException($"Die Datei ist kein lesbares JSON (Zeile {e.LineNumber + 1}, Position {e.BytePositionInLine + 1}). Eine mit „Exportieren“ erzeugte Datei wählen.");
         }
         catch (ArgumentException)
         {
             // JsonObject wirft beim Zugriff auf doppelte Eigenschaften; den Namen nicht nennen (könnte ein Key sein).
-            throw new SyncFormatException("Kein gültiges JSON: doppelte Eigenschaft.");
+            throw new SyncFormatException("Die Datei enthält eine Eigenschaft doppelt. Eine mit „Exportieren“ erzeugte Datei wählen.");
         }
         if (node is not JsonObject root)
         {

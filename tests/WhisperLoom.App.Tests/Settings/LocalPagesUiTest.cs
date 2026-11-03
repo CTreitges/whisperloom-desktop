@@ -97,7 +97,7 @@ public sealed class LocalPagesUiTest
         server.Map("/v1/models", _ => new FakeResponse(500, "kaputt"));
         await page.SttModelPicker.LoadCommand.ExecuteAsync(null);
         Assert.True(page.SttModelPicker.StatusIsError);
-        Assert.Contains("500", page.SttModelPicker.Status, StringComparison.Ordinal);
+        Assert.Equal(Loc.Instance["Models_Http"], page.SttModelPicker.Status); // ohne Statuscode im Text (UX-6, Richtlinie 05 §5.3)
         Assert.Contains(page.SttModel.Items, c => c.Value == "whisper-large-v3"); // Cache bleibt
         window.Close();
     }
