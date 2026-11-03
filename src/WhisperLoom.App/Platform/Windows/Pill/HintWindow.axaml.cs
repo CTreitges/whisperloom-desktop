@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Interactivity;
 using Avalonia.Media;
 using WhisperLoom.App.Platform.Windows.Overlay;
 
@@ -42,6 +43,15 @@ public partial class HintWindow : Window
     public string Kind { get; private set; } = "";
 
     public HintTone Tone { get; private set; }
+
+    /// <summary>Bleibt stehen, bis „Schließen“ oder das nächste Diktat ihn wegnimmt (Warnung, Fehler).</summary>
+    public bool Sticky
+    {
+        get => CloseButton.IsVisible;
+        set => CloseButton.IsVisible = value;
+    }
+
+    private void OnClose(object? sender, RoutedEventArgs e) => Hide();
 
     /// <summary>Text des Hinweises mit eingesetzten Tasten (Status, Screenreader).</summary>
     public string Text { get; private set; } = "";

@@ -29,7 +29,7 @@
     </Style>
   </Window.Styles>
   <Border x:Name="Panel" Classes="float" ClipToBounds="True" AutomationProperties.LiveSetting="Polite">
-    <Grid ColumnDefinitions="3,Auto,*">
+    <Grid ColumnDefinitions="3,Auto,*,Auto">
       <Border x:Name="Bar" />
       <ds:LoomIcon x:Name="KindIcon" Grid.Column="1" Width="20" Height="20" VerticalAlignment="Top"
                    Margin="12,14,0,0" />
@@ -37,6 +37,12 @@
         <TextBlock x:Name="Caption" FontSize="{DynamicResource Loom.Font.Caption}" Foreground="{DynamicResource Loom.TextSecondary}" />
         <ds:KeycapText x:Name="Message" FontSize="{DynamicResource Loom.Font.Title}" FontWeight="SemiBold" Foreground="{DynamicResource Loom.Text}" />
       </StackPanel>
+      <!-- Warnung/Fehler bleiben stehen, bis sie geschlossen werden oder das nächste Diktat beginnt (UX-6 N21). -->
+      <Button x:Name="CloseButton" Grid.Column="3" Classes="icon" IsVisible="False" VerticalAlignment="Top" Margin="0,6,6,0"
+              Click="OnClose" AutomationProperties.Name="{Binding [Hint_Close], Source={x:Static l:Loc.Instance}}"
+              ToolTip.Tip="{Binding [Hint_Close], Source={x:Static l:Loc.Instance}}">
+        <ds:LoomIcon Data="{DynamicResource Loom.Icon.Close}" Width="16" Height="16" />
+      </Button>
     </Grid>
   </Border>
 </Window>
