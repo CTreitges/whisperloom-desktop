@@ -1,5 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ds="using:WhisperLoom.App.Design">
   <!-- Klassen-Styles des Designsystems (docs/design-system.md). Gelten nur, wo die Klasse gesetzt ist. -->
 
   <!-- Fenster mit Designsystem: Grundfarben und Schrift. -->
@@ -90,7 +91,7 @@
     <Setter Property="Foreground" Value="{DynamicResource Loom.OnSelection}" />
   </Style>
   <Style Selector="ListBoxItem:focus-visible Border.sideItem">
-    <Setter Property="BorderBrush" Value="{DynamicResource Loom.Accent}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Loom.Focus}" />
     <Setter Property="BorderThickness" Value="2" />
   </Style>
   <Style Selector="TextBlock.section">
@@ -104,9 +105,9 @@
     <Setter Property="Height" Value="24" />
     <Setter Property="CornerRadius" Value="6" />
   </Style>
-  <Style Selector="Border.tile PathIcon">
-    <Setter Property="Width" Value="14" />
-    <Setter Property="Height" Value="14" />
+  <Style Selector="Border.tile ds|LoomIcon">
+    <Setter Property="Width" Value="16" />
+    <Setter Property="Height" Value="16" />
     <Setter Property="Foreground" Value="White" />
   </Style>
 

@@ -147,7 +147,7 @@ public sealed partial class CustomProviderRow : ObservableObject
 /// </summary>
 public sealed partial class ProvidersPageViewModel : SettingsPageViewModel
 {
-    public ProvidersPageViewModel(SettingsViewModel session) : base("providers", "Providers", "Blue", session)
+    public ProvidersPageViewModel(SettingsViewModel session) : base("providers", "Recognition", "Blue", session)
     {
         foreach (var entry in session.Working.Providers.Custom)
         {

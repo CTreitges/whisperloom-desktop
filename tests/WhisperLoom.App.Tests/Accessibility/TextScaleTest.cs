@@ -66,6 +66,32 @@ public sealed partial class TextScaleTest
     }
 
     [AvaloniaFact]
+    public void Follow_takes_the_system_text_size_clamped_and_back()
+    {
+        var app = Application.Current!;
+        var body = Resource("Loom.Font.Body");
+        try
+        {
+            Assert.Equal(2.0, TextScale.Follow(app, new FixedPreferences(TextScale: 2.0)));
+            Assert.Equal(body * 2, Resource("Loom.Font.Body"), 2);
+            Assert.Equal(2.25, TextScale.Follow(app, new FixedPreferences(TextScale: 3.0)));
+            Assert.Equal(body * 2.25, Resource("Loom.Font.Body"), 2);
+        }
+        finally
+        {
+            Assert.Equal(1.0, TextScale.Follow(app, new FixedPreferences()));
+        }
+        Assert.Equal(body, Resource("Loom.Font.Body"), 2);
+    }
+
+    [AvaloniaFact]
+    public void Type_scale_is_12_14_16_20_24_32()
+    {
+        string[] keys = ["Caption", "Body", "Title", "PageTitle", "WindowTitle", "Display"];
+        Assert.Equal([12d, 14, 16, 20, 24, 32], keys.Select(k => TextScale.BaseOf("Loom.Font." + k) ?? Resource("Loom.Font." + k)));
+    }
+
+    [AvaloniaFact]
     public void Token_keys_found_at_runtime_match_Tokens_axaml()
     {
         var tokens = File.ReadAllText(Path.Combine(RepoRoot(), "src/WhisperLoom.App/Design/Tokens.axaml"));

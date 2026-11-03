@@ -16,7 +16,7 @@ public sealed class RecognitionPageViewModel : SettingsPageViewModel
     public const int MinTimeout = 30;
     public const int MaxTimeout = 1800;
 
-    public RecognitionPageViewModel(SettingsViewModel session) : base("recognition", "Recognition", "Red", session)
+    public RecognitionPageViewModel(SettingsViewModel session) : base("recognition", "Dictation", "Red", session)
     {
         SttModelPicker = new ModelPickerViewModel(() => SttOptions("stt", session.SttProvider.Value), () => session.SttModel, v => session.SttModel = v,
             ct => session.LoadServerModelsAsync("stt", ModelKind.Stt, ct));

@@ -5,7 +5,7 @@ namespace WhisperLoom.App.ViewModels.Settings;
 /// hinterlegen, mitgelieferte Textmodelle laden (RAM-Hinweis, Lizenz) und lokale OpenAI-kompatible Server eintragen.
 /// Gewählt wird auf den Seiten „Erkennung“ bzw. „Text &amp; Stufen“.
 /// </summary>
-public sealed class LocalModelsPageViewModel(SettingsViewModel session) : SettingsPageViewModel("localmodels", "LocalModels", "Teal", session)
+public sealed class LocalModelsPageViewModel(SettingsViewModel session) : SettingsPageViewModel("localmodels", "Download", "Teal", session)
 {
     public LocalViewModel Local => Session.Local;
 

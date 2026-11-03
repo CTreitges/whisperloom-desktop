@@ -11,7 +11,7 @@ namespace WhisperLoom.App.ViewModels.Settings;
 /// Seite „Allgemein“: Sprache der Oberfläche, Mikrofon, Schriftgröße der Bühne, Updates (Kanal, Vorabversionen,
 /// Versionsliste; W3-CHAN), Einstellungen übertragen.
 /// </summary>
-public sealed partial class GeneralPageViewModel(SettingsViewModel session) : SettingsPageViewModel("general", "General", "Gray", session)
+public sealed partial class GeneralPageViewModel(SettingsViewModel session) : SettingsPageViewModel("general", "System", "Gray", session)
 {
     public const int MinFontSize = 16;
     public const int MaxFontSize = 96;

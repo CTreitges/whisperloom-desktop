@@ -34,6 +34,7 @@ public partial class App : Application
     private IDisposable? _input;
     private Platform.Windows.Input.InputFlow? _flow;
     private readonly CancellationTokenSource _updates = new();
+    private readonly Design.ISystemPreferences _preferences = Design.SystemPreferences.ForCurrentOs();
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
@@ -43,6 +44,7 @@ public partial class App : Application
         {
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             desktop.Exit += (_, _) => startup.Lock.Dispose();
+            Design.TextScale.Follow(this, _preferences);
             Dispatcher.UIThread.Post(async () => await StartAsync(startup.Request.Options, startup.Request.Verb, startup.Request.Args));
         }
         base.OnFrameworkInitializationCompleted();
@@ -244,6 +246,8 @@ public partial class App : Application
         {
             return;
         }
+        // Textgröße des Systems (UX-1): beim Öffnen neu lesen, damit eine geänderte Einstellung ohne Neustart greift.
+        Design.TextScale.Follow(this, _preferences);
         switch (what)
         {
             case "stage":

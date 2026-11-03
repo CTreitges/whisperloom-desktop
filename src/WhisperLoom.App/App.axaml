@@ -8,6 +8,7 @@
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
         <ResourceInclude Source="/Design/Tokens.axaml" />
+        <ResourceInclude Source="/Design/Icons.axaml" />
         <ResourceInclude Source="/Design/Controls.axaml" />
       </ResourceDictionary.MergedDictionaries>
       <!-- Farben aus der Android-UX-Spec v3 §3.1 (docs/design/ux-spec-v3.md im Android-Repo); feste Dunkel-Töne der älteren Fenster. -->
@@ -26,10 +27,11 @@
   </Application.Resources>
   <Application.Styles>
     <FluentTheme>
-      <!-- Loom-Akzent statt System-Akzent für Häkchen, Schalter, Fokus. Doku: docs.avaloniaui.net/docs/basics/user-interface/styling/themes/fluent (abgerufen 2026-11-01). -->
+      <!-- Loom-Akzent statt System-Akzent für Häkchen, Schalter, Fokus; dunkel #6FD9C7 (Schalter an 9,8:1 statt 2,1:1, zielstruktur.md §5). Doku: docs.avaloniaui.net/docs/basics/user-interface/styling/themes/fluent (abgerufen 2026-11-01). -->
       <FluentTheme.Palettes>
         <ColorPaletteResources x:Key="Light" Accent="#0F5B50" />
-        <ColorPaletteResources x:Key="Dark" Accent="#0F5B50" />
+        <ColorPaletteResources x:Key="Dark" Accent="#6FD9C7" />
+        <!-- Hochkontrast: Fluent erlaubt hier nur Light/Dark; die Akzentfarben stehen darum im Hochkontrast-Teil von Tokens.axaml. -->
       </FluentTheme.Palettes>
     </FluentTheme>
     <StyleInclude Source="/Design/Styles.axaml" />

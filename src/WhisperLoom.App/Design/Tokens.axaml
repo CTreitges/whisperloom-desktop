@@ -1,33 +1,22 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:ds="using:WhisperLoom.App.Design">
   <!--
-    Designsystem W2-UI1 (docs/design-system.md): Farb-Tokens hell/dunkel aus der Loom-Palette der Android-App
-    (ui/theme/Color.kt, LoomPalette). Dunkel = die Android-Rollen 1:1; hell = dieselben Töne mit getauschten Rollen
-    (dunkle Töne als Text/Akzent, helle als Fläche). Kontrast ≥ 4,5:1 prüft DesignTokensTest.
+    Designsystem (docs/design-system.md, Farbrollen zielstruktur.md §5): Loom-Palette der Android-App (ui/theme/Color.kt).
+    Dunkel = die Android-Rollen 1:1; hell = dieselben Töne mit getauschten Rollen; Hochkontrast folgt dem Kontrastdesign des
+    Systems (Schwarz, Weiß, Akzent, Gelb nur für den Fokus; SystemTheme.HighContrast, Rückfall Dunkel).
+    Neu mit UX-1: Outline (Rahmen von Feldern und Schaltern), Focus (Fokusring), Record (Aufnahme-Symbol).
+    Kontraste prüft DesignTokensTest (Text ≥ 4,5:1, Hochkontrast ≥ 7:1, Rahmen und Fokus ≥ 3:1).
     Doku: docs.avaloniaui.net/docs/guides/styles-and-resources/how-to-use-theme-variants (abgerufen 2026-11-01).
   -->
   <ResourceDictionary.ThemeDictionaries>
     <ResourceDictionary x:Key="Dark">
-      <Color x:Key="Loom.BackgroundColor">#0E1116</Color>
-      <Color x:Key="Loom.SidebarColor">#161A20</Color>
-      <Color x:Key="Loom.SurfaceColor">#1A1F26</Color>
-      <Color x:Key="Loom.SurfaceHighColor">#242A32</Color>
-      <Color x:Key="Loom.SeparatorColor">#3A424D</Color>
-      <Color x:Key="Loom.TextColor">#E4E8EE</Color>
-      <Color x:Key="Loom.TextSecondaryColor">#B8C0CC</Color>
-      <Color x:Key="Loom.AccentColor">#6FD9C7</Color>
-      <Color x:Key="Loom.OnAccentColor">#00382F</Color>
-      <Color x:Key="Loom.SelectionColor">#0F5B50</Color>
-      <Color x:Key="Loom.OnSelectionColor">#B4F2E6</Color>
-      <Color x:Key="Loom.ErrorColor">#FFB4AB</Color>
-      <Color x:Key="Loom.WarningColor">#FFC85C</Color>
-      <Color x:Key="Loom.ManagedColor">#2B4665</Color>
-      <Color x:Key="Loom.OnManagedColor">#D8E7FA</Color>
       <SolidColorBrush x:Key="Loom.Background" Color="#0E1116" />
       <SolidColorBrush x:Key="Loom.Sidebar" Color="#161A20" />
       <SolidColorBrush x:Key="Loom.Surface" Color="#1A1F26" />
       <SolidColorBrush x:Key="Loom.SurfaceHigh" Color="#242A32" />
       <SolidColorBrush x:Key="Loom.Separator" Color="#3A424D" />
+      <SolidColorBrush x:Key="Loom.Outline" Color="#8A95A3" />
       <SolidColorBrush x:Key="Loom.Text" Color="#E4E8EE" />
       <SolidColorBrush x:Key="Loom.TextSecondary" Color="#B8C0CC" />
       <SolidColorBrush x:Key="Loom.Accent" Color="#6FD9C7" />
@@ -38,28 +27,34 @@
       <SolidColorBrush x:Key="Loom.Warning" Color="#FFC85C" />
       <SolidColorBrush x:Key="Loom.Managed" Color="#2B4665" />
       <SolidColorBrush x:Key="Loom.OnManaged" Color="#D8E7FA" />
+      <SolidColorBrush x:Key="Loom.Focus" Color="#6FD9C7" />
+      <SolidColorBrush x:Key="Loom.Record" Color="#FF4D4D" />
+      <!-- Fluent: Rahmen von Feldern und Schaltern in Outline (≥ 3:1), Fokusring in Focus. -->
+      <SolidColorBrush x:Key="TextControlBorderBrush" Color="#8A95A3" />
+      <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="#8A95A3" />
+      <SolidColorBrush x:Key="ToggleSwitchStrokeOff" Color="#8A95A3" />
+      <SolidColorBrush x:Key="ToggleSwitchKnobFillOff" Color="#8A95A3" />
+      <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeUnchecked" Color="#8A95A3" />
+      <SolidColorBrush x:Key="RadioButtonOuterEllipseStroke" Color="#8A95A3" />
+      <SolidColorBrush x:Key="SystemControlFocusVisualPrimaryBrush" Color="#6FD9C7" />
+      <!-- Fluent: Schrift und Knopf auf Akzentflächen in OnAccent (dunkel wäre Weiß auf #6FD9C7 nur 1,7:1). -->
+      <SolidColorBrush x:Key="AccentButtonForeground" Color="#00382F" />
+      <SolidColorBrush x:Key="AccentButtonForegroundPointerOver" Color="#00382F" />
+      <SolidColorBrush x:Key="AccentButtonForegroundPressed" Color="#00382F" />
+      <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundChecked" Color="#00382F" />
+      <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundCheckedPointerOver" Color="#00382F" />
+      <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundCheckedPressed" Color="#00382F" />
+      <SolidColorBrush x:Key="ToggleSwitchKnobFillOn" Color="#00382F" />
+      <SolidColorBrush x:Key="ToggleSwitchKnobFillOnPointerOver" Color="#00382F" />
+      <SolidColorBrush x:Key="ToggleSwitchKnobFillOnPressed" Color="#00382F" />
     </ResourceDictionary>
     <ResourceDictionary x:Key="Light">
-      <Color x:Key="Loom.BackgroundColor">#EEF1F5</Color>
-      <Color x:Key="Loom.SidebarColor">#E4E8EE</Color>
-      <Color x:Key="Loom.SurfaceColor">#FFFFFF</Color>
-      <Color x:Key="Loom.SurfaceHighColor">#E4E8EE</Color>
-      <Color x:Key="Loom.SeparatorColor">#B8C0CC</Color>
-      <Color x:Key="Loom.TextColor">#0E1116</Color>
-      <Color x:Key="Loom.TextSecondaryColor">#3A424D</Color>
-      <Color x:Key="Loom.AccentColor">#0F5B50</Color>
-      <Color x:Key="Loom.OnAccentColor">#FFFFFF</Color>
-      <Color x:Key="Loom.SelectionColor">#B4F2E6</Color>
-      <Color x:Key="Loom.OnSelectionColor">#00382F</Color>
-      <Color x:Key="Loom.ErrorColor">#93000A</Color>
-      <Color x:Key="Loom.WarningColor">#4A3600</Color>
-      <Color x:Key="Loom.ManagedColor">#D8E7FA</Color>
-      <Color x:Key="Loom.OnManagedColor">#12304F</Color>
       <SolidColorBrush x:Key="Loom.Background" Color="#EEF1F5" />
       <SolidColorBrush x:Key="Loom.Sidebar" Color="#E4E8EE" />
       <SolidColorBrush x:Key="Loom.Surface" Color="#FFFFFF" />
       <SolidColorBrush x:Key="Loom.SurfaceHigh" Color="#E4E8EE" />
       <SolidColorBrush x:Key="Loom.Separator" Color="#B8C0CC" />
+      <SolidColorBrush x:Key="Loom.Outline" Color="#6B7480" />
       <SolidColorBrush x:Key="Loom.Text" Color="#0E1116" />
       <SolidColorBrush x:Key="Loom.TextSecondary" Color="#3A424D" />
       <SolidColorBrush x:Key="Loom.Accent" Color="#0F5B50" />
@@ -70,11 +65,81 @@
       <SolidColorBrush x:Key="Loom.Warning" Color="#4A3600" />
       <SolidColorBrush x:Key="Loom.Managed" Color="#D8E7FA" />
       <SolidColorBrush x:Key="Loom.OnManaged" Color="#12304F" />
+      <SolidColorBrush x:Key="Loom.Focus" Color="#0F5B50" />
+      <SolidColorBrush x:Key="Loom.Record" Color="#B3261E" />
+      <!-- Fluent: Rahmen von Feldern und Schaltern in Outline (≥ 3:1), Fokusring in Focus. -->
+      <SolidColorBrush x:Key="TextControlBorderBrush" Color="#6B7480" />
+      <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="#6B7480" />
+      <SolidColorBrush x:Key="ToggleSwitchStrokeOff" Color="#6B7480" />
+      <SolidColorBrush x:Key="ToggleSwitchKnobFillOff" Color="#6B7480" />
+      <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeUnchecked" Color="#6B7480" />
+      <SolidColorBrush x:Key="RadioButtonOuterEllipseStroke" Color="#6B7480" />
+      <SolidColorBrush x:Key="SystemControlFocusVisualPrimaryBrush" Color="#0F5B50" />
+      <!-- Fluent: Schrift und Knopf auf Akzentflächen in OnAccent (dunkel wäre Weiß auf #6FD9C7 nur 1,7:1). -->
+      <SolidColorBrush x:Key="AccentButtonForeground" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="AccentButtonForegroundPointerOver" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="AccentButtonForegroundPressed" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundChecked" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundCheckedPointerOver" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundCheckedPressed" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="ToggleSwitchKnobFillOn" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="ToggleSwitchKnobFillOnPointerOver" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="ToggleSwitchKnobFillOnPressed" Color="#FFFFFF" />
+    </ResourceDictionary>
+    <ResourceDictionary x:Key="{x:Static ds:SystemTheme.HighContrast}">
+      <SolidColorBrush x:Key="Loom.Background" Color="#000000" />
+      <SolidColorBrush x:Key="Loom.Sidebar" Color="#000000" />
+      <SolidColorBrush x:Key="Loom.Surface" Color="#000000" />
+      <SolidColorBrush x:Key="Loom.SurfaceHigh" Color="#000000" />
+      <SolidColorBrush x:Key="Loom.Separator" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="Loom.Outline" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="Loom.Text" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="Loom.TextSecondary" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="Loom.Accent" Color="#6FD9C7" />
+      <SolidColorBrush x:Key="Loom.OnAccent" Color="#000000" />
+      <SolidColorBrush x:Key="Loom.Selection" Color="#6FD9C7" />
+      <SolidColorBrush x:Key="Loom.OnSelection" Color="#000000" />
+      <SolidColorBrush x:Key="Loom.Error" Color="#FFB4AB" />
+      <SolidColorBrush x:Key="Loom.Warning" Color="#FFC85C" />
+      <SolidColorBrush x:Key="Loom.Managed" Color="#000000" />
+      <SolidColorBrush x:Key="Loom.OnManaged" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="Loom.Focus" Color="#FFFF00" />
+      <SolidColorBrush x:Key="Loom.Record" Color="#FF6B6B" />
+      <!-- Fluent: Rahmen von Feldern und Schaltern in Outline (≥ 3:1), Fokusring in Focus. -->
+      <SolidColorBrush x:Key="TextControlBorderBrush" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="ToggleSwitchStrokeOff" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="ToggleSwitchKnobFillOff" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeUnchecked" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="RadioButtonOuterEllipseStroke" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="SystemControlFocusVisualPrimaryBrush" Color="#FFFF00" />
+      <!-- Fluent: Schrift und Knopf auf Akzentflächen in OnAccent (dunkel wäre Weiß auf #6FD9C7 nur 1,7:1). -->
+      <SolidColorBrush x:Key="AccentButtonForeground" Color="#000000" />
+      <SolidColorBrush x:Key="AccentButtonForegroundPointerOver" Color="#000000" />
+      <SolidColorBrush x:Key="AccentButtonForegroundPressed" Color="#000000" />
+      <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundChecked" Color="#000000" />
+      <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundCheckedPointerOver" Color="#000000" />
+      <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundCheckedPressed" Color="#000000" />
+      <SolidColorBrush x:Key="ToggleSwitchKnobFillOn" Color="#000000" />
+      <SolidColorBrush x:Key="ToggleSwitchKnobFillOnPointerOver" Color="#000000" />
+      <SolidColorBrush x:Key="ToggleSwitchKnobFillOnPressed" Color="#000000" />
+      <!-- Platzhalter: Fluent dimmt ihn auf 30 % – im Hochkontrast 2,4:1; hier volles Weiß (Suchfelder bekommen in UX-2 ein Label, D8). -->
+      <x:Double x:Key="TextControlPlaceholderOpacity">1</x:Double>
+      <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="#FFFFFF" />
+      <!-- Fluent-Akzent: Paletten gibt es nur für Light/Dark, Hochkontrast setzt die Farben selbst. -->
+      <Color x:Key="SystemAccentColor">#6FD9C7</Color>
+      <Color x:Key="SystemAccentColorLight1">#6FD9C7</Color>
+      <Color x:Key="SystemAccentColorLight2">#6FD9C7</Color>
+      <Color x:Key="SystemAccentColorLight3">#6FD9C7</Color>
+      <Color x:Key="SystemAccentColorDark1">#6FD9C7</Color>
+      <Color x:Key="SystemAccentColorDark2">#6FD9C7</Color>
+      <Color x:Key="SystemAccentColorDark3">#6FD9C7</Color>
     </ResourceDictionary>
   </ResourceDictionary.ThemeDictionaries>
 
-
-  <!-- Symbol-Kacheln der Seitenleiste: fest, weiße Glyphe auf dunklem Container-Ton (beide Varianten). -->
+  <!-- Symbol-Kacheln der Seitenleiste: fest, weiße Glyphe auf dunklem Container-Ton (alle Varianten). -->
   <SolidColorBrush x:Key="Loom.Tile.Teal" Color="#0F5B50" />
   <SolidColorBrush x:Key="Loom.Tile.Blue" Color="#2B4665" />
   <SolidColorBrush x:Key="Loom.Tile.Violet" Color="#54368A" />
@@ -83,33 +148,22 @@
   <SolidColorBrush x:Key="Loom.Tile.Amber" Color="#4A3600" />
   <SolidColorBrush x:Key="Loom.Tile.Gray" Color="#3A424D" />
 
-  <!-- Abstände (4er-Raster), Radien, Schrift. -->
-  <x:Double x:Key="Loom.Space.XS">4</x:Double>
-  <x:Double x:Key="Loom.Space.S">8</x:Double>
-  <x:Double x:Key="Loom.Space.M">12</x:Double>
-  <x:Double x:Key="Loom.Space.L">16</x:Double>
-  <x:Double x:Key="Loom.Space.XL">24</x:Double>
+  <!-- Abstände (zielstruktur.md §4): nur 4 / 8 / 12 / 16 / 24 / 32 / 48. -->
+  <x:Double x:Key="Loom.Space.1">4</x:Double>
+  <x:Double x:Key="Loom.Space.2">8</x:Double>
+  <x:Double x:Key="Loom.Space.3">12</x:Double>
+  <x:Double x:Key="Loom.Space.4">16</x:Double>
+  <x:Double x:Key="Loom.Space.5">24</x:Double>
+  <x:Double x:Key="Loom.Space.6">32</x:Double>
+  <x:Double x:Key="Loom.Space.7">48</x:Double>
   <CornerRadius x:Key="Loom.Radius.Group">10</CornerRadius>
   <CornerRadius x:Key="Loom.Radius.Control">6</CornerRadius>
-  <x:Double x:Key="Loom.Font.PageTitle">22</x:Double>
-  <x:Double x:Key="Loom.Font.GroupTitle">13</x:Double>
-  <x:Double x:Key="Loom.Font.Body">14</x:Double>
-  <x:Double x:Key="Loom.Font.Caption">12</x:Double>
 
-  <!-- Glyphen (24×24, Material-Design-Icons-Stil, Apache 2.0). -->
-  <StreamGeometry x:Key="Loom.Icon.General">M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z</StreamGeometry>
-  <StreamGeometry x:Key="Loom.Icon.Recognition">M12,2A3,3 0 0,1 15,5V11A3,3 0 0,1 12,14A3,3 0 0,1 9,11V5A3,3 0 0,1 12,2M19,11C19,14.53 16.39,17.44 13,17.93V21H11V17.93C7.61,17.44 5,14.53 5,11H7A5,5 0 0,0 12,16A5,5 0 0,0 17,11H19Z</StreamGeometry>
-  <StreamGeometry x:Key="Loom.Icon.Text">M12,2L14.5,9.5L22,12L14.5,14.5L12,22L9.5,14.5L2,12L9.5,9.5Z</StreamGeometry>
-  <StreamGeometry x:Key="Loom.Icon.Cleanup">M16.24,3.56L21.19,8.5C21.97,9.29 21.97,10.55 21.19,11.34L12,20.53C10.44,22.09 7.91,22.09 6.34,20.53L2.81,17C2.03,16.21 2.03,14.95 2.81,14.16L13.41,3.56C14.2,2.78 15.46,2.78 16.24,3.56M4.22,15.58L7.76,19.11C8.54,19.9 9.8,19.9 10.59,19.11L14.12,15.58L9.17,10.63L4.22,15.58Z</StreamGeometry>
-  <StreamGeometry x:Key="Loom.Icon.Output">M23,12L19,8V11H10V13H19V16M1,18V6C1,4.89 1.9,4 3,4H15A2,2 0 0,1 17,6V9H15V6H3V18H15V15H17V18A2,2 0 0,1 15,20H3A2,2 0 0,1 1,18Z</StreamGeometry>
-  <StreamGeometry x:Key="Loom.Icon.Hotkeys">M19,10H17V8H19M19,13H17V11H19M16,10H14V8H16M16,13H14V11H16M16,17H8V15H16M7,10H5V8H7M7,13H5V11H7M8,11H10V13H8M8,8H10V10H8M11,11H13V13H11M11,8H13V10H11M20,5H4C2.89,5 2,5.89 2,7V17A2,2 0 0,0 4,19H20A2,2 0 0,0 22,17V7C22,5.89 21.1,5 20,5Z</StreamGeometry>
-  <StreamGeometry x:Key="Loom.Icon.Privacy">M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1Z</StreamGeometry>
-  <StreamGeometry x:Key="Loom.Icon.Network">M12,2A10,10 0 1,0 22,12A10,10 0 0,0 12,2M18.92,8H15.97C15.65,6.75 15.19,5.55 14.59,4.44C16.43,5.07 17.96,6.35 18.92,8M12,4.04C12.83,5.24 13.5,6.57 13.91,8H10.09C10.5,6.57 11.17,5.24 12,4.04M4.26,14C4.1,13.36 4,12.69 4,12C4,11.31 4.1,10.64 4.26,10H7.64C7.56,10.66 7.5,11.32 7.5,12C7.5,12.68 7.56,13.34 7.64,14H4.26M5.08,16H8.03C8.35,17.25 8.81,18.45 9.41,19.56C7.57,18.93 6.04,17.66 5.08,16M8.03,8H5.08C6.04,6.34 7.57,5.07 9.41,4.44C8.81,5.55 8.35,6.75 8.03,8M12,19.96C11.17,18.76 10.5,17.43 10.09,16H13.91C13.5,17.43 12.83,18.76 12,19.96M14.34,14H9.66C9.57,13.34 9.5,12.68 9.5,12C9.5,11.32 9.57,10.65 9.66,10H14.34C14.43,10.65 14.5,11.32 14.5,12C14.5,12.68 14.43,13.34 14.34,14M14.59,19.56C15.19,18.45 15.65,17.25 15.97,16H18.92C17.96,17.65 16.43,18.93 14.59,19.56M16.36,14C16.44,13.34 16.5,12.68 16.5,12C16.5,11.32 16.44,10.66 16.36,10H19.74C19.9,10.64 20,11.31 20,12C20,12.69 19.9,13.36 19.74,14H16.36Z</StreamGeometry>
-  <StreamGeometry x:Key="Loom.Icon.Search">M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z</StreamGeometry>
-  <StreamGeometry x:Key="Loom.Icon.Info">M13,9H11V7H13M13,17H11V11H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z</StreamGeometry>
-  <StreamGeometry x:Key="Loom.Icon.Warning">M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z</StreamGeometry>
-  <StreamGeometry x:Key="Loom.Icon.Managed">M12,17A2,2 0 0,0 14,15C14,13.89 13.1,13 12,13A2,2 0 0,0 10,15A2,2 0 0,0 12,17M18,8A2,2 0 0,1 20,10V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V10C4,8.89 4.9,8 6,8H7V6A5,5 0 0,1 12,1A5,5 0 0,1 17,6V8H18M12,3A3,3 0 0,0 9,6V8H15V6A3,3 0 0,0 12,3Z</StreamGeometry>
-  <!-- W2-LOCAL: Seiten „Anbieter“ (Server) und „Lokale Modelle“ (Chip), Material Design Icons (Apache-2.0) wie die übrigen. -->
-  <StreamGeometry x:Key="Loom.Icon.Providers">M4,1H20A1,1 0 0,1 21,2V6A1,1 0 0,1 20,7H4A1,1 0 0,1 3,6V2A1,1 0 0,1 4,1M4,9H20A1,1 0 0,1 21,10V14A1,1 0 0,1 20,15H4A1,1 0 0,1 3,14V10A1,1 0 0,1 4,9M4,17H20A1,1 0 0,1 21,18V22A1,1 0 0,1 20,23H4A1,1 0 0,1 3,22V18A1,1 0 0,1 4,17M9,5H10V3H9V5M9,13H10V11H9V13M9,21H10V19H9V21M5,3V5H7V3H5M5,11V13H7V11H5M5,19V21H7V19H5Z</StreamGeometry>
-  <StreamGeometry x:Key="Loom.Icon.LocalModels">M6,4H18V5H21V7H18V9H21V11H18V13H21V15H18V17H21V19H18V20H6V19H3V17H6V15H3V13H6V11H3V9H6V7H3V5H6V4M11,15V18H12V15H11M13,15V18H14V15H13M15,15V18H16V15H15Z</StreamGeometry>
+  <!-- Typo-Skala (zielstruktur.md §3), Größen bei 100 %; TextScale multipliziert sie mit der Textgröße des Systems. -->
+  <x:Double x:Key="Loom.Font.Caption">12</x:Double>
+  <x:Double x:Key="Loom.Font.Body">14</x:Double>
+  <x:Double x:Key="Loom.Font.Title">16</x:Double>
+  <x:Double x:Key="Loom.Font.PageTitle">20</x:Double>
+  <x:Double x:Key="Loom.Font.WindowTitle">24</x:Double>
+  <x:Double x:Key="Loom.Font.Display">32</x:Double>
 </ResourceDictionary>

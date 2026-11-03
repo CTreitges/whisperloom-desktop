@@ -3,7 +3,7 @@ using WhisperLoom.Core.Contracts.Settings;
 namespace WhisperLoom.App.ViewModels.Settings;
 
 /// <summary>Seite „Bereinigung“: Regeln ohne KI (Füllwörter, Großschreibung, Leerzeichen) – bisher nur per Datei.</summary>
-public sealed class CleanupPageViewModel(SettingsViewModel session) : SettingsPageViewModel("cleanup", "Cleanup", "Teal", session)
+public sealed class CleanupPageViewModel(SettingsViewModel session) : SettingsPageViewModel("cleanup", "Edit", "Teal", session)
 {
     private PolishSettings Polish => Session.Working.Polish;
 

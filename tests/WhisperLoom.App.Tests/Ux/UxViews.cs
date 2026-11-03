@@ -79,6 +79,7 @@ internal static class UxViews
 
     public static UxView Get(string id) => All.Single(v => v.Id == id);
 
-    /// <summary>Hell und dunkel; Hochkontrast kommt mit UX-1 dazu.</summary>
-    public static readonly (string Name, ThemeVariant Theme)[] Themes = [("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark)];
+    /// <summary>Hell, dunkel und Hochkontrast (Kontrastdesign des Systems, <see cref="Design.SystemTheme.HighContrast"/>).</summary>
+    public static readonly (string Name, ThemeVariant Theme)[] Themes =
+        [("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark), ("contrast", Design.SystemTheme.HighContrast)];
 }

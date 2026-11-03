@@ -47,6 +47,20 @@ public static class TextScale
         Current = factor;
     }
 
+    /// <summary>
+    /// Übernimmt die Textgröße des Systems (beim Start und beim Öffnen eines Fensters); tut nichts, wenn sie gleich geblieben ist.
+    /// Gibt den angewandten Faktor zurück.
+    /// </summary>
+    public static double Follow(Application app, ISystemPreferences preferences)
+    {
+        var factor = SystemPreferences.Clamp(preferences.TextScale);
+        if (factor != Current || Base.Count == 0)
+        {
+            Apply(app, factor);
+        }
+        return factor;
+    }
+
     /// <summary>Grundwert eines Schlüssels (vor dem Skalieren), z. B. für Tests.</summary>
     public static double? BaseOf(string key) => Base.TryGetValue(key, out var size) ? size : null;
 }
