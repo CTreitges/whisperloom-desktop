@@ -106,6 +106,9 @@
               <TextBlock Text="{Binding [Unit_Point], Source={x:Static l:Loc.Instance}}" Classes="caption" VerticalAlignment="Center" />
             </StackPanel>
           </ds:SettingRow>
+          <ds:SettingRow Path="desktop.stageDark">
+            <ToggleSwitch x:Name="StageDarkToggle" IsChecked="{Binding StageDark}" OnContent="" OffContent="" />
+          </ds:SettingRow>
         </StackPanel>
       </ds:SettingsGroup>
     </StackPanel>

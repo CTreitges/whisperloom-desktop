@@ -166,7 +166,7 @@ public class UiTest
         Assert.Equal("Prompt", vm.StageText);
         Assert.Equal("EN", vm.LanguageText);
         Assert.Equal("01:05", window.FindControl<TextBlock>("Timer")!.Text);
-        Assert.Contains("recording", window.FindControl<Avalonia.Controls.Shapes.Ellipse>("RecordDot")!.Classes);
+        Assert.Contains("recording", window.FindControl<WhisperLoom.App.Design.LoomIcon>("RecordDot")!.Classes);
         Assert.True(window.FindControl<ProgressBar>("LevelBar")!.Value > 0.5);
         window.Close();
     }

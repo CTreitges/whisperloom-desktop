@@ -87,10 +87,10 @@ internal static class UxWindowScenes
         }
         var actions = new HistoryActions(_ => Task.FromResult(true), _ => Task.FromResult("Pasted"),
             (id, stage) => f.Controller.ReprocessVersionAsync(id, stage), f.Controller.EditHistoryAsync,
-            [.. RefineModes.SettingsFor(true).Select(m => (m.Key(), Loc.Instance["Stage_" + m.Key()]))]);
+            [.. RefineModes.SettingsFor(true).Select(m => (m.Key(), Loc.Instance["Stage_" + m.Key()]))], StartKeys: ["Ctrl+Win", "Ctrl+Space"]);
         var vm = new HistoryViewModel(f.History, actions, () => now);
         await vm.LoadAsync();
-        var window = new HistoryWindow(vm) { Width = 960, Height = 640, RequestedThemeVariant = theme };
+        var window = new HistoryWindow(vm) { Width = 1040, Height = 640, RequestedThemeVariant = theme };
         window.Show();
         if (!empty)
         {
@@ -112,13 +112,13 @@ internal static class UxWindowScenes
         return Task.FromResult(new UxScene(window, window, null));
     }
 
-    /// <summary>Bühne (immer dunkel, Beamer): Aufnahme läuft bzw. Ergebnis da.</summary>
+    /// <summary>Bühne (folgt dem System, UX-3): Aufnahme läuft bzw. Ergebnis da.</summary>
     public static async Task<UxScene> Stage(ThemeVariant theme, bool result)
     {
         var f = new ControllerFixture(new WhisperLoomSettings { Language = "de", Refine = new RefineSettings { Stage = "polish" } });
         f.Pipeline.RawText = "ähm also das meeting ist am donnerstag um zehn und bitte bringt die zahlen mit";
         var vm = new StageViewModel(f.Controller);
-        var window = new StageWindow(vm) { Width = 1200, Height = 700, RequestedThemeVariant = UxStage.AppFixed };
+        var window = new StageWindow(vm) { Width = 1200, Height = 700, RequestedThemeVariant = theme }; // UX-3: folgt dem System
         window.Show();
         f.Controller.Start();
         f.Now += TimeSpan.FromSeconds(6);
@@ -220,7 +220,7 @@ internal static class UxWindowScenes
     public static Task<UxScene> UpdatePromptScene(ThemeVariant theme)
     {
         var window = UpdatePrompt.Create("1.1.0", new TaskCompletionSource<bool>());
-        window.RequestedThemeVariant = UxStage.AppFixed;
+        window.RequestedThemeVariant = theme; // UX-3: folgt dem Systemthema
         window.Show();
         UxStage.Settle(window);
         return Task.FromResult(new UxScene(window, window, null));

@@ -36,16 +36,19 @@ public sealed class HelpWindowTest
         w.GetVisualDescendants().OfType<T>().First(c => c.Name == name);
 
     [AvaloniaFact]
-    public void Opens_on_the_overview_with_a_tile_per_section()
+    public void Opens_on_the_overview_with_what_do_you_want_to_do()
     {
         var window = Open();
         Assert.True(window.Help!.SelectedSection!.IsOverview);
-        Assert.Equal(HelpCatalog.Topics.Count, window.Help.Overview.Tiles.Count);
-        var tiles = window.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("tileButton")).ToList();
-        Assert.Equal(HelpCatalog.Topics.Count, tiles.Count);
+        // UX-3: sieben Aufgaben als ganze Sätze mit dem Abschnitt dahinter statt Kacheln aller Abschnitte.
+        Assert.Equal(HelpCatalog.Tasks, window.Help.Overview.Tasks.Select(t => t.Section.Id));
+        Assert.All(window.Help.Overview.Tasks, t => Assert.False(t.Text.StartsWith('!')));
+        var tasks = Named<ItemsControl>(window, "TaskList").GetVisualDescendants().OfType<Button>().ToList();
+        Assert.Equal(HelpCatalog.Tasks.Count, tasks.Count);
+        Assert.Equal(Loc.Instance["Help_Task_hotkeys"], AutomationProperties.GetName(tasks[1]));
 
-        tiles.First(t => t.DataContext is HelpSectionViewModel { Id: "privacy" }).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-        Assert.Equal("privacy", window.Help.SelectedSection!.Id);
+        tasks.First(t => t.DataContext is HelpTaskView { Section.Id: "trouble" }).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Assert.Equal("trouble", window.Help.SelectedSection!.Id);
         window.Close();
     }
 
@@ -78,9 +81,17 @@ public sealed class HelpWindowTest
         Assert.Contains(window.Help.Results, r => r.Section.Id == "it");
         Assert.All(window.Help.Results, r => Assert.False(string.IsNullOrWhiteSpace(r.Snippet)));
 
+        Assert.StartsWith(window.Help.Results.Count + " Treffer", window.Help.SearchSummary, StringComparison.Ordinal);
+        Dispatcher.UIThread.RunJobs();
+        // UX-3: Treffer rechts als Knöpfe; ↓ springt in die Treffer, ↑ vom ersten zurück in die Suche, Enter/Klick öffnet.
         window.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.ArrowDown, null);
-        Assert.Equal(window.Help.Results[0].Section, window.Help.SelectedSection);
-        Assert.IsType<ListBoxItem>(Focused(window));
+        var buttons = window.ResultButtons;
+        Assert.Same(buttons[0], Focused(window));
+        window.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.ArrowDown, null);
+        Assert.Same(buttons[1], Focused(window));
+        window.KeyPress(Key.Up, RawInputModifiers.None, PhysicalKey.ArrowUp, null);
+        window.KeyPress(Key.Up, RawInputModifiers.None, PhysicalKey.ArrowUp, null);
+        Assert.Same(search, Focused(window));
 
         // Esc leert erst die Suche, das nächste Esc schließt.
         var closed = false;
@@ -102,6 +113,41 @@ public sealed class HelpWindowTest
         window.Help.SearchText = "xyzzy-gibt-es-nicht";
         Assert.Empty(window.Help.Results);
         Assert.True(Named<TextBlock>(window, "NoResults").IsEffectivelyVisible);
+        Assert.StartsWith("Keine Treffer für „xyzzy-gibt-es-nicht“", window.Help.SearchSummary, StringComparison.Ordinal);
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public void Choosing_a_topic_in_the_sidebar_during_search_ends_the_search()
+    {
+        // Prüfer-Fund PR #42: Die Seitenleiste bleibt bei der Suche bedienbar; ein Klick dort zeigte weiter nur die Treffer.
+        var window = Open("history");
+        var list = Named<ListBox>(window, "SectionList");
+        window.Help!.SearchText = "Proxy";
+        Assert.Null(list.SelectedItem); // während der Suche ist kein Abschnitt gewählt
+
+        list.SelectedItem = window.Help.Section("history"); // auch der vorher gewählte Abschnitt wirkt
+        Assert.False(window.Help.IsSearching);
+        Assert.True(window.Help.ShowSection);
+        Assert.Equal("history", window.Help.SelectedSection!.Id);
+
+        // Tab aus der Suche (über × und die Seitenleiste) wählt nichts und beendet die Suche nicht.
+        window.Help.SearchText = "Proxy";
+        Dispatcher.UIThread.RunJobs();
+        Named<TextBox>(window, "SearchBox").Focus(NavigationMethod.Tab);
+        var reachedList = false;
+        for (var i = 0; i < 3 && !reachedList; i++)
+        {
+            window.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
+            Assert.True(window.Help.IsSearching);
+            reachedList = list.IsKeyboardFocusWithin;
+        }
+        Assert.True(reachedList); // der Fall wird wirklich geprüft: Fokus in der Seitenleiste
+        Assert.Null(list.SelectedItem);
+
+        // Suche leeren (Esc) bringt den vorherigen Abschnitt zurück.
+        window.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
+        Assert.Equal("history", window.Help.SelectedSection!.Id);
         window.Close();
     }
 

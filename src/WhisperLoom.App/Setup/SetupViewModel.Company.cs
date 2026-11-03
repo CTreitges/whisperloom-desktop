@@ -70,6 +70,7 @@ public sealed partial class SetupViewModel
         Detach(Settings);
         var fresh = Settings.Reopen();
         Settings = fresh;
+        Managed = ManagedFor(fresh);
         Hotkey = new HotkeyCheck(fresh.Hotkeys, _recordHotkey);
         Attach(fresh);
         _ = fresh.LoadKeysAsync();
@@ -77,6 +78,8 @@ public sealed partial class SetupViewModel
         var company = Steps.ToList().IndexOf(SetupStep.Company);
         Current = Steps[Math.Min(company + 1, Steps.Count - 1)];
         OnPropertyChanged(nameof(DoneHint));
+        OnPropertyChanged(nameof(DoneKeys));
+        OnPropertyChanged(nameof(SkippedStepsText));
         OnPropertyChanged(nameof(ShowOnline));
         OnPropertyChanged(nameof(ShowOffline));
     }

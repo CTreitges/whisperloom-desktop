@@ -73,13 +73,29 @@ public static class SystemTheme
         }
     }
 
+    /// <summary>
+    /// Wie <see cref="VariantOf(PlatformThemeVariant, ColorContrastPreference)"/>, aber <paramref name="forceDark"/> (Bühne „Dunkel für
+    /// Beamer“, Entscheidung 19) macht Hell zu Dunkel; das Kontrastdesign des Systems gewinnt immer.
+    /// </summary>
+    public static ThemeVariant VariantOf(PlatformThemeVariant variant, ColorContrastPreference contrast, bool forceDark) =>
+        contrast == ColorContrastPreference.High ? HighContrast
+        : forceDark ? ThemeVariant.Dark
+        : VariantOf(variant, contrast);
+
     /// <summary>Setzt die Variante des Fensters nach <paramref name="source"/> und folgt Änderungen, bis es schließt.</summary>
-    public static void Follow(Window window, IThemeSource source)
+    public static void Follow(Window window, IThemeSource source) => Follow(window, source, () => false);
+
+    /// <summary>
+    /// Wie <see cref="Follow(Window, IThemeSource)"/> mit Schalter „dunkel erzwingen“; die Rückgabe wendet die Variante neu an
+    /// (nach einem Wechsel des Schalters).
+    /// </summary>
+    public static Action Follow(Window window, IThemeSource source, Func<bool> forceDark)
     {
-        void Apply() => window.RequestedThemeVariant = VariantOf(source.Current, source.Contrast);
+        void Apply() => window.RequestedThemeVariant = VariantOf(source.Current, source.Contrast, forceDark());
         void OnChanged() => Avalonia.Threading.Dispatcher.UIThread.Post(Apply);
         Apply();
         source.Changed += OnChanged;
         window.Closed += (_, _) => source.Changed -= OnChanged;
+        return Apply;
     }
 }

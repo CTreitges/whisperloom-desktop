@@ -56,19 +56,52 @@ public sealed class CompanyUiTest
         var window = Show(w.Vm);
         Assert.Equal(SetupStep.Usage, w.Vm.Current);
         Assert.Equal(Loc.Instance["Setup_Step_Usage"], Named<TextBlock>(window, "StepTitle").Text);
-        Assert.True(Named<RadioButton>(window, "UsagePersonal").IsChecked);
+        var usage = Named<WhisperLoom.App.Design.OptionGroup>(window, "UsageBox").Buttons.ToList();
+        Assert.True(usage[0].IsChecked); // „Für mich“ vorgewählt
         // UIA-Name der Auswahl = Titel (Screenreader, Mess-Filter); ohne ihn meldet UIA nur „Avalonia.Controls.StackPanel“.
-        Assert.Equal(Loc.Instance["Setup_UsagePersonal"], Avalonia.Automation.AutomationProperties.GetName(Named<RadioButton>(window, "UsagePersonal")));
-        Assert.Equal(Loc.Instance["Setup_UsageCompany"], Avalonia.Automation.AutomationProperties.GetName(Named<RadioButton>(window, "UsageCompany")));
+        Assert.Equal(Loc.Instance["Setup_UsagePersonal"], Avalonia.Automation.AutomationProperties.GetName(usage[0]));
+        Assert.Equal(Loc.Instance["Setup_UsageCompany"], Avalonia.Automation.AutomationProperties.GetName(usage[1]));
         // Der Name verdrängt den Beschreibungstext; der Screenreader liest ihn als HelpText (Prüfer PR #31).
-        Assert.Equal(Loc.Instance["Setup_UsagePersonalDesc"], Avalonia.Automation.AutomationProperties.GetHelpText(Named<RadioButton>(window, "UsagePersonal")));
-        Assert.Equal(Loc.Instance["Setup_UsageCompanyDesc"], Avalonia.Automation.AutomationProperties.GetHelpText(Named<RadioButton>(window, "UsageCompany")));
+        Assert.Equal(Loc.Instance["Setup_UsagePersonalDesc"], Avalonia.Automation.AutomationProperties.GetHelpText(usage[0]));
+        Assert.Equal(Loc.Instance["Setup_UsageCompanyDesc"], Avalonia.Automation.AutomationProperties.GetHelpText(usage[1]));
         Assert.Equal([SetupStep.Usage, SetupStep.Language, SetupStep.Microphone, SetupStep.Recognition, SetupStep.Stage, SetupStep.Hotkey,
             SetupStep.Autostart, SetupStep.Done], w.Vm.Steps);
         w.Vm.Next();
         Assert.Equal(SetupStep.Language, w.Vm.Current);
         Assert.Empty(w.Rig.Server.Requests);
         window.Close();
+    }
+
+    [AvaloniaFact]
+    public void Zuruecksprung_zur_Nutzung_fokussiert_die_gewaehlte_Option_und_Sprachwechsel_behaelt_sie()
+    {
+        // Nachprüfung PR #42: Der Fokus ging auf das erste Element („Für mich“) statt auf die gewählte Option der Gruppe;
+        // Leertaste hätte dort den Pfad gewechselt.
+        Loc.Instance.SetLanguage("de");
+        using var w = new Wizard();
+        var window = Show(w.Vm);
+        var usage = Named<WhisperLoom.App.Design.OptionGroup>(window, "UsageBox");
+        usage.Buttons.ElementAt(1).IsChecked = true;
+        Dispatcher.UIThread.RunJobs();
+        w.Vm.Next();
+        Dispatcher.UIThread.RunJobs();
+        var back = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(Named<ItemsControl>(window, "StepList"))
+            .OfType<Button>().Single(SetupUiTest.Shown);
+        back.Focus(Avalonia.Input.NavigationMethod.Tab);
+
+        Avalonia.Headless.HeadlessWindowExtensions.KeyPress(window, Avalonia.Input.Key.Enter, Avalonia.Input.RawInputModifiers.None,
+            Avalonia.Input.PhysicalKey.Enter, null);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(SetupStep.Usage, w.Vm.Current);
+        Assert.Same(usage.Buttons.ElementAt(1), window.FocusManager?.GetFocusedElement());
+
+        Loc.Instance.SetLanguage("en");
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(w.Vm.UseCompany);
+        Assert.True(usage.Buttons.ElementAt(1).IsChecked); // neue Liste nach Sprachwechsel: Wahl bleibt angehakt
+        Assert.Equal(Loc.Instance["Setup_UsageCompany"], Avalonia.Automation.AutomationProperties.GetName(usage.Buttons.ElementAt(1)));
+        window.Close();
+        Loc.Instance.SetLanguage("de");
     }
 
     [AvaloniaFact]
@@ -86,12 +119,15 @@ public sealed class CompanyUiTest
             server.Levels[p] = "fixed";
         }
         var window = Show(w.Vm);
-        Named<RadioButton>(window, "UsageCompany").IsChecked = true;
+        Named<WhisperLoom.App.Design.OptionGroup>(window, "UsageBox").Buttons.ElementAt(1).IsChecked = true;
         Dispatcher.UIThread.RunJobs();
         Assert.Equal(SetupStep.Company, w.Vm.Steps[1]);
         w.Vm.Next();
         Assert.Equal(SetupStep.Company, w.Vm.Current);
         Assert.False(w.Vm.NextCommand.CanExecute(null)); // erst nach Freigabe weiter
+        Dispatcher.UIThread.RunJobs();
+        Assert.False(Named<Button>(window, "NextButton").IsVisible); // UX-3: kein grauer „Weiter“, „Mit Firma verbinden“ ist die Hauptaktion
+        Assert.True(Named<Button>(window, "JoinButton").IsEffectivelyVisible);
 
         var join = w.Vm.Join!;
         join.Server = "http://wl.example.test";

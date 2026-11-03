@@ -19,8 +19,12 @@ public sealed class VersionRow(UpdateChannel channel, UpdateRelease release, boo
 
     public string ChannelLabel => Loc.Instance["Channel_" + Channel.Key()];
 
-    /// <summary>ISO-Datum (in beiden Sprachen eindeutig); leer bei Ordner-Feeds.</summary>
-    public string Date => Release.Published?.ToLocalTime().ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) ?? "";
+    /// <summary>Datum im Format der Sprache („2. Nov. 2026“ bzw. „2 Nov 2026“, UX-3 Befund 3); leer bei Ordner-Feeds.</summary>
+    public string Date => Release.Published?.ToLocalTime().ToString(
+        Loc.Instance.Language == "en" ? "d MMM yyyy" : "d. MMM yyyy",
+        System.Globalization.CultureInfo.GetCultureInfo(Loc.Instance.Language == "en" ? "en-GB" : "de-DE")) ?? "";
+
+    public bool IsStable => Channel == UpdateChannel.Stable;
 
     public bool IsInstalled { get; } = installed;
 
@@ -28,6 +32,9 @@ public sealed class VersionRow(UpdateChannel channel, UpdateRelease release, boo
     public bool IsDowngrade { get; } = downgrade;
 
     public bool CanInstall => !IsInstalled;
+
+    /// <summary>Name des Textknopfs: „Version 1.0.1 (Stabil) installieren“ statt fünfmal „Installieren“.</summary>
+    public string InstallName => Loc.Instance.Format("Channel_InstallName", Version, ChannelLabel);
 }
 
 /// <summary>
@@ -60,6 +67,21 @@ public sealed partial class VersionListViewModel(
 
     public string? CurrentVersion => client.CurrentVersion;
 
+    public bool HasStatus => Status.Length > 0;
+
+    /// <summary>Neueste stabile Version der Liste; null ohne stabile Version.</summary>
+    public VersionRow? NewestStable => Rows.FirstOrDefault(r => r.IsStable);
+
+    /// <summary>
+    /// „Zur neuesten stabilen Version (1.0.1)“ nur, wenn es eine gibt und die installierte Version nicht schon stabil ist
+    /// (UX-3 Befund 4: Nebenaktion statt gleichrangigem Knopf).
+    /// </summary>
+    public bool ShowBackToStable => Allowed && NewestStable is { IsInstalled: false } && !Rows.Any(r => r.IsInstalled && r.IsStable);
+
+    public string BackToStableText => Loc.Instance.Format("Channel_BackToStableVersion", NewestStable?.Version ?? "");
+
+    partial void OnStatusChanged(string value) => OnPropertyChanged(nameof(HasStatus));
+
     public async Task LoadAsync(CancellationToken ct = default)
     {
         Rows.Clear();
@@ -86,6 +108,8 @@ public sealed partial class VersionListViewModel(
             {
                 Rows.Add(row);
             }
+            OnPropertyChanged(nameof(ShowBackToStable));
+            OnPropertyChanged(nameof(BackToStableText));
             Status = Rows.Count == 0 ? Loc.Instance["Channel_Empty"] : client.IsInstalled ? "" : Loc.Instance["Channel_NotInstalled"];
             log.Event("update.list", ("status", "ok"), ("count", Rows.Count));
         }

@@ -26,6 +26,9 @@ public sealed class DesktopSettings
 
     public double StageFontSize { get; set; } = DefaultStageFontSize;
 
+    /// <summary>Bühne „Dunkel für Beamer“ (UX-3, Entscheidung 19): false = folgt dem System; Hochkontrast gewinnt immer.</summary>
+    public bool StageDark { get; set; }
+
     /// <summary>"system" | "off" | "manual".</summary>
     public string ProxyMode { get; set; } = "system";
 

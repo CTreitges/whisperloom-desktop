@@ -20,7 +20,9 @@ public sealed class UpdatePromptTest
         var answer = new TaskCompletionSource<bool>();
         var window = UpdatePrompt.Create("0.9.1", answer);
         window.Show();
-        Assert.Contains("0.9.1", UiTest.TextsOf(window).Single(t => t.Contains("verfügbar")));
+        Assert.Contains("WhisperLoom 0.9.1 ist da", UiTest.TextsOf(window)); // UX-3: Titel nennt die Lage
+        Assert.Contains(window.GetLogicalDescendants().OfType<Button>(), b => b.Name == "Install" && b.Classes.Contains("accent"));
+        Assert.Contains(window.GetLogicalDescendants().OfType<Button>(), b => b.Name == "Later" && b.Classes.Contains("text"));
         ButtonOf(window, "Install").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         Assert.True(await answer.Task);
     }

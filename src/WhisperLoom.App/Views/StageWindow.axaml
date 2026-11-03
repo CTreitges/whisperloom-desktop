@@ -1,102 +1,183 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:WhisperLoom.App.ViewModels"
+        xmlns:ds="using:WhisperLoom.App.Design"
         xmlns:l="using:WhisperLoom.App.Localization"
         x:Class="WhisperLoom.App.Views.StageWindow"
         x:DataType="vm:StageViewModel"
+        Classes="loom"
         Title="{Binding [Stage_Title], Source={x:Static l:Loc.Instance}}"
         Icon="/Assets/whisperloom.ico"
-        Width="1200" Height="700" MinWidth="640" MinHeight="400"
-        Background="{StaticResource WlBackground}">
-  <!-- Bühnenansicht für Beamer: Farben aus der Android-UX-Spec v3 §3.1 (ux-spec-v3.md). -->
+        Width="1200" Height="700" MinWidth="720" MinHeight="480">
+  <!--
+    Bühne (UX-3, Entscheidung 12 und 19): heutiger Aufbau – Rohtext links, Ergebnis rechts nebeneinander – im neuen Stil. Das
+    Ergebnis (die verarbeitete Fassung) ist hervorgehoben: Akzent-Rand, Etikett „Stufe · KI“, Text in voller Textfarbe. Kopf mit
+    Zustand (Symbol, Zeit, Ansage), Pegel, „Aufnahme starten/beenden“ als großer Hauptknopf, „Pause“ nur während der Aufnahme,
+    rechts „Stufe: …“ (Textknopf, nächste Stufe), „Sprache: …“, Schriftgröße und „Dunkel für Beamer“ (Strg+D). Farben aus den
+    Loom-Rollen; das Fenster folgt dem System, der Schalter macht es dunkel, Hochkontrast gewinnt.
+    Tasten: Strg+Plus/Minus Schrift, Strg+0 Standardgröße, Strg+D dunkel, F11 Vollbild.
+  -->
   <Window.Styles>
-    <Style Selector="Ellipse#RecordDot">
-      <Setter Property="Fill" Value="{StaticResource WlSurfaceHigh}" />
+    <Style Selector="ds|LoomIcon#RecordDot">
+      <Setter Property="Foreground" Value="{DynamicResource Loom.TextSecondary}" />
     </Style>
-    <Style Selector="Ellipse#RecordDot.recording">
-      <Setter Property="Fill" Value="{StaticResource WlRecording}" />
-      <Style.Animations>
-        <Animation Duration="0:0:1.2" IterationCount="INFINITE" PlaybackDirection="Alternate">
-          <KeyFrame Cue="0%"><Setter Property="Opacity" Value="1" /></KeyFrame>
-          <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0.35" /></KeyFrame>
-        </Animation>
-      </Style.Animations>
+    <Style Selector="ds|LoomIcon#RecordDot.recording">
+      <Setter Property="Foreground" Value="{DynamicResource Loom.Record}" />
     </Style>
-    <Style Selector="TextBlock.label">
-      <Setter Property="Foreground" Value="{StaticResource WlOnSurfaceVariant}" />
-      <Setter Property="FontSize" Value="18" />
+    <Style Selector="Border.panel">
+      <Setter Property="Background" Value="{DynamicResource Loom.Surface}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Loom.CardEdge}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{DynamicResource Loom.Radius.Group}" />
+      <Setter Property="Padding" Value="16" />
     </Style>
-    <Style Selector="Button">
-      <Setter Property="FontSize" Value="18" />
+    <!-- Ergebnis hervorgehoben: Akzent-Rand 2 px (Innenabstand 15, damit der Text auf derselben Höhe beginnt). -->
+    <Style Selector="Border.panel.result">
+      <Setter Property="BorderBrush" Value="{DynamicResource Loom.Accent}" />
+      <Setter Property="BorderThickness" Value="2" />
+      <Setter Property="Padding" Value="15" />
+    </Style>
+    <Style Selector="TextBlock.panelTitle">
+      <Setter Property="FontSize" Value="{DynamicResource Loom.Font.Title}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource Loom.TextSecondary}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="AutomationProperties.HeadingLevel" Value="2" />
+    </Style>
+    <Style Selector="Border.panel.result TextBlock.panelTitle">
+      <Setter Property="Foreground" Value="{DynamicResource Loom.Text}" />
+    </Style>
+    <Style Selector="Border.chip">
+      <Setter Property="Background" Value="{DynamicResource Loom.SurfaceHigh}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Loom.SurfaceEdge}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="14" />
+      <Setter Property="Padding" Value="12,4" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.big">
+      <Setter Property="MinHeight" Value="48" />
+      <Setter Property="Padding" Value="20,8" />
+      <Setter Property="FontSize" Value="{DynamicResource Loom.Font.Title}" />
     </Style>
   </Window.Styles>
 
-  <Grid RowDefinitions="Auto,*" Margin="24">
-    <!-- Kopf: Indikator, Timer, Pegel, Steuerung, Stufe, Sprache -->
-    <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*,Auto" Margin="0,0,0,20">
-      <Ellipse x:Name="RecordDot" Grid.Column="0" Width="72" Height="72"
-               Classes.recording="{Binding IsRecording}" VerticalAlignment="Center" />
-      <StackPanel Grid.Column="1" Margin="20,0" VerticalAlignment="Center" Spacing="4">
-        <TextBlock x:Name="Timer" Text="{Binding ElapsedText}" FontSize="44" FontWeight="Bold"
-                   Foreground="{StaticResource WlOnSurface}" FontFamily="monospace" />
-        <TextBlock x:Name="StateLabel" Text="{Binding StateText}" Classes="label" />
-      </StackPanel>
-      <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="10" Margin="12,0">
-        <ProgressBar x:Name="LevelBar" Value="{Binding Level}" Minimum="0" Maximum="1" Height="14"
-                     Foreground="{StaticResource WlAccent}" Background="{StaticResource WlSurfaceHigh}" />
-        <StackPanel Orientation="Horizontal" Spacing="10">
-          <Button x:Name="ToggleButton" Content="{Binding ToggleText}" Command="{Binding ToggleCommand}" />
-          <Button x:Name="PauseButton" Content="{Binding PauseText}" Command="{Binding PauseResumeCommand}"
-                  IsEnabled="{Binding IsRecording}" />
-          <TextBlock Text="{Binding ErrorText}" Foreground="{StaticResource WlError}" FontSize="18"
-                     VerticalAlignment="Center" TextWrapping="Wrap" />
+  <Grid RowDefinitions="Auto,Auto,*" Margin="24,20,24,24" RowSpacing="{DynamicResource Loom.Space.4}">
+    <!-- Kopf: Zustand, Pegel und Hauptaktion links; Stufe, Sprache, Schrift und Thema rechts. -->
+    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Loom.Space.5}">
+      <StackPanel Margin="17,0,0,0" Spacing="{DynamicResource Loom.Space.3}">
+        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.3}">
+          <ds:LoomIcon x:Name="RecordDot" Data="{DynamicResource Loom.Icon.Record}" Width="32" Height="32" VerticalAlignment="Center"
+                       Classes.recording="{Binding IsRecording}" />
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock x:Name="Timer" Text="{Binding ElapsedText}" FontSize="{DynamicResource Loom.Font.WindowTitle}" FontWeight="Bold"
+                       Foreground="{DynamicResource Loom.Text}" FontFamily="monospace" />
+            <TextBlock x:Name="StateLabel" Text="{Binding StateText}" FontSize="{DynamicResource Loom.Font.Title}"
+                       Foreground="{DynamicResource Loom.TextSecondary}" AutomationProperties.LiveSetting="Polite" />
+          </StackPanel>
         </StackPanel>
+        <ProgressBar x:Name="LevelBar" Value="{Binding Level}" Minimum="0" Maximum="1" Height="8" MinHeight="8" Width="360" HorizontalAlignment="Left"
+                     Foreground="{DynamicResource Loom.Accent}" Background="{DynamicResource Loom.SurfaceHigh}"
+                     AutomationProperties.Name="{Binding [Setup_MicLevel], Source={x:Static l:Loc.Instance}}" />
+        <WrapPanel ItemSpacing="12" LineSpacing="8">
+          <Button x:Name="ToggleButton" Classes="accent big" Command="{Binding ToggleCommand}" AutomationProperties.Name="{Binding ToggleText}">
+            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
+              <Panel VerticalAlignment="Center">
+                <ds:LoomIcon Data="{DynamicResource Loom.Icon.Record}" Width="20" Height="20" IsVisible="{Binding !IsRecording}" />
+                <ds:LoomIcon Data="{DynamicResource Loom.Icon.Stop}" Width="20" Height="20" IsVisible="{Binding IsRecording}" />
+              </Panel>
+              <TextBlock Text="{Binding ToggleText}" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Button x:Name="PauseButton" Classes="secondary big" Command="{Binding PauseResumeCommand}" IsVisible="{Binding ShowPause}"
+                  AutomationProperties.Name="{Binding PauseText}">
+            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
+              <Panel VerticalAlignment="Center">
+                <ds:LoomIcon Data="{DynamicResource Loom.Icon.Pause}" Width="20" Height="20" IsVisible="{Binding !IsPaused}" />
+                <ds:LoomIcon Data="{DynamicResource Loom.Icon.Play}" Width="20" Height="20" IsVisible="{Binding IsPaused}" />
+              </Panel>
+              <TextBlock Text="{Binding PauseText}" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+        </WrapPanel>
       </StackPanel>
-      <StackPanel Grid.Column="3" VerticalAlignment="Center" HorizontalAlignment="Right" Spacing="6">
-        <Button x:Name="StageButton" Command="{Binding NextStageCommand}" HorizontalAlignment="Right"
-                Background="{StaticResource WlTertiaryContainer}">
-          <TextBlock FontSize="22" Foreground="{StaticResource WlOnTertiaryContainer}">
-            <Run Text="{Binding [Stage_Label], Source={x:Static l:Loc.Instance}}" />
-            <Run Text=": " />
-            <Run x:Name="StageRun" Text="{Binding StageText}" FontWeight="Bold" />
-          </TextBlock>
-        </Button>
-        <TextBlock HorizontalAlignment="Right" FontSize="22" Foreground="{StaticResource WlSecondary}">
-          <Run Text="{Binding [Language_Label], Source={x:Static l:Loc.Instance}}" />
-          <Run Text=": " />
-          <Run x:Name="LanguageRun" Text="{Binding LanguageText}" FontWeight="Bold" />
-        </TextBlock>
+
+      <StackPanel Grid.Column="1" Spacing="{DynamicResource Loom.Space.3}" HorizontalAlignment="Right" VerticalAlignment="Top">
+        <WrapPanel ItemSpacing="12" LineSpacing="8" HorizontalAlignment="Right">
+          <Button x:Name="StageButton" Classes="text" Command="{Binding NextStageCommand}" VerticalAlignment="Center"
+                  AutomationProperties.Name="{Binding StageChipText}" AutomationProperties.HelpText="{Binding [Stage_NextHelp], Source={x:Static l:Loc.Instance}}"
+                  ToolTip.Tip="{Binding [Stage_NextHelp], Source={x:Static l:Loc.Instance}}">
+            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
+              <ds:LoomIcon Data="{DynamicResource Loom.Icon.TextStage}" VerticalAlignment="Center" />
+              <TextBlock x:Name="StageRun" Text="{Binding StageChipText}" FontSize="{DynamicResource Loom.Font.Title}" />
+            </StackPanel>
+          </Button>
+          <Border Classes="chip">
+            <TextBlock x:Name="LanguageRun" Text="{Binding LanguageChipText}" Foreground="{DynamicResource Loom.Text}" />
+          </Border>
+        </WrapPanel>
+        <WrapPanel ItemSpacing="8" LineSpacing="8" HorizontalAlignment="Right">
+          <Button x:Name="ZoomOutButton" Classes="icon" Command="{Binding ZoomOutCommand}"
+                  AutomationProperties.Name="{Binding [Stage_Smaller], Source={x:Static l:Loc.Instance}}"
+                  ToolTip.Tip="{Binding [Stage_Smaller], Source={x:Static l:Loc.Instance}}">
+            <TextBlock Text="A−" FontWeight="SemiBold" />
+          </Button>
+          <Button x:Name="ZoomInButton" Classes="icon" Command="{Binding ZoomInCommand}"
+                  AutomationProperties.Name="{Binding [Stage_Larger], Source={x:Static l:Loc.Instance}}"
+                  ToolTip.Tip="{Binding [Stage_Larger], Source={x:Static l:Loc.Instance}}">
+            <TextBlock Text="A+" FontWeight="SemiBold" />
+          </Button>
+          <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
+            <TextBlock Text="{Binding [Stage_Dark], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" Foreground="{DynamicResource Loom.Text}" />
+            <ToggleSwitch x:Name="DarkSwitch" IsChecked="{Binding DarkForProjector, Mode=OneWay}" Command="{Binding ToggleDarkCommand}"
+                          OnContent="" OffContent="" MinWidth="0"
+                          AutomationProperties.Name="{Binding [Stage_Dark], Source={x:Static l:Loc.Instance}}"
+                          AutomationProperties.AcceleratorKey="Ctrl+D" />
+          </StackPanel>
+        </WrapPanel>
       </StackPanel>
     </Grid>
 
-    <!-- Links Rohtext, rechts Ergebnis -->
-    <Grid x:Name="Panels" Grid.Row="1" ColumnDefinitions="*,24,*">
-      <Border Grid.Column="0" Background="{StaticResource WlSurface}" CornerRadius="20" Padding="20">
+    <ds:HintRow x:Name="ErrorHint" Grid.Row="1" Kind="Error" Text="{Binding ErrorText}" IsVisible="{Binding HasError}" />
+
+    <!-- Rohtext links, Ergebnis rechts (hervorgehoben) -->
+    <Grid x:Name="Panels" Grid.Row="2" ColumnDefinitions="*,*" ColumnSpacing="{DynamicResource Loom.Space.4}">
+      <Border Classes="panel">
         <DockPanel>
-          <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
-            <Button x:Name="CopyRawButton" DockPanel.Dock="Right" Click="OnCopyRaw"
-                    Content="{Binding [Action_Copy], Source={x:Static l:Loc.Instance}}" />
-            <TextBlock Text="{Binding [Stage_Raw], Source={x:Static l:Loc.Instance}}" Classes="label"
-                       VerticalAlignment="Center" />
-          </DockPanel>
+          <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+            <TextBlock Classes="panelTitle" Text="{Binding [Stage_Raw], Source={x:Static l:Loc.Instance}}" />
+            <Button x:Name="CopyRawButton" Grid.Column="1" Classes="text" Click="OnCopyRaw"
+                    AutomationProperties.Name="{Binding [Stage_CopyRaw], Source={x:Static l:Loc.Instance}}">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <ds:LoomIcon Data="{DynamicResource Loom.Icon.Copy}" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding [Action_Copy], Source={x:Static l:Loc.Instance}}" />
+              </StackPanel>
+            </Button>
+          </Grid>
           <ScrollViewer>
-            <SelectableTextBlock x:Name="RawText" Text="{Binding RawText}" FontSize="{Binding FontSize}"
-                                 TextWrapping="Wrap" Foreground="{StaticResource WlOnSurfaceVariant}" />
+            <SelectableTextBlock x:Name="RawText" Text="{Binding RawText}" FontSize="{Binding FontSize}" TextWrapping="Wrap"
+                                 Foreground="{DynamicResource Loom.TextSecondary}" />
           </ScrollViewer>
         </DockPanel>
       </Border>
-      <Border Grid.Column="2" Background="{StaticResource WlSurface}" CornerRadius="20" Padding="20"
-              BorderBrush="{StaticResource WlAccent}" BorderThickness="2">
+      <Border Grid.Column="1" Classes="panel result">
         <DockPanel>
-          <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
-            <Button x:Name="CopyResultButton" DockPanel.Dock="Right" Click="OnCopyResult"
-                    Content="{Binding [Action_Copy], Source={x:Static l:Loc.Instance}}" />
-            <TextBlock Text="{Binding [Stage_Result], Source={x:Static l:Loc.Instance}}" Classes="label"
-                       VerticalAlignment="Center" />
-          </DockPanel>
+          <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Loom.Space.3}" Margin="0,0,0,12">
+            <TextBlock Classes="panelTitle" Text="{Binding [Stage_Result], Source={x:Static l:Loc.Instance}}" />
+            <Border Grid.Column="1" Classes="pill good" HorizontalAlignment="Left" IsVisible="{Binding HasResultBadge}">
+              <TextBlock x:Name="ResultBadge" Text="{Binding ResultBadge}" />
+            </Border>
+            <Button x:Name="CopyResultButton" Grid.Column="2" Classes="text" Click="OnCopyResult"
+                    AutomationProperties.Name="{Binding [Stage_CopyResult], Source={x:Static l:Loc.Instance}}">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <ds:LoomIcon Data="{DynamicResource Loom.Icon.Copy}" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding [Action_Copy], Source={x:Static l:Loc.Instance}}" />
+              </StackPanel>
+            </Button>
+          </Grid>
           <ScrollViewer>
-            <SelectableTextBlock x:Name="ResultText" Text="{Binding ResultText}" FontSize="{Binding FontSize}"
-                                 TextWrapping="Wrap" Foreground="{StaticResource WlOnSurface}" />
+            <SelectableTextBlock x:Name="ResultText" Text="{Binding ResultText}" FontSize="{Binding FontSize}" TextWrapping="Wrap"
+                                 Foreground="{DynamicResource Loom.Text}" />
           </ScrollViewer>
         </DockPanel>
       </Border>

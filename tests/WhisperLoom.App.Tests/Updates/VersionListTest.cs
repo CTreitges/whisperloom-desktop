@@ -56,7 +56,12 @@ public sealed class VersionListTest : IDisposable
         Assert.Equal(["1.1.0-beta.1"], vm.Rows.Where(r => r.IsInstalled).Select(r => r.Version));
         Assert.Equal(["1.0.1", "1.0.0"], vm.Rows.Where(r => r.IsDowngrade).Select(r => r.Version));
         Assert.Equal("Stabil", vm.Rows[^1].ChannelLabel);
-        Assert.Equal("2026-11-02", vm.Rows[0].Date);
+        Assert.Equal("2. Nov. 2026", vm.Rows[0].Date); // UX-3: Datum in der Sprache
+        Assert.True(vm.ShowBackToStable); // installiert ist eine Beta
+        Assert.Equal("Zur neuesten stabilen Version (1.0.1)", vm.BackToStableText);
+        Loc.Instance.SetLanguage("en");
+        Assert.Equal("2 Nov 2026", vm.Rows[0].Date);
+        Loc.Instance.SetLanguage("de");
         Assert.Equal("", vm.Status);
     }
 
@@ -185,5 +190,20 @@ public sealed class VersionListTest : IDisposable
         var text = File.ReadAllText(log.FilePath);
         Assert.Contains("update.list status=failed errorClass=HttpRequestException", text);
         Assert.DoesNotContain("secret", text);
+    }
+
+    [AvaloniaFact]
+    public async Task Rueckweg_zu_Stabil_nur_von_einer_Vorabversion()
+    {
+        foreach (var stable in new[] { "1.0.1", "1.0.0" })
+        {
+            var vm = Vm(Client(stable));
+            await vm.LoadAsync();
+            Assert.False(vm.ShowBackToStable); // installiert ist schon stabil
+        }
+        var beta = Vm(Client("1.1.0-beta.2"));
+        await beta.LoadAsync();
+        Assert.True(beta.ShowBackToStable);
+        Assert.Equal("1.0.1", beta.NewestStable!.Version);
     }
 }

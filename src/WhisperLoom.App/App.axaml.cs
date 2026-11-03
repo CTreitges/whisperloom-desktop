@@ -364,7 +364,8 @@ public partial class App : Application
             [.. Core.Contracts.RefineModes.SettingsFor(c.Settings.Refine.PromptEnabled)
                 .Select(m => (Core.Contracts.RefineModes.Key(m), Localization.Loc.Instance["Stage_" + Core.Contracts.RefineModes.Key(m)]))],
             entry => c.NotifyHistoryChanged(cleared: false),
-            () => c.NotifyHistoryChanged(cleared: true));
+            () => c.NotifyHistoryChanged(cleared: true),
+            Features.History.HistoryActions.StartKeysFor(SettingsStore.Desktop(c.Settings), OperatingSystem.IsWindows()));
     }
 
     private SettingsViewModel CreateSettings(AppHost host) =>

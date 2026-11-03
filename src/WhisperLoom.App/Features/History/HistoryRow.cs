@@ -35,6 +35,21 @@ public sealed record HistoryRow(HistoryEntry Entry, bool FirstOfDay, string DayL
 
     public string StageLabel => Loc.Instance["Stage_" + HistoryVersions.MainKey(Entry)];
 
+    /// <summary>Metazeile der Liste (UX-3): Stufe · Uhrzeit · Dauer · Anbieter.</summary>
+    public string MetaLine => StageLabel + " · " + Meta;
+
+    /// <summary>„2 Fassungen“ bzw. „bearbeitet“ neben der Metazeile; leer ohne weitere Fassung.</summary>
+    public string VersionsText
+    {
+        get
+        {
+            var versions = HistoryVersions.All(Entry);
+            return versions.Count > 1 ? Loc.Instance.Format("History_VersionCount", versions.Count)
+                : versions.Any(v => v.Edited) ? Loc.Instance["History_Edited"]
+                : "";
+        }
+    }
+
     /// <summary>Weitere Fassungen außer der damaligen bzw. bearbeitet: kleines Zeichen in der Liste.</summary>
     public bool HasMore => HistoryVersions.All(Entry).Count > 1 || HistoryVersions.All(Entry).Any(v => v.Edited);
 

@@ -12,7 +12,7 @@ namespace WhisperLoom.App.ViewModels;
 /// Stufe und Sprache sichtbar. Zoom über <see cref="ZoomIn"/>/<see cref="ZoomOut"/> (Strg+Plus/Minus),
 /// gespeichert in den Desktop-Einstellungen.
 /// </summary>
-public sealed partial class StageViewModel : ObservableObject
+public sealed partial class StageViewModel : ObservableObject, IDisposable
 {
     public const double MinFontSize = 16;
     public const double MaxFontSize = 96;
@@ -21,9 +21,38 @@ public sealed partial class StageViewModel : ObservableObject
     public StageViewModel(DictationController controller)
     {
         Controller = controller;
-        _fontSize = Math.Clamp(SettingsStore.Desktop(controller.Settings).StageFontSize, MinFontSize, MaxFontSize);
+        var desktop = SettingsStore.Desktop(controller.Settings);
+        _fontSize = Math.Clamp(desktop.StageFontSize, MinFontSize, MaxFontSize);
+        _darkForProjector = desktop.StageDark;
         controller.PropertyChanged += OnControllerChanged;
-        Loc.Instance.PropertyChanged += (_, _) => RefreshTexts();
+        // Abmelden in Dispose (Fenster zu), sonst halten Loc.Instance und der Controller Bühne und Fenster fest.
+        Loc.Instance.PropertyChanged += OnLanguageChanged;
+    }
+
+    /// <summary>„Dunkel für Beamer“ (Strg+D): Bühne dunkel statt nach dem System; gespeichert wie die Schriftgröße.</summary>
+    [ObservableProperty]
+    private bool _darkForProjector;
+
+    /// <summary>Textknopf im Kopf: „Stufe: Glätten“ (Klick = nächste Stufe).</summary>
+    public string StageChipText => Loc.Instance.Format("Stage_Current", StageText);
+
+    /// <summary>Etikett im Kopf: „Sprache: DE“.</summary>
+    public string LanguageChipText => Loc.Instance.Format("Language_Current", LanguageText);
+
+    /// <summary>Etikett am Ergebnis: „Glätten · KI“; leer bei Stufe Aus (dann ist das Ergebnis der bereinigte Rohtext).</summary>
+    public string ResultBadge => Controller.Stage == RefineMode.Off ? "" : Loc.Instance.Format("Stage_ResultBadge", StageText);
+
+    public bool HasResultBadge => ResultBadge.Length > 0;
+
+    /// <summary>„Pause“ bzw. „Weiter“ nur, solange eine Aufnahme läuft oder pausiert (nichts Deaktiviertes ohne Grund).</summary>
+    public bool ShowPause => IsRecording || IsPaused;
+
+    public bool HasError => ErrorText is not null;
+
+    public void Dispose()
+    {
+        Controller.PropertyChanged -= OnControllerChanged;
+        Loc.Instance.PropertyChanged -= OnLanguageChanged;
     }
 
     public DictationController Controller { get; }
@@ -87,6 +116,17 @@ public sealed partial class StageViewModel : ObservableObject
     private void NextStage() => Controller.SetStage("next");
 
     [RelayCommand]
+    public void ToggleDark()
+    {
+        DarkForProjector = !DarkForProjector;
+        var settings = Controller.Settings;
+        var desktop = SettingsStore.Desktop(settings);
+        desktop.StageDark = DarkForProjector;
+        SettingsStore.SetDesktop(settings, desktop);
+        _ = Controller.ApplySettingsAsync(settings);
+    }
+
+    [RelayCommand]
     public void ZoomIn() => SetFontSize(FontSize + ZoomStep);
 
     [RelayCommand]
@@ -106,6 +146,8 @@ public sealed partial class StageViewModel : ObservableObject
 
     private void OnControllerChanged(object? sender, PropertyChangedEventArgs e) => RefreshTexts();
 
+    private void OnLanguageChanged(object? sender, PropertyChangedEventArgs e) => RefreshTexts();
+
     private void RefreshTexts()
     {
         OnPropertyChanged(nameof(IsRecording));
@@ -119,6 +161,12 @@ public sealed partial class StageViewModel : ObservableObject
         OnPropertyChanged(nameof(ToggleText));
         OnPropertyChanged(nameof(PauseText));
         OnPropertyChanged(nameof(ErrorText));
+        OnPropertyChanged(nameof(HasError));
+        OnPropertyChanged(nameof(StageChipText));
+        OnPropertyChanged(nameof(LanguageChipText));
+        OnPropertyChanged(nameof(ResultBadge));
+        OnPropertyChanged(nameof(HasResultBadge));
+        OnPropertyChanged(nameof(ShowPause));
         Tick();
     }
 }

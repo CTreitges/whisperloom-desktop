@@ -32,6 +32,7 @@ public static class SettingsCatalog
         new("selection.floatingButton", "dictation", "G_Selection", "Set_FloatingButton", "Set_FloatingButton_Desc"),
         new("selection.ctrlRightClick", "dictation", "G_Selection", "Set_CtrlRightClick", "Set_CtrlRightClick_Desc"),
         new("desktop.stageFontSize", "dictation", "G_Stage", "Set_StageFontSize", "Set_StageFontSize_Desc"),
+        new("desktop.stageDark", "dictation", "G_Stage", "Stage_Dark", "Set_StageDark_Desc"),
         // Erkennung: Erkennungsweg (mit Sprache, Entscheidung 18), nur der gewählte Weg, Kontext-Wörter, Ersatzanbieter
         new("engine", "recognition", "G_Engine", "Set_Engine"),
         new("language", "recognition", "G_Engine", "Set_Language"),

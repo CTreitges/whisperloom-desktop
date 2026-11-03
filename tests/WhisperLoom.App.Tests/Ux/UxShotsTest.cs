@@ -7,7 +7,7 @@ namespace WhisperLoom.App.Tests.Ux;
 
 /// <summary>
 /// Screenshots aller Ansichten aus <see cref="UxViews"/> für Audit und Bericht (Vorher/Nachher): nur mit
-/// <c>WLD_UX_SHOTS_DIR</c>, Sprache aus <c>WLD_UX_LANG</c> (Standard de), je Variante <c>&lt;id&gt;-&lt;variante&gt;.png</c>.
+/// <c>WLD_UX_SHOTS_DIR</c>, Sprache aus <c>WLD_UX_LANG</c> (Standard de), Auswahl per Präfix <c>WLD_UX_ONLY</c>, je Variante <c>&lt;id&gt;-&lt;variante&gt;.png</c>.
 /// Breite ≤ 1200 px, Höhe = ganze Ansicht.
 /// </summary>
 public sealed class UxShotsTest
@@ -26,7 +26,9 @@ public sealed class UxShotsTest
         Directory.CreateDirectory(dir);
         try
         {
-            foreach (var view in UxViews.All)
+            // WLD_UX_ONLY=setup- rendert nur Ansichten mit diesem Präfix (schneller beim Arbeiten an einem Fenster).
+            var only = Environment.GetEnvironmentVariable("WLD_UX_ONLY") ?? "";
+            foreach (var view in UxViews.All.Where(v => v.Id.StartsWith(only, StringComparison.Ordinal)))
             {
                 foreach (var (name, theme) in UxViews.Themes)
                 {

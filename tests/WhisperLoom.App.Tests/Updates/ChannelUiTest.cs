@@ -132,13 +132,18 @@ public sealed class ChannelUiTest
         var texts = UiTest.TextsOf(window);
         Assert.Contains("Version wählen", texts);
         Assert.Contains("1.1.0-test.12.feat-channels", texts);
-        Assert.Contains("installiert", texts);
-        Assert.Contains("2026-11-02", texts);
+        Assert.Contains("Installiert", texts); // UX-3: Etikett in der hervorgehobenen Zeile
+        Assert.Contains("2. Nov. 2026", texts); // Datum in der Sprache statt ISO
+        Assert.Contains("Veröffentlicht", texts); // Spaltenkopf
         var install = window.GetLogicalDescendants().OfType<Button>().Where(b => b.IsVisible && Equals(b.Content, "Installieren")).ToList();
         Assert.Equal(4, install.Count);
         // Klick fragt nach (Antwort im Test: nein) und installiert nichts.
         install[^1].RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-        Assert.True(window.GetLogicalDescendants().OfType<Button>().Single(b => b.Name == "BackToStableButton").IsEnabled);
+        Assert.Equal("Version 1.0.0 (Stabil) installieren", Avalonia.Automation.AutomationProperties.GetName(install[^1]));
+        // Installiert ist eine Beta: der Rückweg steht als Textknopf mit Version darunter.
+        var back = window.GetLogicalDescendants().OfType<Button>().Single(b => b.Name == "BackToStableButton");
+        Assert.True(back.IsVisible);
+        Assert.Equal("Zur neuesten stabilen Version (1.0.1)", back.Content);
         window.Close();
     }
 
@@ -151,8 +156,9 @@ public sealed class ChannelUiTest
         var window = new VersionListWindow(vm);
         window.Show();
         Dispatcher.UIThread.RunJobs();
-        Assert.Contains("Updates are turned off by your IT.", UiTest.TextsOf(window));
-        Assert.False(window.GetLogicalDescendants().OfType<Button>().Single(b => b.Name == "BackToStableButton").IsEnabled);
+        Assert.True(window.GetLogicalDescendants().OfType<WhisperLoom.App.Design.HintRow>().Single(h => h.Name == "DisabledHint").IsVisible);
+        Assert.False(window.GetLogicalDescendants().OfType<TextBlock>().Single(t => t.Name == "StatusText").IsVisible); // nicht doppelt
+        Assert.False(window.GetLogicalDescendants().OfType<Button>().Single(b => b.Name == "BackToStableButton").IsVisible);
         window.Close();
         Loc.Instance.SetLanguage("de");
     }

@@ -66,6 +66,8 @@ public sealed partial class HistoryViewModel(IHistoryStore store, HistoryActions
 
     partial void OnSelectedChanged(HistoryRow? value)
     {
+        OnPropertyChanged(nameof(ShowToolbar));
+        OnPropertyChanged(nameof(ShowFoot));
         if (value is null)
         {
             Detail = null;
@@ -137,7 +139,8 @@ public sealed partial class HistoryViewModel(IHistoryStore store, HistoryActions
             return;
         }
         Deleted = row.Entry;
-        Status = Loc.Instance["History_Status_deleted"];
+        // Befund 8: sagt, was gelöscht wurde („Diktat von 13:30 gelöscht.“).
+        Status = Loc.Instance.Format("History_Status_deleted", row.Entry.CreatedAt.ToLocalTime().ToString("t", HistoryRow.Culture));
         _all.RemoveAll(e => e.Id == row.Entry.Id);
         Apply(null);
         // Die nächste Zeile wählen, damit Entf mehrfach hintereinander geht.
@@ -219,5 +222,6 @@ public sealed partial class HistoryViewModel(IHistoryStore store, HistoryActions
         }
         OnPropertyChanged(nameof(IsEmpty));
         OnPropertyChanged(nameof(NoMatches));
+        RaiseListTexts();
     }
 }

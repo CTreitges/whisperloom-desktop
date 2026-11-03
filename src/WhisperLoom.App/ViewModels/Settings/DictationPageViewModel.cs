@@ -30,4 +30,20 @@ public sealed class DictationPageViewModel(SettingsViewModel session, string tog
         get => Session.Desktop.StageFontSize.ToString(CultureInfo.InvariantCulture);
         set => SetNumber("desktop.stageFontSize", value, MinFontSize, MaxFontSize, zeroAllowed: false, v => Session.Desktop.StageFontSize = v);
     }
+
+    /// <summary>„Dunkel für Beamer“ (Entscheidung 19): Bühne dunkel, auch wenn das System hell ist; in der Bühne Strg+D.</summary>
+    public bool StageDark
+    {
+        get => Session.Desktop.StageDark;
+        set
+        {
+            if (value == Session.Desktop.StageDark)
+            {
+                return;
+            }
+            Session.Desktop.StageDark = value;
+            OnPropertyChanged();
+            Session.Touch();
+        }
+    }
 }

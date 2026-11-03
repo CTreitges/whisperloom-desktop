@@ -57,26 +57,11 @@
 
       <!-- Formular wie im Assistenten -->
       <ds:SettingsGroup TitleKey="G_CompanyJoin" FooterKey="Company_ConnectFooter" IsVisible="{Binding ShowJoin}">
-        <StackPanel Margin="16,12,16,16" Spacing="6">
-        <StackPanel Spacing="6" DataContext="{Binding Join}" x:DataType="s:CompanyJoinViewModel">
-          <StackPanel IsVisible="{Binding ShowInput}" Spacing="6">
-            <TextBlock Text="{Binding [Company_Server], Source={x:Static l:Loc.Instance}}" Foreground="{DynamicResource Loom.TextSecondary}" />
-            <TextBox x:Name="JoinServerBox" Classes="row" HorizontalAlignment="Left" Text="{Binding Server}" PlaceholderText="https://wl.example.com"
-                     AutomationProperties.Name="{Binding [Company_Server], Source={x:Static l:Loc.Instance}}" />
-            <TextBlock Text="{Binding [Company_Code], Source={x:Static l:Loc.Instance}}" Foreground="{DynamicResource Loom.TextSecondary}" Margin="0,6,0,0" />
-            <TextBox x:Name="JoinCodeBox" Classes="row" HorizontalAlignment="Left" Text="{Binding Code}" FontFamily="monospace" PlaceholderText="ABCD-EFGH-JKMN-PQRS"
-                     AutomationProperties.Name="{Binding [Company_Code], Source={x:Static l:Loc.Instance}}" />
-            <Button x:Name="JoinNowButton" Classes="accent" Margin="0,8,0,0" Content="{Binding [Company_Join], Source={x:Static l:Loc.Instance}}" Command="{Binding JoinCommand}" />
-          </StackPanel>
-          <StackPanel IsVisible="{Binding IsWaiting}" Spacing="8">
-            <TextBlock FontWeight="SemiBold" Text="{Binding [Company_Waiting], Source={x:Static l:Loc.Instance}}" />
-            <ProgressBar IsIndeterminate="True" Height="4" MinHeight="4" Foreground="{DynamicResource Loom.Accent}" />
-            <TextBlock Text="{Binding WaitingDetail}" TextWrapping="Wrap" Foreground="{DynamicResource Loom.TextSecondary}" />
-          </StackPanel>
-          <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="{DynamicResource Loom.Error}" IsVisible="{Binding StatusIsError}" />
-        </StackPanel>
-        <Button x:Name="CloseJoinButton" Content="{Binding [Action_Cancel], Source={x:Static l:Loc.Instance}}" Command="{Binding CloseJoinCommand}"
-                IsVisible="{Binding Join.ShowInput, FallbackValue=False}" />
+        <StackPanel Margin="16,12,16,16" Spacing="{DynamicResource Loom.Space.3}">
+          <!-- UX-3: dieselbe Beitritts-Ansicht wie im Assistenten (Beschriftung, Hinweis mit Beispiel, keine Platzhalter). -->
+          <s:CompanyJoinView x:Name="JoinView" DataContext="{Binding Join}" />
+          <Button x:Name="CloseJoinButton" Classes="text" HorizontalAlignment="Left" Content="{Binding [Action_Cancel], Source={x:Static l:Loc.Instance}}"
+                  Command="{Binding CloseJoinCommand}" IsVisible="{Binding Join.ShowInput, FallbackValue=False}" />
         </StackPanel>
       </ds:SettingsGroup>
 

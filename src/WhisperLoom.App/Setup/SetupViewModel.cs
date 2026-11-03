@@ -74,6 +74,7 @@ public sealed partial class SetupViewModel : ObservableObject
                 if (e.PropertyName == nameof(CompanyJoinViewModel.Phase))
                 {
                     NextCommand.NotifyCanExecuteChanged();
+                    OnPropertyChanged(nameof(ShowNext));
                 }
             };
             var m = settings.Current.Management;
@@ -83,8 +84,29 @@ public sealed partial class SetupViewModel : ObservableObject
         }
         _steps = BuildSteps();
         _current = _steps[0];
+        Managed = ManagedFor(settings);
         Attach(settings);
-        Loc.Instance.PropertyChanged += (_, _) => OnPropertyChanged(nameof(Title));
+        if (Mic is not null)
+        {
+            Mic.PropertyChanged += OnMicChanged;
+        }
+        // Abmelden in Dispose (Fenster zu), sonst hält Loc.Instance Assistent und Fenster fest.
+        Loc.Instance.PropertyChanged += OnLanguageChanged;
+    }
+
+    /// <summary>Stufen je Einstellung (Fest blendet Zeilen aus, Vorgabe zeigt das Etikett) für die Zeilen der Schritte.</summary>
+    public Design.ManagedContext Managed
+    {
+        get => _managed;
+        private set => SetProperty(ref _managed, value);
+    }
+
+    private Design.ManagedContext _managed = Design.ManagedContext.None;
+
+    private static Design.ManagedContext ManagedFor(SettingsViewModel s)
+    {
+        var source = new Design.PolicyManagedSource(s.Policy, () => s.Current);
+        return new Design.ManagedContext(source, path => s.ResetToDefaultAsync(path, source));
     }
 
     /// <summary>Arbeitskopie; nach der Freigabe durch die Firma neu aufgebaut (neue Richtlinie).</summary>
@@ -123,6 +145,7 @@ public sealed partial class SetupViewModel : ObservableObject
                 OnPropertyChanged(nameof(ProgressValue));
                 OnPropertyChanged(nameof(CanBack));
                 BackCommand.NotifyCanExecuteChanged();
+                OnStepsChanged();
             }
         }
     }
@@ -182,9 +205,12 @@ public sealed partial class SetupViewModel : ObservableObject
         Settings.Local.Models.First(m => m.Model.Id == Settings.Local.SelectedModel.Value);
 
     /// <summary>Zusammenfassung auf der Seite „Fertig“: wie man das erste Diktat startet.</summary>
-    public string DoneHint => Windows
-        ? Loc.Instance.Format("Setup_DoneWindows", Settings.Hotkeys.Hold.Value, Settings.Hotkeys.Toggle.Value)
-        : Loc.Instance.Format("Setup_DoneLinux", ToggleCommand);
+    public string DoneHint => string.Format(System.Globalization.CultureInfo.CurrentCulture, DoneTemplate, [.. DoneKeys]);
+
+    /// <summary>Vorlage des Satzes auf „Fertig“; {0}, {1} stehen für <see cref="DoneKeys"/> (als Tastenkappen gezeigt).</summary>
+    public string DoneTemplate => Loc.Instance[Windows ? "Setup_DoneWindows" : "Setup_DoneLinux"];
+
+    public IReadOnlyList<string> DoneKeys => Windows ? [Settings.Hotkeys.Hold.Value, Settings.Hotkeys.Toggle.Value] : [ToggleCommand];
 
     /// <summary>Schritte nach Richtlinie: ein Schritt entfällt, wenn alle seine Felder gesperrt sind.</summary>
     internal static IReadOnlyList<SetupStep> VisibleSteps(LockMap editable, string engine)
@@ -318,6 +344,10 @@ public sealed partial class SetupViewModel : ObservableObject
         {
             OnPropertyChanged(nameof(SelectedModel));
         }
+        if (e.PropertyName == nameof(LocalViewModel.Engine))
+        {
+            OnPropertyChanged(nameof(RecognitionFooter));
+        }
     }
 
     /// <summary>Die gewählte Oberflächensprache gilt sofort, damit der Rest des Assistenten schon darin erscheint.</summary>
@@ -326,8 +356,7 @@ public sealed partial class SetupViewModel : ObservableObject
         if (e.PropertyName == nameof(SettingsViewModel.UiLanguage))
         {
             Loc.Instance.SetLanguage(Settings.UiLanguage.Value);
-            OnPropertyChanged(nameof(Progress));
-            OnPropertyChanged(nameof(DoneHint));
+            RaiseTexts();
         }
     }
 

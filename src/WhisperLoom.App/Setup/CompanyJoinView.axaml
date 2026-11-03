@@ -1,0 +1,71 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:s="using:WhisperLoom.App.Setup"
+             xmlns:ds="using:WhisperLoom.App.Design"
+             xmlns:l="using:WhisperLoom.App.Localization"
+             x:Class="WhisperLoom.App.Setup.CompanyJoinView"
+             x:DataType="s:CompanyJoinViewModel">
+  <!--
+    Firmen-Beitritt (UX-3, einrichtung.html Befunde 5 und 11), im Assistenten und auf der Seite „Firma“: Beschriftung, Hinweis
+    mit Beispiel zwischen Beschriftung und Feld (keine Platzhalter), „Mit Firma verbinden“ als Hauptaktion. Beim Warten eine
+    Hinweiszeile mit Geräte-ID zum Kopieren; nach der Freigabe das Etikett „Freigegeben“.
+  -->
+  <StackPanel Spacing="{DynamicResource Loom.Space.4}">
+    <StackPanel x:Name="CompanyInput" Spacing="{DynamicResource Loom.Space.4}" IsVisible="{Binding ShowInput}">
+      <StackPanel Spacing="{DynamicResource Loom.Space.1}">
+        <TextBlock Text="{Binding [Company_Server], Source={x:Static l:Loc.Instance}}" FontWeight="SemiBold" TextWrapping="Wrap" />
+        <TextBlock Text="{Binding [Company_ServerHint], Source={x:Static l:Loc.Instance}}" Classes="caption" TextWrapping="Wrap" />
+        <TextBox x:Name="ServerBox" Classes="row" HorizontalAlignment="Left" Text="{Binding Server}"
+                 AutomationProperties.Name="{Binding [Company_Server], Source={x:Static l:Loc.Instance}}"
+                 AutomationProperties.HelpText="{Binding [Company_ServerHint], Source={x:Static l:Loc.Instance}}" />
+      </StackPanel>
+      <StackPanel Spacing="{DynamicResource Loom.Space.1}">
+        <TextBlock Text="{Binding [Company_Code], Source={x:Static l:Loc.Instance}}" FontWeight="SemiBold" TextWrapping="Wrap" />
+        <TextBlock Text="{Binding [Company_CodeHint], Source={x:Static l:Loc.Instance}}" Classes="caption" TextWrapping="Wrap" />
+        <TextBox x:Name="CodeBox" Classes="field" Text="{Binding Code}" FontFamily="monospace"
+                 AutomationProperties.Name="{Binding [Company_Code], Source={x:Static l:Loc.Instance}}"
+                 AutomationProperties.HelpText="{Binding [Company_CodeHint], Source={x:Static l:Loc.Instance}}" />
+      </StackPanel>
+      <ds:HintRow TextKey="Setup_CompanyLinkHint" />
+      <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.3}">
+        <Button x:Name="JoinButton" Classes="accent" Content="{Binding [Company_Join], Source={x:Static l:Loc.Instance}}" Command="{Binding JoinCommand}" />
+        <ProgressBar IsIndeterminate="True" Width="120" VerticalAlignment="Center" IsVisible="{Binding IsBusy}"
+                     AutomationProperties.Name="{Binding [Company_Joining], Source={x:Static l:Loc.Instance}}" />
+      </StackPanel>
+    </StackPanel>
+
+    <StackPanel x:Name="CompanyWaiting" Spacing="{DynamicResource Loom.Space.3}" IsVisible="{Binding IsWaiting}">
+      <Border Classes="busy">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <ds:LoomIcon x:Name="WaitingIcon" Data="{DynamicResource Loom.Icon.Processing}" Width="20" Height="20" Margin="0,0,10,0"
+                       VerticalAlignment="Top" Foreground="{DynamicResource Loom.Accent}" />
+          <StackPanel Grid.Column="1" Spacing="2">
+            <TextBlock Text="{Binding [Company_Waiting], Source={x:Static l:Loc.Instance}}" FontWeight="SemiBold" TextWrapping="Wrap"
+                       AutomationProperties.LiveSetting="Polite" />
+            <TextBlock x:Name="WaitingDetailText" Text="{Binding WaitingDetail}" TextWrapping="Wrap" />
+          </StackPanel>
+          <Button x:Name="CopyDeviceButton" Grid.Column="2" Classes="text" Margin="12,0,0,0" VerticalAlignment="Top" Click="OnCopyDevice"
+                  AutomationProperties.Name="{Binding [Company_CopyDevice], Source={x:Static l:Loc.Instance}}">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <ds:LoomIcon Data="{DynamicResource Loom.Icon.Copy}" VerticalAlignment="Center" />
+              <TextBlock x:Name="CopyDeviceText" Text="{Binding [Action_Copy], Source={x:Static l:Loc.Instance}}" />
+              <TextBlock x:Name="CopyDeviceDone" Text="{Binding [Action_Copied], Source={x:Static l:Loc.Instance}}" IsVisible="False" />
+            </StackPanel>
+          </Button>
+        </Grid>
+      </Border>
+    </StackPanel>
+
+    <WrapPanel x:Name="CompanyApproved" ItemSpacing="8" LineSpacing="4" IsVisible="{Binding IsApproved}">
+      <Border Classes="pill good">
+        <StackPanel Orientation="Horizontal" Spacing="4">
+          <ds:LoomIcon Data="{DynamicResource Loom.Icon.Check}" Width="16" Height="16" />
+          <TextBlock Text="{Binding [Company_Approved], Source={x:Static l:Loc.Instance}}" />
+        </StackPanel>
+      </Border>
+      <TextBlock Text="{Binding ApprovedText}" TextWrapping="Wrap" VerticalAlignment="Center" />
+    </WrapPanel>
+
+    <ds:HintRow x:Name="CompanyStatus" Kind="Error" Text="{Binding Status}" IsVisible="{Binding StatusIsError}" />
+  </StackPanel>
+</UserControl>
