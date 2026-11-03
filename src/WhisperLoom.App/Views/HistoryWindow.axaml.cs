@@ -32,9 +32,57 @@ public partial class HistoryWindow : Window
         void OnLanguage(object? sender, System.ComponentModel.PropertyChangedEventArgs e) => viewModel.RefreshTexts();
         Localization.Loc.Instance.PropertyChanged += OnLanguage;
         Closed += (_, _) => Localization.Loc.Instance.PropertyChanged -= OnLanguage;
+        // Jede Rückfrage „Änderungen verwerfen?“ (Esc, Abbrechen, Fassungs-/Eintragswechsel, Schließen) holt den Fokus auf
+        // „Weiter bearbeiten“: so treffen Entf/Enter nie eine andere Zeile (UX-6 N14).
+        viewModel.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(HistoryViewModel.Detail))
+            {
+                Watch(viewModel.Detail);
+            }
+        };
+        Watch(viewModel.Detail);
+    }
+
+    private Features.History.HistoryDetailViewModel? _watched;
+
+    private void Watch(Features.History.HistoryDetailViewModel? detail)
+    {
+        if (_watched is not null)
+        {
+            _watched.PropertyChanged -= OnDetailChanged;
+        }
+        _watched = detail;
+        if (detail is not null)
+        {
+            detail.PropertyChanged += OnDetailChanged;
+        }
+    }
+
+    private void OnDetailChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(Features.History.HistoryDetailViewModel.DiscardPending) && _watched is { DiscardPending: true })
+        {
+            FocusNamed("KeepEditButton");
+        }
     }
 
     private HistoryViewModel? Vm => DataContext as HistoryViewModel;
+
+    /// <summary>
+    /// Schließen durch den Nutzer bei geänderter Bearbeitung: Fenster bleibt offen, die Rückfrage erscheint (UX-6 N14).
+    /// Programmatisches Schließen (App-Ende) geht durch.
+    /// </summary>
+    protected override void OnClosing(WindowClosingEventArgs e)
+    {
+        if (!e.IsProgrammatic && e.CloseReason == WindowCloseReason.WindowClosing && Vm?.Detail is { EditChanged: true } detail)
+        {
+            e.Cancel = true;
+            detail.DiscardPending = true;
+            FocusNamed("KeepEditButton");
+        }
+        base.OnClosing(e);
+    }
 
     private void OnKey(object? sender, KeyEventArgs e)
     {

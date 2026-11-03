@@ -70,7 +70,9 @@ public sealed partial class HistoryViewModel(IHistoryStore store, HistoryActions
         if (Detail is { EditChanged: true } editing && oldValue is not null && newValue is not null && newValue.Entry.Id != editing.Entry.Id)
         {
             editing.DiscardPending = true;
-            Avalonia.Threading.Dispatcher.UIThread.Post(() => Selected = oldValue);
+            // Zeile per Id suchen: ein Neuaufbau der Liste dazwischen ersetzt die Instanz. Den Fokus setzt das Fenster
+            // (es folgt DiscardPending auf „Weiter bearbeiten“), damit Entf/Enter nicht den bearbeiteten Eintrag treffen.
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => Selected = Rows.FirstOrDefault(r => r.Entry.Id == editing.Entry.Id) ?? oldValue);
             return;
         }
         var value = newValue;
@@ -217,7 +219,9 @@ public sealed partial class HistoryViewModel(IHistoryStore store, HistoryActions
     {
         var detail = Detail;
         Rows.Clear();
-        foreach (var row in HistoryRow.Build(_all.Where(e => HistoryRow.Matches(e, Search)), (now ?? (() => DateTimeOffset.Now))()))
+        // Ein Eintrag mit geänderter Bearbeitung bleibt auch bei einer Suche ohne Treffer stehen (UX-6 N14: nichts still verlieren).
+        var editing = detail is { EditChanged: true } ? detail.Entry.Id : null;
+        foreach (var row in HistoryRow.Build(_all.Where(e => e.Id == editing || HistoryRow.Matches(e, Search)), (now ?? (() => DateTimeOffset.Now))()))
         {
             Rows.Add(row);
         }

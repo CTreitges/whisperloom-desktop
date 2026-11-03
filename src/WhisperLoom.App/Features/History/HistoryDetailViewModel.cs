@@ -22,6 +22,9 @@ public sealed partial class VersionChip(string key, string label, bool edited) :
 
     [ObservableProperty]
     private bool _isSelected;
+
+    /// <summary>Meldet die Auswahl neu: ein ToggleButton, der sich beim Klick selbst umgeschaltet hat, zeigt wieder den echten Stand.</summary>
+    public void Refresh() => OnPropertyChanged(nameof(IsSelected));
 }
 
 /// <summary>
@@ -234,13 +237,19 @@ public sealed partial class HistoryDetailViewModel : ObservableObject
     [RelayCommand]
     private void Select(VersionChip? chip)
     {
-        if (chip is null || chip == SelectedChip)
+        if (chip is null)
         {
+            return;
+        }
+        if (chip == SelectedChip)
+        {
+            chip.Refresh(); // Klick auf den gewählten Chip hat ihn optisch ausgeschaltet
             return;
         }
         // Geänderter Text geht beim Fassungswechsel nicht still verloren (UX-6 N14): erst die Rückfrage.
         if (EditChanged)
         {
+            chip.Refresh(); // abgelehnter Klick: Chip zeigt wieder „nicht gewählt“
             DiscardPending = true;
             return;
         }

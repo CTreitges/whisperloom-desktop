@@ -241,6 +241,66 @@ public sealed class HistoryWindowTest : IDisposable
         w.Close();
     }
 
+    /// <summary>Prüfer Runde 2: ↓ in der Liste während einer geänderten Bearbeitung – Auswahl zurück, Fokus auf „Weiter bearbeiten“.</summary>
+    [AvaloniaFact]
+    public async Task Pfeil_in_der_Liste_fragt_und_fokussiert_die_Rueckfrage()
+    {
+        var vm = await Model();
+        var w = await Show(vm);
+        var entry = vm.Selected!;
+        Press(w, Key.F2, physical: PhysicalKey.F2);
+        await Settle();
+        vm.Detail!.EditText = "Entwurf";
+        var list = w.GetVisualDescendants().OfType<ListBox>().First(l => l.Name == "Entries");
+        (list.ContainerFromItem(entry) as Control)!.Focus();
+        Press(w, Key.Down, physical: PhysicalKey.ArrowDown);
+        await Settle();
+        Assert.Equal(entry.Entry.Id, vm.Selected!.Entry.Id);
+        Assert.True(vm.Detail!.DiscardPending);
+        Assert.Equal("Entwurf", vm.Detail.EditText);
+        Assert.True(w.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "KeepEditButton").IsFocused);
+        w.Close();
+    }
+
+    /// <summary>Prüfer Runde 2: ein abgelehnter Klick auf einen Fassungs-Chip lässt ihn nicht gedrückt stehen.</summary>
+    [AvaloniaFact]
+    public async Task Abgelehnter_Chip_bleibt_nicht_gedrueckt()
+    {
+        var vm = await Model();
+        var w = await Show(vm);
+        vm.Detail!.BeginEdit();
+        vm.Detail.EditText = "Entwurf";
+        await Settle();
+        var origin = w.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.ToggleButton>()
+            .Single(t => t.DataContext is VersionChip { Key: VersionChip.Origin });
+        origin.SetCurrentValue(Avalonia.Controls.Primitives.ToggleButton.IsCheckedProperty, true); // wie ToggleButton.OnClick
+        origin.Command!.Execute(origin.CommandParameter);
+        await Settle();
+        Assert.True(vm.Detail.DiscardPending);
+        Assert.False(origin.IsChecked);
+        w.Close();
+    }
+
+    [AvaloniaFact]
+    public async Task Suche_filtert_einen_geaenderten_Entwurf_nicht_weg()
+    {
+        var vm = await Model();
+        var detail = vm.Detail!;
+        var id = detail.Entry.Id;
+        detail.BeginEdit();
+        detail.EditText = "Entwurf";
+        vm.Search = "zzz-kein-treffer";
+        await Settle();
+        Assert.Contains(vm.Rows, r => r.Entry.Id == id);
+        Assert.Same(detail, vm.Detail);
+        Assert.Equal("Entwurf", vm.Detail!.EditText);
+
+        detail.DiscardEdit();
+        vm.Search = "zzz-kein-treffer-2";
+        await Settle();
+        Assert.DoesNotContain(vm.Rows, r => r.Entry.Id == id); // ohne Entwurf filtert die Suche wieder normal
+    }
+
     [AvaloniaFact]
     public async Task Neuaufbau_schliesst_eine_offene_Rueckfrage()
     {
