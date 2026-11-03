@@ -40,6 +40,150 @@
   <Style Selector="Button.accent">
     <Setter Property="Background" Value="{DynamicResource Loom.Accent}" />
     <Setter Property="Foreground" Value="{DynamicResource Loom.OnAccent}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+
+  <!-- Sekundärknopf: Fläche Surface, Rand Outline (gezielt per Klasse, nicht global – sonst bekämen Listenzeilen Rahmen). -->
+  <Style Selector="Button.secondary">
+    <Setter Property="Background" Value="{DynamicResource Loom.Surface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Loom.Outline}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="Button.secondary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="BorderBrush" Value="{DynamicResource Loom.Outline}" />
+  </Style>
+
+  <!-- Textknopf in normaler Größe (Zeilenaktionen): wie .link, aber Body, Mindesthöhe 24 (D2). -->
+  <Style Selector="Button.text">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="MinHeight" Value="24" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Loom.Accent}" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <Style Selector="Button.text /template/ ContentPresenter#PART_ContentPresenter, Button.text:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.text:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource Loom.Accent}" />
+  </Style>
+  <Style Selector="Button.text:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="TextBlock.TextDecorations" Value="Underline" />
+  </Style>
+  <Style Selector="Button.link ds|LoomIcon, Button.text ds|LoomIcon">
+    <Setter Property="Width" Value="16" />
+    <Setter Property="Height" Value="16" />
+  </Style>
+
+  <!-- Zerstörend: Fehlerfarbe, nennt den Gegenstand, steht zuletzt. -->
+  <Style Selector="Button.danger">
+    <Setter Property="Foreground" Value="{DynamicResource Loom.Error}" />
+  </Style>
+  <Style Selector="Button.danger /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Foreground" Value="{DynamicResource Loom.Error}" />
+  </Style>
+  <Style Selector="Button.danger:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Foreground" Value="{DynamicResource Loom.Error}" />
+  </Style>
+
+  <!-- Symbolknopf 32 × 32 mit Namen (AutomationProperties.Name am Knopf). -->
+  <Style Selector="Button.icon">
+    <Setter Property="Width" Value="32" />
+    <Setter Property="Height" Value="32" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Background" Value="{DynamicResource Loom.Surface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Loom.Outline}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Foreground" Value="{DynamicResource Loom.Accent}" />
+  </Style>
+  <Style Selector="Button.icon:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="BorderBrush" Value="{DynamicResource Loom.Outline}" />
+    <Setter Property="Foreground" Value="{DynamicResource Loom.Accent}" />
+  </Style>
+  <Style Selector="Button.icon ds|LoomIcon">
+    <Setter Property="Width" Value="20" />
+    <Setter Property="Height" Value="20" />
+  </Style>
+
+  <!-- Tastenkappe (Tastenkürzel-Zeile): SurfaceHigh, Outline-Rand unten 2 px, Caption 600. -->
+  <Style Selector="Border.keycap">
+    <Setter Property="Background" Value="{DynamicResource Loom.SurfaceHigh}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Loom.Outline}" />
+    <Setter Property="BorderThickness" Value="1,1,1,2" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Loom.Radius.Control}" />
+    <Setter Property="Padding" Value="8,3" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.keycap TextBlock">
+    <Setter Property="FontSize" Value="{DynamicResource Loom.Font.Caption}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Loom.Text}" />
+  </Style>
+
+  <!-- Etikett „Empfohlen“: Pille, Selection/OnSelection. -->
+  <Style Selector="Border.pill">
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Padding" Value="8,1" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.pill.good">
+    <Setter Property="Background" Value="{DynamicResource Loom.Selection}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Loom.SurfaceEdge}" />
+  </Style>
+  <Style Selector="Border.pill.good TextBlock">
+    <Setter Property="FontSize" Value="{DynamicResource Loom.Font.Caption}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Loom.OnSelection}" />
+  </Style>
+  <Style Selector="Border.pill.good ds|LoomIcon">
+    <Setter Property="Foreground" Value="{DynamicResource Loom.OnSelection}" />
+  </Style>
+
+  <!-- Rückfrage inline (nicht umkehrbare Aktionen): Kasten mit Outline-Rand, Satz mit Namen und Folge, Knöpfe nach Ergebnis. -->
+  <Style Selector="Border.confirm">
+    <Setter Property="Background" Value="{DynamicResource Loom.Surface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Loom.Outline}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Loom.Radius.Control}" />
+    <Setter Property="Padding" Value="11,7" />
+  </Style>
+
+  <!-- Feld mittlerer Breite (Name, Modell-ID): wächst nicht über 26 em. -->
+  <Style Selector="TextBox.field">
+    <Setter Property="HorizontalAlignment" Value="Left" />
+    <Setter Property="Width" Value="320" />
+  </Style>
+
+  <!-- Einklappbarer Eintrag (Anbieter, Server, App-Profile): Karte, Kopf 56 px mit Name und Zusammenfassung. -->
+  <Style Selector="Expander.item">
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Loom.Radius.Group}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Loom.Outline}" />
+  </Style>
+  <Style Selector="Expander.item /template/ ToggleButton#ExpanderHeader">
+    <Setter Property="MinHeight" Value="56" />
+    <Setter Property="Padding" Value="16,8" />
+  </Style>
+
+  <!-- Statusmeldung als Fehler (z. B. Modellliste nicht geladen). -->
+  <Style Selector="TextBlock.caption.error">
+    <Setter Property="Foreground" Value="{DynamicResource Loom.Error}" />
+  </Style>
+
+  <!-- Beschreibung/Hinweis in Caption (Optionsgruppe, Listen). -->
+  <Style Selector="TextBlock.caption">
+    <Setter Property="FontSize" Value="{DynamicResource Loom.Font.Caption}" />
+    <Setter Property="Foreground" Value="{DynamicResource Loom.TextSecondary}" />
+  </Style>
+
+  <!-- Optionsfeld der Optionsgruppe: Text oben bündig mit dem Kreis. -->
+  <Style Selector="ds|OptionGroup RadioButton">
+    <Setter Property="MinHeight" Value="24" />
+    <Setter Property="Padding" Value="8,2,0,0" />
   </Style>
 
   <!-- Steuerelemente in Zeilen: einheitliche Breite rechts. -->
@@ -83,24 +227,85 @@
   <Style Selector="ListBox.sidebar ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter, ListBox.sidebar ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="Transparent" />
   </Style>
+  <!--
+    Eintrag der Seitenleiste (zielstruktur.md §5/§6): Höhe ≥ 36, Abstand 2. Gewählt dreifach erkennbar – 3-px-Akzentbalken links,
+    fette Schrift, OnSelection auf Selection (die Fläche allein trägt den Zustand nicht, hell 1,0:1). Fokus: Ring um den Eintrag.
+  -->
   <Style Selector="Border.sideItem">
     <Setter Property="CornerRadius" Value="{DynamicResource Loom.Radius.Control}" />
-    <Setter Property="Padding" Value="8,6" />
-    <Setter Property="Margin" Value="8,1" />
+    <Setter Property="Padding" Value="9,8,8,8" />
+    <Setter Property="Margin" Value="12,1" />
+    <Setter Property="MinHeight" Value="36" />
     <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="3,0,0,0" />
+  </Style>
+  <Style Selector="Border.sideItem TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource Loom.Text}" />
+  </Style>
+  <Style Selector="Border.sideItem ds|LoomIcon">
+    <Setter Property="Foreground" Value="{DynamicResource Loom.Text}" />
   </Style>
   <Style Selector="ListBoxItem:pointerover Border.sideItem">
     <Setter Property="Background" Value="{DynamicResource Loom.SurfaceHigh}" />
   </Style>
   <Style Selector="ListBoxItem:selected Border.sideItem">
     <Setter Property="Background" Value="{DynamicResource Loom.Selection}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Loom.Accent}" />
   </Style>
   <Style Selector="ListBoxItem:selected Border.sideItem TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource Loom.OnSelection}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="ListBoxItem:selected Border.sideItem ds|LoomIcon">
     <Setter Property="Foreground" Value="{DynamicResource Loom.OnSelection}" />
   </Style>
   <Style Selector="ListBoxItem:focus-visible Border.sideItem">
     <Setter Property="BorderBrush" Value="{DynamicResource Loom.Focus}" />
-    <Setter Property="BorderThickness" Value="2" />
+    <Setter Property="BorderThickness" Value="3,2,2,2" />
+    <Setter Property="Padding" Value="9,6,6,6" />
+  </Style>
+  <!-- Abstand vor dem Konto-Eintrag „Firma“: Linie mit Luft darüber und darunter. -->
+  <Style Selector="Border.accountGap">
+    <Setter Property="Height" Value="1" />
+    <Setter Property="Margin" Value="12,16,12,16" />
+    <Setter Property="Background" Value="{DynamicResource Loom.Separator}" />
+  </Style>
+
+  <!-- Karte außerhalb einer SettingsGroup (Treffer der Suche, Listen): wie die Gruppenfläche. -->
+  <Style Selector="Border.card">
+    <Setter Property="Background" Value="{DynamicResource Loom.Surface}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Loom.Radius.Group}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Loom.CardEdge}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="ClipToBounds" Value="True" />
+  </Style>
+
+  <!-- Treffer der Suche: Zeile wie SettingRow (16/12, Text auf der Kante), Trennlinie zwischen den Zeilen, ganze Zeile klickbar. -->
+  <Style Selector="Button.result">
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Padding" Value="16,12" />
+    <Setter Property="MinHeight" Value="48" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Loom.Separator}" />
+    <Setter Property="BorderThickness" Value="0,1,0,0" />
+  </Style>
+  <Style Selector="ContentPresenter:nth-child(1) > Button.result">
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="Button.result:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Loom.SurfaceHigh}" />
+  </Style>
+
+  <!-- Flacher Symbolknopf im Feld (Suche leeren). -->
+  <Style Selector="Button.flat">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Foreground" Value="{DynamicResource Loom.TextSecondary}" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
   </Style>
   <Style Selector="TextBlock.section">
     <Setter Property="FontSize" Value="{DynamicResource Loom.Font.Caption}" />

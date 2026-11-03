@@ -85,12 +85,14 @@ internal static class UxRules
     }
 
     /// <summary>
-    /// WCAG 2.1.1 / 2.4.7: jedes fokussierbare Bedienelement ist per Tab erreichbar (Listen: die Liste selbst ist der Tab-Stopp)
-    /// und zeigt beim Tastaturfokus einen Fokusrahmen.
+    /// WCAG 2.1.1 / 2.4.7: jedes fokussierbare Bedienelement ist per Tab erreichbar (Listen: die Liste selbst ist der Tab-Stopp;
+    /// Optionsfelder einer Gruppe: ein Feld der Gruppe ist der Tab-Stopp, die übrigen erreichen die Pfeiltasten – APG „Radio
+    /// Group“) und zeigt beim Tastaturfokus einen Fokusrahmen.
     /// </summary>
     public static List<string> Keyboard(Control root)
     {
         var reached = UxFocus.TabOrder(root).ToHashSet();
+        var reachedGroups = reached.OfType<RadioButton>().Select(r => r.GroupName).Where(g => !string.IsNullOrEmpty(g)).ToHashSet();
         var window = (Window)TopLevel.GetTopLevel(root)!;
         var result = new List<string>();
         // Je Liste genügt der erste Eintrag für den Fokusrahmen (alle Einträge teilen die Vorlage).
@@ -99,7 +101,8 @@ internal static class UxRules
         {
             var stop = t.Control is ListBoxItem ? (Control?)t.Control.FindAncestorOfType<ListBox>() : t.Control;
             var ok = reached.Contains(t.Control) || (stop is not null && (reached.Contains(stop)
-                || stop.GetVisualDescendants().OfType<ListBoxItem>().Any(reached.Contains)));
+                || stop.GetVisualDescendants().OfType<ListBoxItem>().Any(reached.Contains)))
+                || (t.Control is RadioButton { GroupName: { Length: > 0 } group } && reachedGroups.Contains(group));
             if (!ok)
             {
                 result.Add($"{t.Label} „{Short(t.Name)}“ per Tab nicht erreichbar");

@@ -74,7 +74,7 @@ public class UiTest
             Assert.DoesNotContain(buttonTexts, t => t.Contains("anzeig", StringComparison.OrdinalIgnoreCase)
                 || t.Contains("show", StringComparison.OrdinalIgnoreCase) || t.Contains("reveal", StringComparison.OrdinalIgnoreCase)
                 || t.Contains("aufdeck", StringComparison.OrdinalIgnoreCase));
-            Assert.Equal(["Ersetzen", "Löschen", "Zugang prüfen"], buttonTexts.Where(t => t is "Ersetzen" or "Löschen" or "Zugang prüfen").Distinct());
+            Assert.Equal(["Ersetzen", "Löschen", "Verbindung testen"], buttonTexts.Where(t => t is "Ersetzen" or "Löschen" or "Verbindung testen").Distinct());
             window.Close();
         }
     }

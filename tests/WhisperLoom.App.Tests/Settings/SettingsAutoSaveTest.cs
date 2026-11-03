@@ -65,7 +65,7 @@ public sealed class SettingsAutoSaveTest
     {
         using var f = new ControllerFixture();
         var (window, shell, _) = Open(f);
-        var cleanup = (CleanupPageViewModel)shell.Page("cleanup");
+        var cleanup = (TextPageViewModel)shell.Page("text");
         var text = (TextPageViewModel)shell.Page("text");
 
         cleanup.RemoveFillers = false;

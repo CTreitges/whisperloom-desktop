@@ -22,6 +22,14 @@ public sealed class LocalSettingsUiTest
         return (window, vm, f);
     }
 
+    private static Design.SettingsGroup Group(SettingsWindow window, string titleKey) =>
+        window.GetLogicalDescendants().OfType<Design.SettingsGroup>().Single(g => g.TitleKey == titleKey);
+
+    /// <summary>Texte, die gerade zu sehen sind (ohne ausgeblendete Gruppen und Zeilen).</summary>
+    private static List<string> VisibleTexts(SettingsWindow window) =>
+        [.. Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(window).OfType<TextBlock>()
+            .Where(t => t.IsEffectivelyVisible && !string.IsNullOrEmpty(t.Text)).Select(t => t.Text!)];
+
     [AvaloniaFact]
     public void TabZeigtModelleRechenwegUndOllama()
     {
@@ -29,18 +37,25 @@ public sealed class LocalSettingsUiTest
         var (window, _, f) = Open();
         using (f)
         {
-            var texts = UiTest.TextsOf(window).ToList();
-            Assert.Contains("Online-Anbieter", texts); // online und lokal auf einer Seite
-            Assert.Contains("Lokal auf diesem PC", texts);
+            // UX-2: nur der gewählte Erkennungsweg steht da (B2, B3) – online zuerst.
+            Assert.True(Group(window, "G_Online").IsEffectivelyVisible);
+            Assert.False(Group(window, "G_Local").IsEffectivelyVisible);
+
+            var vm = window.Settings!;
+            vm.Local.Engine = vm.Local.Engines.Single(e => e.Value == "offline");
+            Settings.SettingsUi.Show(window, "recognition");
+            Assert.False(Group(window, "G_Online").IsEffectivelyVisible);
+            Assert.True(Group(window, "G_Local").IsEffectivelyVisible);
+            var texts = VisibleTexts(window);
             Assert.Contains("noch nicht gestartet", texts);
-            // W2-LOCAL: Downloads stehen auf der Seite „Lokale Modelle“ (Wahl bleibt auf „Erkennung“).
-            Settings.SettingsUi.Show(window, "localmodels");
-            texts = [.. UiTest.TextsOf(window)];
-            Assert.Contains("Modelle der lokalen Erkennung", texts);
-            Assert.Contains(texts, t => t.StartsWith("Small (190 MB)", StringComparison.Ordinal));
-            Assert.Contains(texts, t => t.StartsWith("Large v3 Turbo", StringComparison.Ordinal));
-            Settings.SettingsUi.Show(window, "text"); // Ollama gehört zur Textverbesserung
-            Assert.Contains("Ollama-Modell", UiTest.TextsOf(window));
+            // Modell-Liste: Name, Größe und „Empfohlen“ getrennt, ohne Sternchen (B5); Herunterladen direkt hier (B1).
+            Assert.Contains("Small", texts);
+            Assert.Contains("190 MB", texts);
+            Assert.Contains("Large v3 Turbo", texts);
+            Assert.Contains("Empfohlen", texts);
+            Assert.DoesNotContain(texts, t => t.Contains('★'));
+            Settings.SettingsUi.Show(window, "text"); // Ollama gehört zur Textverbesserung bei lokaler Erkennung
+            Assert.Contains("Ollama-Modell", VisibleTexts(window));
             window.Close();
         }
     }

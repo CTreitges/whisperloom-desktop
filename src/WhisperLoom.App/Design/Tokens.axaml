@@ -18,6 +18,7 @@
       <SolidColorBrush x:Key="Loom.Separator" Color="#3A424D" />
       <SolidColorBrush x:Key="Loom.Outline" Color="#8A95A3" />
       <SolidColorBrush x:Key="Loom.SurfaceEdge" Color="#00000000" />
+      <SolidColorBrush x:Key="Loom.CardEdge" Color="#3A424D" />
       <SolidColorBrush x:Key="Loom.Text" Color="#E4E8EE" />
       <SolidColorBrush x:Key="Loom.TextSecondary" Color="#B8C0CC" />
       <SolidColorBrush x:Key="Loom.Accent" Color="#6FD9C7" />
@@ -81,6 +82,7 @@
       <SolidColorBrush x:Key="Loom.Separator" Color="#B8C0CC" />
       <SolidColorBrush x:Key="Loom.Outline" Color="#6B7480" />
       <SolidColorBrush x:Key="Loom.SurfaceEdge" Color="#00000000" />
+      <SolidColorBrush x:Key="Loom.CardEdge" Color="#00000000" />
       <SolidColorBrush x:Key="Loom.Text" Color="#0E1116" />
       <SolidColorBrush x:Key="Loom.TextSecondary" Color="#3A424D" />
       <SolidColorBrush x:Key="Loom.Accent" Color="#0F5B50" />
@@ -144,6 +146,7 @@
       <SolidColorBrush x:Key="Loom.Separator" Color="#FFFFFF" />
       <SolidColorBrush x:Key="Loom.Outline" Color="#FFFFFF" />
       <SolidColorBrush x:Key="Loom.SurfaceEdge" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="Loom.CardEdge" Color="#FFFFFF" />
       <SolidColorBrush x:Key="Loom.Text" Color="#FFFFFF" />
       <SolidColorBrush x:Key="Loom.TextSecondary" Color="#FFFFFF" />
       <SolidColorBrush x:Key="Loom.Accent" Color="#6FD9C7" />

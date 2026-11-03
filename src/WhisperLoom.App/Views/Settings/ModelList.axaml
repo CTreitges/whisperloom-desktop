@@ -1,0 +1,102 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:avm="using:WhisperLoom.App.ViewModels"
+             xmlns:ds="using:WhisperLoom.App.Design"
+             xmlns:l="using:WhisperLoom.App.Localization"
+             xmlns:vs="using:WhisperLoom.App.Views.Settings"
+             x:Class="WhisperLoom.App.Views.Settings.ModelList"
+             x:Name="Root">
+  <!--
+    Modell-Liste (zielstruktur.md §7, B30): je Modell ein Optionsfeld mit Name, Größe und „Empfohlen“, rechts der Zustand:
+    „Installiert“ + „Löschen“ (Rückfrage inline), „Herunterladen“ oder Fortschritt 120 × 6 mit Satz und „Anhalten“.
+    Eigene Whisper-Dateien (Files) stehen in derselben Gruppe darunter, mit Pfad und „Entfernen“.
+  -->
+  <StackPanel Spacing="{DynamicResource Loom.Space.1}">
+    <ItemsControl x:Name="Rows" ItemsSource="{Binding #Root.Models}">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="avm:IModelRow">
+          <StackPanel Spacing="{DynamicResource Loom.Space.1}" Margin="0,4">
+            <Grid ColumnDefinitions="*,Auto">
+              <RadioButton GroupName="{Binding #Root.GroupName}" IsChecked="{Binding IsSelected}" VerticalAlignment="Top" Padding="8,2,0,0"
+                           AutomationProperties.Name="{Binding Name}" AutomationProperties.HelpText="{Binding Size}">
+                <StackPanel Spacing="2">
+                  <WrapPanel ItemSpacing="8" LineSpacing="2">
+                    <TextBlock Text="{Binding Name}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding Size}" Classes="caption" VerticalAlignment="Center" />
+                    <Border Classes="pill good" IsVisible="{Binding Recommended}">
+                      <StackPanel Orientation="Horizontal" Spacing="4">
+                        <ds:LoomIcon Data="{DynamicResource Loom.Icon.Recommended}" Width="12" Height="12" />
+                        <TextBlock Text="{Binding [Model_RecommendedBadge], Source={x:Static l:Loc.Instance}}" />
+                      </StackPanel>
+                    </Border>
+                  </WrapPanel>
+                  <TextBlock Text="{Binding Note}" Classes="caption" TextWrapping="Wrap" IsVisible="{Binding Note.Length}" />
+                </StackPanel>
+              </RadioButton>
+              <!-- Zustand rechts: installiert, herunterladen oder laufender Download. -->
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.3}" Margin="12,0,0,0" VerticalAlignment="Top">
+                <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding Installed}" VerticalAlignment="Center">
+                  <ds:LoomIcon Data="{DynamicResource Loom.Icon.Check}" Width="16" Height="16" Foreground="{DynamicResource Loom.Accent}" />
+                  <TextBlock Text="{Binding [Local_Installed], Source={x:Static l:Loc.Instance}}" Classes="caption" />
+                </StackPanel>
+                <Button Classes="text danger" Content="{Binding [Local_Delete], Source={x:Static l:Loc.Instance}}" Command="{Binding AskDeleteCommand}"
+                        IsVisible="{Binding Installed}" AutomationProperties.Name="{Binding DeleteName}" />
+                <Button Classes="text" Command="{Binding DownloadCommand}" AutomationProperties.Name="{Binding DownloadName}">
+                  <Button.IsVisible>
+                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                      <Binding Path="CanDownload" />
+                      <Binding Path="!IsDownloading" />
+                    </MultiBinding>
+                  </Button.IsVisible>
+                  <StackPanel Orientation="Horizontal" Spacing="4">
+                    <ds:LoomIcon Data="{DynamicResource Loom.Icon.Download}" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding [Local_Download], Source={x:Static l:Loc.Instance}}" />
+                  </StackPanel>
+                </Button>
+                <ProgressBar Width="120" Height="6" MinHeight="6" Minimum="0" Maximum="100" Value="{Binding Progress}" VerticalAlignment="Center"
+                             IsVisible="{Binding IsDownloading}" Foreground="{DynamicResource Loom.Accent}"
+                             AutomationProperties.Name="{Binding DownloadName}" />
+                <Button Classes="text" Content="{Binding [Local_Pause], Source={x:Static l:Loc.Instance}}" Command="{Binding CancelCommand}"
+                        IsVisible="{Binding IsDownloading}" AutomationProperties.Name="{Binding CancelName}" />
+              </StackPanel>
+            </Grid>
+            <TextBlock Text="{Binding Status}" Classes="caption" TextWrapping="Wrap" Margin="28,0,0,0" IsVisible="{Binding Status.Length}"
+                       AutomationProperties.LiveSetting="Polite" />
+            <!-- Rückfrage vor dem Löschen: nennt Name und Größe, zerstörender Knopf in Fehlerfarbe, nie Standard. -->
+            <Border Classes="confirm" IsVisible="{Binding DeletePending}" Margin="28,4,0,0">
+              <StackPanel Spacing="{DynamicResource Loom.Space.2}">
+                <TextBlock Text="{Binding DeleteQuestion}" TextWrapping="Wrap" />
+                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.3}">
+                  <Button Classes="secondary danger" Content="{Binding [Model_DeleteConfirm], Source={x:Static l:Loc.Instance}}" Command="{Binding DeleteCommand}" />
+                  <Button Classes="text" Content="{Binding [Action_Keep], Source={x:Static l:Loc.Instance}}" Command="{Binding KeepCommand}" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <ItemsControl x:Name="FileRows" ItemsSource="{Binding #Root.Files}" IsVisible="{Binding #Root.Files, Converter={x:Static ObjectConverters.IsNotNull}}">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="avm:CustomWhisperRow">
+          <Grid ColumnDefinitions="*,Auto" Margin="0,4">
+            <RadioButton GroupName="{Binding #Root.GroupName}" IsChecked="{Binding IsSelected}" VerticalAlignment="Top" Padding="8,2,0,0"
+                         AutomationProperties.Name="{Binding Name}" AutomationProperties.HelpText="{Binding Path}">
+              <StackPanel Spacing="2">
+                <TextBlock Text="{Binding Name}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding FileNote}" Classes="caption" TextWrapping="Wrap" />
+                <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding Status.Length}">
+                  <ds:LoomIcon Data="{DynamicResource Loom.Icon.Warning}" Width="16" Height="16" Foreground="{DynamicResource Loom.Warning}" />
+                  <TextBlock Text="{Binding Status}" Classes="caption" TextWrapping="Wrap" />
+                </StackPanel>
+              </StackPanel>
+            </RadioButton>
+            <Button Grid.Column="1" Classes="text danger" Margin="12,0,0,0" VerticalAlignment="Top" Content="{Binding [Local_Remove], Source={x:Static l:Loc.Instance}}"
+                    Command="{Binding RemoveCommand}" AutomationProperties.Name="{Binding RemoveName}" />
+          </Grid>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+  </StackPanel>
+</UserControl>

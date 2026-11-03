@@ -7,12 +7,16 @@
              xmlns:vs="using:WhisperLoom.App.Views.Settings"
              x:Class="WhisperLoom.App.Views.Settings.TextPage"
              x:DataType="vm:TextPageViewModel">
-  <ds:SettingsPage TitleKey="Page_text">
-    <StackPanel Spacing="20">
+  <!--
+    Seite „Text“ (UX-2, zielstruktur.md §1): Stufe, Stufen-Optionen, KI-Anbieter, Bei lokaler Erkennung (nur bei lokaler
+    Erkennung, sonst Hinweis mit Sprung, B25), Ersatzanbieter, Bereinigung (früher eigene Seite).
+  -->
+  <ds:SettingsPage TitleKey="Page_text" IntroKey="PageIntro_text">
+    <StackPanel Spacing="{DynamicResource Loom.Space.5}">
       <ds:SettingsGroup TitleKey="G_StageChoice">
         <StackPanel>
-          <ds:SettingRow Path="refine.stage">
-            <ComboBox x:Name="StageBox" Classes="row" ItemsSource="{Binding Session.Stages}" SelectedItem="{Binding Session.Stage}" />
+          <ds:SettingRow Path="refine.stage" Stacked="True" Bare="True">
+            <ds:OptionGroup x:Name="StageBox" ItemsSource="{Binding Session.Stages}" SelectedItem="{Binding Session.Stage}" />
           </ds:SettingRow>
           <ds:SettingRow Path="refine.promptEnabled">
             <ToggleSwitch IsChecked="{Binding Session.PromptEnabled}" OnContent="" OffContent="" />
@@ -22,8 +26,8 @@
 
       <ds:SettingsGroup TitleKey="G_StageOptions">
         <StackPanel>
-          <ds:SettingRow Path="refine.polishCleanup">
-            <ComboBox Classes="row" ItemsSource="{Binding CleanupChoices}" SelectedItem="{Binding PolishCleanup}" />
+          <ds:SettingRow Path="refine.polishCleanup" Stacked="True">
+            <ds:OptionGroup ItemsSource="{Binding CleanupChoices}" SelectedItem="{Binding PolishCleanup}" />
           </ds:SettingRow>
           <ds:SettingRow Path="refine.paragraphsPolish">
             <ToggleSwitch IsChecked="{Binding ParagraphsPolish}" OnContent="" OffContent="" />
@@ -31,30 +35,28 @@
           <ds:SettingRow Path="refine.paragraphsBeautify">
             <ToggleSwitch IsChecked="{Binding ParagraphsBeautify}" OnContent="" OffContent="" />
           </ds:SettingRow>
-          <ds:SettingRow Path="refine.summarizeForm">
-            <ComboBox Classes="row" ItemsSource="{Binding FormChoices}" SelectedItem="{Binding SummarizeForm}" />
+          <ds:SettingRow Path="refine.summarizeForm" Stacked="True">
+            <ds:OptionGroup ItemsSource="{Binding FormChoices}" SelectedItem="{Binding SummarizeForm}" />
           </ds:SettingRow>
         </StackPanel>
       </ds:SettingsGroup>
 
-      <ds:SettingsGroup TitleKey="G_Llm">
+      <ds:SettingsGroup TitleKey="G_Llm" IntroKey="G_Llm_Intro">
         <StackPanel>
           <ds:SettingRow Path="llm.providerId">
             <ComboBox x:Name="LlmProviderBox" Classes="row" ItemsSource="{Binding Session.LlmProviders}" SelectedItem="{Binding Session.LlmProvider}" />
           </ds:SettingRow>
-          <Panel IsVisible="{Binding !Session.LlmUsesEntry}">
-            <ds:SettingRow Path="secrets.llm" Stacked="True">
-              <v:KeyFieldView x:Name="LlmKeyView" DataContext="{Binding Session.LlmKey}" />
-            </ds:SettingRow>
-          </Panel>
-          <ds:HintRow TextKey="{Binding Session.LlmKeyHint}" IsVisible="{Binding Session.LlmUsesEntry}" Margin="14,4,14,10" />
-          <ds:SettingRow Path="llm.model">
+          <ds:SettingRow Path="secrets.llm" Stacked="True" IsVisible="{Binding !Session.LlmUsesEntry}">
+            <v:KeyFieldView x:Name="LlmKeyView" DataContext="{Binding Session.LlmKey}" />
+          </ds:SettingRow>
+          <ds:HintRow TextKey="{Binding Session.LlmKeyHint}" IsVisible="{Binding Session.LlmUsesEntry}" Margin="16,0,16,12" />
+          <ds:SettingRow Path="llm.model" Stacked="True">
             <vs:ModelPickerView x:Name="LlmModelPicker" DataContext="{Binding LlmModelPicker}" />
           </ds:SettingRow>
           <Expander Classes="advanced" IsExpanded="{Binding AdvancedOpen}" Header="{Binding [Advanced], Source={x:Static l:Loc.Instance}}">
             <StackPanel>
               <ds:SettingRow Path="llm.baseUrl" Error="{Binding Session.Errors[llm.baseUrl]}">
-                <TextBox Classes="row" Text="{Binding Session.LlmBaseUrl, UpdateSourceTrigger=LostFocus}" PlaceholderText="https://…/v1" />
+                <TextBox Classes="row" Text="{Binding Session.LlmBaseUrl, UpdateSourceTrigger=LostFocus}" />
               </ds:SettingRow>
               <ds:SettingRow Path="llm.stageModels.polish">
                 <ds:CustomChoiceBox DataContext="{Binding StagePolish}" />
@@ -73,43 +75,53 @@
         </StackPanel>
       </ds:SettingsGroup>
 
-      <ds:SettingsGroup TitleKey="G_LocalText">
+      <!-- Erkennung online: die Gruppe zeigt nur den Hinweis mit Sprung zur Erkennung (nur zeigen, was gilt). -->
+      <ds:SettingsGroup TitleKey="G_LocalText" IsVisible="{Binding IsOnlineRecognition}">
+        <ds:HintRow x:Name="LocalTextHint" TextKey="LocalText_OnlineHint" ActionKey="LocalText_ToRecognition"
+                    ActionCommand="{Binding GoToCommand}" ActionParameter="recognition" Margin="16,12" />
+      </ds:SettingsGroup>
+      <ds:SettingsGroup TitleKey="G_LocalText" IsVisible="{Binding IsLocalRecognition}">
         <StackPanel>
-          <ds:SettingRow Path="offline.refine">
-            <ComboBox Classes="row" ItemsSource="{Binding Local.Rules}" SelectedItem="{Binding Local.Rule}" />
+          <ds:SettingRow Path="offline.refine" Stacked="True">
+            <ds:OptionGroup ItemsSource="{Binding Local.Rules}" SelectedItem="{Binding Local.Rule}" />
           </ds:SettingRow>
-          <ds:SettingRow Path="local.textEngine">
-            <ComboBox x:Name="TextEngineBox" Classes="row" ItemsSource="{Binding Local.TextEngines}" SelectedItem="{Binding Local.TextEngine}" />
-          </ds:SettingRow>
-          <StackPanel IsVisible="{Binding Local.IsBundled}">
-            <ds:SettingRow Path="local.bundledModel">
-              <ComboBox x:Name="BundledModelBox" Classes="row" ItemsSource="{Binding Local.BundledModels}" SelectedItem="{Binding Local.BundledModel}" />
+          <StackPanel IsVisible="{Binding UsesLocalTextModel}">
+            <ds:SettingRow Path="local.textEngine" Stacked="True">
+              <ds:OptionGroup x:Name="TextEngineBox" ItemsSource="{Binding Local.TextEngines}" SelectedItem="{Binding Local.TextEngine}" />
             </ds:SettingRow>
-            <ds:HintRow TextKey="Local_BundledHint" Margin="14,4,14,10" />
-          </StackPanel>
-          <StackPanel IsVisible="{Binding Local.IsServer}">
-            <ds:SettingRow Path="local.textServer">
+            <ds:SettingRow Path="local.bundledModel" Stacked="True" IsVisible="{Binding Local.IsBundled}">
+              <vs:ModelList x:Name="TextModelList" Models="{Binding Local.TextModels}" />
+            </ds:SettingRow>
+            <ds:SettingRow Path="local.textServer" IsVisible="{Binding Local.IsServer}">
               <ComboBox x:Name="TextServerBox" Classes="row" ItemsSource="{Binding Local.TextServers}" SelectedItem="{Binding Local.TextServer}" />
             </ds:SettingRow>
-            <ds:HintRow TextKey="Local_ServerHint" Margin="14,4,14,10" />
-          </StackPanel>
-          <StackPanel IsVisible="{Binding Local.IsOllama}">
-          <ds:SettingRow Path="local.ollamaModel">
-            <StackPanel Orientation="Horizontal" Spacing="8">
-              <ComboBox x:Name="OllamaBox" MinWidth="180" ItemsSource="{Binding Local.OllamaModels}" SelectedItem="{Binding Local.OllamaModel}" />
-              <Button Content="{Binding [Local_OllamaRefresh], Source={x:Static l:Loc.Instance}}" Command="{Binding Local.RefreshOllamaCommand}" />
-            </StackPanel>
-          </ds:SettingRow>
-          <ds:HintRow x:Name="OllamaStatusText" Text="{Binding Local.OllamaStatus}" IsVisible="{Binding Local.OllamaStatus.Length}" Margin="14,0,14,10" />
-          <SelectableTextBlock x:Name="OllamaLink" IsVisible="{Binding Local.OllamaMissing}" Text="{Binding Local.OllamaDownloadUrl}"
-                               Foreground="{DynamicResource Loom.Accent}" Margin="14,0,14,10" />
-          <Expander Classes="advanced" Header="{Binding [Advanced], Source={x:Static l:Loc.Instance}}">
-            <StackPanel>
-              <ds:SettingRow Path="local.ollamaUrl" Error="{Binding Session.Errors[local.ollamaUrl]}">
-                <TextBox Classes="row" Text="{Binding OllamaUrl, UpdateSourceTrigger=LostFocus}" PlaceholderText="http://127.0.0.1:11434" />
+            <StackPanel IsVisible="{Binding Local.IsOllama}">
+              <ds:SettingRow Path="local.ollamaModel" Stacked="True">
+                <StackPanel Spacing="{DynamicResource Loom.Space.2}">
+                  <ComboBox x:Name="OllamaBox" Classes="row" HorizontalAlignment="Left" ItemsSource="{Binding Local.OllamaModels}" SelectedItem="{Binding Local.OllamaModel}" />
+                  <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.3}">
+                    <Button Classes="text" Command="{Binding Local.RefreshOllamaCommand}"
+                            AutomationProperties.Name="{Binding [Models_Load], Source={x:Static l:Loc.Instance}}">
+                      <StackPanel Orientation="Horizontal" Spacing="4">
+                        <ds:LoomIcon Data="{DynamicResource Loom.Icon.Refresh}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding [Models_Load], Source={x:Static l:Loc.Instance}}" />
+                      </StackPanel>
+                    </Button>
+                    <TextBlock x:Name="OllamaStatusText" Text="{Binding Local.OllamaStatus}" IsVisible="{Binding Local.OllamaStatus.Length}"
+                               Classes="caption" TextWrapping="Wrap" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" />
+                  </StackPanel>
+                  <SelectableTextBlock x:Name="OllamaLink" IsVisible="{Binding Local.OllamaMissing}" Text="{Binding Local.OllamaDownloadUrl}"
+                                       Foreground="{DynamicResource Loom.Accent}" />
+                </StackPanel>
               </ds:SettingRow>
+              <Expander Classes="advanced" Header="{Binding [Advanced], Source={x:Static l:Loc.Instance}}">
+                <StackPanel>
+                  <ds:SettingRow Path="local.ollamaUrl" Error="{Binding Session.Errors[local.ollamaUrl]}">
+                    <TextBox Classes="row" Text="{Binding OllamaUrl, UpdateSourceTrigger=LostFocus}" />
+                  </ds:SettingRow>
+                </StackPanel>
+              </Expander>
             </StackPanel>
-          </Expander>
           </StackPanel>
         </StackPanel>
       </ds:SettingsGroup>
@@ -119,27 +131,46 @@
           <ds:SettingRow Path="llmFallback.enabled">
             <ToggleSwitch IsChecked="{Binding Session.LlmFallbackEnabled}" OnContent="" OffContent="" />
           </ds:SettingRow>
-          <StackPanel IsEnabled="{Binding Session.LlmFallbackEnabled}">
+          <StackPanel IsVisible="{Binding Session.LlmFallbackEnabled}">
             <ds:SettingRow Path="llmFallback.providerId">
               <ComboBox Classes="row" ItemsSource="{Binding Session.LlmFallbackProviders}" SelectedItem="{Binding Session.LlmFallbackProvider}" />
             </ds:SettingRow>
-            <Panel IsVisible="{Binding !Session.LlmFallbackUsesEntry}">
-              <ds:SettingRow Path="secrets.llmFallback" Stacked="True">
-                <v:KeyFieldView x:Name="LlmFallbackKeyView" DataContext="{Binding Session.LlmFallbackKey}" />
-              </ds:SettingRow>
-            </Panel>
-            <ds:HintRow TextKey="{Binding Session.LlmFallbackKeyHint}" IsVisible="{Binding Session.LlmFallbackUsesEntry}" Margin="14,4,14,10" />
-            <ds:SettingRow Path="llmFallback.model">
+            <ds:SettingRow Path="secrets.llmFallback" Stacked="True" IsVisible="{Binding !Session.LlmFallbackUsesEntry}">
+              <v:KeyFieldView x:Name="LlmFallbackKeyView" DataContext="{Binding Session.LlmFallbackKey}" />
+            </ds:SettingRow>
+            <ds:HintRow TextKey="{Binding Session.LlmFallbackKeyHint}" IsVisible="{Binding Session.LlmFallbackUsesEntry}" Margin="16,0,16,12" />
+            <ds:SettingRow Path="llmFallback.model" Stacked="True">
               <vs:ModelPickerView DataContext="{Binding LlmFallbackModelPicker}" />
             </ds:SettingRow>
             <Expander Classes="advanced" IsExpanded="{Binding FallbackAdvancedOpen}" Header="{Binding [Advanced], Source={x:Static l:Loc.Instance}}">
               <StackPanel>
                 <ds:SettingRow Path="llmFallback.baseUrl" Error="{Binding Session.Errors[llmFallback.baseUrl]}">
-                  <TextBox Classes="row" Text="{Binding Session.LlmFallbackBaseUrl, UpdateSourceTrigger=LostFocus}" PlaceholderText="https://…/v1" />
+                  <TextBox Classes="row" Text="{Binding Session.LlmFallbackBaseUrl, UpdateSourceTrigger=LostFocus}" />
                 </ds:SettingRow>
               </StackPanel>
             </Expander>
           </StackPanel>
+        </StackPanel>
+      </ds:SettingsGroup>
+
+      <!-- Bereinigung: Regeln ohne KI, nach jedem Diktat. Eigene Füllwörter nur, wenn Füllwörter entfernt werden. -->
+      <ds:SettingsGroup TitleKey="G_Cleanup" IntroKey="Cleanup_Intro">
+        <StackPanel>
+          <ds:SettingRow Path="polish.removeFillers">
+            <ToggleSwitch IsChecked="{Binding RemoveFillers}" OnContent="" OffContent="" />
+          </ds:SettingRow>
+          <ds:SettingRow Path="polish.customFillers" Stacked="True" IsVisible="{Binding RemoveFillers}">
+            <TextBox Classes="wide" Text="{Binding CustomFillers, UpdateSourceTrigger=LostFocus}" />
+          </ds:SettingRow>
+          <ds:SettingRow Path="polish.disabledFillers" Stacked="True" IsVisible="{Binding RemoveFillers}">
+            <TextBox Classes="wide" Text="{Binding DisabledFillers, UpdateSourceTrigger=LostFocus}" />
+          </ds:SettingRow>
+          <ds:SettingRow Path="polish.autoCapitalize">
+            <ToggleSwitch IsChecked="{Binding AutoCapitalize}" OnContent="" OffContent="" />
+          </ds:SettingRow>
+          <ds:SettingRow Path="polish.trailingSpace">
+            <ToggleSwitch IsChecked="{Binding TrailingSpace}" OnContent="" OffContent="" />
+          </ds:SettingRow>
         </StackPanel>
       </ds:SettingsGroup>
     </StackPanel>

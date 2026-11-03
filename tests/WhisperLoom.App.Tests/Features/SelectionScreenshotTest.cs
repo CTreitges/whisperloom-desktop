@@ -119,7 +119,7 @@ public sealed class SelectionScreenshotTest
                 var svm = new SettingsViewModel(f.Controller, new MemorySecretStore(), new FakeAccessChecker());
                 var settings = new SettingsWindow(svm) { Width = 900, Height = 760, RequestedThemeVariant = theme };
                 settings.Show();
-                var page = Settings.SettingsUi.Show(settings, "hotkeys");
+                var page = Settings.SettingsUi.Show(settings, "dictation");
                 Dispatcher.UIThread.RunJobs();
                 page.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault()?.ScrollToEnd();
                 Save(settings, $"sel-03-einstellungen-markierung-{variant}-{lang}.png");

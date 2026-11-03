@@ -8,80 +8,99 @@
              xmlns:vs="using:WhisperLoom.App.Views.Settings"
              x:Class="WhisperLoom.App.Views.Settings.RecognitionPage"
              x:DataType="vm:RecognitionPageViewModel">
-  <!-- Online und lokal auf einer Seite (W2-UI1); Modelle aus providers.json mit „Eigenes Modell …“. -->
-  <ds:SettingsPage TitleKey="Page_recognition">
-    <StackPanel Spacing="20">
+  <!--
+    Seite „Erkennung“ (UX-2, zielstruktur.md §1): Erkennungsweg als Optionsfelder, darunter nur der gewählte Weg (B2, B3),
+    Kontext-Wörter, Ersatzanbieter (Zeilen erst nach dem Schalter). Lokale Modelle werden hier geladen und gelöscht (B1).
+  -->
+  <ds:SettingsPage TitleKey="Page_recognition" IntroKey="PageIntro_recognition">
+    <StackPanel Spacing="{DynamicResource Loom.Space.5}">
       <ds:SettingsGroup TitleKey="G_Engine">
         <StackPanel>
-          <ds:SettingRow Path="engine">
-            <ComboBox x:Name="EngineBox" Classes="row" ItemsSource="{Binding Local.Engines}" SelectedItem="{Binding Local.Engine}" />
+          <ds:SettingRow Path="engine" Stacked="True" Bare="True">
+            <ds:OptionGroup x:Name="EngineBox" ItemsSource="{Binding Local.Engines}" SelectedItem="{Binding Local.Engine}" />
           </ds:SettingRow>
+          <!-- Entscheidung 18: „Sprache beim Diktieren“ bleibt bei der Erkennung. -->
           <ds:SettingRow Path="language">
             <ComboBox x:Name="LanguageBox" Classes="row" ItemsSource="{Binding Session.Languages}" SelectedItem="{Binding Session.Language}" />
           </ds:SettingRow>
-          <ds:HintRow x:Name="LanguageHintRow" TextKey="{Binding LanguageHint}" IsVisible="{Binding LanguageHint, Converter={x:Static ObjectConverters.IsNotNull}}" Margin="14,4,14,10" />
+          <ds:HintRow x:Name="LanguageHintRow" TextKey="{Binding LanguageHint}" IsVisible="{Binding LanguageHint, Converter={x:Static ObjectConverters.IsNotNull}}" Margin="16,0,16,12" />
         </StackPanel>
       </ds:SettingsGroup>
 
-      <ds:SettingsGroup TitleKey="G_Online" FooterKey="G_Online_Footer">
+      <ds:SettingsGroup TitleKey="G_Online" IsVisible="{Binding IsOnline}">
         <StackPanel>
           <ds:SettingRow Path="stt.providerId">
             <ComboBox x:Name="SttProviderBox" Classes="row" ItemsSource="{Binding Session.SttProviders}" SelectedItem="{Binding Session.SttProvider}" />
           </ds:SettingRow>
-          <Panel IsVisible="{Binding !Session.SttUsesEntry}">
-            <ds:SettingRow Path="secrets.stt" Stacked="True">
-              <v:KeyFieldView x:Name="SttKeyView" DataContext="{Binding Session.SttKey}" />
-            </ds:SettingRow>
-          </Panel>
-          <ds:HintRow TextKey="{Binding Session.SttKeyHint}" IsVisible="{Binding Session.SttUsesEntry}" Margin="14,4,14,10" />
-          <ds:SettingRow Path="stt.model">
+          <ds:SettingRow Path="secrets.stt" Stacked="True" IsVisible="{Binding !Session.SttUsesEntry}">
+            <v:KeyFieldView x:Name="SttKeyView" DataContext="{Binding Session.SttKey}" />
+          </ds:SettingRow>
+          <ds:HintRow TextKey="{Binding Session.SttKeyHint}" IsVisible="{Binding Session.SttUsesEntry}" Margin="16,0,16,12" />
+          <ds:SettingRow Path="stt.model" Stacked="True">
             <vs:ModelPickerView x:Name="SttModelPicker" DataContext="{Binding SttModelPicker}" />
           </ds:SettingRow>
           <Expander Classes="advanced" IsExpanded="{Binding AdvancedOpen}" Header="{Binding [Advanced], Source={x:Static l:Loc.Instance}}">
             <StackPanel>
               <ds:SettingRow Path="stt.baseUrl" Error="{Binding Session.Errors[stt.baseUrl]}">
-                <TextBox Classes="row" Text="{Binding Session.SttBaseUrl, UpdateSourceTrigger=LostFocus}" PlaceholderText="https://…/v1" />
+                <TextBox Classes="row" Text="{Binding Session.SttBaseUrl, UpdateSourceTrigger=LostFocus}" />
               </ds:SettingRow>
               <ds:SettingRow Path="stt.readTimeoutSec" Error="{Binding Session.Errors[stt.readTimeoutSec]}">
-                <TextBox Width="90" Text="{Binding ReadTimeout, UpdateSourceTrigger=LostFocus}" />
+                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
+                  <TextBox Width="72" Text="{Binding ReadTimeout, UpdateSourceTrigger=LostFocus}" />
+                  <TextBlock Text="{Binding [Unit_Seconds], Source={x:Static l:Loc.Instance}}" Classes="caption" VerticalAlignment="Center" />
+                </StackPanel>
               </ds:SettingRow>
             </StackPanel>
           </Expander>
         </StackPanel>
       </ds:SettingsGroup>
 
-      <ds:SettingsGroup TitleKey="G_Local" FooterKey="G_Local_Footer">
+      <ds:SettingsGroup TitleKey="G_Local" FooterKey="G_Local_Footer" IsVisible="{Binding IsLocal}">
         <StackPanel>
-          <ds:SettingRow Path="offline.model" Error="{Binding Local.SelectedModelError}">
-            <ComboBox x:Name="ModelBox" Classes="row" ItemsSource="{Binding Local.ModelChoices}" SelectedItem="{Binding Local.SelectedModel}" />
+          <ds:SettingRow Path="offline.model" Stacked="True" Error="{Binding Local.SelectedModelError}">
+            <vs:ModelList x:Name="ModelList" Models="{Binding Local.Models}" Files="{Binding Local.CustomModels}" />
           </ds:SettingRow>
-          <ds:HintRow TextKey="Local_ModelsMoved" Margin="14,4,14,10" />
+          <ds:SettingRow Path="offline.customModels" Stacked="True" Error="{Binding Local.CustomModelError}">
+            <!-- Die Dateien selbst stehen oben in der Modell-Liste (gleiche Optionsgruppe). -->
+            <StackPanel Spacing="{DynamicResource Loom.Space.2}">
+              <Button x:Name="AddFileButton" Classes="text" HorizontalAlignment="Left" Click="OnAddFile"
+                      AutomationProperties.Name="{Binding [Local_AddFile], Source={x:Static l:Loc.Instance}}">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                  <ds:LoomIcon Data="{DynamicResource Loom.Icon.File}" VerticalAlignment="Center" />
+                  <TextBlock Text="{Binding [Local_AddFile], Source={x:Static l:Loc.Instance}}" />
+                </StackPanel>
+              </Button>
+            </StackPanel>
+          </ds:SettingRow>
           <ds:SettingRow Path="offline.accurate">
             <ToggleSwitch IsChecked="{Binding Local.Accurate}" OnContent="" OffContent="" />
           </ds:SettingRow>
-          <ds:SettingRow Path="local.backend">
-            <ComboBox Classes="row" ItemsSource="{Binding Local.Backends}" SelectedItem="{Binding Local.Backend}" />
+          <ds:SettingRow Path="local.backend" Stacked="True">
+            <ds:OptionGroup ItemsSource="{Binding Local.Backends}" SelectedItem="{Binding Local.Backend}" />
           </ds:SettingRow>
           <ds:SettingRow TitleKey="Local_BackendNow">
-            <TextBlock x:Name="BackendInfoText" Text="{Binding Local.BackendInfo}" Foreground="{DynamicResource Loom.TextSecondary}" />
+            <TextBlock x:Name="BackendInfoText" Text="{Binding Local.BackendInfo}" Classes="caption" TextWrapping="Wrap" />
           </ds:SettingRow>
           <Expander Classes="advanced" Header="{Binding [Advanced], Source={x:Static l:Loc.Instance}}">
             <StackPanel>
               <ds:SettingRow Path="local.idleMinutes" Error="{Binding Session.Errors[local.idleMinutes]}">
-                <TextBox Width="90" Text="{Binding IdleMinutes, UpdateSourceTrigger=LostFocus}" />
+                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
+                  <TextBox Width="72" Text="{Binding IdleMinutes, UpdateSourceTrigger=LostFocus}" />
+                  <TextBlock Text="{Binding [Unit_Minutes], Source={x:Static l:Loc.Instance}}" Classes="caption" VerticalAlignment="Center" />
+                </StackPanel>
               </ds:SettingRow>
             </StackPanel>
           </Expander>
         </StackPanel>
       </ds:SettingsGroup>
 
-      <ds:SettingsGroup TitleKey="G_Vocabulary">
+      <ds:SettingsGroup TitleKey="G_Vocabulary" FooterKey="G_Vocabulary_Footer">
         <StackPanel>
           <ds:SettingRow Path="stt.vocabulary" Stacked="True">
             <TextBox Classes="wide" Text="{Binding Session.Vocabulary, UpdateSourceTrigger=LostFocus}" AcceptsReturn="True" Height="120" TextWrapping="Wrap" />
           </ds:SettingRow>
-          <ds:SettingRow Path="stt.vocabularyFile">
-            <TextBox Classes="row" Text="{Binding Session.VocabularyFile, UpdateSourceTrigger=LostFocus}" PlaceholderText="C:\…\namen.md" />
+          <ds:SettingRow Path="stt.vocabularyFile" Stacked="True">
+            <TextBox Classes="wide" Text="{Binding Session.VocabularyFile, UpdateSourceTrigger=LostFocus}" />
           </ds:SettingRow>
         </StackPanel>
       </ds:SettingsGroup>
@@ -91,23 +110,22 @@
           <ds:SettingRow Path="sttFallback.enabled">
             <ToggleSwitch IsChecked="{Binding Session.SttFallbackEnabled}" OnContent="" OffContent="" />
           </ds:SettingRow>
-          <StackPanel IsEnabled="{Binding Session.SttFallbackEnabled}">
+          <!-- Nur zeigen, was gilt: die Zeilen erst nach dem Schalter. -->
+          <StackPanel IsVisible="{Binding Session.SttFallbackEnabled}">
             <ds:SettingRow Path="sttFallback.providerId">
               <ComboBox Classes="row" ItemsSource="{Binding Session.SttProviders}" SelectedItem="{Binding Session.SttFallbackProvider}" />
             </ds:SettingRow>
-            <Panel IsVisible="{Binding !Session.SttFallbackUsesEntry}">
-              <ds:SettingRow Path="secrets.sttFallback" Stacked="True">
-                <v:KeyFieldView x:Name="SttFallbackKeyView" DataContext="{Binding Session.SttFallbackKey}" />
-              </ds:SettingRow>
-            </Panel>
-            <ds:HintRow TextKey="{Binding Session.SttFallbackKeyHint}" IsVisible="{Binding Session.SttFallbackUsesEntry}" Margin="14,4,14,10" />
-            <ds:SettingRow Path="sttFallback.model">
+            <ds:SettingRow Path="secrets.sttFallback" Stacked="True" IsVisible="{Binding !Session.SttFallbackUsesEntry}">
+              <v:KeyFieldView x:Name="SttFallbackKeyView" DataContext="{Binding Session.SttFallbackKey}" />
+            </ds:SettingRow>
+            <ds:HintRow TextKey="{Binding Session.SttFallbackKeyHint}" IsVisible="{Binding Session.SttFallbackUsesEntry}" Margin="16,0,16,12" />
+            <ds:SettingRow Path="sttFallback.model" Stacked="True">
               <vs:ModelPickerView DataContext="{Binding SttFallbackModelPicker}" />
             </ds:SettingRow>
             <Expander Classes="advanced" IsExpanded="{Binding FallbackAdvancedOpen}" Header="{Binding [Advanced], Source={x:Static l:Loc.Instance}}">
               <StackPanel>
                 <ds:SettingRow Path="sttFallback.baseUrl" Error="{Binding Session.Errors[sttFallback.baseUrl]}">
-                  <TextBox Classes="row" Text="{Binding Session.SttFallbackBaseUrl, UpdateSourceTrigger=LostFocus}" PlaceholderText="https://…/v1" />
+                  <TextBox Classes="row" Text="{Binding Session.SttFallbackBaseUrl, UpdateSourceTrigger=LostFocus}" />
                 </ds:SettingRow>
               </StackPanel>
             </Expander>

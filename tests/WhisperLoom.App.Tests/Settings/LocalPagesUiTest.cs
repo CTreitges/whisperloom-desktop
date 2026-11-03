@@ -29,8 +29,8 @@ public sealed class LocalPagesUiTest
         Loc.Instance.SetLanguage("de");
         using var f = new ControllerFixture();
         var (window, shell, vm, keys) = Open(f);
-        SettingsUi.Show(window, "providers");
-        var page = (ProvidersPageViewModel)shell.Page("providers");
+        SettingsUi.Show(window, "connections");
+        var page = (ConnectionsPageViewModel)shell.Page("connections");
 
         page.AddCommand.Execute(null);
         var row = Assert.Single(page.Rows);
@@ -108,8 +108,8 @@ public sealed class LocalPagesUiTest
         Loc.Instance.SetLanguage("de");
         using var f = new ControllerFixture();
         var (window, shell, vm, _) = Open(f);
-        SettingsUi.Show(window, "localmodels");
-        var page = (LocalModelsPageViewModel)shell.Page("localmodels");
+        SettingsUi.Show(window, "recognition");
+        var page = (RecognitionPageViewModel)shell.Page("recognition");
         var dir = Directory.CreateTempSubdirectory("wl-ui-model-").FullName;
         try
         {
@@ -151,7 +151,7 @@ public sealed class LocalPagesUiTest
 
             // Screenreader-Name = sichtbares Verb + Eintrag (HIG-Review Nr. 1); Entfernen erst nach Rückfrage (Nr. 9).
             Assert.Equal("Entfernen: LM Studio", server.RemoveName);
-            Assert.StartsWith("Laden: ", vm.Local.Models[0].DownloadName, StringComparison.Ordinal);
+            Assert.StartsWith("Herunterladen: ", vm.Local.Models[0].DownloadName, StringComparison.Ordinal);
             server.RemoveCommand.Execute(null);
             Assert.True(server.RemovePending);
             Assert.Single(vm.Local.Servers);

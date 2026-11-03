@@ -5,8 +5,8 @@
              xmlns:l="using:WhisperLoom.App.Localization"
              x:Class="WhisperLoom.App.Views.Settings.PrivacyPage"
              x:DataType="vm:PrivacyPageViewModel">
-  <ds:SettingsPage TitleKey="Page_privacy">
-    <StackPanel Spacing="20">
+  <ds:SettingsPage TitleKey="Page_privacy" IntroKey="PageIntro_privacy">
+    <StackPanel Spacing="{DynamicResource Loom.Space.5}">
       <ds:SettingsGroup TitleKey="G_History" FooterKey="Settings_PrivacyNote">
         <StackPanel>
           <ds:SettingRow Path="history.enabled">
@@ -41,7 +41,7 @@
           <ds:SettingRow TitleKey="Settings_KeyStore" DescriptionKey="Set_KeyStore_Desc">
             <TextBlock x:Name="SecretStoreKindText" Text="{Binding Session.SecretStoreKind}" Foreground="{DynamicResource Loom.TextSecondary}" />
           </ds:SettingRow>
-          <ds:HintRow x:Name="SecretFileHint" Kind="Warning" TextKey="Settings_KeyFileHint" IsVisible="{Binding Session.SecretStoreIsFile}" Margin="14,0,14,10" />
+          <ds:HintRow x:Name="SecretFileHint" Kind="Warning" TextKey="Settings_KeyFileHint" IsVisible="{Binding Session.SecretStoreIsFile}" Margin="16,0,16,12" />
         </StackPanel>
       </ds:SettingsGroup>
     </StackPanel>

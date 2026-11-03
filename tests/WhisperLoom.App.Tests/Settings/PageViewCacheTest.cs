@@ -14,7 +14,7 @@ public sealed class PageViewCacheTest
 {
     private static SettingsWindow Open(ControllerFixture f)
     {
-        SettingsShellViewModel.LastPage = "general";
+        SettingsShellViewModel.LastPage = "dictation";
         var window = new SettingsWindow(new SettingsViewModel(f.Controller, new MemorySecretStore(), new FakeAccessChecker()));
         window.Show();
         Dispatcher.UIThread.RunJobs();
@@ -27,7 +27,7 @@ public sealed class PageViewCacheTest
         using var f = new ControllerFixture();
         var window = Open(f);
         var recognition = SettingsUi.Show(window, "recognition");
-        SettingsUi.Show(window, "general");
+        SettingsUi.Show(window, "dictation");
         var again = SettingsUi.Show(window, "recognition");
         Assert.Same(recognition, again);
         Assert.Same(window.Shell!.Page("recognition"), again.DataContext);
@@ -45,12 +45,12 @@ public sealed class PageViewCacheTest
         Assert.All(window.Shell.Pages.Where(p => p != window.Shell.SelectedPage), p => Assert.Null(window.Pages.Build(p)!.DataContext));
         // Vorbau inkl. Templates (erstes Anhängen und Messen), danach wieder abgehängt: nichts bleibt im Staging-Panel.
         var engine = Avalonia.LogicalTree.LogicalExtensions.GetLogicalDescendants(window.Pages.Build(window.Shell.Page("recognition"))!)
-            .OfType<ComboBox>().Single(c => c.Name == "EngineBox");
+            .OfType<Design.OptionGroup>().Single(c => c.Name == "EngineBox");
         Assert.NotNull(engine.Template);
         Assert.NotEmpty(Avalonia.VisualTree.VisualExtensions.GetVisualChildren(engine));
         Assert.Empty(window.FindControl<Panel>("Staging")!.Children);
         SettingsUi.Show(window, "text");
-        var general = window.Pages.Build(window.Shell.Page("general"))!;
+        var general = window.Pages.Build(window.Shell.Page("dictation"))!;
         Assert.Null(general.DataContext);
         Assert.Same(window.Shell.Page("text"), window.Pages.Build(window.Shell.Page("text"))!.DataContext);
         window.Close();
@@ -90,7 +90,7 @@ public sealed class PageViewCacheTest
         var window = Open(f);
         var host = window.FindControl<ContentControl>("PageHost")!;
         window.Shell!.SelectedPage = window.Shell.Page("privacy");
-        Assert.Same(window.Shell.Page("general"), host.Content); // erst rendert die Markierung …
+        Assert.Same(window.Shell.Page("dictation"), host.Content); // erst rendert die Markierung …
         Dispatcher.UIThread.RunJobs();
         Assert.Same(window.Shell.Page("privacy"), host.Content); // … dann hängt die Seite
         window.Close();
@@ -108,7 +108,7 @@ public sealed class PageViewCacheTest
     public void Klick_waehrend_des_Vorbaus_holt_die_Seite_aus_dem_Staging()
     {
         using var f = new ControllerFixture();
-        SettingsShellViewModel.LastPage = "general";
+        SettingsShellViewModel.LastPage = "dictation";
         var window = new SettingsWindow(new SettingsViewModel(f.Controller, new MemorySecretStore(), new FakeAccessChecker()));
         window.Show(); // Vorbau eingeplant, aber noch kein Schritt gelaufen
         var staging = window.FindControl<Panel>("Staging")!;
@@ -139,8 +139,8 @@ public sealed class PageViewCacheTest
         var vm = window.Settings!;
         SettingsUi.Show(window, "text");
         var llm = vm.LlmProvider;
-        SettingsUi.Show(window, "providers");
-        var page = (ProvidersPageViewModel)window.Shell!.Page("providers");
+        SettingsUi.Show(window, "connections");
+        var page = (ConnectionsPageViewModel)window.Shell!.Page("connections");
         page.AddCommand.Execute(null);
         var row = Assert.Single(page.Rows);
         row.Name = "Labor";

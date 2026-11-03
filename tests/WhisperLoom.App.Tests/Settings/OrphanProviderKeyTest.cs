@@ -74,7 +74,7 @@ public sealed class OrphanProviderKeyTest
         var store = new MemorySecretStore { Values = { ["custom:anbieter-1"] = Key } };
         var window = new SettingsWindow(new SettingsViewModel(f.Controller, store, new FakeAccessChecker()));
         window.Show();
-        var page = (ProvidersPageViewModel)window.Shell!.Page("providers");
+        var page = (ConnectionsPageViewModel)window.Shell!.Page("connections");
 
         await page.AddCommand.ExecuteAsync(null);
 
@@ -123,7 +123,7 @@ public sealed class OrphanProviderKeyTest
         await f.Controller.ApplySettingsAsync(s);
         var window = new SettingsWindow(new SettingsViewModel(f.Controller, new BrokenSecretStore(), new FakeAccessChecker()));
         window.Show();
-        var page = (ProvidersPageViewModel)window.Shell!.Page("providers");
+        var page = (ConnectionsPageViewModel)window.Shell!.Page("connections");
         var row = Assert.Single(page.Rows);
 
         await page.AddCommand.ExecuteAsync(null);
@@ -149,7 +149,7 @@ public sealed class OrphanProviderKeyTest
         var store = new MemorySecretStore { Values = { ["custom:lab"] = Key } };
         var window = new SettingsWindow(new SettingsViewModel(f.Controller, store, new FakeAccessChecker()));
         window.Show();
-        var page = (ProvidersPageViewModel)window.Shell!.Page("providers");
+        var page = (ConnectionsPageViewModel)window.Shell!.Page("connections");
         await page.LoadKeysAsync();
         var row = Assert.Single(page.Rows);
 

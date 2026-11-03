@@ -9,7 +9,7 @@ using WhisperLoom.Core.Local;
 namespace WhisperLoom.App.ViewModels;
 
 /// <summary>Ein Modell der lokalen Erkennung mit Größe, Zustand und Download/Löschen.</summary>
-public sealed partial class LocalModelViewModel(OfflineModel model, LocalParts? parts) : ObservableObject
+public sealed partial class LocalModelViewModel(OfflineModel model, LocalParts? parts) : ObservableObject, IModelRow
 {
     private CancellationTokenSource? _download;
 
@@ -24,7 +24,55 @@ public sealed partial class LocalModelViewModel(OfflineModel model, LocalParts? 
 
     public string DeleteName => Loc.Instance.Format("A11y_ItemAction", Loc.Instance["Local_Delete"], Model.Label);
 
+    public string CancelName => Loc.Instance.Format("A11y_ItemAction", Loc.Instance["Local_Pause"], Model.Label);
+
+    /// <summary>Name ohne Größe und Sternchen (Modell-Liste, B5: keine Unicode-Zeichen als Bedeutungsträger).</summary>
+    public string Name => Model.Label;
+
+    public string Size => Loc.Instance.Format("Model_Size", Model.Bytes / 1_000_000);
+
+    public bool Recommended => Model.Recommended;
+
+    /// <summary>Optionsfeld der Modell-Liste: gewählt ist <c>offline.model</c> (setzt <see cref="LocalViewModel"/>).</summary>
+    public bool IsSelected
+    {
+        get => CurrentId?.Invoke() == Model.Id;
+        set
+        {
+            if (value)
+            {
+                Choose?.Invoke(Model.Id);
+            }
+        }
+    }
+
+    internal Func<string>? CurrentId { get; set; }
+
+    internal Action<string>? Choose { get; set; }
+
+    internal void RefreshSelection() => OnPropertyChanged(nameof(IsSelected));
+
+    public bool CanDownload => !Installed;
+
+    public string Note => "";
+
+    /// <summary>Rückfrage vor dem Löschen (inline in der Zeile, nennt Name und Größe).</summary>
+    [ObservableProperty] private bool _deletePending;
+
+    public string DeleteQuestion => Loc.Instance.Format("Model_DeleteQuestion", Model.Label, Model.Bytes / 1_000_000);
+
+    [RelayCommand]
+    private void AskDelete() => DeletePending = true;
+
+    [RelayCommand]
+    private void Keep() => DeletePending = false;
+
     [ObservableProperty] private string _status = "";
+
+    /// <summary>Download läuft: Fortschritt (0–100) und „Anhalten“ statt „Herunterladen“.</summary>
+    [ObservableProperty] private bool _isDownloading;
+
+    [ObservableProperty] private double _progress;
 
     /// <summary>Lädt das Modell (Range-Fortsetzung, SHA256) und, falls nötig, den Begleitprozess.</summary>
     [RelayCommand]
@@ -32,11 +80,17 @@ public sealed partial class LocalModelViewModel(OfflineModel model, LocalParts? 
     {
         if (parts is null || _download is not null) return;
         _download = new CancellationTokenSource();
+        IsDownloading = true;
+        Progress = 0;
         try
         {
             Status = Loc.Instance["Local_Downloading"];
             var ok = await new ModelDownloader(parts.Download).DownloadAsync(Model, parts.Stt.Models,
-                (bytes, total, _) => Avalonia.Threading.Dispatcher.UIThread.Post(() => Status = $"{bytes * 100 / Math.Max(1, total)} %"), _download.Token);
+                (bytes, total, rate) => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    Progress = bytes * 100.0 / Math.Max(1, total);
+                    Status = DownloadText.Of(bytes, total, rate);
+                }), _download.Token);
             if (ok)
             {
                 await parts.Stt.Release.EnsureAsync(SidecarVariant.Cpu, null, _download.Token);
@@ -60,7 +114,9 @@ public sealed partial class LocalModelViewModel(OfflineModel model, LocalParts? 
         {
             _download.Dispose();
             _download = null;
+            IsDownloading = false;
             OnPropertyChanged(nameof(Installed));
+            OnPropertyChanged(nameof(CanDownload));
         }
     }
 
@@ -70,6 +126,7 @@ public sealed partial class LocalModelViewModel(OfflineModel model, LocalParts? 
     [RelayCommand]
     public async Task Delete()
     {
+        DeletePending = false;
         if (parts is null || _download is not null) return; // erst anhalten, dann löschen
         await parts.Stt.StopAsync();
         try
@@ -81,6 +138,7 @@ public sealed partial class LocalModelViewModel(OfflineModel model, LocalParts? 
             Status = Loc.Instance["Local_DeleteFailed"];
         }
         OnPropertyChanged(nameof(Installed));
+        OnPropertyChanged(nameof(CanDownload));
     }
 
     /// <summary>Die Vulkan-Variante ist optional: scheitert ihr Download, rechnet die CPU.</summary>
@@ -114,10 +172,10 @@ public sealed partial class LocalViewModel : ObservableObject
         _parts = parts;
         _local = LocalSettings.Of(settings);
         var loc = Loc.Instance;
-        Engines = [new Choice("online", loc["Local_EngineOnline"]), new Choice("offline", loc["Local_EngineOffline"])];
-        Backends = [new Choice("auto", loc["Local_BackendAuto"]), new Choice("cpu", loc["Local_BackendCpu"])];
-        Rules = [.. new[] { "local", "online_local", "skip" }.Select(r => new Choice(r, loc["Local_Rule_" + r]))];
-        Models = [.. ModelCatalog.Models.Select(m => new LocalModelViewModel(m, parts))];
+        Engines = [new Choice("online", loc["Local_EngineOnline"], loc["Local_EngineOnline_Desc"]), new Choice("offline", loc["Local_EngineOffline"], loc["Local_EngineOffline_Desc"])];
+        Backends = [new Choice("auto", loc["Local_BackendAuto"], loc["Local_BackendAuto_Desc"]), new Choice("cpu", loc["Local_BackendCpu"], loc["Local_BackendCpu_Desc"])];
+        Rules = [.. new[] { "local", "online_local", "skip" }.Select(r => new Choice(r, loc["Local_Rule_" + r], loc["Local_Rule_" + r + "_Desc"]))];
+        Models = [.. ModelCatalog.Models.Select(m => new LocalModelViewModel(m, parts) { CurrentId = () => SelectedModel.Value, Choose = ChooseModel })];
         FillModelChoices();
         _engine = Pick(Engines, settings.Engine ?? "online");
         _backend = Pick(Backends, _local.Backend);

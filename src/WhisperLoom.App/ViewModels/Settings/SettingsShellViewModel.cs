@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using WhisperLoom.App.Design;
 using WhisperLoom.App.Localization;
 using WhisperLoom.Core.Contracts.Settings;
@@ -19,7 +20,13 @@ public sealed record SearchResult(SettingEntry Entry, string Title, string Locat
 /// </summary>
 public sealed partial class SettingsShellViewModel : ObservableObject, IDisposable
 {
-    private static readonly HashSet<string> WindowsOnly = new(StringComparer.Ordinal) { "desktop.insertMode", "desktop.profiles" };
+    /// <summary>Zeilen, die es unter Linux nicht gibt (globale Tastenkürzel, Markierung, Einfügen, App-Profile).</summary>
+    private static readonly HashSet<string> WindowsOnly = new(StringComparer.Ordinal)
+    {
+        "desktop.hotkeysEnabled", "desktop.hotkeyHold", "desktop.hotkeyToggle", "desktop.hotkeyStage", "desktop.hotkeyReinsert",
+        "selection.hotkeyCombo", "selection.floatingButton", "selection.ctrlRightClick",
+        "desktop.insertMode", "output.alwaysCopy", "output.pressEnter", "desktop.profiles",
+    };
 
     private readonly Func<SettingsViewModel, IManagedSource> _sourceOf;
     private readonly string _toggleCommand;
@@ -35,7 +42,7 @@ public sealed partial class SettingsShellViewModel : ObservableObject, IDisposab
     }
 
     /// <summary>Zuletzt gezeigte Seite (HIG settings.md: „Restore the most recently viewed pane“), für die Laufzeit der App.</summary>
-    internal static string LastPage { get; set; } = "general";
+    internal static string LastPage { get; set; } = "dictation";
 
     public SettingsViewModel Session { get; private set; } = null!;
 
@@ -53,15 +60,22 @@ public sealed partial class SettingsShellViewModel : ObservableObject, IDisposab
 
     public ObservableCollection<SearchResult> Results { get; } = [];
 
+    /// <summary>Statuszeile über den Treffern: Anzahl bzw. nächster Schritt, wenn nichts passt (B33).</summary>
+    public string ResultSummary => Results.Count > 0
+        ? Loc.Instance.Format("Search_Count", Results.Count, SearchText.Trim())
+        : Loc.Instance.Format("Search_NoneFor", SearchText.Trim());
+
     /// <summary>Nach einem Sprung aus der Suche: die Ansicht holt die Zeile mit diesem Pfad ins Bild und fokussiert sie.</summary>
     public event Action<string>? RevealRequested;
 
     public SettingsPageViewModel Page(string id) => Pages.First(p => p.Id == id);
 
-    /// <summary>Wechselt zur Seite des Treffers und zeigt die Zeile.</summary>
+    /// <summary>Wechselt zur Seite des Treffers, beendet die Suche (die Treffer stehen im Inhaltsbereich) und zeigt die Zeile.</summary>
+    [RelayCommand]
     public void Open(SearchResult result)
     {
         SelectedPage = Page(result.Entry.Page);
+        SearchText = "";
         RevealRequested?.Invoke(result.Entry.Path);
     }
 
@@ -78,7 +92,7 @@ public sealed partial class SettingsShellViewModel : ObservableObject, IDisposab
     /// </summary>
     private void Reload()
     {
-        Load(Session.Reopen(), SelectedPage?.Id ?? "general");
+        Load(Session.Reopen(), SelectedPage?.Id ?? "dictation");
         _ = Session.LoadKeysAsync();
         _ = Session.Local.RefreshOllamaCommand.ExecuteAsync(null);
     }
@@ -134,14 +148,8 @@ public sealed partial class SettingsShellViewModel : ObservableObject, IDisposab
         Pages.Clear();
         foreach (var page in CreatePages(session))
         {
+            page.Navigate = id => SelectedPage = Page(id);
             Pages.Add(page);
-        }
-        string? section = null;
-        foreach (var page in Pages)
-        {
-            var current = SettingsCatalog.SectionOf(page.Id);
-            page.SectionTitle = current == section ? null : Loc.Instance["Section_" + current];
-            section = current;
         }
         OnPropertyChanged(nameof(Session));
         OnPropertyChanged(nameof(Managed));
@@ -149,12 +157,11 @@ public sealed partial class SettingsShellViewModel : ObservableObject, IDisposab
         RunSearch();
     }
 
+    /// <summary>Reihenfolge wie <see cref="SettingsCatalog.Pages"/>.</summary>
     private IEnumerable<SettingsPageViewModel> CreatePages(SettingsViewModel s) =>
     [
-        new GeneralPageViewModel(s), new RecognitionPageViewModel(s), new TextPageViewModel(s), new CleanupPageViewModel(s),
-        new ProvidersPageViewModel(s), new LocalModelsPageViewModel(s),
-        new OutputPageViewModel(s), new HotkeysPageViewModel(s, _toggleCommand), new PrivacyPageViewModel(s), new NetworkPageViewModel(s),
-        new CompanyPageViewModel(s),
+        new DictationPageViewModel(s, _toggleCommand), new RecognitionPageViewModel(s), new TextPageViewModel(s), new OutputPageViewModel(s),
+        new ConnectionsPageViewModel(s), new PrivacyPageViewModel(s), new SystemPageViewModel(s), new CompanyPageViewModel(s),
     ];
 
     /// <summary>
@@ -176,6 +183,7 @@ public sealed partial class SettingsShellViewModel : ObservableObject, IDisposab
     private void RunSearch()
     {
         Results.Clear();
+        OnPropertyChanged(nameof(ResultSummary));
         var words = SearchText.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         if (words.Length == 0)
         {
@@ -196,10 +204,10 @@ public sealed partial class SettingsShellViewModel : ObservableObject, IDisposab
                 Results.Add(new SearchResult(entry, title, location));
             }
         }
+        OnPropertyChanged(nameof(ResultSummary));
     }
 
-    private static bool Available(SettingEntry entry) =>
-        OperatingSystem.IsWindows() || (entry.Page != "hotkeys" && !WindowsOnly.Contains(entry.Path));
+    private static bool Available(SettingEntry entry) => OperatingSystem.IsWindows() || !WindowsOnly.Contains(entry.Path);
 
     private void OnLanguageChanged(object? sender, PropertyChangedEventArgs e) => RunSearch();
 }

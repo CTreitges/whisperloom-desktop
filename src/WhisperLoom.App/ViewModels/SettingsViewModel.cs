@@ -10,9 +10,11 @@ using WhisperLoom.Core.Settings;
 
 namespace WhisperLoom.App.ViewModels;
 
-/// <summary>Ein Eintrag einer Auswahlliste: gespeicherter Wert plus Anzeige.</summary>
-public sealed record Choice(string Value, string Label)
+/// <summary>Ein Eintrag einer Auswahlliste bzw. Optionsgruppe: gespeicherter Wert, Anzeige und optional eine Zeile Erklärung.</summary>
+public sealed record Choice(string Value, string Label, string? Description = null)
 {
+    public bool HasDescription => !string.IsNullOrEmpty(Description);
+
     public override string ToString() => Label;
 }
 
@@ -68,13 +70,13 @@ public sealed partial class SettingsViewModel : ObservableObject
         EnsureChoice(LlmProviders, _s.Llm.ProviderId);
         EnsureChoice(LlmFallbackProviders, _s.LlmFallback.ProviderId);
         Languages = [.. RecognitionLanguages.Select(l => new Choice(l, LanguageLabel(l)))];
-        Stages = [.. RefineModes.SettingsFor(true).Select(m => new Choice(m.Key(), loc["Stage_" + m.Key()]))];
-        ProxyModes = [.. new[] { "system", "off", "manual" }.Select(m => new Choice(m, loc["Proxy_" + m]))];
+        Stages = [.. RefineModes.SettingsFor(true).Select(m => new Choice(m.Key(), loc["Stage_" + m.Key()], loc["Stage_" + m.Key() + "_Desc"]))];
+        ProxyModes = [.. new[] { "system", "off", "manual" }.Select(m => new Choice(m, loc["Proxy_" + m], loc["Proxy_" + m + "_Desc"]))];
         HistorySizes = [.. HistorySettings.Sizes];
         Outputs = [new Choice("clipboard", loc["Output_clipboard"])];
-        UiLanguages = [new Choice("", loc["Ui_System"]), new Choice("de", "Deutsch"), new Choice("en", "English")];
+        UiLanguages = [new Choice("", loc["Ui_System"], loc["Ui_System_Desc"]), new Choice("de", "Deutsch"), new Choice("en", "English")];
         Microphones = [new Choice("", loc["Mic_Default"]), .. (microphones ?? []).Select(m => new Choice(m, m))];
-        InsertModes = [.. new[] { "paste", "type", "clipboard" }.Select(m => new Choice(m, loc["Insert_" + m]))];
+        InsertModes = [.. new[] { "paste", "type", "clipboard" }.Select(m => new Choice(m, loc["Insert_" + m], loc["Insert_" + m + "_Desc"]))];
         Hotkeys = new HotkeysViewModel(_desktop, recordHotkey, _s.Selection) { Changed = Touch };
         Profiles = new Features.Profiles.ProfilesViewModel(_desktop) { Changed = Touch };
 

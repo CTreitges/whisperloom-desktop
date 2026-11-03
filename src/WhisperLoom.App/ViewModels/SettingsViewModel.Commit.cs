@@ -30,11 +30,15 @@ public sealed partial class SettingsViewModel
         var fresh = _reopen();
         fresh.Company = Company;
         fresh.OpenVersions = OpenVersions;
+        fresh.OpenSetup = OpenSetup;
         return fresh;
     }
 
     /// <summary>Öffnet das Fenster „Version wählen“ (W3-CHAN); null in Tests ohne App.</summary>
     public Action? OpenVersions { get; set; }
+
+    /// <summary>Öffnet den Einrichtungs-Assistenten (Einstellungen › System, UX-2); null in Tests ohne App.</summary>
+    public Action? OpenSetup { get; set; }
 
     /// <summary>Firmen-Anbindung für die Seite „Firma“ (W2-ENR); null ohne Server-Anbindung (Tests).</summary>
     public Management.ManagementService? Company { get; set; }

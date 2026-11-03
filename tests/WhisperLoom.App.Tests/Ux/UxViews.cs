@@ -18,22 +18,21 @@ internal static class UxViews
 
     public static IReadOnlyList<UxView> All { get; } =
     [
-        new("settings-general", Settings, Pages + "GeneralPage.axaml", t => PageAsync("general", t)),
-        new("settings-search", Settings, "Views/SettingsWindow.axaml", t => PageAsync("general", t, new PageSetup(Act: w =>
+        new("settings-dictation", Settings, Pages + "DictationPage.axaml", t => PageAsync("dictation", t)),
+        new("settings-search", Settings, "Views/SettingsWindow.axaml", t => PageAsync("dictation", t, new PageSetup(Act: w =>
         {
             w.Shell!.SearchText = "Taste";
             return Task.CompletedTask;
         }))),
         new("settings-recognition", Settings, Pages + "RecognitionPage.axaml", t => PageAsync("recognition", t)),
+        new("settings-recognition-local", Settings, Pages + "RecognitionPage.axaml", t => PageAsync("recognition", t, new PageSetup(LocalDemo))),
         new("settings-recognition-managed", Settings, Pages + "RecognitionPage.axaml", t => PageAsync("recognition", t, new PageSetup(Arrange: Managed))),
         new("settings-text", Settings, Pages + "TextPage.axaml", t => PageAsync("text", t)),
-        new("settings-providers", Settings, Pages + "ProvidersPage.axaml", t => PageAsync("providers", t, new PageSetup(LocalDemo))),
-        new("settings-localmodels", Settings, Pages + "LocalModelsPage.axaml", t => PageAsync("localmodels", t, new PageSetup(LocalDemo))),
-        new("settings-cleanup", Settings, Pages + "CleanupPage.axaml", t => PageAsync("cleanup", t)),
+        new("settings-text-local", Settings, Pages + "TextPage.axaml", t => PageAsync("text", t, new PageSetup(LocalDemo))),
         new("settings-output", Settings, Pages + "OutputPage.axaml", t => PageAsync("output", t, new PageSetup(WithProfiles))),
-        new("settings-hotkeys", Settings, Pages + "HotkeysPage.axaml", t => PageAsync("hotkeys", t)),
+        new("settings-connections", Settings, Pages + "ConnectionsPage.axaml", t => PageAsync("connections", t, new PageSetup(LocalDemo))),
         new("settings-privacy", Settings, Pages + "PrivacyPage.axaml", t => PageAsync("privacy", t)),
-        new("settings-network", Settings, Pages + "NetworkPage.axaml", t => PageAsync("network", t)),
+        new("settings-system", Settings, Pages + "SystemPage.axaml", t => PageAsync("system", t)),
         new("settings-company-join", Settings, Pages + "CompanyPage.axaml", t => PageAsync("company", t, new PageSetup(Company: true, Act: w =>
         {
             var company = (CompanyPageViewModel)w.Shell!.Page("company");

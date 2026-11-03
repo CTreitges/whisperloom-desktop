@@ -33,7 +33,7 @@ public sealed class HelpEntryTest : IDisposable
 
     private static SettingsWindow Settings(ControllerFixture f)
     {
-        SettingsShellViewModel.LastPage = "general";
+        SettingsShellViewModel.LastPage = "dictation";
         var window = new SettingsWindow(new SettingsViewModel(f.Controller, new MemorySecretStore(), new FakeAccessChecker()));
         window.Show();
         Dispatcher.UIThread.RunJobs();
@@ -64,10 +64,10 @@ public sealed class HelpEntryTest : IDisposable
     {
         using var f = new ControllerFixture();
         var window = Settings(f);
-        SettingsUi.Show(window, "network");
+        SettingsUi.Show(window, "connections");
         window.KeyPress(Key.F1, RawInputModifiers.None, PhysicalKey.F1, null);
-        Assert.Equal(["network"], _opened);
-        SettingsUi.Show(window, "cleanup");
+        Assert.Equal(["providers"], _opened);
+        SettingsUi.Show(window, "text");
         window.KeyPress(Key.F1, RawInputModifiers.None, PhysicalKey.F1, null);
         Assert.Equal("stages", _opened[^1]);
         // Nur F1 ohne Modifier.

@@ -62,16 +62,14 @@ public static class HelpCatalog
     /// <summary>Einstellungsseite (Id aus dem SettingsCatalog) → Abschnitt.</summary>
     public static readonly IReadOnlyDictionary<string, string> PageTopics = new Dictionary<string, string>
     {
-        ["general"] = "start",
+        // UX-2: sieben Aufgaben-Seiten plus Firma. „Verbindungen“ führt zu den Anbietern (der Proxy-Abschnitt verweist von dort).
+        ["dictation"] = "hotkeys",
         ["recognition"] = "recognition",
         ["text"] = "stages",
-        ["cleanup"] = "stages",
-        ["providers"] = "providers",
-        ["localmodels"] = "providers",
         ["output"] = "output",
-        ["hotkeys"] = "hotkeys",
+        ["connections"] = "providers",
         ["privacy"] = "privacy",
-        ["network"] = "network",
+        ["system"] = "start",
         ["company"] = "company",
     };
 

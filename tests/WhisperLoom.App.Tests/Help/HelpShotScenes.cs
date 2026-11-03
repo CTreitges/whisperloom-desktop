@@ -9,6 +9,7 @@ using WhisperLoom.App.Features.History;
 using WhisperLoom.App.Features.Selection;
 using WhisperLoom.App.Localization;
 using WhisperLoom.App.Platform.Sidecar;
+using WhisperLoom.App.Services;
 using WhisperLoom.App.Setup;
 using WhisperLoom.App.Tests.Management;
 using WhisperLoom.App.Tests.Setup;
@@ -51,10 +52,23 @@ internal static class HelpShotScenes
     private static async Task<HelpScene> SettingsAsync(string page, string? variant, string lang, ThemeVariant theme, int height)
     {
         ManagementRig? rig = page == "company" ? new ManagementRig(new WhisperLoomSettings { Language = lang }, uiThread: true) : null;
-        var f = rig?.F ?? new ControllerFixture(page is "providers" or "localmodels" ? LocalDemo(lang) : new WhisperLoomSettings { Language = lang, Engine = "online" });
+        var f = rig?.F ?? new ControllerFixture(page is "connections" ? LocalDemo(lang) : new WhisperLoomSettings { Language = lang, Engine = "online" });
         if (variant == "managed")
         {
             Managed(f);
+        }
+        else if (variant == "local")
+        {
+            // Lokale Erkennung: nur dann steht die Modell-Liste da (UX-2, nur zeigen, was gilt).
+            f.Controller.Settings.Engine = "offline";
+        }
+        else if (variant == "proxy")
+        {
+            // Eigener Proxy: nur dann steht die Adresse da.
+            var desktop = SettingsStore.Desktop(f.Controller.Settings);
+            desktop.ProxyMode = "manual";
+            desktop.ProxyUrl = "http://proxy.example:3128";
+            SettingsStore.SetDesktop(f.Controller.Settings, desktop);
         }
         f.Controller.Settings.Selection.FloatingButton = true;
         var store = new MemorySecretStore();
@@ -66,7 +80,7 @@ internal static class HelpShotScenes
         var window = new SettingsWindow(new SettingsShellViewModel(vm)) { Width = Width, Height = height, RequestedThemeVariant = theme };
         window.Show();
         Settings.SettingsUi.Show(window, page);
-        if (window.Shell!.SelectedPage is ProvidersPageViewModel providers)
+        if (window.Shell!.SelectedPage is ConnectionsPageViewModel providers)
         {
             await providers.LoadKeysAsync();
         }
@@ -77,7 +91,7 @@ internal static class HelpShotScenes
             company.Join.Code = "ABCD-EFGH-JKMN-PQRS";
         }
         Dispatcher.UIThread.RunJobs();
-        SettingsShellViewModel.LastPage = "general";
+        SettingsShellViewModel.LastPage = "dictation";
         return new HelpScene(window, window.FindControl<ContentControl>("PageHost")!, (IDisposable?)rig ?? f, CropToContent: true);
     }
 

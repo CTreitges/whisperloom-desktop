@@ -7,15 +7,15 @@ using WhisperLoom.App.ViewModels.Settings;
 
 namespace WhisperLoom.App.Views.Settings;
 
-/// <summary>Seite „Allgemein“; Export und Import öffnen die Dateiauswahl des Systems.</summary>
-public partial class GeneralPage : UserControl
+/// <summary>Seite „System“; Export und Import öffnen die Dateiauswahl des Systems.</summary>
+public partial class SystemPage : UserControl
 {
     // Doku: docs.avaloniaui.net/docs/concepts/services/storage-provider (abgerufen 2026-10-31).
     private static readonly FilePickerFileType JsonFiles = new("JSON") { Patterns = ["*.json"], MimeTypes = ["application/json"] };
 
-    public GeneralPage() => InitializeComponent();
+    public SystemPage() => InitializeComponent();
 
-    private SyncViewModel? Sync => (DataContext as GeneralPageViewModel)?.Sync;
+    private SyncViewModel? Sync => (DataContext as SystemPageViewModel)?.Sync;
 
     private IStorageProvider? Storage => TopLevel.GetTopLevel(this)?.StorageProvider;
 

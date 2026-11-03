@@ -25,10 +25,37 @@ public sealed partial class CustomProviderRow : ObservableObject
         _changed = changed;
         _inUse = inUse;
         _delete = delete;
-        Protocols = [.. CustomProvider.Protocols.Select(p => new Choice(p, Loc.Instance["Protocol_" + p]))];
+        Protocols = [.. CustomProvider.Protocols.Select(p => new Choice(p, Loc.Instance["Protocol_" + p], Loc.Instance["Protocol_" + p + "_Desc"]))];
         _protocol = SettingsViewModel.Pick(Protocols, entry.Protocol);
         Key = new KeyFieldViewModel(SecretNames.ForProvider(Id), session.SecretStore, session.Checker, () => (Id, Entry.BaseUrl)) { Policy = session.Policy };
+        Key.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(KeyFieldViewModel.IsSet))
+            {
+                OnPropertyChanged(nameof(Summary));
+            }
+        };
         IsValid = UrlError(entry.BaseUrl) is null;
+    }
+
+    /// <summary>Kopf des eingeklappten Eintrags: „OpenAI-kompatibel · https://… · Key gespeichert“.</summary>
+    public string Summary => string.Join(" · ", Protocol.Label, Entry.BaseUrl,
+        Loc.Instance[Key.IsSet ? "Provider_KeySaved" : Entry.KeyOptional ? "Provider_NoKeyNeeded" : "Provider_NoKey"]);
+
+    /// <summary>Beschriftung des Löschen-Knopfs mit Namen: „Anbieter „Labor“ löschen …“.</summary>
+    public string DeleteLabel => Loc.Instance.Format("Providers_DeleteNamed", Entry.Name);
+
+    protected override void OnPropertyChanged(System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        base.OnPropertyChanged(e);
+        if (e.PropertyName is nameof(Protocol) or nameof(BaseUrl) or nameof(KeyOptional))
+        {
+            base.OnPropertyChanged(new System.ComponentModel.PropertyChangedEventArgs(nameof(Summary)));
+        }
+        else if (e.PropertyName == nameof(Name))
+        {
+            base.OnPropertyChanged(new System.ComponentModel.PropertyChangedEventArgs(nameof(DeleteLabel)));
+        }
     }
 
     public CustomProvider Entry { get; }
@@ -142,16 +169,37 @@ public sealed partial class CustomProviderRow : ObservableObject
 }
 
 /// <summary>
-/// Seite „Anbieter“ (W2-LOCAL, wie „Eigener Anbieter“ der Android-App): eigene Anbieter anlegen, bearbeiten, löschen.
-/// Jeder Eintrag ist in jedem Zugang wählbar (Erkennung, Text, Ersatz). Ein genutzter Eintrag lässt sich nicht löschen.
+/// Seite „Verbindungen“ (UX-2): Wege nach draußen und ins eigene Netz – eigene Anbieter (W2-LOCAL, wie „Eigener Anbieter“
+/// der Android-App: anlegen, bearbeiten, löschen; in jedem Zugang wählbar, ein genutzter lässt sich nicht löschen), lokale
+/// Server ohne Key und der Proxy (Adresse nur bei „Eigener Proxy“).
 /// </summary>
-public sealed partial class ProvidersPageViewModel : SettingsPageViewModel
+public sealed partial class ConnectionsPageViewModel : SettingsPageViewModel
 {
-    public ProvidersPageViewModel(SettingsViewModel session) : base("providers", "Recognition", "Blue", session)
+    public ConnectionsPageViewModel(SettingsViewModel session) : base("connections", "Connections", session)
     {
         foreach (var entry in session.Working.Providers.Custom)
         {
             Rows.Add(Row(entry));
+        }
+        session.PropertyChanged += OnSessionChanged;
+    }
+
+    public LocalViewModel Local => Session.Local;
+
+    /// <summary>Proxy-Adresse nur bei „Eigener Proxy“ (nur zeigen, was gilt).</summary>
+    public bool IsManual => Session.ProxyMode.Value == "manual";
+
+    public override void Dispose()
+    {
+        Session.PropertyChanged -= OnSessionChanged;
+        base.Dispose();
+    }
+
+    private void OnSessionChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SettingsViewModel.ProxyMode))
+        {
+            OnPropertyChanged(nameof(IsManual));
         }
     }
 

@@ -19,6 +19,31 @@ public sealed partial class CustomWhisperRow(CustomWhisperModel model, Action<Cu
 
     public string RemoveName => Loc.Instance.Format("A11y_ItemAction", Loc.Instance["Local_Remove"], Name);
 
+    /// <summary>„eigene Datei · Pfad“ unter dem Namen in der Modell-Liste.</summary>
+    public string FileNote => Loc.Instance.Format("Local_FileNote", Model.Path);
+
+    /// <summary>Wert von <c>offline.model</c> für diese Datei.</summary>
+    public string Id => OfflineSettings.CustomModelPrefix + Model.Name;
+
+    /// <summary>Optionsfeld der Modell-Liste (eigene Dateien stehen mit in der Liste).</summary>
+    public bool IsSelected
+    {
+        get => CurrentId?.Invoke() == Id;
+        set
+        {
+            if (value)
+            {
+                Choose?.Invoke(Id);
+            }
+        }
+    }
+
+    internal Func<string>? CurrentId { get; set; }
+
+    internal Action<string>? Choose { get; set; }
+
+    internal void RefreshSelection() => OnPropertyChanged(nameof(IsSelected));
+
     /// <summary>Datei fehlt bzw. ist kein Modell: Hinweis an der Zeile.</summary>
     public string Status => WhisperModels.CheckFile(Model.Path) switch
     {
@@ -68,7 +93,34 @@ public sealed partial class LocalViewModel
             ? Loc.Instance["Local_SelectedFileMissing"]
             : null;
 
-    partial void OnSelectedModelChanged(Choice value) => OnPropertyChanged(nameof(SelectedModelError));
+    partial void OnSelectedModelChanged(Choice value)
+    {
+        OnPropertyChanged(nameof(SelectedModelError));
+        foreach (var row in Models)
+        {
+            row.RefreshSelection();
+        }
+        foreach (var row in CustomModels)
+        {
+            row.RefreshSelection();
+        }
+    }
+
+    partial void OnBundledModelChanged(Choice value)
+    {
+        foreach (var row in TextModels)
+        {
+            row.RefreshSelection();
+        }
+    }
+
+    /// <summary>Optionsfeld der Modell-Liste gewählt: <c>offline.model</c> auf dieses Modell bzw. diese Datei.</summary>
+    private void ChooseModel(string id) => SelectedModel = Pick(ModelChoices, id);
+
+    private void ChooseBundled(string id) => BundledModel = Pick(BundledModels, id);
+
+    private CustomWhisperRow NewCustomRow(CustomWhisperModel model) =>
+        new(model, RemoveCustomModel) { CurrentId = () => SelectedModel.Value, Choose = ChooseModel };
 
     public bool IsOllama => TextEngine.Value == LocalTextEngine.Ollama;
 
@@ -86,15 +138,15 @@ public sealed partial class LocalViewModel
     private void InitEntries()
     {
         var loc = Loc.Instance;
-        TextEngines = [.. TextEngineKeys.Select(k => new Choice(k, loc["TextEngine_" + k]))];
+        TextEngines = [.. TextEngineKeys.Select(k => new Choice(k, loc["TextEngine_" + k], loc["TextEngine_" + k + "_Desc"]))];
         var ram = TextModelCatalog.DeviceRamBytes();
         BundledModels = [.. TextModelCatalog.Models.Select(m => new Choice(m.Id, TextModelCatalog.Fits(m, ram) ? m.Label : loc.Format("TextModel_TooBig", m.Label)))];
-        TextModels = [.. TextModelCatalog.Models.Select(m => new TextModelViewModel(m, _parts, ram))];
+        TextModels = [.. TextModelCatalog.Models.Select(m => new TextModelViewModel(m, _parts, ram) { CurrentId = () => BundledModel.Value, Choose = ChooseBundled })];
         TextEngine = Pick(TextEngines, _local.TextEngine);
         BundledModel = Pick(BundledModels, TextModelCatalog.ById(_local.BundledModel).Id);
         foreach (var m in _s.Offline.CustomModels)
         {
-            CustomModels.Add(new CustomWhisperRow(m, RemoveCustomModel));
+            CustomModels.Add(NewCustomRow(m));
         }
         foreach (var server in _local.Servers)
         {
@@ -142,7 +194,7 @@ public sealed partial class LocalViewModel
         if (error is not null) return error;
         var model = new CustomWhisperModel { Name = WhisperModels.SuggestName(path, _s.Offline.CustomModels), Path = path };
         _s.Offline.CustomModels.Add(model);
-        CustomModels.Add(new CustomWhisperRow(model, RemoveCustomModel));
+        CustomModels.Add(NewCustomRow(model));
         FillModelChoices();
         SelectedModel = Pick(ModelChoices, SelectedModel.Value);
         EntriesChanged?.Invoke();

@@ -57,10 +57,10 @@ public sealed class LocalPagesScreenshotTest
                 await vm.LoadKeysAsync();
                 var window = new SettingsWindow(new SettingsShellViewModel(vm)) { Width = 980, Height = 1500, RequestedThemeVariant = theme };
                 window.Show();
-                foreach (var page in new[] { "recognition", "text", "providers", "localmodels" })
+                foreach (var page in new[] { "recognition", "text", "connections" })
                 {
                     SettingsUi.Show(window, page);
-                    if (window.Shell!.SelectedPage is ProvidersPageViewModel providers)
+                    if (window.Shell!.SelectedPage is ConnectionsPageViewModel providers)
                     {
                         await providers.LoadKeysAsync();
                     }

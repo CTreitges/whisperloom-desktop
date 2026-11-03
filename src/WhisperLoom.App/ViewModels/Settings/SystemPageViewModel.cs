@@ -1,4 +1,3 @@
-using System.Globalization;
 using CommunityToolkit.Mvvm.Input;
 using WhisperLoom.App.Localization;
 using WhisperLoom.App.Updates;
@@ -8,22 +7,12 @@ using ChannelKind = WhisperLoom.App.Updates.UpdateChannel;
 namespace WhisperLoom.App.ViewModels.Settings;
 
 /// <summary>
-/// Seite „Allgemein“: Sprache der Oberfläche, Mikrofon, Schriftgröße der Bühne, Updates (Kanal, Vorabversionen,
-/// Versionsliste; W3-CHAN), Einstellungen übertragen.
+/// Seite „System“ (UX-2): selten gebraucht – Sprache der Oberfläche, Updates (Kanal als Optionsfelder, Vorabversionen nur
+/// bei Beta/Test, Versionsliste; W3-CHAN), Einstellungen übertragen und die Einrichtung (aus dem Tray hierher, B43).
 /// </summary>
-public sealed partial class GeneralPageViewModel(SettingsViewModel session) : SettingsPageViewModel("general", "System", "Gray", session)
+public sealed partial class SystemPageViewModel(SettingsViewModel session) : SettingsPageViewModel("system", "System", session)
 {
-    public const int MinFontSize = 16;
-    public const int MaxFontSize = 96;
-
     public SyncViewModel Sync => Session.Sync;
-
-    /// <summary>Schriftgröße der Bühne als Text; gültig 16–96 (wie Strg+Plus/Minus in der Bühne).</summary>
-    public string StageFontSize
-    {
-        get => Session.Desktop.StageFontSize.ToString(CultureInfo.InvariantCulture);
-        set => SetNumber("desktop.stageFontSize", value, MinFontSize, MaxFontSize, zeroAllowed: false, v => Session.Desktop.StageFontSize = v);
-    }
 
     /// <summary>false bei <c>policy.updatesEnabled=false</c>: Kanal, Schalter und Versionsliste sind gesperrt.</summary>
     public bool UpdatesAllowed => Session.Policy.UpdatesEnabled != false;
@@ -48,7 +37,7 @@ public sealed partial class GeneralPageViewModel(SettingsViewModel session) : Se
         }
     }
 
-    /// <summary>Der Vorab-Schalter wirkt nur in Beta/Test.</summary>
+    /// <summary>Der Vorab-Schalter wirkt nur in Beta/Test und steht nur dort (nur zeigen, was gilt).</summary>
     public bool IsPrereleaseChannel => UpdatesAllowed && Channels.Parse(Session.Desktop.UpdateChannel) != ChannelKind.Stable;
 
     public bool UpdatePrereleaseAuto
@@ -69,6 +58,10 @@ public sealed partial class GeneralPageViewModel(SettingsViewModel session) : Se
     [RelayCommand(CanExecute = nameof(UpdatesAllowed))]
     private void OpenVersions() => Session.OpenVersions?.Invoke();
 
+    /// <summary>Startet den Einrichtungs-Assistenten (früher im Tray, B43); bisherige Einstellungen bleiben.</summary>
+    [RelayCommand]
+    private void OpenSetup() => Session.OpenSetup?.Invoke();
+
     protected override void OnLanguageChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         base.OnLanguageChanged(sender, e);
@@ -79,5 +72,5 @@ public sealed partial class GeneralPageViewModel(SettingsViewModel session) : Se
     }
 
     private static IReadOnlyList<Choice> BuildChannels() =>
-        [.. Channels.All.Select(c => new Choice(c.Key(), Loc.Instance["Channel_" + c.Key()]))];
+        [.. Channels.All.Select(c => new Choice(c.Key(), Loc.Instance["Channel_" + c.Key()], Loc.Instance["Channel_" + c.Key() + "_Desc"]))];
 }

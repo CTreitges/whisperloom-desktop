@@ -41,7 +41,7 @@ public sealed class SelectionSettingsTest
         Loc.Instance.SetLanguage("de");
         using var f = new ControllerFixture();
         var window = Open(f, out var vm);
-        SettingsUi.Show(window, "hotkeys");
+        SettingsUi.Show(window, "dictation");
 
         var group = window.GetVisualDescendants().OfType<SettingsGroup>().Single(g => g.TitleKey == "G_Selection");
         Assert.True(group.IsShown);
@@ -108,7 +108,7 @@ public sealed class SelectionSettingsTest
         f.Controller.Settings.Management.TenantName = "Beispiel GmbH";
         f.Controller.Policy = new PolicySettings { Locked = ["selection"] };
         var window = Open(f);
-        SettingsUi.Show(window, "hotkeys");
+        SettingsUi.Show(window, "dictation");
 
         Assert.False(SettingsUi.Row(window, "selection.floatingButton").IsShown);
         Assert.False(SettingsUi.Row(window, "selection.ctrlRightClick").IsShown);

@@ -40,7 +40,7 @@ public sealed class SettingsCoverageTest
         SettingsUi.VisitAll(window, page =>
         {
             var paths = SettingsUi.Rows(window).Where(r => r.Path is not null).Select(r => r.Path!).ToList();
-            if (page == "hotkeys" && !OperatingSystem.IsWindows())
+            if (page == "dictation" && !OperatingSystem.IsWindows())
             {
                 // Unter Linux ist die Gruppe ausgeblendet und die Vorlage (ein Template je Aktion) wird nicht erzeugt.
                 paths.AddRange(window.Settings!.Hotkeys.All.Select(r => r.Path));
@@ -87,12 +87,23 @@ public sealed class SettingsCoverageTest
     }
 
     [Fact]
-    public void Sidebar_has_at_most_eleven_pages_in_sections()
+    public void Sidebar_has_seven_task_pages_and_company_last()
     {
-        // W2-LOCAL: „Anbieter“ und „Lokale Modelle“ im Abschnitt „Quellen“ (task.md verlangt eigene Seiten); Platz für „Firma“ (W2-ENR).
-        Assert.InRange(SettingsCatalog.Pages.Count, 1, 11);
-        Assert.Equal(["dictation", "sources", "usage", "system"], SettingsCatalog.Pages.Select(p => p.Section).Distinct());
-        Assert.All(SettingsCatalog.Entries, e => Assert.Contains(SettingsCatalog.Pages, p => p.Id == e.Page));
+        // UX-2 (zielstruktur.md §1): Reihenfolge eines Diktats, dann Infrastruktur; „Firma“ als Konto-Eintrag am Ende (Entscheidung 17).
+        Assert.Equal(["dictation", "recognition", "text", "output", "connections", "privacy", "system", "company"], SettingsCatalog.Pages);
+        Assert.Equal(SettingsCatalog.AccountPage, SettingsCatalog.Pages[^1]);
+        Assert.All(SettingsCatalog.Entries, e => Assert.Contains(e.Page, SettingsCatalog.Pages));
+    }
+
+    [Fact]
+    public void Decisions_17_and_18_selection_and_language_stay_where_christof_chose()
+    {
+        // 18: „Sprache beim Diktieren“ bei der Erkennung; 8: „Markierten Text verarbeiten“ unter Diktat; Bereinigung unter Text.
+        Assert.Equal("recognition", SettingsCatalog.Find("language")!.Page);
+        Assert.All(["selection.hotkeyCombo", "selection.floatingButton", "selection.ctrlRightClick"], p => Assert.Equal("dictation", SettingsCatalog.Find(p)!.Page));
+        Assert.All(SettingsCatalog.Entries.Where(e => e.Path.StartsWith("polish.", StringComparison.Ordinal)), e => Assert.Equal("text", e.Page));
+        Assert.Equal("recognition", SettingsCatalog.Find("offline.customModels")!.Page);
+        Assert.Equal("connections", SettingsCatalog.Find("local.servers")!.Page);
     }
 
     [Fact]

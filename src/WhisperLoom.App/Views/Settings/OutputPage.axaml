@@ -6,13 +6,13 @@
              xmlns:l="using:WhisperLoom.App.Localization"
              x:Class="WhisperLoom.App.Views.Settings.OutputPage"
              x:DataType="vm:OutputPageViewModel">
-  <ds:SettingsPage TitleKey="Page_output">
-    <StackPanel Spacing="20">
+  <ds:SettingsPage TitleKey="Page_output" IntroKey="PageIntro_output">
+    <StackPanel Spacing="{DynamicResource Loom.Space.5}">
       <ds:HintRow TextKey="Output_LinuxHint" IsVisible="{Binding IsLinux}" />
       <ds:SettingsGroup TitleKey="G_Insert" IsVisible="{Binding IsWindows}">
         <StackPanel>
-          <ds:SettingRow Path="desktop.insertMode">
-            <ComboBox x:Name="InsertModeBox" Classes="row" ItemsSource="{Binding Session.InsertModes}" SelectedItem="{Binding Session.InsertMode}" />
+          <ds:SettingRow Path="desktop.insertMode" Stacked="True">
+            <ds:OptionGroup x:Name="InsertModeBox" ItemsSource="{Binding Session.InsertModes}" SelectedItem="{Binding Session.InsertMode}" />
           </ds:SettingRow>
           <ds:SettingRow Path="output.alwaysCopy">
             <ToggleSwitch x:Name="AlwaysCopyToggle" IsChecked="{Binding Session.AlwaysCopy}" OnContent="" OffContent="" />
