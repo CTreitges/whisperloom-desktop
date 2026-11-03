@@ -301,6 +301,53 @@ public sealed class HistoryWindowTest : IDisposable
         Assert.DoesNotContain(vm.Rows, r => r.Entry.Id == id); // ohne Entwurf filtert die Suche wieder normal
     }
 
+    /// <summary>Prüfer Runde 3: Trefferzahl zählt den Entwurf nicht; Speichern während der Suche lässt ihn gewählt.</summary>
+    [AvaloniaFact]
+    public async Task Entwurf_in_der_Suche_zaehlt_nicht_und_bleibt_nach_dem_Speichern()
+    {
+        var vm = await Model();
+        var detail = vm.Detail!;
+        var id = detail.Entry.Id;
+        detail.BeginEdit();
+        detail.EditText = "Entwurf";
+        vm.Search = "zzz";
+        await Settle();
+        Assert.Equal(Loc.Instance.Format("History_NoMatchesFor", "zzz"), vm.SearchSummary);
+
+        await detail.SaveEdit();
+        await Settle();
+        Assert.Equal(id, vm.Selected!.Entry.Id);
+        Assert.Equal("Entwurf", vm.Detail!.Text);
+    }
+
+    /// <summary>Nachprüfung 3 (N14): während „Neu verarbeiten“ läuft, beginnt keine Bearbeitung; mit Entwurf startet keine Rechnung.</summary>
+    [AvaloniaFact]
+    public async Task Bearbeiten_und_Neu_verarbeiten_schliessen_sich_aus()
+    {
+        var vm = await Model();
+        var detail = vm.Detail!;
+        detail.BeginEdit();
+        detail.EditText = "Entwurf";
+        await detail.RequestReprocessAsync("summarize");
+        Assert.True(detail.DiscardPending);
+        Assert.Null(detail.RunningStage);
+        Assert.Equal("Entwurf", detail.EditText);
+
+        detail.DiscardEdit();
+        detail.RunningStage = "summarize"; // Rechnung läuft
+        detail.BeginEdit();
+        Assert.False(detail.IsEditing);
+    }
+
+    [Theory]
+    [InlineData(false, WindowCloseReason.WindowClosing, true, true)]
+    [InlineData(false, WindowCloseReason.WindowClosing, false, false)]
+    [InlineData(true, WindowCloseReason.WindowClosing, true, false)]
+    [InlineData(false, WindowCloseReason.ApplicationShutdown, true, false)]
+    [InlineData(false, WindowCloseReason.OSShutdown, true, false)]
+    public void Schliessen_fragt_nur_den_Nutzer_mit_Entwurf(bool programmatic, WindowCloseReason reason, bool changed, bool asks) =>
+        Assert.Equal(asks, HistoryWindow.ShouldAskOnClose(programmatic, reason, changed));
+
     [AvaloniaFact]
     public async Task Neuaufbau_schliesst_eine_offene_Rueckfrage()
     {

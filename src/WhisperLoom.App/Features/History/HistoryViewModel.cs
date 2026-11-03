@@ -62,7 +62,15 @@ public sealed partial class HistoryViewModel(IHistoryStore store, HistoryActions
         Apply(select ?? Selected?.Entry.Id);
     }
 
-    partial void OnSearchChanged(string value) => Apply(Selected?.Entry.Id);
+    /// <summary>Eintrag, der für die laufende Suche stehen bleibt, weil bei Suchbeginn ein Entwurf darin lag.</summary>
+    private string? _pinned;
+
+    partial void OnSearchChanged(string value)
+    {
+        // Entwurf bleibt für diese Suche stehen, auch nach Speichern oder Verwerfen (Prüfer Runde 3).
+        _pinned = Detail is { EditChanged: true } draft ? draft.Entry.Id : null;
+        Apply(Selected?.Entry.Id);
+    }
 
     partial void OnSelectedChanged(HistoryRow? oldValue, HistoryRow? newValue)
     {
@@ -221,7 +229,8 @@ public sealed partial class HistoryViewModel(IHistoryStore store, HistoryActions
         Rows.Clear();
         // Ein Eintrag mit geänderter Bearbeitung bleibt auch bei einer Suche ohne Treffer stehen (UX-6 N14: nichts still verlieren).
         var editing = detail is { EditChanged: true } ? detail.Entry.Id : null;
-        foreach (var row in HistoryRow.Build(_all.Where(e => e.Id == editing || HistoryRow.Matches(e, Search)), (now ?? (() => DateTimeOffset.Now))()))
+        foreach (var row in HistoryRow.Build(_all.Where(e => e.Id == editing || e.Id == _pinned || HistoryRow.Matches(e, Search)),
+            (now ?? (() => DateTimeOffset.Now))()))
         {
             Rows.Add(row);
         }

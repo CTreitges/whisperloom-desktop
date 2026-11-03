@@ -69,13 +69,17 @@ public partial class HistoryWindow : Window
 
     private HistoryViewModel? Vm => DataContext as HistoryViewModel;
 
+    /// <summary>Nur Schließen durch den Nutzer bei geändertem Text fragt; App-Ende und Code schließen immer.</summary>
+    internal static bool ShouldAskOnClose(bool programmatic, WindowCloseReason reason, bool editChanged) =>
+        editChanged && !programmatic && reason == WindowCloseReason.WindowClosing;
+
     /// <summary>
     /// Schließen durch den Nutzer bei geänderter Bearbeitung: Fenster bleibt offen, die Rückfrage erscheint (UX-6 N14).
     /// Programmatisches Schließen (App-Ende) geht durch.
     /// </summary>
     protected override void OnClosing(WindowClosingEventArgs e)
     {
-        if (!e.IsProgrammatic && e.CloseReason == WindowCloseReason.WindowClosing && Vm?.Detail is { EditChanged: true } detail)
+        if (ShouldAskOnClose(e.IsProgrammatic, e.CloseReason, Vm?.Detail is { EditChanged: true }) && Vm?.Detail is { } detail)
         {
             e.Cancel = true;
             detail.DiscardPending = true;

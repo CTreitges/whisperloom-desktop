@@ -89,6 +89,11 @@ public sealed partial class HistoryDetailViewModel : ObservableObject
     [RelayCommand]
     public void BeginEdit()
     {
+        // Während „Neu verarbeiten“ läuft, baut das Ergebnis die Fassungen neu auf; eine Bearbeitung ginge dabei verloren (N14).
+        if (RunningStage is not null)
+        {
+            return;
+        }
         EditText = Text;
         DiscardPending = false;
         IsEditing = true;
@@ -170,6 +175,16 @@ public sealed partial class HistoryDetailViewModel : ObservableObject
     public Task RequestReprocessAsync(string stage)
     {
         IsStagePickerOpen = false;
+        // Geänderte Bearbeitung zuerst klären (N14): der Neuaufbau nach der Rechnung würde sie beenden.
+        if (EditChanged)
+        {
+            DiscardPending = true;
+            return Task.CompletedTask;
+        }
+        if (IsEditing)
+        {
+            DiscardEdit();
+        }
         if (HistoryVersions.NeedsConfirmBeforeReplace(Entry, stage))
         {
             PendingStage = stage;
