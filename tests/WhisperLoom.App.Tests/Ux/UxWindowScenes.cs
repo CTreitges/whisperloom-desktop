@@ -220,7 +220,7 @@ internal static class UxWindowScenes
     public static Task<UxScene> UpdatePromptScene(ThemeVariant theme)
     {
         var window = UpdatePrompt.Create("1.1.0", new TaskCompletionSource<bool>());
-        window.RequestedThemeVariant = UxStage.AppFixed;
+        window.RequestedThemeVariant = theme; // UX-3: folgt dem Systemthema
         window.Show();
         UxStage.Settle(window);
         return Task.FromResult(new UxScene(window, window, null));

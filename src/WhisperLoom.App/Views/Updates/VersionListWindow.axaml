@@ -1,51 +1,119 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:u="using:WhisperLoom.App.ViewModels.Updates"
+        xmlns:ds="using:WhisperLoom.App.Design"
         xmlns:l="using:WhisperLoom.App.Localization"
         x:Class="WhisperLoom.App.Views.Updates.VersionListWindow"
         x:DataType="u:VersionListViewModel"
         Classes="loom"
         Title="{Binding [Channel_ListTitle], Source={x:Static l:Loc.Instance}}"
         Icon="/Assets/whisperloom.ico"
-        Width="620" Height="480" MinWidth="460" MinHeight="320"
-        Background="{DynamicResource Loom.Background}">
-  <!-- Versionsliste (W3-CHAN): alle Kanäle dieses OS, neueste zuerst; Installieren fragt immer nach. -->
-  <DockPanel Margin="20">
-    <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,12">
-      <TextBlock Text="{Binding [Channel_ListTitle], Source={x:Static l:Loc.Instance}}" FontSize="{DynamicResource Loom.Font.PageTitle}"
-                 FontWeight="SemiBold" Foreground="{DynamicResource Loom.Text}" />
-      <TextBlock Text="{Binding [Channel_ListHint], Source={x:Static l:Loc.Instance}}" TextWrapping="Wrap"
-                 Foreground="{DynamicResource Loom.TextSecondary}" />
+        Width="620" Height="480" MinWidth="460" MinHeight="320">
+  <!--
+    Versionsliste (W3-CHAN, UX-3 mockups/updates.html): Tabelle mit Kopf „Version · Kanal · Veröffentlicht“, Version auf der
+    Textkante, Kanal als Etikett, Datum in der Sprache; die installierte Zeile hervorgehoben mit Etikett „Installiert“, jede
+    andere mit Textknopf „Installieren“ (Rückfrage). „Zur neuesten stabilen Version“ als Textknopf darunter; Esc schließt.
+    Mit Richtlinie updatesEnabled=false eine Verwaltet-Zeile statt Knöpfen.
+  -->
+  <Window.Styles>
+    <Style Selector="Grid.versionRow">
+      <Setter Property="MinHeight" Value="44" />
+    </Style>
+    <Style Selector="Border.row">
+      <Setter Property="BorderBrush" Value="{DynamicResource Loom.Separator}" />
+      <Setter Property="BorderThickness" Value="0,1,0,0" />
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <!-- Installiert: Selection-Fläche, 3-px-Balken links, Fettschrift, Etikett (nicht nur Farbe). -->
+    <Style Selector="Border.row.installed">
+      <Setter Property="Background" Value="{DynamicResource Loom.Selection}" />
+    </Style>
+    <Style Selector="Border.row.installed TextBlock.cell">
+      <Setter Property="Foreground" Value="{DynamicResource Loom.OnSelection}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Border.channel">
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Padding" Value="8,1" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Loom.Outline}" />
+      <Setter Property="Background" Value="{DynamicResource Loom.Surface}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
+    <Style Selector="Border.channel TextBlock">
+      <Setter Property="FontSize" Value="{DynamicResource Loom.Font.Caption}" />
+      <Setter Property="Foreground" Value="{DynamicResource Loom.Text}" />
+    </Style>
+    <Style Selector="TextBlock.head">
+      <Setter Property="FontSize" Value="{DynamicResource Loom.Font.Caption}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource Loom.TextSecondary}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+  </Window.Styles>
+
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="24,20,24,24" Spacing="{DynamicResource Loom.Space.4}">
+      <StackPanel Margin="17,0,0,0" Spacing="{DynamicResource Loom.Space.1}">
+        <TextBlock Text="{Binding [Channel_ListTitle], Source={x:Static l:Loc.Instance}}" FontSize="{DynamicResource Loom.Font.PageTitle}"
+                   FontWeight="SemiBold" Foreground="{DynamicResource Loom.Text}" TextWrapping="Wrap" AutomationProperties.HeadingLevel="1" />
+        <TextBlock Text="{Binding [Channel_ListHint], Source={x:Static l:Loc.Instance}}" TextWrapping="Wrap" Foreground="{DynamicResource Loom.TextSecondary}" />
+      </StackPanel>
+
+      <ds:HintRow x:Name="DisabledHint" Kind="Managed" TextKey="Channel_Disabled" IsVisible="{Binding !Allowed}" />
+
+      <Border x:Name="Table" Classes="card" IsVisible="{Binding Rows.Count}" Grid.IsSharedSizeScope="True">
+        <StackPanel>
+          <!-- Kopfzeile: Spaltenköpfe für Screenreader als Namen der Zeilenteile -->
+          <Grid MinHeight="36" Margin="16,0" ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="2*" /><ColumnDefinition Width="Auto" SharedSizeGroup="ch" /><ColumnDefinition Width="1.5*" /><ColumnDefinition Width="Auto" SharedSizeGroup="act" /></Grid.ColumnDefinitions>
+            <TextBlock Classes="head" TextWrapping="Wrap" Text="{Binding [Channel_ColVersion], Source={x:Static l:Loc.Instance}}" />
+            <TextBlock Grid.Column="1" Classes="head" Text="{Binding [Channel_ColChannel], Source={x:Static l:Loc.Instance}}" />
+            <TextBlock Grid.Column="2" Classes="head" TextWrapping="Wrap" Text="{Binding [Channel_ColPublished], Source={x:Static l:Loc.Instance}}" />
+          </Grid>
+          <ItemsControl x:Name="Versions" ItemsSource="{Binding Rows}" IsEnabled="{Binding !IsBusy}"
+                        AutomationProperties.Name="{Binding [Channel_ListTitle], Source={x:Static l:Loc.Instance}}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="u:VersionRow">
+                <Border Classes="row" Classes.installed="{Binding IsInstalled}">
+                  <Panel>
+                  <Border Width="3" HorizontalAlignment="Left" Background="{DynamicResource Loom.Accent}" IsVisible="{Binding IsInstalled}" />
+                  <Grid Classes="versionRow" Margin="16,0" ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="2*" /><ColumnDefinition Width="Auto" SharedSizeGroup="ch" /><ColumnDefinition Width="1.5*" /><ColumnDefinition Width="Auto" SharedSizeGroup="act" /></Grid.ColumnDefinitions>
+                    <TextBlock Classes="cell" Text="{Binding Version}" VerticalAlignment="Center" FontFamily="monospace" TextWrapping="Wrap" />
+                    <Border Grid.Column="1" Classes="channel"><TextBlock Text="{Binding ChannelLabel}" /></Border>
+                    <TextBlock Grid.Column="2" Classes="cell" Text="{Binding Date}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                    <Panel Grid.Column="3" HorizontalAlignment="Right">
+                      <Border Classes="pill good" IsVisible="{Binding IsInstalled}">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                          <ds:LoomIcon Data="{DynamicResource Loom.Icon.Check}" Width="14" Height="14" VerticalAlignment="Center" />
+                          <TextBlock Text="{Binding [Channel_Installed], Source={x:Static l:Loc.Instance}}" />
+                        </StackPanel>
+                      </Border>
+                      <Button Classes="text" Content="{Binding [Channel_Install], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding CanInstall}"
+                              IsEnabled="{Binding $parent[Window].((u:VersionListViewModel)DataContext).Allowed, FallbackValue=False}"
+                              VerticalAlignment="Center" Click="OnInstall" AutomationProperties.Name="{Binding InstallName}" />
+                    </Panel>
+                  </Grid>
+                  </Panel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+
+      <Button x:Name="BackToStableButton" Classes="text" Margin="17,0,0,0" HorizontalAlignment="Left" Command="{Binding BackToStableCommand}"
+              IsVisible="{Binding ShowBackToStable}" Content="{Binding BackToStableText}" />
+      <TextBlock x:Name="StatusText" Margin="17,0,0,0" Text="{Binding Status}" TextWrapping="Wrap" Foreground="{DynamicResource Loom.TextSecondary}"
+                 AutomationProperties.LiveSetting="Polite">
+        <!-- Gesperrt: die Verwaltet-Zeile oben sagt es schon. -->
+        <TextBlock.IsVisible>
+          <MultiBinding Converter="{x:Static BoolConverters.And}">
+            <Binding Path="HasStatus" />
+            <Binding Path="Allowed" />
+          </MultiBinding>
+        </TextBlock.IsVisible>
+      </TextBlock>
     </StackPanel>
-    <DockPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
-      <Button x:Name="BackToStableButton" DockPanel.Dock="Right" Content="{Binding [Channel_BackToStable], Source={x:Static l:Loc.Instance}}"
-              Command="{Binding BackToStableCommand}" IsEnabled="{Binding Allowed}" />
-      <TextBlock x:Name="StatusText" Text="{Binding Status}" TextWrapping="Wrap" VerticalAlignment="Center"
-                 Foreground="{DynamicResource Loom.TextSecondary}" Margin="0,0,12,0" />
-    </DockPanel>
-    <Border Background="{DynamicResource Loom.Surface}" CornerRadius="8" Padding="4">
-      <ListBox x:Name="Versions" ItemsSource="{Binding Rows}" Background="Transparent" IsEnabled="{Binding !IsBusy}"
-               AutomationProperties.Name="{Binding [Channel_ListTitle], Source={x:Static l:Loc.Instance}}">
-        <ListBox.ItemTemplate>
-          <DataTemplate x:DataType="u:VersionRow">
-            <Grid ColumnDefinitions="90,*,100,Auto" Margin="4,2" MinHeight="34">
-              <Border Grid.Column="0" Background="{DynamicResource Loom.SurfaceHigh}" BorderBrush="{DynamicResource Loom.Separator}" BorderThickness="1"
-                      CornerRadius="4" Padding="6,1" HorizontalAlignment="Left" VerticalAlignment="Center">
-                <TextBlock Text="{Binding ChannelLabel}" FontSize="{DynamicResource Loom.Font.Caption}" Foreground="{DynamicResource Loom.Text}" />
-              </Border>
-              <TextBlock Grid.Column="1" Text="{Binding Version}" VerticalAlignment="Center" Foreground="{DynamicResource Loom.Text}"
-                         FontFamily="monospace" Margin="8,0" />
-              <TextBlock Grid.Column="2" Text="{Binding Date}" VerticalAlignment="Center" Foreground="{DynamicResource Loom.TextSecondary}" />
-              <Panel Grid.Column="3" MinWidth="110">
-                <TextBlock Text="{Binding [Channel_Installed], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding IsInstalled}"
-                           VerticalAlignment="Center" HorizontalAlignment="Right" FontWeight="SemiBold" Foreground="{DynamicResource Loom.Text}" />
-                <Button Content="{Binding [Channel_Install], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding CanInstall}"
-                        HorizontalAlignment="Right" Click="OnInstall" />
-              </Panel>
-            </Grid>
-          </DataTemplate>
-        </ListBox.ItemTemplate>
-      </ListBox>
-    </Border>
-  </DockPanel>
+  </ScrollViewer>
 </Window>

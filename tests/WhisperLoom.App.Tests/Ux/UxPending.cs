@@ -18,7 +18,6 @@ internal static class UxPending
         },
         ["UxKeyboardTest"] = new(StringComparer.Ordinal)
         {
-            ["versions"] = "UX-3 Fenster",
         },
         ["UxTargetSizeTest"] = new(StringComparer.Ordinal)
         {
