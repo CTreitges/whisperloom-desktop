@@ -68,7 +68,10 @@ public sealed partial class CompanyJoinViewModel : ObservableObject
 
     public string ApprovedText => Loc.Instance.Format("Company_ApprovedBy", TenantName);
 
-    public string WaitingDetail => Loc.Instance.Format("Company_WaitingDetail", TenantName, _service.Settings.Management.DeviceId);
+    public string WaitingDetail => Loc.Instance.Format("Company_WaitingDetail", TenantName, DeviceId);
+
+    /// <summary>Geräte-ID zum Kopieren für die IT (Portal-Freigabe).</summary>
+    public string DeviceId => _service.Settings.Management.DeviceId;
 
     /// <summary>Server und Code aus einem Einladungslink (Klick auf <c>whisperloom://join…</c>).</summary>
     public void Prefill(JoinLink link)

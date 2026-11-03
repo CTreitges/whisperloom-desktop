@@ -1,14 +1,18 @@
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Input.Platform;
+using Avalonia.Interactivity;
 using Avalonia.Threading;
+using WhisperLoom.App.Localization;
 
 namespace WhisperLoom.App.Setup;
 
+/// <summary>
+/// Einrichtungs-Assistent: Pegel-Timer, Hilfe zum Schritt, Esc („Später fortsetzen?“) und Kopieren des Linux-Befehls.
+/// Beim Schließen endet ein Pegel-Test und der Assistent löst seine Abos (<see cref="SetupViewModel.Dispose"/>).
+/// </summary>
 public partial class SetupWindow : Window
 {
-    /// <summary>W2-HELP: Hilfe-Abschnitt zum aktuellen Schritt.</summary>
-    private void OnHelp(object? sender, Avalonia.Interactivity.RoutedEventArgs e) =>
-        Views.Help.HelpLauncher.Open(Views.Help.HelpLauncher.TopicFor(this));
-
     private readonly DispatcherTimer _micTimer = new() { Interval = TimeSpan.FromMilliseconds(80) };
 
     public SetupWindow() => InitializeComponent();
@@ -24,11 +28,52 @@ public partial class SetupWindow : Window
         Closed += (_, _) =>
         {
             _micTimer.Stop();
-            viewModel.Join?.Deactivate();
+            viewModel.CloseRequested -= Close;
             if (viewModel.Mic is { Running: true } mic)
             {
                 mic.Stop();
             }
+            viewModel.Dispose();
         };
+    }
+
+    private SetupViewModel? ViewModel => DataContext as SetupViewModel;
+
+    /// <summary>Hilfe-Abschnitt zum aktuellen Schritt (wie F1).</summary>
+    private void OnHelp(object? sender, RoutedEventArgs e) =>
+        Views.Help.HelpLauncher.Open(Views.Help.HelpLauncher.TopicFor(this));
+
+    /// <summary>
+    /// Esc fragt „Einrichtung später fortsetzen?“ (Fokus auf „Später fortsetzen“), ein zweites Esc nimmt die Frage zurück.
+    /// Offene Auswahllisten und Felder behandeln Esc vorher selbst.
+    /// </summary>
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        base.OnKeyDown(e);
+        if (e.Handled || e.Key != Key.Escape || e.KeyModifiers != KeyModifiers.None || ViewModel is not { } vm)
+        {
+            return;
+        }
+        if (vm.LaterPending)
+        {
+            vm.KeepGoing();
+            Dispatcher.UIThread.Post(() => (vm.ShowNext ? NextButton : vm.IsLast ? FinishButton : SkipButton).Focus(NavigationMethod.Tab), DispatcherPriority.Loaded);
+        }
+        else
+        {
+            vm.AskLater();
+            Dispatcher.UIThread.Post(() => LaterButton.Focus(NavigationMethod.Tab), DispatcherPriority.Loaded);
+        }
+        e.Handled = true;
+    }
+
+    private async void OnCopyCommand(object? sender, RoutedEventArgs e)
+    {
+        // Doku: Avalonia 12 Avalonia.Base.xml, ClipboardExtensions.SetTextAsync (abgerufen 2026-10-30).
+        if (ViewModel is { } vm && Clipboard is { } clipboard)
+        {
+            await clipboard.SetTextAsync(vm.ToggleCommand);
+            CopyCommandText.Text = Loc.Instance["Action_Copied"];
+        }
     }
 }

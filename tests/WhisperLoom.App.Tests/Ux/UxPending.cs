@@ -12,10 +12,6 @@ internal static class UxPending
     {
         ["UxAccessibilityTest"] = new(StringComparer.Ordinal)
         {
-            ["setup-language"] = "UX-3 Fenster",
-            ["setup-microphone"] = "UX-3 Fenster",
-            ["setup-recognition"] = "UX-3 Fenster",
-            ["setup-stage"] = "UX-3 Fenster",
         },
         ["UxContrastTest"] = new(StringComparer.Ordinal)
         {
@@ -35,28 +31,10 @@ internal static class UxPending
         ["UxTargetSizeTest"] = new(StringComparer.Ordinal)
         {
             ["help-section"] = "UX-3 Fenster",
-            ["setup-autostart"] = "UX-3 Fenster",
-            ["setup-company"] = "UX-3 Fenster",
-            ["setup-done"] = "UX-3 Fenster",
-            ["setup-hotkey"] = "UX-3 Fenster",
-            ["setup-language"] = "UX-3 Fenster",
-            ["setup-microphone"] = "UX-3 Fenster",
-            ["setup-recognition"] = "UX-3 Fenster",
-            ["setup-stage"] = "UX-3 Fenster",
-            ["setup-usage"] = "UX-3 Fenster",
         },
         ["UxTextEdgeTest"] = new(StringComparer.Ordinal)
         {
             ["help-section"] = "UX-3 Fenster",
-            ["setup-autostart"] = "UX-3 Fenster",
-            ["setup-company"] = "UX-3 Fenster",
-            ["setup-done"] = "UX-3 Fenster",
-            ["setup-hotkey"] = "UX-3 Fenster",
-            ["setup-language"] = "UX-3 Fenster",
-            ["setup-microphone"] = "UX-3 Fenster",
-            ["setup-recognition"] = "UX-3 Fenster",
-            ["setup-stage"] = "UX-3 Fenster",
-            ["setup-usage"] = "UX-3 Fenster",
         },
         ["UxTextScaleTest"] = new(StringComparer.Ordinal)
         {

@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using WhisperLoom.App.Cli;
 using WhisperLoom.App.Localization;
 using WhisperLoom.App.Platform.Linux;
@@ -29,6 +30,12 @@ public sealed class SetupUiTest
     internal static T Named<T>(Window window, string name) where T : Control =>
         window.GetLogicalDescendants().OfType<T>().Single(c => c.Name == name);
 
+    /// <summary>
+    /// Wirklich sichtbar: im visuellen Baum und kein Vorfahr unsichtbar. Inhalt unter einem unsichtbaren Vorfahren wird nie
+    /// gemessen, hängt dann gar nicht im visuellen Baum und meldet trotzdem <c>IsEffectivelyVisible</c>.
+    /// </summary>
+    internal static bool Shown(Control c) => c.IsEffectivelyVisible && TopLevel.GetTopLevel(c) is not null;
+
     [AvaloniaFact]
     public void Alle_Schritte_der_Reihe_nach_mit_Zurueck()
     {
@@ -39,7 +46,7 @@ public sealed class SetupUiTest
         Assert.Equal(SetupStep.Language, s.Vm.Current);
         Assert.Equal("Schritt 1 von 7", Named<TextBlock>(window, "ProgressText").Text);
         Assert.False(s.Vm.BackCommand.CanExecute(null));
-        Assert.True(Named<StackPanel>(window, "LanguagePanel").IsVisible);
+        Assert.True(Named<Control>(window, "LanguagePanel").IsVisible);
 
         var titles = new List<string>();
         foreach (var step in AllSteps)
@@ -63,8 +70,8 @@ public sealed class SetupUiTest
         Assert.Equal(SetupStep.Done, s.Vm.Current);
         s.Vm.Back();
         Assert.Equal(SetupStep.Autostart, s.Vm.Current);
-        Assert.True(Named<StackPanel>(window, "AutostartPanel").IsVisible);
-        Assert.False(Named<StackPanel>(window, "DonePanel").IsVisible);
+        Assert.True(Named<Control>(window, "AutostartPanel").IsVisible);
+        Assert.False(Named<Control>(window, "DonePanel").IsVisible);
         window.Close();
     }
 
@@ -135,7 +142,7 @@ public sealed class SetupUiTest
         var window = Show(again);
         Assert.Equal(SetupStep.Language, again.Current);
         Assert.Equal("fr", again.Settings.Language.Value);
-        Assert.True(Named<StackPanel>(window, "LanguagePanel").IsVisible);
+        Assert.True(Named<Control>(window, "LanguagePanel").IsVisible);
         window.Close();
     }
 
@@ -203,7 +210,7 @@ public sealed class SetupUiTest
         Assert.Equal(SetupStep.Microphone, s.Vm.Current);
         Assert.Equal("Schritt 1 von 4", Named<TextBlock>(window, "ProgressText").Text);
         Assert.True(Named<WhisperLoom.App.Design.HintRow>(window, "PolicyHint").IsVisible); // W2-ENR: Hinweis-Zeile des Designsystems
-        Assert.False(Named<StackPanel>(window, "LanguagePanel").IsVisible);
+        Assert.False(Named<Control>(window, "LanguagePanel").IsVisible);
         s.Vm.Next();
         Assert.Equal(SetupStep.Hotkey, s.Vm.Current);
         window.Close();
@@ -222,8 +229,8 @@ public sealed class SetupUiTest
             s.Vm.Next();
         }
         Dispatcher.UIThread.RunJobs();
-        Assert.False(Named<ComboBox>(window, "ProviderBox").IsVisible); // W2-ENR: Fest ist auch im Assistenten ausgeblendet
-        Assert.True(Named<ComboBox>(window, "EngineBox").IsVisible);
+        Assert.False(Shown(Named<ComboBox>(window, "ProviderBox"))); // W2-ENR: Fest ist auch im Assistenten ausgeblendet
+        Assert.True(Named<WhisperLoom.App.Design.OptionGroup>(window, "EngineBox").IsVisible); // UX-3: Optionsfelder statt Auswahlliste
         window.Close();
 
         // Lokal fest gewählt, Modell fest: Schritt entfällt.
@@ -257,7 +264,8 @@ public sealed class SetupUiTest
         Assert.False(Named<StackPanel>(window, "OnlinePanel").IsVisible);
         Assert.True(Named<StackPanel>(window, "OfflinePanel").IsVisible);
         Assert.Equal("small", s.Vm.SelectedModel.Model.Id);
-        Assert.True(Named<Button>(window, "DownloadButton").IsVisible);
+        // UX-3: dieselbe Modell-Liste wie unter Erkennung (Herunterladen je Zeile).
+        Assert.True(Shown(Named<Views.Settings.ModelList>(window, "ModelList")));
         window.Close();
     }
 }

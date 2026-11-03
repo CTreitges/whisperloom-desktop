@@ -106,7 +106,7 @@ public sealed class SetupStepUiTest
         }
         Dispatcher.UIThread.RunJobs();
         Assert.Equal("\"/opt/WhisperLoom/WhisperLoom\" toggle", SetupUiTest.Named<SelectableTextBlock>(window, "ToggleCommandText").Text);
-        Assert.False(SetupUiTest.Named<Button>(window, "HotkeyTestButton").IsEffectivelyVisible);
+        Assert.False(SetupUiTest.Shown(SetupUiTest.Named<Button>(window, "HotkeyTestButton")));
         var texts = UiTest.TextsOf(window).ToList();
         Assert.Contains(texts, t => t.Contains("KDE", StringComparison.Ordinal));
         Assert.Contains(texts, t => t.Contains("GNOME", StringComparison.Ordinal));

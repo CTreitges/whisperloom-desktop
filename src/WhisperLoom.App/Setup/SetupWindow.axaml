@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:s="using:WhisperLoom.App.Setup"
         xmlns:v="using:WhisperLoom.App.Views"
+        xmlns:vs="using:WhisperLoom.App.Views.Settings"
         xmlns:ds="using:WhisperLoom.App.Design"
         xmlns:l="using:WhisperLoom.App.Localization"
         x:Class="WhisperLoom.App.Setup.SetupWindow"
@@ -9,263 +10,343 @@
         Classes="loom"
         Title="{Binding [Setup_Title], Source={x:Static l:Loc.Instance}}"
         Icon="/Assets/whisperloom.ico"
-        Width="760" Height="600" MinWidth="560" MinHeight="460"
-        WindowStartupLocation="CenterScreen">
+        Width="880" Height="640" MinWidth="720" MinHeight="480"
+        WindowStartupLocation="CenterScreen"
+        ds:Managed.Context="{Binding Managed}">
   <!--
-    Einrichtungs-Assistent (WLD-P6b, neu im Designsystem W2-UI1 durch W2-ENR, HIG „Onboarding“): Kopf mit „Schritt x von n“,
-    Titel und Fortschritt, darunter eine Fläche je Schritt, unten die Knöpfe (Hauptaktion rechts). Erster Schritt
-    „Wie nutzt du WhisperLoom?“: für mich oder mit meiner Firma (Firmencode, Warten auf Freigabe).
+    Einrichtungs-Assistent (UX-3, mockups/einrichtung.html): links die Schrittliste wie eine Seitenleiste (erledigt mit Häkchen
+    und anklickbar, aktuell markiert, kommend nur benannt), rechts „Schritt x von n“, Titel mit Hilfe-Knopf (F1), Einleitung,
+    eine Karte je Schritt mit den Bausteinen der Einstellungen und der Fuß mit einer Hauptaktion: „Einrichtung überspringen“
+    als Textknopf links, „Zurück“ sekundär, „Weiter“ bzw. „Fertig“ rechts. Esc fragt „Später fortsetzen?“.
+    Textkante: Rand 24 + Karte 17 = x 41 im Inhaltsbereich (zielstruktur.md §4).
   -->
   <Window.Styles>
-    <Style Selector="TextBlock.f">
-      <Setter Property="Foreground" Value="{DynamicResource Loom.TextSecondary}" />
-      <Setter Property="FontSize" Value="{DynamicResource Loom.Font.Caption}" />
-      <Setter Property="FontWeight" Value="SemiBold" />
-      <Setter Property="Margin" Value="0,14,0,6" />
-      <Setter Property="TextWrapping" Value="Wrap" />
-    </Style>
-    <Style Selector="TextBlock.note">
-      <Setter Property="Foreground" Value="{DynamicResource Loom.TextSecondary}" />
-      <Setter Property="FontSize" Value="{DynamicResource Loom.Font.Caption}" />
-      <Setter Property="Margin" Value="0,10,0,0" />
-      <Setter Property="TextWrapping" Value="Wrap" />
-    </Style>
-    <Style Selector="TextBlock.intro">
-      <Setter Property="TextWrapping" Value="Wrap" />
-      <Setter Property="Foreground" Value="{DynamicResource Loom.Text}" />
-      <Setter Property="Margin" Value="0,0,0,6" />
-    </Style>
-    <Style Selector="ComboBox, TextBox.field">
-      <Setter Property="MinWidth" Value="320" />
-      <Setter Property="MaxWidth" Value="440" />
-      <Setter Property="HorizontalAlignment" Value="Left" />
-    </Style>
-    <Style Selector="Border.card">
-      <Setter Property="Background" Value="{DynamicResource Loom.Surface}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource Loom.Separator}" />
-      <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="CornerRadius" Value="{DynamicResource Loom.Radius.Group}" />
-      <Setter Property="Padding" Value="20,18" />
-    </Style>
-    <!-- Auswahl-Karte im ersten Schritt: ganze Fläche klickbar, gewählt mit Akzent-Rand. -->
-    <Style Selector="RadioButton.choice">
-      <Setter Property="HorizontalAlignment" Value="Stretch" />
-      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-      <Setter Property="Padding" Value="14,12" />
-      <Setter Property="Margin" Value="0,0,0,10" />
-      <Setter Property="Background" Value="{DynamicResource Loom.SurfaceHigh}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource Loom.Separator}" />
-      <Setter Property="BorderThickness" Value="1" />
+    <Style Selector="Border.step">
+      <Setter Property="MinHeight" Value="36" />
+      <Setter Property="Padding" Value="9,4,12,4" />
+      <Setter Property="BorderThickness" Value="3,0,0,0" />
+      <Setter Property="BorderBrush" Value="Transparent" />
       <Setter Property="CornerRadius" Value="{DynamicResource Loom.Radius.Control}" />
     </Style>
-    <Style Selector="RadioButton.choice:checked">
+    <Style Selector="Border.step TextBlock.label">
+      <Setter Property="Foreground" Value="{DynamicResource Loom.TextSecondary}" />
+    </Style>
+    <Style Selector="Border.step.current">
+      <Setter Property="Background" Value="{DynamicResource Loom.Selection}" />
       <Setter Property="BorderBrush" Value="{DynamicResource Loom.Accent}" />
-      <Setter Property="BorderThickness" Value="2" />
     </Style>
-    <Style Selector="TextBlock.choiceTitle">
+    <Style Selector="Border.step.current TextBlock.label">
+      <Setter Property="Foreground" Value="{DynamicResource Loom.OnSelection}" />
       <Setter Property="FontWeight" Value="SemiBold" />
-      <Setter Property="Foreground" Value="{DynamicResource Loom.Text}" />
     </Style>
-    <Style Selector="TextBlock.choiceText">
+    <Style Selector="Border.stepNo">
+      <Setter Property="Width" Value="24" />
+      <Setter Property="Height" Value="24" />
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Loom.Outline}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.stepNo TextBlock">
       <Setter Property="FontSize" Value="{DynamicResource Loom.Font.Caption}" />
       <Setter Property="Foreground" Value="{DynamicResource Loom.TextSecondary}" />
-      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
-    <Style Selector="TextBlock.error">
-      <Setter Property="Foreground" Value="{DynamicResource Loom.Error}" />
+    <Style Selector="Border.step.current Border.stepNo">
+      <Setter Property="BorderBrush" Value="{DynamicResource Loom.OnSelection}" />
+    </Style>
+    <Style Selector="Border.step.current Border.stepNo TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource Loom.OnSelection}" />
+    </Style>
+    <Style Selector="Border.stepNo.done">
+      <Setter Property="BorderBrush" Value="{DynamicResource Loom.Accent}" />
+    </Style>
+    <Style Selector="TextBlock.foot">
+      <Setter Property="Margin" Value="17,0,0,0" />
+      <Setter Property="FontSize" Value="{DynamicResource Loom.Font.Caption}" />
+      <Setter Property="Foreground" Value="{DynamicResource Loom.TextSecondary}" />
       <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
   </Window.Styles>
 
-  <DockPanel>
-    <!-- Kopf: Schritt, Titel, Fortschritt, Hinweis der IT. -->
-    <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="32,26,32,10">
-      <TextBlock x:Name="ProgressText" Text="{Binding Progress}" FontSize="{DynamicResource Loom.Font.Caption}"
-                 Foreground="{DynamicResource Loom.TextSecondary}" />
-      <TextBlock x:Name="StepTitle" Text="{Binding Title}" FontSize="{DynamicResource Loom.Font.PageTitle}" FontWeight="SemiBold"
-                 Foreground="{DynamicResource Loom.Text}" />
-      <ProgressBar x:Name="StepProgress" Minimum="0" Maximum="{Binding Steps.Count}" Value="{Binding ProgressValue}" Height="4" MinHeight="4"
-                   Foreground="{DynamicResource Loom.Accent}" Background="{DynamicResource Loom.SurfaceHigh}" Margin="0,4,0,0"
-                   AutomationProperties.Name="{Binding Progress}" />
-      <ds:HintRow x:Name="PolicyHint" Kind="Managed" IsVisible="{Binding Settings.HasPolicy}" TextKey="Setup_PolicyHint" Margin="0,6,0,0" />
-    </StackPanel>
-
-    <!-- Fuß: Überspringen links, Zurück + Hauptaktion rechts. -->
-    <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource Loom.Separator}" BorderThickness="0,1,0,0" Padding="32,14">
-      <StackPanel Spacing="8">
-        <TextBlock x:Name="StatusText" Classes="error" Text="{Binding Status}"
-                   IsVisible="{Binding Status, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-        <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-          <!-- W2-HELP: Hilfe zum aktuellen Schritt (auch F1). -->
-          <Button x:Name="HelpButton" Grid.Column="1" Classes="link" Margin="12,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center"
-                  Content="{Binding [Setup_Help], Source={x:Static l:Loc.Instance}}" Click="OnHelp" />
-          <Button x:Name="SkipButton" Grid.Column="0" Content="{Binding [Setup_Skip], Source={x:Static l:Loc.Instance}}" Command="{Binding SkipCommand}" IsVisible="{Binding !IsLast}" />
-          <Button x:Name="BackButton" Grid.Column="2" Margin="0,0,8,0" Content="{Binding [Setup_Back], Source={x:Static l:Loc.Instance}}" Command="{Binding BackCommand}" />
-          <Button x:Name="NextButton" Grid.Column="3" Classes="accent" Content="{Binding [Setup_Next], Source={x:Static l:Loc.Instance}}" Command="{Binding NextCommand}" IsVisible="{Binding !IsLast}" IsDefault="True" />
-          <Button x:Name="FinishButton" Grid.Column="3" Classes="accent" Content="{Binding [Setup_Finish], Source={x:Static l:Loc.Instance}}" Command="{Binding FinishCommand}" IsVisible="{Binding IsLast}" />
-        </Grid>
-      </StackPanel>
+  <Grid ColumnDefinitions="208,*">
+    <!-- Schrittliste -->
+    <Border Grid.Column="0" Background="{DynamicResource Loom.Sidebar}" BorderBrush="{DynamicResource Loom.CardEdge}" BorderThickness="0,0,1,0">
+      <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="12,20,12,12" Spacing="{DynamicResource Loom.Space.1}">
+          <TextBlock x:Name="StepsCaption" Text="{Binding StepsCaption}" Classes="caption" Margin="12,0,0,4" TextWrapping="Wrap" />
+          <ItemsControl x:Name="StepList" ItemsSource="{Binding StepItems}"
+                        AutomationProperties.Name="{Binding [Setup_StepsName], Source={x:Static l:Loc.Instance}}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Spacing="2" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="s:SetupStepItem">
+                <Border Classes="step" Classes.current="{Binding IsCurrent}">
+                  <Grid ColumnDefinitions="24,*" ColumnSpacing="{DynamicResource Loom.Space.3}">
+                    <Border Classes="stepNo" Classes.done="{Binding IsDone}">
+                      <Panel>
+                        <TextBlock Text="{Binding NumberText}" IsVisible="{Binding !IsDone}" />
+                        <ds:LoomIcon Data="{DynamicResource Loom.Icon.Check}" Width="16" Height="16" Foreground="{DynamicResource Loom.Accent}"
+                                     IsVisible="{Binding IsDone}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      </Panel>
+                    </Border>
+                    <Button Grid.Column="1" Classes="text" HorizontalAlignment="Left" VerticalAlignment="Center" IsVisible="{Binding IsDone}"
+                            Command="{Binding GoCommand}" CommandParameter="{Binding Step}" AutomationProperties.Name="{Binding GoName}">
+                      <TextBlock Text="{Binding Label}" TextWrapping="Wrap" />
+                    </Button>
+                    <TextBlock Grid.Column="1" Classes="label" Text="{Binding Label}" IsVisible="{Binding !IsDone}" VerticalAlignment="Center"
+                               TextWrapping="Wrap" AutomationProperties.Name="{Binding Name}" />
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </ScrollViewer>
     </Border>
 
-    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-      <Border Classes="card" Margin="32,6,32,18" VerticalAlignment="Top">
-        <Panel>
-          <!-- 0 Wie nutzt du WhisperLoom? -->
-          <StackPanel x:Name="UsagePanel" IsVisible="{Binding ShowUsage}">
-            <TextBlock Classes="intro" Text="{Binding [Setup_UsageIntro], Source={x:Static l:Loc.Instance}}" Margin="0,0,0,14" />
-            <RadioButton x:Name="UsagePersonal" Classes="choice" GroupName="usage"
-                         AutomationProperties.Name="{Binding [Setup_UsagePersonal], Source={x:Static l:Loc.Instance}}"
-                         AutomationProperties.HelpText="{Binding [Setup_UsagePersonalDesc], Source={x:Static l:Loc.Instance}}" IsChecked="{Binding UsePersonal}">
-              <StackPanel Spacing="2">
-                <TextBlock Classes="choiceTitle" Text="{Binding [Setup_UsagePersonal], Source={x:Static l:Loc.Instance}}" />
-                <TextBlock Classes="choiceText" Text="{Binding [Setup_UsagePersonalDesc], Source={x:Static l:Loc.Instance}}" />
+    <DockPanel Grid.Column="1">
+      <!-- Kopf: Schritt x von n, Titel, Hilfe (F1) an derselben Stelle wie in den Einstellungen. -->
+      <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="24,20,24,0">
+        <StackPanel Margin="17,0,0,0" Spacing="2">
+          <TextBlock x:Name="ProgressText" Text="{Binding Progress}" Classes="caption" />
+          <TextBlock x:Name="StepTitle" Text="{Binding Title}" FontSize="{DynamicResource Loom.Font.PageTitle}" FontWeight="SemiBold"
+                     Foreground="{DynamicResource Loom.Text}" TextWrapping="Wrap" AutomationProperties.HeadingLevel="1" />
+        </StackPanel>
+        <Button x:Name="HelpButton" Grid.Column="1" Classes="icon" CornerRadius="16" Margin="12,0,0,0" VerticalAlignment="Top" Click="OnHelp"
+                ToolTip.Tip="{Binding HelpName}" AutomationProperties.Name="{Binding HelpName}">
+          <ds:LoomIcon Data="{DynamicResource Loom.Icon.Help}" Width="20" Height="20" />
+        </Button>
+      </Grid>
+
+      <!-- Fuß: eine Hauptaktion; mit Esc stattdessen die Rückfrage „Später fortsetzen?“. -->
+      <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource Loom.Separator}" BorderThickness="0,1,0,0" Padding="24,12">
+        <StackPanel Spacing="{DynamicResource Loom.Space.2}">
+          <ds:HintRow x:Name="StatusText" Kind="Error" Text="{Binding Status}"
+                      IsVisible="{Binding Status, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+          <Border x:Name="LaterConfirm" Classes="confirm" IsVisible="{Binding LaterPending}">
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
+              <ds:LoomIcon Data="{DynamicResource Loom.Icon.Info}" Width="20" Height="20" Margin="0,0,10,0" VerticalAlignment="Top"
+                           Foreground="{DynamicResource Loom.TextSecondary}" />
+              <TextBlock Grid.Column="1" Text="{Binding [Setup_LaterQuestion], Source={x:Static l:Loc.Instance}}" TextWrapping="Wrap"
+                         AutomationProperties.LiveSetting="Assertive" />
+              <WrapPanel Grid.Row="1" Grid.Column="1" ItemSpacing="16" LineSpacing="8" Margin="0,8,0,0">
+                <Button x:Name="LaterButton" Classes="accent" Content="{Binding [Setup_Later], Source={x:Static l:Loc.Instance}}" Command="{Binding LaterCommand}" />
+                <Button x:Name="KeepGoingButton" Classes="text" VerticalAlignment="Center" Content="{Binding [Setup_KeepGoing], Source={x:Static l:Loc.Instance}}"
+                        Command="{Binding KeepGoingCommand}" />
+              </WrapPanel>
+            </Grid>
+          </Border>
+          <Grid ColumnDefinitions="*,Auto,Auto" IsVisible="{Binding ShowFoot}">
+            <Button x:Name="SkipButton" Classes="text" Margin="17,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center"
+                    Content="{Binding [Setup_Skip], Source={x:Static l:Loc.Instance}}" Command="{Binding SkipCommand}" IsVisible="{Binding !IsLast}" />
+            <Button x:Name="BackButton" Grid.Column="1" Classes="secondary" Margin="0,0,8,0" Command="{Binding BackCommand}" IsVisible="{Binding CanBack}"
+                    AutomationProperties.Name="{Binding [Setup_Back], Source={x:Static l:Loc.Instance}}">
+              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
+                <ds:LoomIcon Data="{DynamicResource Loom.Icon.Back}" Width="16" Height="16" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding [Setup_Back], Source={x:Static l:Loc.Instance}}" />
               </StackPanel>
-            </RadioButton>
-            <RadioButton x:Name="UsageCompany" Classes="choice" GroupName="usage"
-                         AutomationProperties.Name="{Binding [Setup_UsageCompany], Source={x:Static l:Loc.Instance}}"
-                         AutomationProperties.HelpText="{Binding [Setup_UsageCompanyDesc], Source={x:Static l:Loc.Instance}}" IsChecked="{Binding UseCompany}">
-              <StackPanel Spacing="2">
-                <TextBlock Classes="choiceTitle" Text="{Binding [Setup_UsageCompany], Source={x:Static l:Loc.Instance}}" />
-                <TextBlock Classes="choiceText" Text="{Binding [Setup_UsageCompanyDesc], Source={x:Static l:Loc.Instance}}" />
+            </Button>
+            <Button x:Name="NextButton" Grid.Column="2" Classes="accent" Command="{Binding NextCommand}" IsVisible="{Binding ShowNext}" IsDefault="True"
+                    AutomationProperties.Name="{Binding [Setup_Next], Source={x:Static l:Loc.Instance}}">
+              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
+                <TextBlock Text="{Binding [Setup_Next], Source={x:Static l:Loc.Instance}}" />
+                <ds:LoomIcon Data="{DynamicResource Loom.Icon.Forward}" Width="16" Height="16" VerticalAlignment="Center" />
               </StackPanel>
-            </RadioButton>
-          </StackPanel>
-
-          <!-- 0b Firma: Server + Code, dann Warten auf Freigabe -->
-          <StackPanel x:Name="CompanyPanel" IsVisible="{Binding ShowCompany}">
-            <StackPanel x:Name="CompanyInput" IsVisible="{Binding Join.ShowInput, FallbackValue=False}">
-              <TextBlock Classes="intro" Text="{Binding [Setup_CompanyIntro], Source={x:Static l:Loc.Instance}}" />
-              <TextBlock Classes="f" Text="{Binding [Company_Server], Source={x:Static l:Loc.Instance}}" />
-              <TextBox x:Name="ServerBox" Classes="field" Text="{Binding Join.Server, FallbackValue=''}"
-                       PlaceholderText="https://wl.example.com"
-                       AutomationProperties.Name="{Binding [Company_Server], Source={x:Static l:Loc.Instance}}" />
-              <TextBlock Classes="f" Text="{Binding [Company_Code], Source={x:Static l:Loc.Instance}}" />
-              <TextBox x:Name="CodeBox" Classes="field" Text="{Binding Join.Code, FallbackValue=''}" FontFamily="monospace"
-                       PlaceholderText="ABCD-EFGH-JKMN-PQRS"
-                       AutomationProperties.Name="{Binding [Company_Code], Source={x:Static l:Loc.Instance}}" />
-              <TextBlock Classes="note" Text="{Binding [Setup_CompanyLinkHint], Source={x:Static l:Loc.Instance}}" />
-              <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,16,0,0">
-                <Button x:Name="JoinButton" Classes="accent" Content="{Binding [Company_Join], Source={x:Static l:Loc.Instance}}"
-                        Command="{Binding Join.JoinCommand, FallbackValue={x:Null}}" />
-                <ProgressBar IsIndeterminate="True" Width="120" VerticalAlignment="Center" IsVisible="{Binding Join.IsBusy, FallbackValue=False}" />
+            </Button>
+            <Button x:Name="FinishButton" Grid.Column="2" Classes="accent" Command="{Binding FinishCommand}" IsVisible="{Binding IsLast}"
+                    AutomationProperties.Name="{Binding [Setup_Finish], Source={x:Static l:Loc.Instance}}">
+              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
+                <ds:LoomIcon Data="{DynamicResource Loom.Icon.Check}" Width="16" Height="16" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding [Setup_Finish], Source={x:Static l:Loc.Instance}}" />
               </StackPanel>
-            </StackPanel>
-
-            <StackPanel x:Name="CompanyWaiting" Spacing="10" IsVisible="{Binding Join.IsWaiting, FallbackValue=False}">
-              <TextBlock Classes="choiceTitle" FontSize="16" Text="{Binding [Company_Waiting], Source={x:Static l:Loc.Instance}}" />
-              <ProgressBar IsIndeterminate="True" HorizontalAlignment="Stretch" Height="4" MinHeight="4"
-                           Foreground="{DynamicResource Loom.Accent}" Background="{DynamicResource Loom.SurfaceHigh}" />
-              <TextBlock Classes="intro" Text="{Binding Join.WaitingDetail, FallbackValue=''}" />
-              <TextBlock Classes="note" Text="{Binding [Setup_CompanyWaitingNote], Source={x:Static l:Loc.Instance}}" />
-            </StackPanel>
-
-            <StackPanel x:Name="CompanyApproved" Orientation="Horizontal" Spacing="10" IsVisible="{Binding Join.IsApproved, FallbackValue=False}">
-              <ds:LoomIcon Data="{DynamicResource Loom.Icon.Managed}" Width="20" Height="20" Foreground="{DynamicResource Loom.Accent}" />
-              <TextBlock Classes="intro" Text="{Binding Join.ApprovedText, FallbackValue=''}" VerticalAlignment="Center" />
-            </StackPanel>
-
-            <TextBlock x:Name="CompanyStatus" Margin="0,12,0,0" TextWrapping="Wrap" Text="{Binding Join.Status, FallbackValue=''}"
-                       Foreground="{DynamicResource Loom.Error}"
-                       IsVisible="{Binding Join.StatusIsError, FallbackValue=False}" />
-          </StackPanel>
-
-          <!-- 1 Sprache -->
-          <StackPanel x:Name="LanguagePanel" IsVisible="{Binding ShowLanguage}">
-            <TextBlock Classes="intro" Text="{Binding [Setup_LanguageIntro], Source={x:Static l:Loc.Instance}}" />
-            <TextBlock Classes="f" IsVisible="{Binding Settings.Editable[desktop.uiLanguage]}" Text="{Binding [Settings_UiLanguage], Source={x:Static l:Loc.Instance}}" />
-            <ComboBox x:Name="UiLanguageBox" IsVisible="{Binding Settings.Editable[desktop.uiLanguage]}" ItemsSource="{Binding Settings.UiLanguages}" SelectedItem="{Binding Settings.UiLanguage}" />
-            <TextBlock Classes="f" IsVisible="{Binding Settings.Editable[language]}" Text="{Binding [Setup_RecognitionLanguage], Source={x:Static l:Loc.Instance}}" />
-            <ComboBox x:Name="LanguageBox" IsVisible="{Binding Settings.Editable[language]}" ItemsSource="{Binding Settings.Languages}" SelectedItem="{Binding Settings.Language}" />
-          </StackPanel>
-
-          <!-- 2 Mikrofon mit Pegel-Test -->
-          <StackPanel x:Name="MicrophonePanel" IsVisible="{Binding ShowMicrophone}">
-            <TextBlock Classes="intro" Text="{Binding [Setup_MicIntro], Source={x:Static l:Loc.Instance}}" />
-            <TextBlock Classes="f" IsVisible="{Binding Settings.Editable[desktop.microphone]}" Text="{Binding [Settings_Microphone], Source={x:Static l:Loc.Instance}}" />
-            <ComboBox x:Name="MicrophoneBox" IsVisible="{Binding Settings.Editable[desktop.microphone]}" ItemsSource="{Binding Settings.Microphones}" SelectedItem="{Binding Settings.Microphone}" />
-            <StackPanel IsVisible="{Binding Mic, Converter={x:Static ObjectConverters.IsNotNull}}" Spacing="8" Margin="0,14,0,0">
-              <StackPanel Orientation="Horizontal" Spacing="8">
-                <Button x:Name="MicStartButton" Content="{Binding [Setup_MicStart], Source={x:Static l:Loc.Instance}}" Command="{Binding Mic.StartCommand, FallbackValue={x:Null}}" />
-                <Button x:Name="MicStopButton" Content="{Binding [Setup_MicStop], Source={x:Static l:Loc.Instance}}" Command="{Binding Mic.StopCommand, FallbackValue={x:Null}}" />
-              </StackPanel>
-              <ProgressBar x:Name="MicLevelBar" Minimum="0" Maximum="1" Value="{Binding Mic.Level, FallbackValue=0}" Height="10" MinWidth="420" HorizontalAlignment="Left"
-                           Foreground="{DynamicResource Loom.Accent}" Background="{DynamicResource Loom.SurfaceHigh}"
-                           AutomationProperties.Name="{Binding [Setup_MicStart], Source={x:Static l:Loc.Instance}}" />
-              <TextBlock x:Name="MicStatusText" Text="{Binding Mic.Status, FallbackValue=''}" TextWrapping="Wrap" />
-            </StackPanel>
-            <TextBlock Classes="note" IsVisible="{Binding Mic, Converter={x:Static ObjectConverters.IsNull}}" Text="{Binding [Setup_MicUnavailable], Source={x:Static l:Loc.Instance}}" />
-          </StackPanel>
-
-          <!-- 3 Erkennungsweg -->
-          <StackPanel x:Name="RecognitionPanel" IsVisible="{Binding ShowRecognition}">
-            <TextBlock Classes="intro" Text="{Binding [Setup_RecognitionIntro], Source={x:Static l:Loc.Instance}}" />
-            <ComboBox x:Name="EngineBox" IsVisible="{Binding Settings.Editable[engine]}" ItemsSource="{Binding Settings.Local.Engines}" SelectedItem="{Binding Settings.Local.Engine}" />
-            <StackPanel x:Name="OnlinePanel" IsVisible="{Binding ShowOnline}">
-              <TextBlock Classes="f" IsVisible="{Binding Settings.Editable[stt.providerId]}" Text="{Binding [Settings_Provider], Source={x:Static l:Loc.Instance}}" />
-              <ComboBox x:Name="ProviderBox" IsVisible="{Binding Settings.Editable[stt.providerId]}" ItemsSource="{Binding Settings.SttProviders}" SelectedItem="{Binding Settings.SttProvider}" />
-              <TextBlock Classes="f" IsVisible="{Binding Settings.Editable[secrets.stt]}" Text="{Binding [Settings_ApiKey], Source={x:Static l:Loc.Instance}}" />
-              <Panel IsVisible="{Binding Settings.Editable[secrets.stt]}"><v:KeyFieldView x:Name="SttKeyField" DataContext="{Binding Settings.SttKey}" /></Panel>
-            </StackPanel>
-            <StackPanel x:Name="OfflinePanel" IsVisible="{Binding ShowOffline}">
-              <TextBlock Classes="f" IsVisible="{Binding Settings.Editable[offline.model]}" Text="{Binding [Local_Model], Source={x:Static l:Loc.Instance}}" />
-              <ComboBox x:Name="ModelBox" IsVisible="{Binding Settings.Editable[offline.model]}" ItemsSource="{Binding Settings.Local.ModelChoices}" SelectedItem="{Binding Settings.Local.SelectedModel}" />
-              <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
-                <TextBlock Text="{Binding SelectedModel.Label}" VerticalAlignment="Center" MinWidth="220" />
-                <TextBlock Text="✓" IsVisible="{Binding SelectedModel.Installed}" Foreground="{DynamicResource Loom.Accent}" VerticalAlignment="Center" />
-                <Button x:Name="DownloadButton" Content="{Binding [Local_Download], Source={x:Static l:Loc.Instance}}" Command="{Binding SelectedModel.DownloadCommand}" />
-                <Button Content="{Binding [Local_Cancel], Source={x:Static l:Loc.Instance}}" Command="{Binding SelectedModel.CancelCommand}" />
-              </StackPanel>
-              <TextBlock x:Name="DownloadStatus" Text="{Binding SelectedModel.Status}" TextWrapping="Wrap" />
-            </StackPanel>
-          </StackPanel>
-
-          <!-- 4 Stufe -->
-          <StackPanel x:Name="StagePanel" IsVisible="{Binding ShowStage}">
-            <TextBlock Classes="intro" Text="{Binding [Setup_StageIntro], Source={x:Static l:Loc.Instance}}" />
-            <ComboBox x:Name="StageBox" IsVisible="{Binding Settings.Editable[refine.stage]}" ItemsSource="{Binding Settings.Stages}" SelectedItem="{Binding Settings.Stage}" />
-            <TextBlock Classes="note" Text="{Binding [Setup_StageNote], Source={x:Static l:Loc.Instance}}" />
-          </StackPanel>
-
-          <!-- 5 Hotkey-Test (Windows) bzw. Desktop-Kürzel (Linux) -->
-          <StackPanel x:Name="HotkeyPanel" IsVisible="{Binding ShowHotkey}">
-            <StackPanel IsVisible="{Binding Windows}">
-              <TextBlock Classes="intro" Text="{Binding [Setup_HotkeyIntro], Source={x:Static l:Loc.Instance}}" />
-              <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" Margin="0,8,0,10">
-                <TextBlock Grid.Row="0" Text="{Binding [Hotkey_Hold], Source={x:Static l:Loc.Instance}}" Margin="0,0,16,4" Foreground="{DynamicResource Loom.TextSecondary}" />
-                <TextBlock Grid.Row="0" Grid.Column="1" x:Name="HoldCombo" Text="{Binding Settings.Hotkeys.Hold.Value}" FontFamily="monospace" />
-                <TextBlock Grid.Row="1" Text="{Binding [Hotkey_Toggle], Source={x:Static l:Loc.Instance}}" Margin="0,0,16,0" Foreground="{DynamicResource Loom.TextSecondary}" />
-                <TextBlock Grid.Row="1" Grid.Column="1" x:Name="ToggleCombo" Text="{Binding Settings.Hotkeys.Toggle.Value}" FontFamily="monospace" />
-              </Grid>
-              <Button x:Name="HotkeyTestButton" Content="{Binding [Setup_HotkeyTest], Source={x:Static l:Loc.Instance}}" Command="{Binding Hotkey.TestCommand}" IsVisible="{Binding Hotkey.Available}" />
-              <TextBlock x:Name="HotkeyStatusText" Text="{Binding Hotkey.Status}" TextWrapping="Wrap" Margin="0,8,0,0" />
-              <TextBlock Classes="note" IsVisible="{Binding !Hotkey.Available}" Text="{Binding [Setup_HotkeyUnavailable], Source={x:Static l:Loc.Instance}}" />
-            </StackPanel>
-            <StackPanel IsVisible="{Binding !Windows}">
-              <TextBlock Classes="intro" Text="{Binding [Setup_LinuxIntro], Source={x:Static l:Loc.Instance}}" />
-              <SelectableTextBlock x:Name="ToggleCommandText" Text="{Binding ToggleCommand}" FontFamily="monospace" Foreground="{DynamicResource Loom.Accent}" Margin="0,4,0,8" />
-              <TextBlock Classes="note" Text="{Binding [Setup_LinuxKde], Source={x:Static l:Loc.Instance}}" />
-              <TextBlock Classes="note" Text="{Binding [Setup_LinuxGnome], Source={x:Static l:Loc.Instance}}" />
-              <TextBlock Classes="note" Text="{Binding [Setup_LinuxDocs], Source={x:Static l:Loc.Instance}}" />
-            </StackPanel>
-          </StackPanel>
-
-          <!-- 6 Autostart -->
-          <StackPanel x:Name="AutostartPanel" IsVisible="{Binding ShowAutostart}">
-            <TextBlock Classes="intro" Text="{Binding [Setup_AutostartIntro], Source={x:Static l:Loc.Instance}}" />
-            <ToggleSwitch x:Name="AutostartSwitch" IsVisible="{Binding AutostartAvailable}" IsChecked="{Binding AutostartEnabled}"
-                          OnContent="{Binding [Setup_AutostartOn], Source={x:Static l:Loc.Instance}}"
-                          OffContent="{Binding [Setup_AutostartOff], Source={x:Static l:Loc.Instance}}"
-                          AutomationProperties.Name="{Binding [Setup_Step_Autostart], Source={x:Static l:Loc.Instance}}" />
-            <TextBlock Classes="note" IsVisible="{Binding !AutostartAvailable}" Text="{Binding [Setup_AutostartUnavailable], Source={x:Static l:Loc.Instance}}" />
-          </StackPanel>
-
-          <!-- 7 Fertig -->
-          <StackPanel x:Name="DonePanel" IsVisible="{Binding ShowDone}">
-            <TextBlock x:Name="DoneHintText" Classes="intro" FontSize="16" Text="{Binding DoneHint}" />
-            <TextBlock Classes="note" Text="{Binding [Setup_DoneAgain], Source={x:Static l:Loc.Instance}}" />
-          </StackPanel>
-        </Panel>
+            </Button>
+          </Grid>
+        </StackPanel>
       </Border>
-    </ScrollViewer>
-  </DockPanel>
+
+      <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="24,12,24,24" Spacing="{DynamicResource Loom.Space.4}" MaxWidth="760" HorizontalAlignment="Stretch">
+          <TextBlock x:Name="IntroText" Text="{Binding Intro}" IsVisible="{Binding HasIntro}" Margin="17,0,0,0" TextWrapping="Wrap"
+                     Foreground="{DynamicResource Loom.TextSecondary}" />
+          <ds:HintRow x:Name="PolicyHint" Kind="Managed" Text="{Binding SkippedStepsText}"
+                      IsVisible="{Binding SkippedStepsText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+          <!-- 1 Wie nutzt du WhisperLoom? -->
+          <StackPanel x:Name="UsagePanel" Spacing="{DynamicResource Loom.Space.2}" IsVisible="{Binding ShowUsage}">
+            <Border Classes="card">
+              <ds:SettingRow TitleKey="Setup_Step_Usage" Stacked="True" Bare="True">
+                <ds:OptionGroup x:Name="UsageBox" ItemsSource="{Binding UsageChoices}" SelectedItem="{Binding Usage}" />
+              </ds:SettingRow>
+            </Border>
+            <TextBlock Classes="foot" Text="{Binding [Setup_UsageFooter], Source={x:Static l:Loc.Instance}}" />
+          </StackPanel>
+
+          <!-- 2 Firma: Server + Code, Warten auf Freigabe, freigegeben -->
+          <StackPanel x:Name="CompanyPanel" Spacing="{DynamicResource Loom.Space.2}" IsVisible="{Binding ShowCompany}">
+            <Border Classes="card">
+              <StackPanel Margin="16,12,16,16" Spacing="{DynamicResource Loom.Space.3}">
+                <s:CompanyJoinView x:Name="JoinView" DataContext="{Binding Join}" />
+                <TextBlock Text="{Binding [Setup_CompanyWaitingNote], Source={x:Static l:Loc.Instance}}" Classes="caption" TextWrapping="Wrap"
+                           IsVisible="{Binding Join.IsWaiting, FallbackValue=False}" />
+              </StackPanel>
+            </Border>
+            <TextBlock Classes="foot" Text="{Binding [Setup_CompanyFooter], Source={x:Static l:Loc.Instance}}" />
+          </StackPanel>
+
+          <!-- 3 Sprache -->
+          <Border x:Name="LanguagePanel" Classes="card" IsVisible="{Binding ShowLanguage}">
+            <StackPanel>
+              <ds:SettingRow Path="desktop.uiLanguage" Stacked="True">
+                <ds:OptionGroup x:Name="UiLanguageBox" ItemsSource="{Binding Settings.UiLanguages}" SelectedItem="{Binding Settings.UiLanguage}" />
+              </ds:SettingRow>
+              <ds:SettingRow Path="language" DescriptionKey="Setup_LanguageDesc">
+                <ComboBox x:Name="LanguageBox" Classes="row" ItemsSource="{Binding Settings.Languages}" SelectedItem="{Binding Settings.Language}" />
+              </ds:SettingRow>
+            </StackPanel>
+          </Border>
+
+          <!-- 4 Mikrofon mit Pegel-Test -->
+          <Border x:Name="MicrophonePanel" Classes="card" IsVisible="{Binding ShowMicrophone}">
+            <StackPanel>
+              <StackPanel IsVisible="{Binding Mic, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <ds:SettingRow Path="desktop.microphone">
+                  <ComboBox x:Name="MicrophoneBox" Classes="row" ItemsSource="{Binding Settings.Microphones}" SelectedItem="{Binding Settings.Microphone}" />
+                </ds:SettingRow>
+                <ds:SettingRow TitleKey="Setup_MicStart" DescriptionKey="Setup_MicTestDesc" Stacked="True">
+                  <StackPanel Spacing="{DynamicResource Loom.Space.2}">
+                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.3}">
+                      <Button x:Name="MicTestButton" Classes="secondary" Command="{Binding ToggleMicCommand}" AutomationProperties.Name="{Binding MicButtonText}">
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
+                          <Panel VerticalAlignment="Center">
+                            <ds:LoomIcon Data="{DynamicResource Loom.Icon.Microphone}" Width="16" Height="16" IsVisible="{Binding !MicRunning}" />
+                            <ds:LoomIcon Data="{DynamicResource Loom.Icon.Stop}" Width="16" Height="16" IsVisible="{Binding MicRunning}" />
+                          </Panel>
+                          <TextBlock Text="{Binding MicButtonText}" />
+                        </StackPanel>
+                      </Button>
+                      <ProgressBar x:Name="MicLevelBar" Minimum="0" Maximum="1" Value="{Binding Mic.Level, FallbackValue=0}" Height="8" MinHeight="8" Width="240"
+                                   VerticalAlignment="Center" Foreground="{DynamicResource Loom.Accent}" Background="{DynamicResource Loom.SurfaceHigh}"
+                                   AutomationProperties.Name="{Binding [Setup_MicLevel], Source={x:Static l:Loc.Instance}}" />
+                    </StackPanel>
+                    <TextBlock x:Name="MicStatusText" Text="{Binding Mic.Status, FallbackValue=''}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"
+                               IsVisible="{Binding Mic.Status, Converter={x:Static StringConverters.IsNotNullOrEmpty}, FallbackValue=False}" />
+                  </StackPanel>
+                </ds:SettingRow>
+                <ds:HintRow TextKey="Setup_MicWindowsHint" IsVisible="{Binding Windows}" Margin="16,0,16,12" />
+              </StackPanel>
+              <ds:HintRow x:Name="MicUnavailable" Kind="Warning" TextKey="Setup_MicUnavailable" Margin="16,12"
+                          IsVisible="{Binding Mic, Converter={x:Static ObjectConverters.IsNull}}" />
+            </StackPanel>
+          </Border>
+
+          <!-- 5 Erkennung: Weg, online Anbieter + Key, lokal Modell-Liste -->
+          <StackPanel x:Name="RecognitionPanel" Spacing="{DynamicResource Loom.Space.2}" IsVisible="{Binding ShowRecognition}">
+            <Border Classes="card">
+              <StackPanel>
+                <ds:SettingRow Path="engine" Stacked="True" Bare="True">
+                  <ds:OptionGroup x:Name="EngineBox" ItemsSource="{Binding Settings.Local.Engines}" SelectedItem="{Binding Settings.Local.Engine}" />
+                </ds:SettingRow>
+                <StackPanel x:Name="OnlinePanel" IsVisible="{Binding ShowOnline}">
+                  <ds:SettingRow Path="stt.providerId">
+                    <ComboBox x:Name="ProviderBox" Classes="row" ItemsSource="{Binding Settings.SttProviders}" SelectedItem="{Binding Settings.SttProvider}" />
+                  </ds:SettingRow>
+                  <ds:SettingRow Path="secrets.stt" Stacked="True">
+                    <v:KeyFieldView x:Name="SttKeyField" DataContext="{Binding Settings.SttKey}" />
+                  </ds:SettingRow>
+                </StackPanel>
+                <StackPanel x:Name="OfflinePanel" IsVisible="{Binding ShowOffline}">
+                  <ds:SettingRow Path="offline.model" Stacked="True" Error="{Binding Settings.Local.SelectedModelError}">
+                    <vs:ModelList x:Name="ModelList" Models="{Binding Settings.Local.Models}" Files="{Binding Settings.Local.CustomModels}" />
+                  </ds:SettingRow>
+                </StackPanel>
+              </StackPanel>
+            </Border>
+            <TextBlock Classes="foot" Text="{Binding RecognitionFooter}" />
+          </StackPanel>
+
+          <!-- 6 Stufe -->
+          <StackPanel x:Name="StagePanel" Spacing="{DynamicResource Loom.Space.2}" IsVisible="{Binding ShowStage}">
+            <Border Classes="card">
+              <ds:SettingRow Path="refine.stage" Stacked="True" Bare="True">
+                <ds:OptionGroup x:Name="StageBox" ItemsSource="{Binding Settings.Stages}" SelectedItem="{Binding Settings.Stage}" />
+              </ds:SettingRow>
+            </Border>
+            <TextBlock Classes="foot" Text="{Binding [Setup_StageNote], Source={x:Static l:Loc.Instance}}" />
+          </StackPanel>
+
+          <!-- 7 Tastenkürzel (Windows) bzw. Desktop-Kürzel (Linux) -->
+          <StackPanel x:Name="HotkeyPanel" Spacing="{DynamicResource Loom.Space.2}" IsVisible="{Binding ShowHotkey}">
+            <Border Classes="card" IsVisible="{Binding Windows}">
+              <StackPanel>
+                <ds:SettingRow TitleKey="Hotkey_Hold" DescriptionKey="Setup_HoldDesc">
+                  <Border Classes="keycap"><TextBlock x:Name="HoldCombo" Text="{Binding Settings.Hotkeys.Hold.Value}" /></Border>
+                </ds:SettingRow>
+                <ds:SettingRow TitleKey="Hotkey_Toggle" DescriptionKey="Setup_ToggleDesc">
+                  <Border Classes="keycap"><TextBlock x:Name="ToggleCombo" Text="{Binding Settings.Hotkeys.Toggle.Value}" /></Border>
+                </ds:SettingRow>
+                <ds:SettingRow TitleKey="Setup_HotkeyTest" DescriptionKey="Setup_HotkeyTestDesc" Stacked="True" IsVisible="{Binding Hotkey.Available}">
+                  <StackPanel Spacing="{DynamicResource Loom.Space.2}">
+                    <Button x:Name="HotkeyTestButton" Classes="secondary" HorizontalAlignment="Left" Command="{Binding Hotkey.TestCommand}"
+                            AutomationProperties.Name="{Binding [Setup_HotkeyTest], Source={x:Static l:Loc.Instance}}">
+                      <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
+                        <ds:LoomIcon Data="{DynamicResource Loom.Icon.Hotkeys}" Width="16" Height="16" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding [Setup_HotkeyTest], Source={x:Static l:Loc.Instance}}" />
+                      </StackPanel>
+                    </Button>
+                    <TextBlock x:Name="HotkeyStatusText" Text="{Binding Hotkey.Status}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"
+                               IsVisible="{Binding Hotkey.Status, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                  </StackPanel>
+                </ds:SettingRow>
+                <ds:HintRow TextKey="Setup_HotkeyUnavailable" IsVisible="{Binding !Hotkey.Available}" Margin="16,0,16,12" />
+              </StackPanel>
+            </Border>
+            <TextBlock Classes="foot" Text="{Binding [Setup_HotkeyFooter], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding Windows}" />
+            <Border Classes="card" IsVisible="{Binding !Windows}">
+              <StackPanel>
+                <ds:HintRow TextKey="Setup_LinuxIntro" Margin="16,12,16,0" />
+                <ds:SettingRow TitleKey="Setup_LinuxCommandTitle" DescriptionKey="Setup_LinuxCommandDesc" Stacked="True">
+                  <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.3}">
+                    <SelectableTextBlock x:Name="ToggleCommandText" Text="{Binding ToggleCommand}" FontFamily="monospace" VerticalAlignment="Center" TextWrapping="Wrap" />
+                    <Button x:Name="CopyCommandButton" Classes="text" VerticalAlignment="Center" Click="OnCopyCommand"
+                            AutomationProperties.Name="{Binding [Setup_CopyCommand], Source={x:Static l:Loc.Instance}}">
+                      <StackPanel Orientation="Horizontal" Spacing="4">
+                        <ds:LoomIcon Data="{DynamicResource Loom.Icon.Copy}" VerticalAlignment="Center" />
+                        <TextBlock x:Name="CopyCommandText" Text="{Binding [Action_Copy], Source={x:Static l:Loc.Instance}}" />
+                      </StackPanel>
+                    </Button>
+                  </StackPanel>
+                </ds:SettingRow>
+                <ds:SettingRow TitleKey="Setup_LinuxKdeTitle" DescriptionKey="Setup_LinuxKde" />
+                <ds:SettingRow TitleKey="Setup_LinuxGnomeTitle" DescriptionKey="Setup_LinuxGnome" />
+                <ds:SettingRow TitleKey="Setup_LinuxDocsTitle" DescriptionKey="Setup_LinuxDocs" />
+              </StackPanel>
+            </Border>
+          </StackPanel>
+
+          <!-- 8 Autostart -->
+          <Border x:Name="AutostartPanel" Classes="card" IsVisible="{Binding ShowAutostart}">
+            <StackPanel>
+              <ds:SettingRow TitleKey="Setup_AutostartOn" DescriptionKey="Setup_AutostartDesc" IsVisible="{Binding AutostartAvailable}">
+                <ToggleSwitch x:Name="AutostartSwitch" IsChecked="{Binding AutostartEnabled}" OnContent="" OffContent="" />
+              </ds:SettingRow>
+              <ds:HintRow Kind="Warning" TextKey="Setup_AutostartUnavailable" IsVisible="{Binding !AutostartAvailable}" Margin="16,12" />
+            </StackPanel>
+          </Border>
+
+          <!-- 9 Fertig -->
+          <Border x:Name="DonePanel" Classes="card" IsVisible="{Binding ShowDone}">
+            <StackPanel Margin="16,12,16,16" Spacing="{DynamicResource Loom.Space.3}">
+              <ds:KeycapText x:Name="DoneHintText" Template="{Binding DoneTemplate}" Keys="{Binding DoneKeys}" MaxWidth="560" HorizontalAlignment="Left" />
+              <TextBlock Text="{Binding [Setup_DoneAgain], Source={x:Static l:Loc.Instance}}" Classes="caption" TextWrapping="Wrap" />
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </ScrollViewer>
+    </DockPanel>
+  </Grid>
 </Window>
