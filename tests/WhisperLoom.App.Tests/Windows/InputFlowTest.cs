@@ -248,7 +248,7 @@ public sealed class InputFlowTest : IDisposable
         Assert.Equal(_f.Controller.LastResult, _rig.Clipboard.Text);
         _flow.ShowFallback(InsertOutcome.TargetGone);
         // W2-OUT: ein Hinweis für alle Fälle „liegt in der Zwischenablage“ (Entscheidung Christof).
-        Assert.Equal(Loc.Instance["Output_Hint_Copied"], _ui.Hints[^1].Message);
+        Assert.Equal(Loc.Instance.Format("Hint_Copied", Loc.Instance["Key_Paste"]), _ui.Hints[^1].Message); // mit Tastenkappe (UX-4)
     }
 
     [AvaloniaFact]

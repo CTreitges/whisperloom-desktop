@@ -11,7 +11,11 @@ namespace WhisperLoom.App.Features.Selection;
 /// </summary>
 public partial class SelectionPickerWindow : Window
 {
-    public SelectionPickerWindow() => InitializeComponent();
+    public SelectionPickerWindow()
+    {
+        InitializeComponent();
+        SystemTheme.Follow(this, Avalonia.Application.Current?.PlatformSettings);
+    }
 
     public SelectionPickerWindow(bool noActivate) : this()
     {

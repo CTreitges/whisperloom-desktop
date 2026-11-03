@@ -16,6 +16,7 @@ public sealed class InputPresenter : IInputPresenter
     private readonly PillViewModel _pill = new();
     private readonly DispatcherTimer _hintTimer = new();
     private readonly Func<IntPtr, PixelPoint?> _targetCenter;
+    private readonly Design.ISystemPreferences _preferences = Design.SystemPreferences.ForCurrentOs();
     private OverlayWindow? _overlay;
     private PillWindow? _pillWindow;
     private HintWindow? _hint;
@@ -33,6 +34,7 @@ public sealed class InputPresenter : IInputPresenter
 
     public void ShowOverlay(OverlayViewModel overlay, IntPtr target)
     {
+        overlay.Motion = _preferences.AnimationsEnabled;
         _overlay ??= new OverlayWindow(overlay);
         Show(_overlay, target, new Size(560, 130));
     }
@@ -43,8 +45,9 @@ public sealed class InputPresenter : IInputPresenter
     {
         _pill.Level = 0;
         _pill.Processing = false;
+        _pill.Motion = _preferences.AnimationsEnabled;
         _pillWindow ??= new PillWindow(_pill);
-        Show(_pillWindow, target, new Size(200, 44));
+        Show(_pillWindow, target, new Size(200, 56));
     }
 
     public void SetPill(double level, bool processing)
@@ -55,10 +58,11 @@ public sealed class InputPresenter : IInputPresenter
 
     public void HidePill() => _pillWindow?.Hide();
 
-    public void ShowHint(string kind, string caption, string message, TimeSpan duration, IntPtr target)
+    public void ShowHint(string kind, string caption, string message, TimeSpan duration, IntPtr target, HintTone tone = HintTone.Info,
+        IReadOnlyList<string>? keys = null)
     {
         _hint ??= new HintWindow();
-        _hint.SetContent(kind, caption, message);
+        _hint.SetContent(kind, caption, message, tone, keys);
         // Der Hinweis sitzt über Overlay bzw. Pille.
         var lift = _overlay?.IsVisible == true || _pillWindow?.IsVisible == true ? 150 : 0;
         Show(_hint, target, new Size(360, 64), ScreenPlacement.BottomMarginDip + lift);

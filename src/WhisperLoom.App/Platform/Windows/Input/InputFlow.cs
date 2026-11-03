@@ -24,7 +24,10 @@ public interface IInputPresenter
     void HidePill();
 
     /// <param name="kind">"stage" (Stufen-Hinweis) oder "toast".</param>
-    void ShowHint(string kind, string caption, string message, TimeSpan duration, IntPtr target);
+    /// <param name="tone">Symbol und Farbe (Stufe, Kopiert, Info, Warnung, Fehler).</param>
+    /// <param name="keys">Tasten für die Platzhalter {0}, {1} … in <paramref name="message"/> (Tastenkappen); null = Text.</param>
+    void ShowHint(string kind, string caption, string message, TimeSpan duration, IntPtr target, Pill.HintTone tone = Pill.HintTone.Info,
+        IReadOnlyList<string>? keys = null);
 
     /// <summary>Sichtbare Fenster für <c>status --json</c> (Smoke): overlay, buttons, pill, hint.</summary>
     JsonObject Status();
@@ -80,7 +83,12 @@ public sealed partial class InputFlow
         _foreground = foreground;
         _overlayKeys = overlayKeys;
         _describe = describe;
-        Overlay = new OverlayViewModel(PauseResume, Discard, () => _ = SendAsync()) { Retry = () => _ = RetryFromOverlayAsync() };
+        Overlay = new OverlayViewModel(PauseResume, Discard, () => _ = SendAsync())
+        {
+            Retry = () => _ = RetryFromOverlayAsync(),
+            SkipRefine = () => _controller.SkipRefine(),
+            DismissError = DismissError,
+        };
         controller.PropertyChanged += OnControllerChanged;
         sink.Inserted += outcome =>
         {
@@ -187,6 +195,7 @@ public sealed partial class InputFlow
         Overlay.Elapsed = _controller.Elapsed;
         Overlay.Level = _controller.Level;
         Overlay.PreviousPending = _controller.IsRecording && _controller.Pending > 0;
+        Overlay.CanSkip = _controller.IsRefining;
         if (_mode == Mode.Hold && _controller.State == DictationState.Recording)
         {
             _ui.SetPill(_controller.Level, processing: false);
@@ -247,6 +256,8 @@ public sealed partial class InputFlow
     private void OpenOverlay(string stage)
     {
         Overlay.ErrorKey = null;
+        Overlay.CanRetry = false;
+        Overlay.IsRewrite = _mode == Mode.Rewrite;
         Overlay.State = OverlayState.Recording;
         Overlay.Stage = stage;
         Overlay.IsStagePickerOpen = false;
@@ -389,6 +400,6 @@ public sealed partial class InputFlow
         {
             Overlay.Stage = label;
         }
-        _ui.ShowHint("stage", Loc.Instance["Stage_Label"], label, StageHintDuration, _foreground());
+        _ui.ShowHint("stage", Loc.Instance["Stage_Label"], label, StageHintDuration, _foreground(), Pill.HintTone.Stage);
     }
 }

@@ -359,4 +359,15 @@
     <Setter Property="Foreground" Value="White" />
   </Style>
 
+  <!-- Schwebende Fenster über fremden Programmen (Overlay, Pille, Hinweis, Markierung; overlay.html Befund 3): Surface mit
+       Outline-Rand (≥ 3:1 gegen helle und dunkle Programme, im Hochkontrast weiß) und Schatten. -->
+  <Style Selector="Border.float">
+    <Setter Property="Background" Value="{DynamicResource Loom.Surface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Loom.Outline}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Loom.Radius.Group}" />
+    <Setter Property="BoxShadow" Value="0 4 14 0 #40000000" />
+    <Setter Property="Margin" Value="8" />
+  </Style>
+
 </Styles>

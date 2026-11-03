@@ -44,11 +44,15 @@ internal sealed class FakeSelectionPresenter : ISelectionPresenter
 
     public void HidePicker() => Picker = null;
 
-    public void ShowButton(PixelPoint at, Action click)
+    public void ShowButton(PixelPoint at, Action click, string? shortcut = null)
     {
         ButtonAt = at;
         Click = click;
+        ButtonShortcut = shortcut;
     }
+
+    /// <summary>Kürzel der Tastenkappe beim letzten <see cref="ShowButton"/>.</summary>
+    public string? ButtonShortcut { get; private set; }
 
     public void HideButton()
     {

@@ -1,16 +1,42 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:l="using:WhisperLoom.App.Localization"
+        xmlns:ds="using:WhisperLoom.App.Design"
         x:Class="WhisperLoom.App.Platform.Windows.Pill.HintWindow"
-        Title="WhisperLoom Hint"
-        SizeToContent="WidthAndHeight" MaxWidth="640"
+        Title="{Binding [Hint_Title], Source={x:Static l:Loc.Instance}}"
+        SizeToContent="WidthAndHeight" MaxWidth="376"
         Background="Transparent" TransparencyLevelHint="Transparent">
-  <!-- Stufen-Hinweis und Toasts: fokusfrei, unten mittig auf dem Monitor des Ziels. -->
-  <Border Background="{StaticResource WlSurface}" CornerRadius="16" Padding="20,10"
-          BorderBrush="{StaticResource WlAccent}" BorderThickness="1">
-    <StackPanel Spacing="2">
-      <TextBlock x:Name="Caption" FontSize="12" Foreground="{StaticResource WlOnSurfaceVariant}" />
-      <TextBlock x:Name="Message" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource WlOnSurface}"
-                 TextWrapping="Wrap" />
-    </StackPanel>
+  <!-- Stufen-Hinweis und Toasts (overlay.html Befund 9): fokusfrei, unten mittig auf dem Monitor des Ziels. Symbol je Art,
+       Zustandsbalken links (Akzent, Warnung bzw. Fehler), Kürzel als Tastenkappen, Rolle Status mit dem Inhalt als Namen. -->
+  <Window.Styles>
+    <Style Selector="Border#Bar">
+      <Setter Property="Background" Value="{DynamicResource Loom.Accent}" />
+    </Style>
+    <Style Selector="Border#Bar.warning">
+      <Setter Property="Background" Value="{DynamicResource Loom.Warning}" />
+    </Style>
+    <Style Selector="Border#Bar.error">
+      <Setter Property="Background" Value="{DynamicResource Loom.Error}" />
+    </Style>
+    <Style Selector="ds|LoomIcon#KindIcon">
+      <Setter Property="Foreground" Value="{DynamicResource Loom.Accent}" />
+    </Style>
+    <Style Selector="ds|LoomIcon#KindIcon.warning">
+      <Setter Property="Foreground" Value="{DynamicResource Loom.Warning}" />
+    </Style>
+    <Style Selector="ds|LoomIcon#KindIcon.error">
+      <Setter Property="Foreground" Value="{DynamicResource Loom.Error}" />
+    </Style>
+  </Window.Styles>
+  <Border x:Name="Panel" Classes="float" ClipToBounds="True" AutomationProperties.LiveSetting="Polite">
+    <Grid ColumnDefinitions="3,Auto,*">
+      <Border x:Name="Bar" />
+      <ds:LoomIcon x:Name="KindIcon" Grid.Column="1" Width="20" Height="20" VerticalAlignment="Top"
+                   Margin="12,14,0,0" />
+      <StackPanel Grid.Column="2" Spacing="2" Margin="12,10,16,10">
+        <TextBlock x:Name="Caption" FontSize="{DynamicResource Loom.Font.Caption}" Foreground="{DynamicResource Loom.TextSecondary}" />
+        <ds:KeycapText x:Name="Message" FontSize="{DynamicResource Loom.Font.Title}" FontWeight="SemiBold" Foreground="{DynamicResource Loom.Text}" />
+      </StackPanel>
+    </Grid>
   </Border>
 </Window>

@@ -23,7 +23,8 @@ public interface ISelectionPresenter
 
     void HidePicker();
 
-    void ShowButton(PixelPoint at, Action click);
+    /// <param name="shortcut">Tastenkürzel „Markierung verarbeiten“ für die Tastenkappe am Knopf; null = keine.</param>
+    void ShowButton(PixelPoint at, Action click, string? shortcut = null);
 
     void HideButton();
 

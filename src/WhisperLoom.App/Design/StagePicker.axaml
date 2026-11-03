@@ -4,8 +4,9 @@
              x:Class="WhisperLoom.App.Design.StagePicker"
              x:DataType="ds:StagePickerViewModel"
              Focusable="True">
-  <!-- Stufen-Wähler (W2-OUT): Zeilen sind nicht fokussierbar, damit der Fokus beim Wähler bleibt und ↑/↓, Tab, 1–9, Enter
-       und Esc hier ankommen; Klick wählt sofort. Markierung = Loom.Selection, aktuelle Stufe = Häkchen. -->
+  <!-- Stufen-Wähler (W2-OUT, markierung.html): Zeilen sind nicht fokussierbar, damit der Fokus beim Wähler bleibt und ↑/↓, Tab,
+       1–9, Enter und Esc hier ankommen; Klick wählt sofort. Markierte Zeile = Auswahlfläche mit 3-px-Akzentbalken, aktuelle
+       Stufe = Häkchen-Symbol aus dem eigenen Set; Ziffer und Name stehen in festen Spalten (eine Textkante). -->
   <ItemsControl x:Name="List" ItemsSource="{Binding Options}">
     <ItemsControl.ItemTemplate>
       <DataTemplate x:DataType="ds:StageOption">
@@ -13,11 +14,12 @@
                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
                 Command="{Binding $parent[ItemsControl].((ds:StagePickerViewModel)DataContext).PickCommand}"
                 CommandParameter="{Binding}"
-                AutomationProperties.Name="{Binding Label}">
+                AutomationProperties.Name="{Binding AccessibleName}" AutomationProperties.ControlTypeOverride="ListItem">
           <Grid ColumnDefinitions="24,*,Auto">
             <TextBlock Text="{Binding NumberText}" Classes="caption" VerticalAlignment="Center" />
-            <TextBlock Grid.Column="1" Text="{Binding Label}" VerticalAlignment="Center" />
-            <TextBlock Grid.Column="2" Text="✓" IsVisible="{Binding IsCurrent}" VerticalAlignment="Center" Margin="8,0,0,0" />
+            <TextBlock Grid.Column="1" Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            <ds:LoomIcon Grid.Column="2" Data="{DynamicResource Loom.Icon.Check}" Width="16" Height="16" IsVisible="{Binding IsCurrent}"
+                         VerticalAlignment="Center" Margin="8,0,0,0" />
           </Grid>
         </Button>
       </DataTemplate>
@@ -27,17 +29,27 @@
     <Style Selector="Button.stageOption">
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="Foreground" Value="{DynamicResource Loom.Text}" />
-      <Setter Property="Padding" Value="10,6" />
+      <Setter Property="FontSize" Value="{DynamicResource Loom.Font.Body}" />
+      <!-- 3 px Balken + 7 = 10: die Ziffer bleibt auf derselben Kante wie ohne Balken. -->
+      <Setter Property="Padding" Value="7,6,10,6" />
       <Setter Property="MinHeight" Value="32" />
-      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="CornerRadius" Value="{DynamicResource Loom.Radius.Control}" />
+      <Setter Property="BorderThickness" Value="3,0,0,0" />
+      <Setter Property="BorderBrush" Value="Transparent" />
     </Style>
     <Style Selector="Button.stageOption.highlighted">
       <Setter Property="Background" Value="{DynamicResource Loom.Selection}" />
       <Setter Property="Foreground" Value="{DynamicResource Loom.OnSelection}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Loom.Accent}" />
+    </Style>
+    <Style Selector="Button.stageOption.highlighted /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Loom.Selection}" />
+      <Setter Property="Foreground" Value="{DynamicResource Loom.OnSelection}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Loom.Accent}" />
     </Style>
     <Style Selector="Button.stageOption TextBlock.caption">
       <Setter Property="Foreground" Value="{DynamicResource Loom.TextSecondary}" />
-      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontSize" Value="{DynamicResource Loom.Font.Caption}" />
     </Style>
     <Style Selector="Button.stageOption.highlighted TextBlock.caption">
       <Setter Property="Foreground" Value="{DynamicResource Loom.OnSelection}" />

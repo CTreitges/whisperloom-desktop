@@ -13,9 +13,10 @@ public enum OverlayState
 }
 
 /// <summary>
-/// Overlay der Umschalt-Kombi: Zustand, Dauer, Pegel, Stufe (Klick öffnet den Stufen-Wähler) und die Knöpfe Pause/Weiter,
-/// Verwerfen, Senden. „Senden + Enter“ gibt es nicht mehr (W2-OUT): Enter danach ist eine Einstellung. Die Knöpfe rufen nur die
-/// Rückrufe; den Ablauf steuert <c>InputFlow</c>.
+/// Overlay der Umschalt-Kombi (k3.html): Zustand mit Symbol und Wort, Dauer, Pegel, Stufe (Klick öffnet den Stufen-Wähler) und die
+/// Knöpfe Pause/Weiter, Verwerfen, Senden; nach einem Fehler Verwerfen und Erneut senden, beim Verarbeiten „Ohne KI einfügen“.
+/// „Senden + Enter“ gibt es nicht mehr (W2-OUT): Enter danach ist eine Einstellung. Die Knöpfe rufen nur die Rückrufe; den
+/// Ablauf steuert <c>InputFlow</c>.
 /// </summary>
 public sealed partial class OverlayViewModel : ObservableObject
 {
@@ -28,11 +29,13 @@ public sealed partial class OverlayViewModel : ObservableObject
         _pauseResume = pauseResume;
         _discard = discard;
         _send = send;
+        Loc.Instance.PropertyChanged += (_, _) => RaiseTexts();
     }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(StateText), nameof(IsRecording), nameof(IsPaused), nameof(CanAct), nameof(IsError), nameof(PauseText),
-        nameof(IsProcessing))]
+        nameof(IsProcessing), nameof(ShowLevel), nameof(Moving), nameof(Detail), nameof(KeysTemplate), nameof(Keys), nameof(AccessibleName),
+        nameof(ShowDiscard), nameof(ShowRetry), nameof(ShowSkip))]
     private OverlayState _state;
 
     [ObservableProperty]
@@ -42,11 +45,12 @@ public sealed partial class OverlayViewModel : ObservableObject
     private double _level;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StageText))]
     private string _stage = "";
 
     /// <summary>Stufen-Wähler des laufenden Diktats (W2-OUT); null = keine Wahl möglich (z. B. Umschreiben, IT-Sperre).</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanPickStage))]
+    [NotifyPropertyChangedFor(nameof(CanPickStage), nameof(KeysTemplate))]
     private Design.StagePickerViewModel? _stagePicker;
 
     [ObservableProperty]
@@ -56,10 +60,26 @@ public sealed partial class OverlayViewModel : ObservableObject
 
     /// <summary>Wiederholbarer Fehler: Knopf „Erneut senden“ (Audio liegt nur im Speicher, W2-OUT).</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Detail), nameof(ShowRetry))]
     private bool _canRetry;
 
     /// <summary>Rückruf für „Erneut senden“; null = kein Knopf.</summary>
     public Action? Retry { get; set; }
+
+    /// <summary>Rückruf für „Ohne KI einfügen“ beim Verarbeiten (wie Esc, W3-NEXT); null = kein Knopf.</summary>
+    public Action? SkipRefine { get; set; }
+
+    /// <summary>Rückruf für „Verwerfen“ nach einem Fehler: Overlay zu, gemerktes Audio weg; null = kein Knopf.</summary>
+    public Action? DismissError { get; set; }
+
+    /// <summary>Die Textverbesserung läuft (erst dann wirkt „Ohne KI einfügen“).</summary>
+    [ObservableProperty]
+    private bool _canSkip;
+
+    /// <summary>Diktat einer Anweisung zum Umschreiben der Markierung (markierung.html Befund 7): eigene Zustandswörter.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StateText), nameof(AccessibleName))]
+    private bool _isRewrite;
 
     public bool IsProcessing => State == OverlayState.Processing;
 
@@ -69,7 +89,7 @@ public sealed partial class OverlayViewModel : ObservableObject
 
     /// <summary>Lokalisierungs-Schlüssel des Fehlers (<c>Error_*</c>).</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(StateText))]
+    [NotifyPropertyChangedFor(nameof(StateText), nameof(AccessibleName))]
     private string? _errorKey;
 
     public bool IsRecording => State == OverlayState.Recording;
@@ -81,31 +101,96 @@ public sealed partial class OverlayViewModel : ObservableObject
     /// <summary>Knöpfe und Overlay-Tasten wirken nur in Aufnahme und Pause.</summary>
     public bool CanAct => State is OverlayState.Recording or OverlayState.Paused;
 
+    /// <summary>
+    /// Bewegung erlaubt (Systemeinstellung „Animationen anzeigen“, Richtlinie 02 §2.7); aus = beim Verarbeiten kein laufender
+    /// Balken, nur das ruhende Symbol.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Moving), nameof(ShowLevel))]
+    private bool _motion = true;
+
+    /// <summary>Pegel bzw. Lauf-Balken; nach einem Fehler gibt es nichts zu messen, beim Verarbeiten ohne Bewegung auch nicht.</summary>
+    public bool ShowLevel => State != OverlayState.Error && (Motion || State != OverlayState.Processing);
+
+    /// <summary>Lauf-Balken (nur beim Verarbeiten und nur mit Bewegung).</summary>
+    public bool Moving => Motion && State == OverlayState.Processing;
+
+    public bool ShowDiscard => CanAct || (IsError && DismissError is not null);
+
+    public bool ShowRetry => IsError && CanRetry && Retry is not null;
+
+    public bool ShowSkip => IsProcessing && SkipRefine is not null;
+
     public string StateText => State switch
     {
-        OverlayState.Recording => Loc.Instance["Overlay_Recording"],
+        OverlayState.Recording => Loc.Instance[IsRewrite ? "Overlay_Instruction" : "Overlay_Recording"],
         OverlayState.Paused => Loc.Instance["Overlay_Paused"],
-        OverlayState.Processing => Loc.Instance["Overlay_Processing"],
+        OverlayState.Processing => Loc.Instance[IsRewrite ? "Overlay_Rewriting" : "Overlay_Processing"],
         _ => Loc.Instance[ErrorKey ?? "Overlay_Error"],
     };
+
+    /// <summary>Name für Screenreader (overlay.html Befund 8): „WhisperLoom – Diktat: Aufnahme läuft“.</summary>
+    public string AccessibleName => Loc.Instance.Format("Overlay_Name", StateText);
+
+    /// <summary>Satz unter dem Zustand: nach einem wiederholbaren Fehler, was mit dem Diktat passiert (Befund 6); sonst leer.</summary>
+    public string? Detail => State == OverlayState.Error && CanRetry ? Loc.Instance["Overlay_ErrorKept"] : null;
+
+    public string StageText => Loc.Instance.Format("Overlay_StageButton", Stage);
 
     public string PauseText => Loc.Instance[IsPaused ? "Action_Resume" : "Action_Pause"];
 
     public string ElapsedText => $"{(int)Elapsed.TotalMinutes}:{Elapsed.Seconds:00}";
 
+    /// <summary>
+    /// Tastenwege des Zustands als Tastenkappen (Befund 2), nur die, die wirklich wirken: in Aufnahme und Pause Enter und
+    /// Rücktaste (Overlay-Tasten des Hooks), beim Verarbeiten Esc. Nach einem Fehler sind die Overlay-Tasten frei: keine Zeile.
+    /// </summary>
+    public string? KeysTemplate => State switch
+    {
+        OverlayState.Recording or OverlayState.Paused => Loc.Instance[CanPickStage ? "Overlay_Keys" : "Overlay_KeysNoStage"],
+        OverlayState.Processing => Loc.Instance["Overlay_KeysProcessing"],
+        _ => null,
+    };
+
+    public IReadOnlyList<string> Keys => State == OverlayState.Processing
+        ? [Loc.Instance["Key_Esc"]]
+        : [Loc.Instance["Key_Enter"], Loc.Instance["Key_Backspace"]];
+
     partial void OnElapsedChanged(TimeSpan value) => OnPropertyChanged(nameof(ElapsedText));
+
+    private void RaiseTexts()
+    {
+        foreach (var name in new[] { nameof(StateText), nameof(AccessibleName), nameof(Detail), nameof(StageText), nameof(PauseText), nameof(KeysTemplate), nameof(Keys) })
+        {
+            OnPropertyChanged(name);
+        }
+    }
 
     [RelayCommand]
     private void PauseResume() => _pauseResume();
 
+    /// <summary>Verwerfen: in Aufnahme und Pause das Diktat, nach einem Fehler das gemerkte Audio.</summary>
     [RelayCommand]
-    private void Discard() => _discard();
+    private void Discard()
+    {
+        if (State == OverlayState.Error)
+        {
+            DismissError?.Invoke();
+        }
+        else
+        {
+            _discard();
+        }
+    }
 
     [RelayCommand]
     private void Send() => _send();
 
     [RelayCommand]
     private void RetrySend() => Retry?.Invoke();
+
+    [RelayCommand]
+    private void Skip() => SkipRefine?.Invoke();
 
     [RelayCommand]
     private void ToggleStages() => IsStagePickerOpen = StagePicker is not null && !IsStagePickerOpen;

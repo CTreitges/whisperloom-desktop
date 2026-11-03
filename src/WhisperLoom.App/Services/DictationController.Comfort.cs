@@ -105,6 +105,22 @@ public sealed partial class DictationController
         return job.ErrorClass is null ? "done" : "error";
     }
 
+    /// <summary>
+    /// „Verwerfen“ nach einem Fehler (Overlay): das gemerkte Audio des gescheiterten Diktats verwerfen. Meldet die Änderung, damit
+    /// „Erneut senden“ im Tray verschwindet. false = es lag nichts im Speicher.
+    /// </summary>
+    public bool DropRetry()
+    {
+        if (_retryAudio is null)
+        {
+            return false;
+        }
+        _retryAudio = null;
+        _log.Event("dictation.retryDropped");
+        OnPropertyChanged(nameof(CanRetry));
+        return true;
+    }
+
     /// <summary>Neue Aufnahme: Längen-Hinweise zurück, altes Retry-Audio verwerfen (es gehört zum alten Diktat).</summary>
     private void ResetComfort()
     {

@@ -93,21 +93,23 @@ public sealed class ChannelUiTest
         window.Close();
     }
 
+    /// <summary>
+    /// „Version wählen …“ steht seit UX-4 nur noch in Einstellungen › System › Updates (tray.html Befund 3), dort mit der
+    /// Verwaltet-Zeile statt ausgegraut; Knopf und Sperre prüfen die Tests oben.
+    /// </summary>
     [AvaloniaFact]
-    public void Tray_hat_Eintrag_Version_waehlen()
+    public void Version_waehlen_steht_nicht_mehr_im_Tray()
     {
         Loc.Instance.SetLanguage("de");
         using var f = new ControllerFixture();
         var opened = new List<string>();
         var tray = new Tray.TrayMenu(f.Controller, opened.Add);
-        var item = tray.Menu.Items.OfType<NativeMenuItem>().Single(i => i.Header == "Version wählen …");
-        Assert.True(item.IsEnabled);
-        item.Command!.Execute(null);
-        Assert.Equal(["versions"], opened);
-
-        f.Controller.Policy = new PolicySettings { UpdatesEnabled = false };
-        tray.Refresh();
-        Assert.False(item.IsEnabled);
+        Assert.DoesNotContain(tray.Menu.Items.OfType<NativeMenuItem>(), i => i.Header == Loc.Instance["Channel_OpenVersions"]);
+        foreach (var item in tray.Menu.Items.OfType<NativeMenuItem>().Where(i => i.Command is not null))
+        {
+            item.Command!.Execute(null);
+        }
+        Assert.DoesNotContain("versions", opened);
     }
 
     private static VersionListViewModel ListVm(string current, PolicySettings? policy = null)

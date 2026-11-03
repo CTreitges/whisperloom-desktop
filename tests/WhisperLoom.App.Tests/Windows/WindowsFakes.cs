@@ -233,6 +233,9 @@ internal sealed class FakePresenter : IInputPresenter
 
     public List<(string Kind, string Caption, string Message)> Hints { get; } = [];
 
+    /// <summary>Art und Tasten je Hinweis (gleiche Reihenfolge wie <see cref="Hints"/>).</summary>
+    public List<(WhisperLoom.App.Platform.Windows.Pill.HintTone Tone, IReadOnlyList<string>? Keys)> HintStyles { get; } = [];
+
     public IntPtr LastTarget { get; private set; }
 
     public void ShowOverlay(OverlayViewModel overlay, IntPtr target)
@@ -254,8 +257,12 @@ internal sealed class FakePresenter : IInputPresenter
 
     public void HidePill() => Pill = false;
 
-    public void ShowHint(string kind, string caption, string message, TimeSpan duration, IntPtr target) =>
-        Hints.Add((kind, caption, message));
+    public void ShowHint(string kind, string caption, string message, TimeSpan duration, IntPtr target,
+        WhisperLoom.App.Platform.Windows.Pill.HintTone tone = WhisperLoom.App.Platform.Windows.Pill.HintTone.Info, IReadOnlyList<string>? keys = null)
+    {
+        Hints.Add((kind, caption, keys is { Count: > 0 } ? string.Format(System.Globalization.CultureInfo.InvariantCulture, message, [.. keys]) : message));
+        HintStyles.Add((tone, keys));
+    }
 
     public JsonObject Status() => new() { ["overlay"] = Overlay, ["pill"] = Pill };
 }

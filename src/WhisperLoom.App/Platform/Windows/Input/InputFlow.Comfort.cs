@@ -114,6 +114,21 @@ public sealed partial class InputFlow
         }
     }
 
+    /// <summary>
+    /// Knopf „Verwerfen“ nach einem Fehler (k3.html Befund 6): Overlay zu und das gemerkte Audio weg – auch „Erneut senden“ im
+    /// Tray verschwindet. Nur, solange das Overlay den Fehler zeigt und kein neues Diktat läuft.
+    /// </summary>
+    private void DismissError()
+    {
+        if (_mode != Mode.None || Overlay.State != OverlayState.Error)
+        {
+            return;
+        }
+        _controller.DropRetry();
+        Overlay.CanRetry = false;
+        _ui.HideOverlay();
+    }
+
     /// <summary>Knopf „Erneut senden“ im Overlay: gemerktes Audio ins selbe Ziel.</summary>
     private async Task RetryFromOverlayAsync()
     {
@@ -151,9 +166,17 @@ public sealed partial class InputFlow
     /// <summary>Hinweis anzeigen (auch für Tray-Kopieren und Ausgaben ohne Einfügen).</summary>
     public void ShowHint(Core.Output.OutputHint hint)
     {
-        if (hint != Core.Output.OutputHint.None)
+        switch (hint)
         {
-            _ui.ShowHint("toast", "WhisperLoom", Loc.Instance[Output.OutputHints.Key(hint)], ToastDuration, _target);
+            case Core.Output.OutputHint.Copied:
+                // „Kopiert – einfügen mit Strg+V“ mit Tastenkappe (overlay.html Befund 9).
+                _ui.ShowHint("toast", "WhisperLoom", Loc.Instance["Hint_Copied"], ToastDuration, _target, Pill.HintTone.Copied, [Loc.Instance["Key_Paste"]]);
+                break;
+            case Core.Output.OutputHint.None:
+                break;
+            default:
+                _ui.ShowHint("toast", "WhisperLoom", Loc.Instance[Output.OutputHints.Key(hint)], ToastDuration, _target, Pill.HintTone.Warning);
+                break;
         }
     }
 
@@ -161,10 +184,20 @@ public sealed partial class InputFlow
     private void ErrorToast(string key)
     {
         var text = Loc.Instance[key];
-        _ui.ShowHint("toast", "WhisperLoom", _controller.CanRetry ? Loc.Instance.Format("Error_WithRetry", text) : text, ErrorDuration, _target);
+        _ui.ShowHint("toast", "WhisperLoom", _controller.CanRetry ? Loc.Instance.Format("Error_WithRetry", text) : text, ErrorDuration, _target,
+            Pill.HintTone.Error);
     }
 
-    private void Toast(string key) => _ui.ShowHint("toast", "WhisperLoom", Loc.Instance[key], ToastDuration, _target);
+    /// <summary>Kurzer Hinweis; Grenzen und „nichts da“ als Warnung, der Rest als Auskunft.</summary>
+    private void Toast(string key) =>
+        _ui.ShowHint("toast", "WhisperLoom", Loc.Instance[key], ToastDuration, _target, ToneOf(key));
+
+    internal static Pill.HintTone ToneOf(string key) => key switch
+    {
+        "Recording_Capped" or "Output_Hint_Password" => Pill.HintTone.Warning,
+        _ when key.StartsWith("Error_", StringComparison.Ordinal) || key == "Overlay_Error" => Pill.HintTone.Error,
+        _ => Pill.HintTone.Info,
+    };
 
     /// <summary>Stufe des laufenden Diktats; mit Profil als „Profil · Stufe“.</summary>
     private string StageLabel()

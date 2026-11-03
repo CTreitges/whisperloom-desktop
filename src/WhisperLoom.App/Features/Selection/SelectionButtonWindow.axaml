@@ -1,21 +1,26 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:l="using:WhisperLoom.App.Localization"
+        xmlns:ds="using:WhisperLoom.App.Design"
         x:Class="WhisperLoom.App.Features.Selection.SelectionButtonWindow"
-        Title="WhisperLoom"
+        Title="{Binding [Selection_ButtonTip], Source={x:Static l:Loc.Instance}}"
         SizeToContent="WidthAndHeight"
+        FontSize="{DynamicResource Loom.Font.Body}"
         Background="Transparent" TransparencyLevelHint="Transparent">
-  <!-- Schwebender Knopf neben einer Maus-Markierung (W2-SEL): klein, kurz sichtbar, fokusfrei. -->
-  <Border Margin="6" CornerRadius="14" BoxShadow="0 2 10 0 #55000000">
-  <Button x:Name="ActionButton" Focusable="False" CornerRadius="14" Padding="10,4" MinHeight="28"
-          Background="{DynamicResource Loom.Surface}" Foreground="{DynamicResource Loom.Text}"
-          BorderBrush="{DynamicResource Loom.Separator}" BorderThickness="1"
-          ToolTip.Tip="{Binding [Selection_ButtonTip], Source={x:Static l:Loc.Instance}}"
-          AutomationProperties.Name="{Binding [Selection_ButtonTip], Source={x:Static l:Loc.Instance}}">
-    <StackPanel Orientation="Horizontal" Spacing="6">
-      <TextBlock Text="✦" Foreground="{DynamicResource Loom.Accent}" VerticalAlignment="Center" FontSize="13" />
-      <TextBlock Text="{Binding [Selection_Button], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" FontSize="13" />
-    </StackPanel>
-  </Button>
+  <!-- Schwebender Knopf neben einer Maus-Markierung (W2-SEL, markierung.html): klein, kurz sichtbar, fokusfrei, folgt dem
+       Systemthema. Markierungs-Symbol aus dem eigenen Set, daneben das Tastenkürzel als Tastenkappe (Befund 4). -->
+  <Border Classes="float" CornerRadius="16" Padding="0">
+    <Button x:Name="ActionButton" Focusable="False" CornerRadius="16" Padding="12,4" MinHeight="32"
+            Background="Transparent" Foreground="{DynamicResource Loom.Text}" BorderThickness="0"
+            ToolTip.Tip="{Binding [Selection_ButtonTip], Source={x:Static l:Loc.Instance}}"
+            AutomationProperties.Name="{Binding [Selection_ButtonTip], Source={x:Static l:Loc.Instance}}">
+      <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
+        <ds:LoomIcon Data="{DynamicResource Loom.Icon.Selection}" Width="20" Height="20" VerticalAlignment="Center" Foreground="{DynamicResource Loom.Accent}" />
+        <TextBlock Text="{Binding [Selection_Button], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
+        <Border x:Name="ShortcutCap" Classes="keycap" IsVisible="False">
+          <TextBlock x:Name="ShortcutText" />
+        </Border>
+      </StackPanel>
+    </Button>
   </Border>
 </Window>

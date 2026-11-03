@@ -23,4 +23,8 @@ public static class RecentHistory
         }
         return line.Length <= LabelLength ? line : line[..LabelLength] + "…";
     }
+
+    /// <summary>Uhrzeit des Diktats in Ortszeit, „14:21“ – trennt ähnliche Einträge im Menü (tray.html Befund 5).</summary>
+    public static string Time(HistoryEntry entry) =>
+        entry.CreatedAt.ToLocalTime().ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture);
 }

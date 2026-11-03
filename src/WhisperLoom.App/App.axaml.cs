@@ -95,7 +95,9 @@ public partial class App : Application
                     {
                         await process(null, true);
                     }
-                });
+                },
+                // Letzte Diktate: einfügen, sobald die Windows-Bedienung läuft (startet nach dem Tray), sonst kopieren.
+                pastes: () => host.InsertRecent is not null);
             _ = menu.ReloadRecentAsync();
             _tray = new TrayIcon
             {

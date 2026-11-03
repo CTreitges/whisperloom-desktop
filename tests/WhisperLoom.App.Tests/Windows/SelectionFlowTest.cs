@@ -332,6 +332,7 @@ public sealed class SelectionFlowTest : IDisposable
         await _flow.OnSelectionGestureAsync(new PixelPoint(100, 100));
 
         Assert.Equal(new PixelPoint(114, 114), _picker.ButtonAt);
+        Assert.Equal(SelectionSettings.DefaultHotkey, _picker.ButtonShortcut); // Tastenkappe am Knopf (UX-4)
         Assert.Contains("dismiss-on", _log);
 
         _picker.Click!();

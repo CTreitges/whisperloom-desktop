@@ -11,6 +11,9 @@ namespace WhisperLoom.App.Design;
 // Doku: docs.avaloniaui.net/docs/concepts/input/keyboard (KeyDown, Handled; abgerufen 2026-11-01).
 public partial class StagePicker : UserControl
 {
+    /// <summary>Tasten der Hinweiszeile unter dem Wähler (Vorlage <c>Selection_PickerKeys</c>): ↑↓, 1–9, Enter, Esc.</summary>
+    public static readonly IReadOnlyList<string> KeyNames = ["↑ ↓", "1–9", "Enter", "Esc"];
+
     public StagePicker() => InitializeComponent();
 
     protected override void OnKeyDown(KeyEventArgs e)

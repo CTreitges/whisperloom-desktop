@@ -55,7 +55,7 @@ Einstellungen → Allgemein → **Updates**:
   (einzelne Test-Builds aus Entwicklungszweigen).
 - **Vorabversionen automatisch installieren** (Standard aus): Aus bietet die automatische Prüfung nur stabile Versionen
   an, auch im Kanal Beta oder Test. An bietet zusätzlich die neueste Vorabversion des Kanals an.
-- **Version wählen …** (auch im Tray-Menü): Liste aller Versionen aus den GitHub-Releases mit Kanal, Datum und
+- **Version wählen …** (Einstellungen → System → Updates): Liste aller Versionen aus den GitHub-Releases mit Kanal, Datum und
   „installiert“. Jede Version lässt sich nach Rückfrage installieren; eine ältere Version ist ein Downgrade mit eigenem
   Hinweis. **Zurück zu Stabil** installiert die neueste stabile Version. Einstellungen und Keys bleiben erhalten.
 
@@ -73,7 +73,7 @@ Beim ersten Start führt ein Assistent in wenigen Schritten zum ersten Diktat:
 6. **Autostart** beim Anmelden (nur für den eigenen Benutzer)
 7. **Fertig**
 
-Überspringen geht jederzeit; erneut aufrufen über Tray → **Einrichtung …** oder `WhisperLoom setup`. Hat die IT
+Überspringen geht jederzeit; erneut aufrufen über Einstellungen → System → **Einrichtung** oder `WhisperLoom setup`. Hat die IT
 Einstellungen vorgegeben, entfallen die gesperrten Schritte.
 
 ### Bedienung
