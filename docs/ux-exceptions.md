@@ -5,7 +5,8 @@ Windows und Linux, bedient mit Maus und Tastatur. Wo eine Regel dort nicht passt
 andere gilt unverändert, mindestens WCAG 2.2 AA. Entschieden im UX-Lauf 3 (Zielstruktur §10, Freigabe 2026-11-03).
 
 Die Ux-Tests (`tests/WhisperLoom.App.Tests/Ux/`) prüfen Klickziele gegen `UxRules.MinTarget` = 24 (D2). Die Mindestgröße
-720 × 480 (D3) steht im Einstellungsfenster als `MinWidth`/`MinHeight`.
+720 × 480 (D3) steht im Einstellungsfenster als `MinWidth`/`MinHeight`. Die Tastaturprüfung (`UxRules.Keyboard`) zählt eine
+Optionsgruppe als einen Tab-Stopp, die übrigen Felder erreichen die Pfeiltasten; das ist keine Ausnahme, sondern APG „Radio Group“.
 
 | # | Richtlinie | Ausnahme | Grund |
 |---|---|---|---|
