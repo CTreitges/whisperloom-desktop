@@ -102,19 +102,21 @@ public partial class App : Application
                 // Letzte Diktate: einfügen, sobald die Windows-Bedienung läuft (startet nach dem Tray), sonst kopieren.
                 pastes: () => host.InsertRecent is not null);
             _ = menu.ReloadRecentAsync();
-            _tray = new TrayIcon
+            var tray = new TrayIcon
             {
                 Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://WhisperLoom/Assets/whisperloom.ico"))),
                 ToolTipText = menu.ToolTip,
                 Menu = menu.Menu,
                 IsVisible = true,
             };
-            _tray.Clicked += (_, _) => Open("stage");
-            host.Controller.PropertyChanged += (_, _) => _tray.ToolTipText = menu.ToolTip;
-            // Tooltip auch nach einem Sprachwechsel neu (Prüfer-Fund UX-4).
-            Localization.Loc.Instance.PropertyChanged += (_, _) => _tray.ToolTipText = menu.ToolTip;
+            TrayIcon.SetIcons(this, [tray]);
+            _tray = tray;
             _trayMenu = menu;
-            TrayIcon.SetIcons(this, [_tray]);
+            tray.Clicked += (_, _) => Open("stage");
+            // Abos erst nach SetIcons und auf das lokale Symbol: ohne Infobereich (catch unten, _tray = null) hängt nichts
+            // (Prüfer-Fund UX-4). Tooltip auch nach einem Sprachwechsel neu.
+            host.Controller.PropertyChanged += (_, _) => tray.ToolTipText = menu.ToolTip;
+            Localization.Loc.Instance.PropertyChanged += (_, _) => tray.ToolTipText = menu.ToolTip;
         }
         catch (Exception e) when (e is PlatformNotSupportedException or InvalidOperationException)
         {
