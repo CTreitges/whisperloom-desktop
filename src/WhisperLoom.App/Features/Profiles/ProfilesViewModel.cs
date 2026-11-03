@@ -131,6 +131,8 @@ public sealed partial class ProfilesViewModel : ObservableObject
     {
         var row = new ProfileRowViewModel(this, new AppProfile(), open: true);
         Status = "";
+        _undo = null;
+        CanUndo = false;
         Rows.Add(row);
         FocusRequested?.Invoke(row, ProfileFocus.Name);
     }

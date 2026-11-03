@@ -1,3 +1,4 @@
+using Avalonia.Headless.XUnit;
 using WhisperLoom.App.Features.Profiles;
 using WhisperLoom.App.Localization;
 using WhisperLoom.App.Services;
@@ -24,7 +25,7 @@ public sealed class ProfilesListTest
 
     private static AppProfile Outlook() => new() { Name = "Outlook", Process = "OUTLOOK.EXE", Stage = "beautify" };
 
-    [Fact]
+    [AvaloniaFact]
     public void Arrows_move_a_profile_renumber_and_save_the_new_order()
     {
         var desktop = new DesktopSettings();
@@ -49,7 +50,7 @@ public sealed class ProfilesListTest
         Assert.Equal(["WINWORD.EXE", "OUTLOOK.EXE", "WindowsTerminal.exe"], desktop.Profiles.Select(p => p.Process));
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void Moving_asks_the_view_to_keep_focus_on_the_moved_profile()
     {
         var vm = Make(Terminal(), Outlook());
@@ -63,7 +64,7 @@ public sealed class ProfilesListTest
         Assert.Equal((outlook, ProfileFocus.MoveDown), Assert.Single(requests));
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void Delete_offers_undo_which_restores_the_profile_at_its_place()
     {
         var vm = Make(Terminal(), Outlook(), new AppProfile { Name = "Word", Process = "WINWORD.EXE" });
@@ -85,7 +86,7 @@ public sealed class ProfilesListTest
         Assert.DoesNotContain(vm.Suggestions, s => s.Process == "OUTLOOK.EXE");
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void Undo_after_further_deletes_restores_only_the_last_and_clamps_the_index()
     {
         var vm = Make(Terminal(), Outlook());
@@ -99,7 +100,7 @@ public sealed class ProfilesListTest
         Assert.True(vm.IsEmpty is false);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void Summary_names_only_deviations()
     {
         var vm = Make(new AppProfile());
@@ -130,7 +131,7 @@ public sealed class ProfilesListTest
         Assert.Equal("WindowsTerminal.exe · Fenstertitel nicht lesbar, greift so nicht", row.Summary);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void Floating_button_counts_only_while_it_is_on_in_general()
     {
         var vm = Make(new AppProfile { Process = "notepad.exe", FloatingButton = false });
@@ -145,7 +146,7 @@ public sealed class ProfilesListTest
         Assert.False(vm.Rows[0].ToProfile().FloatingButton); // die Einstellung bleibt erhalten
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void Suggestions_appear_only_for_programs_without_a_profile()
     {
         var vm = Make(new AppProfile { Process = "outlook" });
@@ -165,7 +166,7 @@ public sealed class ProfilesListTest
         Assert.Single(vm.Suggestions);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void Add_opens_an_empty_profile_and_asks_for_focus_on_its_name()
     {
         var vm = Make();
@@ -181,7 +182,21 @@ public sealed class ProfilesListTest
         Assert.Equal((row, ProfileFocus.Name), Assert.Single(requests));
     }
 
-    [Fact]
+    /// <summary>Prüfer-Befund UX-2/4: „Profil hinzufügen“ ist die nächste Aktion – das Rückgängig-Angebot verfällt.</summary>
+    [AvaloniaFact]
+    public void Adding_a_profile_ends_the_undo_offer()
+    {
+        var vm = Make(Terminal(), Outlook());
+        vm.Rows[1].DeleteCommand.Execute(null);
+
+        vm.AddCommand.Execute(null);
+        vm.UndoCommand.Execute(null);
+
+        Assert.False(vm.CanUndo);
+        Assert.Equal(["Terminal", "Neues Profil"], vm.Rows.Select(r => r.DisplayName));
+    }
+
+    [AvaloniaFact]
     public void Priority_badge_only_for_a_readable_window_title()
     {
         var vm = Make(Terminal());
@@ -202,7 +217,7 @@ public sealed class ProfilesListTest
         Assert.True(Make(new AppProfile { Process = "a.exe", TitlePattern = "x" }).Rows[0].ShowAdvanced);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void Inherit_options_name_the_current_general_value_and_follow_it()
     {
         var vm = Make(new AppProfile { Process = "a.exe" });
@@ -225,7 +240,7 @@ public sealed class ProfilesListTest
         Assert.Equal("", row.ToProfile().Stage);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void Picking_a_running_program_fills_the_field_and_closes_the_list()
     {
         var vm = Make(new AppProfile());
@@ -241,7 +256,7 @@ public sealed class ProfilesListTest
         Assert.False(row.PickOpen);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void Names_for_screen_readers_carry_the_profile_name()
     {
         var vm = Make(Terminal());

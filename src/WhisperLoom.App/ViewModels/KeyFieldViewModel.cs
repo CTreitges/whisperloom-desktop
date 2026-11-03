@@ -26,8 +26,10 @@ public sealed partial class KeyFieldViewModel : ObservableObject
         _store = store;
         _checker = checker;
         _target = target;
-        Loc.Instance.PropertyChanged += (_, _) => OnPropertyChanged(nameof(StateText));
     }
+
+    /// <summary>Sprache gewechselt: Zustandssatz neu (die Ansicht meldet das, solange sie angezeigt wird – kein Abo, das das Modell hält).</summary>
+    public void RefreshTexts() => OnPropertyChanged(nameof(StateText));
 
     /// <summary>Name im <see cref="ISecretStore"/> (<see cref="SecretNames"/>).</summary>
     public string Name { get; }
@@ -121,7 +123,10 @@ public sealed partial class KeyFieldViewModel : ObservableObject
         Forget();
         try
         {
-            var current = await _store.GetAsync(Name, CancellationToken.None);
+            // Nur der eigene Key ist umkehrbar: unter Firmen-Verwaltung liefert der Store beim Lesen ggf. den verteilten Firmen-Key,
+            // Löschen trifft aber nur die eigenen Keys – Rückgängig darf ihn nie als eigenen Key abschreiben (Prüfer-Befund UX-2/1).
+            var own = (_store as Management.CompanySecretStore)?.UserStore ?? _store;
+            var current = await own.GetAsync(Name, CancellationToken.None);
             await _store.DeleteAsync(Name, CancellationToken.None);
             IsSet = false;
             Status = Loc.Instance["Key_Deleted"];
@@ -146,8 +151,8 @@ public sealed partial class KeyFieldViewModel : ObservableObject
         }
     }
 
-    /// <summary>Rückgängig verfällt: gelöschten Key vergessen.</summary>
-    private void Forget()
+    /// <summary>Rückgängig verfällt: gelöschten Key vergessen (jede Aktion, und wenn die Ansicht verschwindet).</summary>
+    public void Forget()
     {
         _deleted = null;
         CanUndo = false;
