@@ -27,7 +27,9 @@
             <ToggleSwitch x:Name="HotkeysEnabledBox" IsChecked="{Binding Hotkeys.Enabled}" OnContent="" OffContent="" />
           </ds:SettingRow>
           <!-- Nur zeigen, was gilt: die Kürzel erst, wenn globale Tastenkürzel an sind. -->
-          <ItemsControl x:Name="HotkeyRows" ItemsSource="{Binding Hotkeys.All}" IsVisible="{Binding Hotkeys.Enabled}">
+          <!-- Name der Liste für Screenreader (UIA-Dump H2: einzige unbenannte Stelle). -->
+          <ItemsControl x:Name="HotkeyRows" ItemsSource="{Binding Hotkeys.All}" IsVisible="{Binding Hotkeys.Enabled}"
+                        AutomationProperties.Name="{Binding [G_HotkeysMain], Source={x:Static l:Loc.Instance}}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="avm:HotkeyRowViewModel">
                 <ds:SettingRow Path="{Binding Path}" Error="{Binding Warnings}">
@@ -71,7 +73,7 @@
           <ds:SettingRow Path="selection.hotkeyCombo" IsVisible="{Binding !IsLinux}">
             <ToggleSwitch x:Name="SelectionHotkeyToggle" IsChecked="{Binding Hotkeys.SelectionOn}" OnContent="" OffContent="" />
           </ds:SettingRow>
-          <ds:SettingRow TitleKey="Hotkey_SelectionCombo" Error="{Binding Hotkeys.Selection.Warnings}" IsVisible="{Binding Hotkeys.SelectionOn}">
+          <ds:SettingRow TitleKey="Hotkey_SelectionCombo" Error="{Binding Hotkeys.Selection.Warnings}" IsVisible="{Binding Hotkeys.ShowSelectionCombo}">
             <StackPanel Spacing="{DynamicResource Loom.Space.1}" HorizontalAlignment="Right">
               <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.3}" HorizontalAlignment="Right">
                 <Border Classes="keycap">

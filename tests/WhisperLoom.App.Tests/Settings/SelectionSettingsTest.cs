@@ -117,6 +117,57 @@ public sealed class SelectionSettingsTest
         window.Close();
     }
 
+    /// <summary>Befund H2 (WSLg): unter Linux stand „Tastenkürzel dafür … Ändern“ ohne Wirkung – nur zeigen, was gilt.</summary>
+    [AvaloniaFact]
+    public void Linux_zeigt_keine_Kuerzel_Zeile_der_Markierung()
+    {
+        var windows = new HotkeysViewModel(new DesktopSettings(), null, new SelectionSettings()) { Windows = true };
+        Assert.True(windows.SelectionOn);
+        Assert.True(windows.ShowSelectionCombo);
+        var linux = new HotkeysViewModel(new DesktopSettings(), null, new SelectionSettings()) { Windows = false };
+        Assert.True(linux.SelectionOn);
+        Assert.False(linux.ShowSelectionCombo);
+
+        var raised = new List<string?>();
+        windows.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+        windows.SelectionOn = false;
+        Assert.False(windows.ShowSelectionCombo);
+        Assert.Contains(nameof(HotkeysViewModel.ShowSelectionCombo), raised);
+    }
+
+    /// <summary>Befund H2 (WSLg), Prüfer-Fund UX-5: die Zeile auf der Seite hängt an <c>ShowSelectionCombo</c>, nicht an SelectionOn.</summary>
+    [AvaloniaFact]
+    public void Seite_blendet_die_Kuerzel_Zeile_unter_Linux_aus()
+    {
+        Loc.Instance.SetLanguage("de");
+        using var f = new ControllerFixture();
+        var window = Open(f, out var vm);
+        SettingsUi.Show(window, "dictation");
+        var row = SettingsUi.Rows(window).Single(r => r.TitleKey == "Hotkey_SelectionCombo");
+        vm.Hotkeys.Windows = true; // Ausgangslage unabhängig vom Betriebssystem (CI läuft auch auf Linux; Prüfer-Fund UX-5)
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(row.IsVisible);
+
+        vm.Hotkeys.Windows = false; // wie unter Linux, SelectionOn bleibt an
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(vm.Hotkeys.SelectionOn);
+        Assert.False(row.IsVisible);
+        window.Close();
+    }
+
+    /// <summary>Befund H2 (UIA-Dump): die Liste der Tastenkürzel war die einzige unbenannte Stelle.</summary>
+    [AvaloniaFact]
+    public void Liste_der_Tastenkuerzel_hat_einen_Namen()
+    {
+        Loc.Instance.SetLanguage("de");
+        using var f = new ControllerFixture();
+        var window = Open(f);
+        SettingsUi.Show(window, "dictation");
+        var rows = SettingsUi.Named<ItemsControl>(window, "HotkeyRows");
+        Assert.Equal(Loc.Instance["G_HotkeysMain"], Avalonia.Automation.AutomationProperties.GetName(rows));
+        window.Close();
+    }
+
     public enum Source
     {
         Server,
