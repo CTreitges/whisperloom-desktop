@@ -1,3 +1,4 @@
+using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using WhisperLoom.App.Localization;
 using WhisperLoom.App.Services;
@@ -87,6 +88,75 @@ public sealed class VersionDownloadTest : IDisposable
         Assert.False(vm.IsBusy);
         Assert.Empty(inner.Applied);
         Assert.Equal(Loc.Instance["Channel_DownloadCanceled"], vm.Status);
+    }
+
+    /// <summary>Velopack meldet aus einem Hintergrund-Thread; ein verspäteter Fortschritt überschreibt die Endmeldung nicht.</summary>
+    private sealed class ThreadClient(FakeUpdateClient inner, Exception? fail = null) : IUpdateClient
+    {
+        public Action<int>? Progress { get; private set; }
+        public bool IsInstalled => inner.IsInstalled;
+        public string? CurrentVersion => inner.CurrentVersion;
+        public Task<UpdateRelease?> CheckAsync(string channel, CancellationToken ct) => inner.CheckAsync(channel, ct);
+        public Task<IReadOnlyList<UpdateRelease>> ListAsync(string channel, CancellationToken ct) => inner.ListAsync(channel, ct);
+
+        public async Task DownloadAsync(UpdateRelease release, bool downgrade, CancellationToken ct, Action<int>? progress = null)
+        {
+            Progress = progress;
+            await Task.Run(() => progress?.Invoke(30), ct);
+            if (fail is not null)
+            {
+                throw fail;
+            }
+        }
+
+        public void ApplyAndRestart(UpdateRelease release) => inner.ApplyAndRestart(release);
+        public void ApplyAndExit(UpdateRelease release) => inner.ApplyAndExit(release);
+    }
+
+    [AvaloniaFact]
+    public async Task Fortschritt_aus_fremdem_Thread_und_verspaetet_nach_dem_Ende()
+    {
+        var inner = Client();
+        var client = new ThreadClient(inner, new IOException("weg"));
+        var vm = Vm(client);
+        await vm.LoadAsync();
+        Assert.Equal(UpdateOutcome.Failed, await vm.InstallAsync(vm.Rows[0]));
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        Assert.Equal(Loc.Instance["Channel_InstallFailed"], vm.Status);
+
+        await Task.Run(() => client.Progress!(90)); // kommt nach dem Ende an
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        Assert.Equal(Loc.Instance["Channel_InstallFailed"], vm.Status);
+        Assert.False(vm.IsDownloading);
+    }
+
+    [AvaloniaFact]
+    public async Task Fremder_Abbruch_ist_ein_Fehlschlag_kein_Absturz()
+    {
+        var vm = Vm(new ThreadClient(Client(), new TaskCanceledException("Zeitüberschreitung")));
+        await vm.LoadAsync();
+        Assert.Equal(UpdateOutcome.Failed, await vm.InstallAsync(vm.Rows[0]));
+        Assert.Equal(Loc.Instance["Channel_InstallFailed"], vm.Status);
+    }
+
+    [AvaloniaFact]
+    public async Task Esc_und_Schliessen_brechen_den_Download_ab()
+    {
+        var inner = Client();
+        var client = new WaitingClient(inner);
+        var vm = Vm(client);
+        await vm.LoadAsync();
+        var window = new WhisperLoom.App.Views.Updates.VersionListWindow(vm);
+        window.Show();
+        var install = vm.InstallAsync(vm.Rows[0]);
+        window.KeyPressQwerty(Avalonia.Input.PhysicalKey.Escape, Avalonia.Input.RawInputModifiers.None);
+        Assert.Equal(UpdateOutcome.Declined, await install);
+        Assert.True(window.IsVisible); // Esc bricht zuerst nur das Laden ab
+
+        var again = vm.InstallAsync(vm.Rows[0]);
+        window.Close();
+        Assert.Equal(UpdateOutcome.Declined, await again);
+        Assert.Empty(inner.Applied);
     }
 
     [AvaloniaTheory]

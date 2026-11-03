@@ -168,6 +168,11 @@ public sealed partial class VersionListViewModel(
         var started = System.Diagnostics.Stopwatch.StartNew();
         void Show(int percent)
         {
+            // Ein verspäteter Fortschritt (Post aus Velopacks Thread) überschreibt nie die Endmeldung.
+            if (!ReferenceEquals(_download, download) || !IsDownloading)
+            {
+                return;
+            }
             Progress = Math.Clamp(percent, 0, 100);
             Status = Loc.Instance.Format("Channel_DownloadingProgress", row.Version, DownloadText.OfPercent(percent, started.Elapsed));
         }
@@ -185,6 +190,7 @@ public sealed partial class VersionListViewModel(
                 }
             });
             download.Token.ThrowIfCancellationRequested();
+            IsDownloading = false; // ab hier nicht mehr abbrechbar: Balken und „Abbrechen“ weg
             log.Event("update.apply", ("version", row.Version), ("channel", row.Release.Channel), ("downgrade", row.IsDowngrade), ("source", "list"));
             if (channelChosen is not null)
             {
@@ -199,8 +205,9 @@ public sealed partial class VersionListViewModel(
             Status = Loc.Instance["Channel_DownloadCanceled"];
             return UpdateOutcome.Declined;
         }
-        catch (Exception e) when (e is not OperationCanceledException)
+        catch (Exception e)
         {
+            // Auch ein fremder Abbruch (z. B. Zeitüberschreitung im Download) ist ein Fehlschlag, kein Absturz in OnInstall.
             log.Event("update.manual", ("status", "failed"), ("errorClass", e.GetType().Name));
             Status = Loc.Instance["Channel_InstallFailed"];
             return UpdateOutcome.Failed;

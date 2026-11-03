@@ -20,14 +20,32 @@ public partial class VersionListWindow : Window
         DataContext = viewModel;
     }
 
-    /// <summary>Esc schließt (UX-3 Befund 4); das Fenster, aus dem es geöffnet wurde, bekommt den Fokus zurück.</summary>
+    /// <summary>
+    /// Esc schließt (UX-3 Befund 4); das Fenster, aus dem es geöffnet wurde, bekommt den Fokus zurück. Während eines
+    /// Downloads bricht Esc zuerst nur das Laden ab (UX-6).
+    /// </summary>
     protected override void OnKeyDown(Avalonia.Input.KeyEventArgs e)
     {
         base.OnKeyDown(e);
         if (!e.Handled && e.Key == Avalonia.Input.Key.Escape && e.KeyModifiers == Avalonia.Input.KeyModifiers.None)
         {
             e.Handled = true;
+            if (DataContext is VersionListViewModel { IsDownloading: true } vm)
+            {
+                vm.CancelDownloadCommand.Execute(null);
+                return;
+            }
             Close();
+        }
+    }
+
+    /// <summary>Schließen bricht einen laufenden Download ab: kein unsichtbares Laden mit Neustart danach.</summary>
+    protected override void OnClosed(EventArgs e)
+    {
+        base.OnClosed(e);
+        if (DataContext is VersionListViewModel { IsDownloading: true } vm)
+        {
+            vm.CancelDownloadCommand.Execute(null);
         }
     }
 
