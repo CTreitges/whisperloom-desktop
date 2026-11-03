@@ -82,6 +82,9 @@ public sealed class InputPresenter : IInputPresenter
     internal static bool Sticks(HintTone tone) => tone is HintTone.Warning or HintTone.Error;
 
     /// <summary>Ein neues Diktat nimmt einen stehenden Hinweis weg; er gehört zum vorigen.</summary>
+    /// <summary>Läuft die Zeit des Hinweises (Tests: stehende Hinweise starten sie nicht).</summary>
+    internal bool HintTimerRunning => _hintTimer.IsEnabled;
+
     private void HideStickyHint()
     {
         if (_hint is { Sticky: true, IsVisible: true })

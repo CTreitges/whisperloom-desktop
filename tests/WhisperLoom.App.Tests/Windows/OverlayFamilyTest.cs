@@ -277,6 +277,27 @@ public sealed class OverlayFamilyTest
         Assert.Equal(sticks, InputPresenter.Sticks(tone));
 
     [AvaloniaFact]
+    public void Presenter_laesst_Warnung_stehen_bis_zum_naechsten_Diktat()
+    {
+        Loc.Instance.SetLanguage("de");
+        var presenter = new InputPresenter(_ => null);
+        presenter.ShowHint("toast", "WhisperLoom", "Passwortfeld – nicht eingefügt", TimeSpan.FromSeconds(4), IntPtr.Zero, HintTone.Warning);
+        Assert.NotNull(presenter.Status()["hint"]);
+        Assert.False(presenter.HintTimerRunning); // kein Ablauf per Zeit
+
+        presenter.ShowPill(IntPtr.Zero); // nächstes Diktat nimmt ihn weg
+        Assert.Null(presenter.Status()["hint"]);
+        presenter.HidePill();
+
+        presenter.ShowHint("toast", "WhisperLoom", "Kopiert", TimeSpan.FromSeconds(4), IntPtr.Zero, HintTone.Copied);
+        Assert.NotNull(presenter.Status()["hint"]);
+        Assert.True(presenter.HintTimerRunning); // Auskunft läuft wieder ab
+        presenter.ShowPill(IntPtr.Zero);
+        Assert.NotNull(presenter.Status()["hint"]); // nicht stehend: bleibt bis zum Ablauf
+        presenter.HidePill();
+    }
+
+    [AvaloniaFact]
     public void Stehender_Hinweis_hat_Schliessen_mit_Namen()
     {
         Loc.Instance.SetLanguage("de");
