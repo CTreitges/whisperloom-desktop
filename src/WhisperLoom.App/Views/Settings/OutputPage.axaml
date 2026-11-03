@@ -6,6 +6,12 @@
              xmlns:l="using:WhisperLoom.App.Localization"
              x:Class="WhisperLoom.App.Views.Settings.OutputPage"
              x:DataType="vm:OutputPageViewModel">
+  <!--
+    Seite „Ausgabe“ (UX-2): allgemeine Einfüge-Art, dann die App-Profile nach K2 (freigabe.md Punkt 8) als Gruppe ohne Karte mit
+    eigenen Profilkarten: Kopf mit Nummer, Schalter „<Name> aktiv“, Aufklapp-Knopf (Name, „Vorrang“, Zusammenfassung der
+    Abweichungen) und Pfeilen; Körper einspaltig mit Labels über den Feldern; Fuß „Profil ‚X‘ löschen“. Darunter Vorschläge nur
+    für fehlende Programme, die Statuszeile mit „Rückgängig“ und der eine Hauptknopf „Profil hinzufügen“.
+  -->
   <ds:SettingsPage TitleKey="Page_output" IntroKey="PageIntro_output">
     <StackPanel Spacing="{DynamicResource Loom.Space.5}">
       <ds:HintRow TextKey="Output_LinuxHint" IsVisible="{Binding IsLinux}" />
@@ -23,55 +29,189 @@
         </StackPanel>
       </ds:SettingsGroup>
 
-      <ds:SettingsGroup TitleKey="G_Profiles" IsVisible="{Binding IsWindows}">
-        <StackPanel>
-          <ds:SettingRow Path="desktop.profiles" Stacked="True">
-            <StackPanel Spacing="8">
-              <ItemsControl x:Name="ProfileList" ItemsSource="{Binding Profiles.Rows}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="p:ProfileRowViewModel">
-                    <Border Background="{DynamicResource Loom.SurfaceHigh}" CornerRadius="{DynamicResource Loom.Radius.Control}" Padding="10" Margin="0,4">
-                      <StackPanel Spacing="6">
-                        <Grid ColumnDefinitions="2*,*,2*" ColumnSpacing="8">
-                          <TextBox Text="{Binding Process, UpdateSourceTrigger=LostFocus}" PlaceholderText="{Binding [Profile_Process], Source={x:Static l:Loc.Instance}}"
-                                   AutomationProperties.Name="{Binding [Profile_Process], Source={x:Static l:Loc.Instance}}" />
-                          <TextBox Grid.Column="1" Text="{Binding Name, UpdateSourceTrigger=LostFocus}" PlaceholderText="{Binding [Profile_Name], Source={x:Static l:Loc.Instance}}"
+      <ds:SettingsGroup Classes="bare" TitleKey="G_Profiles" IntroKey="Profile_Intro" IsVisible="{Binding IsWindows}">
+        <ds:SettingRow Path="desktop.profiles" Stacked="True" Bare="True" Classes="flush">
+          <StackPanel Spacing="{DynamicResource Loom.Space.3}">
+            <TextBlock x:Name="ProfilesEmpty" Text="{Binding [Profile_Empty], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding Profiles.IsEmpty}"
+                       Margin="17,0,0,0" Foreground="{DynamicResource Loom.TextSecondary}" TextWrapping="Wrap" />
+            <ItemsControl x:Name="ProfileList" ItemsSource="{Binding Profiles.Rows}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <StackPanel Spacing="{DynamicResource Loom.Space.2}" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="p:ProfileRowViewModel">
+                  <Border Classes="card">
+                    <StackPanel>
+                      <!-- Kopf: Nummer · Schalter · Aufklappen (Name, Vorrang, Zusammenfassung) · Pfeile -->
+                      <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="12" Margin="16,8" MinHeight="40">
+                        <TextBlock Text="{Binding Number}" FontWeight="SemiBold" VerticalAlignment="Center" MinWidth="12"
+                                   Foreground="{DynamicResource Loom.TextSecondary}" />
+                        <ToggleSwitch Grid.Column="1" x:Name="ActiveToggle" IsChecked="{Binding Enabled}" OnContent="" OffContent="" MinWidth="0"
+                                      VerticalAlignment="Center" AutomationProperties.Name="{Binding ActiveLabel}" />
+                        <ToggleButton Grid.Column="2" x:Name="OpenButton" Classes="disclosure" IsChecked="{Binding IsOpen}"
+                                      AutomationProperties.Name="{Binding DisplayName}" AutomationProperties.HelpText="{Binding Summary}">
+                          <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" Margin="4,6">
+                            <Panel VerticalAlignment="Top" Margin="0,1,0,0">
+                              <ds:LoomIcon Data="{DynamicResource Loom.Icon.Expand}" IsVisible="{Binding !IsOpen}" />
+                              <ds:LoomIcon Data="{DynamicResource Loom.Icon.Collapse}" IsVisible="{Binding IsOpen}" />
+                            </Panel>
+                            <StackPanel Grid.Column="1" Spacing="2">
+                              <WrapPanel ItemSpacing="8" LineSpacing="4">
+                                <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                <Border Classes="pill good" IsVisible="{Binding HasPriority}">
+                                  <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <ds:LoomIcon Data="{DynamicResource Loom.Icon.Priority}" Width="12" Height="12" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding [Profile_Priority], Source={x:Static l:Loc.Instance}}" />
+                                  </StackPanel>
+                                </Border>
+                              </WrapPanel>
+                              <TextBlock Text="{Binding Summary}" Classes="caption" TextWrapping="Wrap" />
+                            </StackPanel>
+                          </Grid>
+                        </ToggleButton>
+                        <Panel Grid.Column="3" Width="68" VerticalAlignment="Center">
+                          <Button x:Name="UpButton" Classes="icon" HorizontalAlignment="Left" Command="{Binding MoveUpCommand}" IsVisible="{Binding CanMoveUp}"
+                                  AutomationProperties.Name="{Binding MoveUpLabel}" ToolTip.Tip="{Binding MoveUpLabel}">
+                            <ds:LoomIcon Data="{DynamicResource Loom.Icon.MoveUp}" />
+                          </Button>
+                          <Button x:Name="DownButton" Classes="icon" HorizontalAlignment="Right" Command="{Binding MoveDownCommand}" IsVisible="{Binding CanMoveDown}"
+                                  AutomationProperties.Name="{Binding MoveDownLabel}" ToolTip.Tip="{Binding MoveDownLabel}">
+                            <ds:LoomIcon Data="{DynamicResource Loom.Icon.MoveDown}" />
+                          </Button>
+                        </Panel>
+                      </Grid>
+
+                      <!-- Körper -->
+                      <StackPanel IsVisible="{Binding IsOpen}">
+                        <ds:SettingRow TitleKey="Profile_Name" Stacked="True">
+                          <TextBox x:Name="NameBox" Classes="field" Text="{Binding Name, UpdateSourceTrigger=LostFocus}"
                                    AutomationProperties.Name="{Binding [Profile_Name], Source={x:Static l:Loc.Instance}}" />
-                          <TextBox Grid.Column="2" Text="{Binding TitlePattern, UpdateSourceTrigger=LostFocus}" PlaceholderText="{Binding [Profile_Title], Source={x:Static l:Loc.Instance}}"
+                        </ds:SettingRow>
+                        <ds:SettingRow TitleKey="Profile_Process" DescriptionKey="Profile_Process_Hint" Stacked="True">
+                          <StackPanel Spacing="{DynamicResource Loom.Space.2}">
+                            <WrapPanel ItemSpacing="8" LineSpacing="8">
+                              <TextBox x:Name="ProcessBox" Classes="field" Text="{Binding Process, UpdateSourceTrigger=LostFocus}"
+                                       AutomationProperties.Name="{Binding [Profile_Process], Source={x:Static l:Loc.Instance}}" />
+                              <Button x:Name="PickButton" Classes="secondary" Command="{Binding PickCommand}"
+                                      AutomationProperties.Name="{Binding [Profile_Pick], Source={x:Static l:Loc.Instance}}">
+                                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
+                                  <ds:LoomIcon Data="{DynamicResource Loom.Icon.PickApp}" Width="16" Height="16" VerticalAlignment="Center" />
+                                  <TextBlock Text="{Binding [Profile_Pick], Source={x:Static l:Loc.Instance}}" TextWrapping="Wrap" />
+                                </StackPanel>
+                              </Button>
+                            </WrapPanel>
+                            <StackPanel x:Name="PickPanel" Spacing="{DynamicResource Loom.Space.2}" IsVisible="{Binding PickOpen}">
+                              <TextBlock Text="{Binding [Profile_Running], Source={x:Static l:Loc.Instance}}" Classes="caption" />
+                              <TextBlock Text="{Binding [Profile_RunningNone], Source={x:Static l:Loc.Instance}}" TextWrapping="Wrap"
+                                         IsVisible="{Binding !RunningPrograms.Count}" />
+                              <ItemsControl ItemsSource="{Binding RunningPrograms}">
+                                <ItemsControl.ItemsPanel>
+                                  <ItemsPanelTemplate>
+                                    <WrapPanel ItemSpacing="8" LineSpacing="8" />
+                                  </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                  <DataTemplate x:DataType="x:String">
+                                    <Button Classes="secondary" Content="{Binding}"
+                                            Command="{Binding $parent[ItemsControl].((p:ProfileRowViewModel)DataContext).PickOneCommand}" CommandParameter="{Binding}" />
+                                  </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                              </ItemsControl>
+                            </StackPanel>
+                          </StackPanel>
+                        </ds:SettingRow>
+                        <ds:SettingRow TitleKey="Profile_Stage" DescriptionKey="Profile_Stage_Hint" Stacked="True">
+                          <ds:OptionGroup ItemsSource="{Binding Owner.Stages}" SelectedItem="{Binding Stage}" />
+                        </ds:SettingRow>
+                        <ds:SettingRow TitleKey="Profile_InsertMode" DescriptionKey="Profile_InsertMode_Hint" Stacked="True">
+                          <ds:OptionGroup ItemsSource="{Binding Owner.InsertModes}" SelectedItem="{Binding InsertMode}" />
+                        </ds:SettingRow>
+                        <ds:SettingRow TitleKey="Profile_PressEnter" Stacked="True">
+                          <ds:OptionGroup ItemsSource="{Binding Owner.EnterChoices}" SelectedItem="{Binding Enter}" />
+                        </ds:SettingRow>
+                        <ds:SettingRow TitleKey="Profile_FloatingButton" DescriptionKey="Profile_FloatingButton_Hint" IsVisible="{Binding Owner.FloatingButtonOn}">
+                          <ToggleSwitch IsChecked="{Binding ShowFloatingButton}" OnContent="" OffContent=""
+                                        AutomationProperties.Name="{Binding [Profile_FloatingButton], Source={x:Static l:Loc.Instance}}" />
+                        </ds:SettingRow>
+                        <!-- „Nur bestimmte Fenster“: Offenlegung; offen, solange ein Titel eingetragen ist (beim Öffnen). -->
+                        <StackPanel Margin="12,4,16,4">
+                          <ToggleButton x:Name="AdvancedButton" Classes="disclosure" HorizontalAlignment="Left" IsChecked="{Binding AdvancedOpen}"
+                                        AutomationProperties.Name="{Binding [Profile_Advanced], Source={x:Static l:Loc.Instance}}">
+                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="4,4,8,4">
+                              <Panel>
+                                <ds:LoomIcon Data="{DynamicResource Loom.Icon.Expand}" IsVisible="{Binding !AdvancedOpen}" />
+                                <ds:LoomIcon Data="{DynamicResource Loom.Icon.Collapse}" IsVisible="{Binding AdvancedOpen}" />
+                              </Panel>
+                              <TextBlock Text="{Binding [Profile_Advanced], Source={x:Static l:Loc.Instance}}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            </StackPanel>
+                          </ToggleButton>
+                        </StackPanel>
+                        <ds:SettingRow TitleKey="Profile_Title" DescriptionKey="Profile_Title_Hint" Stacked="True" Error="{Binding TitleWarning}"
+                                       IsVisible="{Binding ShowAdvanced}">
+                          <TextBox x:Name="TitleBox" Classes="wide" Text="{Binding TitlePattern, UpdateSourceTrigger=LostFocus}"
                                    AutomationProperties.Name="{Binding [Profile_Title], Source={x:Static l:Loc.Instance}}" />
-                        </Grid>
-                        <WrapPanel ItemSpacing="8" LineSpacing="6">
-                          <ComboBox ItemsSource="{Binding Owner.Stages}" SelectedItem="{Binding Stage}" MinWidth="150"
-                                    AutomationProperties.Name="{Binding [Profile_Stage], Source={x:Static l:Loc.Instance}}" />
-                          <ComboBox ItemsSource="{Binding Owner.InsertModes}" SelectedItem="{Binding InsertMode}" MinWidth="180"
-                                    AutomationProperties.Name="{Binding [Profile_InsertMode], Source={x:Static l:Loc.Instance}}" />
-                          <StackPanel Orientation="Horizontal" Spacing="6">
-                            <TextBlock Text="{Binding [Profile_PressEnter], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
-                            <ComboBox ItemsSource="{Binding Owner.EnterChoices}" SelectedItem="{Binding Enter}" MinWidth="120"
-                                      AutomationProperties.Name="{Binding [Profile_PressEnter], Source={x:Static l:Loc.Instance}}" />
+                        </ds:SettingRow>
+                        <!-- Fuß: Löschen mit Namen; umkehrbar über „Rückgängig“ in der Statuszeile. -->
+                        <Button x:Name="DeleteButton" Classes="text danger" HorizontalAlignment="Left" Margin="16,4,16,12" Command="{Binding DeleteCommand}"
+                                AutomationProperties.Name="{Binding DeleteLabel}">
+                          <StackPanel Orientation="Horizontal" Spacing="4">
+                            <ds:LoomIcon Data="{DynamicResource Loom.Icon.Delete}" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding DeleteLabel}" TextWrapping="Wrap" />
                           </StackPanel>
-                          <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding $parent[UserControl].((vm:OutputPageViewModel)DataContext).Session.FloatingButton}">
-                            <TextBlock Text="{Binding [Profile_FloatingButton], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
-                            <ComboBox ItemsSource="{Binding Owner.ButtonChoices}" SelectedItem="{Binding Button}" MinWidth="130"
-                                      AutomationProperties.Name="{Binding [Profile_FloatingButton], Source={x:Static l:Loc.Instance}}" />
-                          </StackPanel>
-                          <CheckBox IsChecked="{Binding Enabled}" Content="{Binding [Profile_Enabled], Source={x:Static l:Loc.Instance}}" />
-                          <Button Content="{Binding [Profile_Remove], Source={x:Static l:Loc.Instance}}" Command="{Binding RemoveCommand}" />
-                        </WrapPanel>
-                        <TextBlock Text="{Binding TitleWarning}" Foreground="{DynamicResource Loom.Error}" FontSize="{DynamicResource Loom.Font.Caption}"
-                                   IsVisible="{Binding TitleWarning.Length}" />
+                        </Button>
                       </StackPanel>
-                    </Border>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-              <StackPanel Orientation="Horizontal" Spacing="8">
-                <Button x:Name="ProfileAddButton" Content="{Binding [Profile_Add], Source={x:Static l:Loc.Instance}}" Command="{Binding Profiles.AddCommand}" />
-                <Button x:Name="ProfileSuggestionsButton" Content="{Binding [Profile_Suggestions], Source={x:Static l:Loc.Instance}}" Command="{Binding Profiles.AddSuggestionsCommand}" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <!-- Vorschläge nur für Programme ohne Profil -->
+            <ItemsControl x:Name="SuggestionList" ItemsSource="{Binding Profiles.Suggestions}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <StackPanel Spacing="{DynamicResource Loom.Space.2}" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="p:ProfileSuggestion">
+                  <Border Classes="suggest">
+                    <WrapPanel ItemSpacing="12" LineSpacing="4">
+                      <TextBlock Text="{Binding Text}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                      <Button Classes="text" Command="{Binding AddCommand}" AutomationProperties.Name="{Binding ActionText}">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                          <ds:LoomIcon Data="{DynamicResource Loom.Icon.Add}" VerticalAlignment="Center" />
+                          <TextBlock Text="{Binding ActionText}" />
+                        </StackPanel>
+                      </Button>
+                    </WrapPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <WrapPanel x:Name="ProfileStatus" ItemSpacing="12" LineSpacing="4" Margin="17,0,0,0" IsVisible="{Binding Profiles.HasStatus}">
+              <TextBlock Text="{Binding Profiles.Status}" TextWrapping="Wrap" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" />
+              <Button x:Name="UndoButton" Classes="text" Command="{Binding Profiles.UndoCommand}" IsVisible="{Binding Profiles.CanUndo}"
+                      AutomationProperties.Name="{Binding [Action_Undo], Source={x:Static l:Loc.Instance}}">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                  <ds:LoomIcon Data="{DynamicResource Loom.Icon.Undo}" VerticalAlignment="Center" />
+                  <TextBlock Text="{Binding [Action_Undo], Source={x:Static l:Loc.Instance}}" />
+                </StackPanel>
+              </Button>
+            </WrapPanel>
+
+            <Button x:Name="ProfileAddButton" Classes="accent" HorizontalAlignment="Left" Margin="17,0,0,0" Command="{Binding Profiles.AddCommand}"
+                    AutomationProperties.Name="{Binding [Profile_Add], Source={x:Static l:Loc.Instance}}">
+              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
+                <ds:LoomIcon Data="{DynamicResource Loom.Icon.Add}" Width="16" Height="16" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding [Profile_Add], Source={x:Static l:Loc.Instance}}" />
               </StackPanel>
-            </StackPanel>
-          </ds:SettingRow>
-        </StackPanel>
+            </Button>
+          </StackPanel>
+        </ds:SettingRow>
       </ds:SettingsGroup>
     </StackPanel>
   </ds:SettingsPage>

@@ -78,7 +78,6 @@ public sealed partial class SettingsViewModel : ObservableObject
         Microphones = [new Choice("", loc["Mic_Default"]), .. (microphones ?? []).Select(m => new Choice(m, m))];
         InsertModes = [.. new[] { "paste", "type", "clipboard" }.Select(m => new Choice(m, loc["Insert_" + m], loc["Insert_" + m + "_Desc"]))];
         Hotkeys = new HotkeysViewModel(_desktop, recordHotkey, _s.Selection) { Changed = Touch };
-        Profiles = new Features.Profiles.ProfilesViewModel(_desktop) { Changed = Touch };
 
         _sttProvider = Pick(SttProviders, _s.Stt.ProviderId);
         _sttFallbackProvider = Pick(SttProviders, _s.SttFallback.ProviderId);
@@ -91,6 +90,15 @@ public sealed partial class SettingsViewModel : ObservableObject
         _uiLanguage = Pick(UiLanguages, _desktop.UiLanguage);
         _microphone = Pick(Microphones, _desktop.Microphone);
         _insertMode = Pick(InsertModes, _desktop.InsertMode);
+        // App-Profile erben Stufe, Ausgabe, Enter und schwebenden Knopf: „Wie allgemein (zurzeit …)“ folgt diesen Werten (K2).
+        Profiles = new Features.Profiles.ProfilesViewModel(_desktop, () => new(Stage.Value, InsertMode.Value, PressEnter, FloatingButton)) { Changed = Touch };
+        PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(Stage) or nameof(InsertMode) or nameof(PressEnter) or nameof(FloatingButton))
+            {
+                Profiles.RefreshDefaults();
+            }
+        };
         _historySize = HistorySizes.Contains(_s.History.Size) ? _s.History.Size : HistorySettings.DefaultSize;
 
         SttKey = new KeyFieldViewModel(SecretNames.Stt, secrets, checker, () => (SttProvider.Value, SttBaseUrl)) { Editable = KeyEditable(SecretNames.Stt), Policy = _policy };

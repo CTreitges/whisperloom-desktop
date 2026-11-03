@@ -30,6 +30,21 @@ internal static class UxViews
         new("settings-text", Settings, Pages + "TextPage.axaml", t => PageAsync("text", t)),
         new("settings-text-local", Settings, Pages + "TextPage.axaml", t => PageAsync("text", t, new PageSetup(LocalDemo))),
         new("settings-output", Settings, Pages + "OutputPage.axaml", t => PageAsync("output", t, new PageSetup(WithProfiles))),
+        // K2: Profil 1 offen mit Fenstertitel (Vorrang, „Nur bestimmte Fenster“ offen), Programmliste offen, schwebender Knopf an;
+        // Outlook gelöscht → Statuszeile mit „Rückgängig“ und Vorschlag für Outlook.
+        new("settings-output-open", Settings, Pages + "OutputPage.axaml", t => PageAsync("output", t, new PageSetup(WithProfiles, Act: w =>
+        {
+            var vm = w.Settings!;
+            vm.FloatingButton = true;
+            var terminal = vm.Profiles.Rows[0];
+            terminal.TitlePattern = "Claude";
+            terminal.AdvancedOpen = true;
+            terminal.IsOpen = true;
+            terminal.RunningPrograms = ["chrome.exe", "notepad.exe", "WINWORD.EXE"];
+            terminal.PickOpen = true;
+            vm.Profiles.Rows[1].DeleteCommand.Execute(null);
+            return Task.CompletedTask;
+        }))),
         new("settings-connections", Settings, Pages + "ConnectionsPage.axaml", t => PageAsync("connections", t, new PageSetup(LocalDemo))),
         new("settings-privacy", Settings, Pages + "PrivacyPage.axaml", t => PageAsync("privacy", t)),
         new("settings-system", Settings, Pages + "SystemPage.axaml", t => PageAsync("system", t)),

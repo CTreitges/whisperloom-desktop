@@ -180,10 +180,10 @@
     <Setter Property="Foreground" Value="{DynamicResource Loom.TextSecondary}" />
   </Style>
 
-  <!-- Optionsfeld der Optionsgruppe: Text oben bündig mit dem Kreis. -->
+  <!-- Optionsfeld der Optionsgruppe: erste Textzeile mittig zum Kreis (Fluent: Kreis in 32 px Höhe oben). -->
   <Style Selector="ds|OptionGroup RadioButton">
     <Setter Property="MinHeight" Value="24" />
-    <Setter Property="Padding" Value="8,2,0,0" />
+    <Setter Property="Padding" Value="8,5,0,0" />
   </Style>
 
   <!-- Steuerelemente in Zeilen: einheitliche Breite rechts. -->
@@ -297,6 +297,41 @@
   </Style>
   <Style Selector="Button.result:pointerover /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource Loom.SurfaceHigh}" />
+  </Style>
+
+  <!--
+    Aufklapp-Knopf ohne Fläche (Kopf eines App-Profils, „Nur bestimmte Fenster“): Text in Text-Farbe in jedem Zustand, Hover
+    SurfaceHigh; der Zustand „offen“ steht am Pfeil, nicht als Akzentfläche.
+  -->
+  <Style Selector="ToggleButton.disclosure">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="MinHeight" Value="24" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Foreground" Value="{DynamicResource Loom.Text}" />
+  </Style>
+  <Style Selector="ToggleButton.disclosure /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.disclosure:checked /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource Loom.Text}" />
+  </Style>
+  <Style Selector="ToggleButton.disclosure:pointerover /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.disclosure:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.disclosure:pressed /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.disclosure:checked:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Loom.SurfaceHigh}" />
+    <Setter Property="Foreground" Value="{DynamicResource Loom.Text}" />
+  </Style>
+  <Style Selector="ToggleButton.disclosure ds|LoomIcon">
+    <Setter Property="Width" Value="20" />
+    <Setter Property="Height" Value="20" />
+    <Setter Property="Foreground" Value="{DynamicResource Loom.TextSecondary}" />
+  </Style>
+
+  <!-- Vorschlag unter einer Liste (App-Profile): Kasten mit Outline-Rand, Text und Textknopf. -->
+  <Style Selector="Border.suggest">
+    <Setter Property="BorderBrush" Value="{DynamicResource Loom.Outline}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Loom.Radius.Group}" />
+    <Setter Property="Padding" Value="16,8" />
   </Style>
 
   <!-- Flacher Symbolknopf im Feld (Suche leeren). -->

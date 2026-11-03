@@ -76,9 +76,10 @@ public sealed class SelectionSettingsTest
     {
         using var f = new ControllerFixture();
         var vm = new SettingsViewModel(f.Controller, new MemorySecretStore(), new FakeAccessChecker());
-        vm.Profiles.AddSuggestionsCommand.Execute(null);
-        Assert.Equal("", vm.Profiles.Rows[0].Button.Value); // Wie eingestellt
-        vm.Profiles.Rows[1].Button = vm.Profiles.ButtonChoices.Single(c => c.Value == "off");
+        vm.Profiles.Suggestions[0].AddCommand.Execute(null);
+        vm.Profiles.Suggestions[0].AddCommand.Execute(null);
+        Assert.True(vm.Profiles.Rows[0].ShowFloatingButton); // Wie allgemein
+        vm.Profiles.Rows[1].ShowFloatingButton = false; // Schalter „Schwebenden Knopf zeigen“ aus = hier nie
 
         await vm.Save();
 

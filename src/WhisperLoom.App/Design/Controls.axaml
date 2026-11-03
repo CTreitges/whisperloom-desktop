@@ -49,7 +49,7 @@
                      AutomationProperties.HeadingLevel="2" />
           <TextBlock Name="PART_Intro" Text="{TemplateBinding Intro}" TextWrapping="Wrap" IsVisible="False" Margin="17,0,0,0"
                      FontSize="{DynamicResource Loom.Font.Caption}" Foreground="{DynamicResource Loom.TextSecondary}" />
-          <Border Background="{DynamicResource Loom.Surface}" CornerRadius="{DynamicResource Loom.Radius.Group}"
+          <Border Name="PART_Card" Background="{DynamicResource Loom.Surface}" CornerRadius="{DynamicResource Loom.Radius.Group}"
                   BorderBrush="{DynamicResource Loom.CardEdge}" BorderThickness="1" ClipToBounds="True">
             <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" />
           </Border>
@@ -58,6 +58,12 @@
         </StackPanel>
       </ControlTemplate>
     </Setter>
+    <!-- Gruppe ohne Karte (Klasse bare): der Inhalt bringt eigene Karten mit (App-Profile), deren Text auf der Kante liegt. -->
+    <Style Selector="^.bare /template/ Border#PART_Card">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="ClipToBounds" Value="False" />
+    </Style>
     <Style Selector="^:footer /template/ TextBlock#PART_Footer">
       <Setter Property="IsVisible" Value="True" />
     </Style>
@@ -78,7 +84,7 @@
             </Transitions>
           </StackPanel.Transitions>
           <Border Name="PART_Separator" Height="1" Background="{DynamicResource Loom.Separator}" Margin="16,0,16,0" />
-          <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" Margin="16,12,16,12" MinHeight="24">
+          <Grid Name="PART_Body" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" Margin="16,12,16,12" MinHeight="24">
             <StackPanel Name="PART_Text" Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
               <WrapPanel Orientation="Horizontal" ItemSpacing="8" LineSpacing="4">
                 <TextBlock Text="{TemplateBinding Title}" FontSize="{DynamicResource Loom.Font.Body}" Foreground="{DynamicResource Loom.Text}"
@@ -131,6 +137,13 @@
     </Style>
     <Style Selector="^:bare:stacked /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Margin" Value="0" />
+    </Style>
+    <!-- Zeile ohne Innenabstand (Klasse flush, in einer Gruppe ohne Karte): der Inhalt liegt selbst auf der Kante. -->
+    <Style Selector="^.flush /template/ Grid#PART_Body">
+      <Setter Property="Margin" Value="0" />
+    </Style>
+    <Style Selector="^.flush /template/ Border#PART_Separator">
+      <Setter Property="IsVisible" Value="False" />
     </Style>
     <!-- Sprung aus der Suche: Zeile kurz markieren (SettingsWindow.Reveal). -->
     <Style Selector="^:revealed /template/ StackPanel#PART_Root">
