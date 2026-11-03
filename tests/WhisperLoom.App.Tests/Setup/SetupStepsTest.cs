@@ -119,11 +119,12 @@ public sealed class SetupStepsTest
         Dispatcher.UIThread.RunJobs();
         Assert.Equal("Copied", Label());
 
-        // Zweiter Klick nach 1,2 s: „Kopiert“ steht wieder volle zwei Sekunden (Nachprüfung PR #42: der erste Timer setzte früher zurück).
-        await WaitAsync(TimeSpan.FromMilliseconds(1200));
+        // Zweiter Klick nach 1,5 s: „Kopiert“ steht wieder volle zwei Sekunden (Nachprüfung PR #42: der erste Timer setzte früher
+        // zurück). Geprüft 0,8 s danach: ohne Fix 0,3 s nach dem ersten Timer, mit Fix 1,2 s Puffer.
+        await WaitAsync(TimeSpan.FromMilliseconds(1500));
         button.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
         Dispatcher.UIThread.RunJobs();
-        await WaitAsync(TimeSpan.FromMilliseconds(1200));
+        await WaitAsync(TimeSpan.FromMilliseconds(800));
         Assert.Equal("Copied", Label());
 
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(6);

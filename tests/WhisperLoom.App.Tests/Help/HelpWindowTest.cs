@@ -135,11 +135,15 @@ public sealed class HelpWindowTest
         window.Help.SearchText = "Proxy";
         Dispatcher.UIThread.RunJobs();
         Named<TextBox>(window, "SearchBox").Focus(NavigationMethod.Tab);
-        for (var i = 0; i < 3; i++)
+        var reachedList = false;
+        for (var i = 0; i < 3 && !reachedList; i++)
         {
             window.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
             Assert.True(window.Help.IsSearching);
+            reachedList = list.IsKeyboardFocusWithin;
         }
+        Assert.True(reachedList); // der Fall wird wirklich geprüft: Fokus in der Seitenleiste
+        Assert.Null(list.SelectedItem);
 
         // Suche leeren (Esc) bringt den vorherigen Abschnitt zurück.
         window.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);

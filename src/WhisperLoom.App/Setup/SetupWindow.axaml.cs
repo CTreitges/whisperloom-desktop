@@ -59,7 +59,8 @@ public partial class SetupWindow : Window
             var first = StepContent.GetVisualDescendants().OfType<InputElement>()
                 .FirstOrDefault(c => c.Focusable && c.IsEffectivelyVisible && c.IsEffectivelyEnabled);
             // In einer Auswahlgruppe (Tab einmal) die gewählte Option, nicht die erste (sonst wechselt Leertaste die Wahl).
-            if (first?.FindAncestorOfType<Design.OptionGroup>() is { } group && KeyboardNavigation.GetTabOnceActiveElement(group) is InputElement active)
+            if (first?.FindAncestorOfType<Design.OptionGroup>() is { } group && KeyboardNavigation.GetTabOnceActiveElement(group) is InputElement active
+                && group.IsVisualAncestorOf(active) && active.IsEffectivelyVisible && active.IsEffectivelyEnabled)
             {
                 first = active;
             }
