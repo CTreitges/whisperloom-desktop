@@ -132,7 +132,15 @@ public sealed class DesignTokensTest
         ("ToggleButtonForegroundCheckedPointerOver", "ToggleButtonBackgroundCheckedPointerOver"),
         ("ToggleButtonForegroundCheckedPressed", "ToggleButtonBackgroundCheckedPressed"),
         ("RadioButtonCheckGlyphFill", "RadioButtonOuterEllipseCheckedFill"),
+        ("RadioButtonCheckGlyphFillPointerOver", "RadioButtonOuterEllipseCheckedFillPointerOver"),
+        ("RadioButtonCheckGlyphFillPressed", "RadioButtonOuterEllipseCheckedFillPressed"),
         ("AccentButtonForeground", "AccentButtonBackground"),
+        ("AccentButtonForegroundPointerOver", "AccentButtonBackgroundPointerOver"),
+        ("AccentButtonForegroundPressed", "AccentButtonBackgroundPressed"),
+        ("CheckBoxCheckGlyphForegroundCheckedPointerOver", "CheckBoxCheckBackgroundFillCheckedPointerOver"),
+        ("CheckBoxCheckGlyphForegroundCheckedPressed", "CheckBoxCheckBackgroundFillCheckedPressed"),
+        ("ToggleSwitchKnobFillOnPointerOver", "ToggleSwitchFillOnPointerOver"),
+        ("ToggleSwitchKnobFillOnPressed", "ToggleSwitchFillOnPressed"),
         ("Loom.OnSelection", "TextControlSelectionHighlightColor"),
     ];
 
@@ -180,6 +188,22 @@ public sealed class DesignTokensTest
         {
             window.Close();
         }
+    }
+
+    /// <summary>Review UX-1: Hover und Gedrückt auf Akzent- und Auswahlflächen heben sich einen Ton ab (vorher gleiche Farbe).</summary>
+    [AvaloniaTheory]
+    [InlineData("Dark")]
+    [InlineData("Light")]
+    public void Hover_and_pressed_on_accent_and_selection_differ_from_rest(string variantName)
+    {
+        var variant = VariantOf(variantName);
+        string[] surfaces = ["AccentButtonBackground", "ToggleButtonBackgroundChecked", "RadioButtonOuterEllipseCheckedFill", "ComboBoxItemBackgroundSelected"];
+        var same = surfaces
+            .SelectMany(k => new[] { "PointerOver", "Pressed" }.Select(s => (k, s)))
+            .Where(x => Composited(x.k + x.s, variant) == Composited(x.k, variant))
+            .Select(x => x.k + x.s)
+            .ToList();
+        Assert.Empty(same);
     }
 
     [AvaloniaFact]

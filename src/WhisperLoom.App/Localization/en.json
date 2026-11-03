@@ -340,11 +340,9 @@
   "Key_AtEntry": "The key belongs to the provider (page “Connections”) and is only sent to its address.",
   "Key_Check": "Test connection",
   "Key_Delete": "Delete",
-  "Key_Deleted": "Key deleted",
-  "Key_NewWatermark": "Paste new key",
-  "Key_NotSet": "not set",
-  "Key_Replace": "Replace",
-  "Key_Saved": "Key saved",
+  "Key_Deleted": "Key deleted.",
+  "Key_Replace": "Replace …",
+  "Key_Saved": "Key saved.",
   "Key_StoreError": "Key storage not reachable",
   "Language_Label": "Language",
   "Language_auto": "Automatic",
@@ -896,5 +894,12 @@
   "Profile_Sum_Title": "only windows with “{0}”",
   "Profile_Sum_BadTitle": "Window title unreadable, doesn’t apply like this",
   "Profile_Sum_Inherits": "takes everything from general",
-  "Action_Undo": "Undo"
+  "Action_Undo": "Undo",
+  "Key_State_Set": "Key saved",
+  "Key_State_None": "No key saved",
+  "Key_Enter": "Enter key …",
+  "Key_NewLabel": "New API key",
+  "Key_NewHint": "Paste with Ctrl+V; the key is never shown.",
+  "Key_SaveNew": "Save key",
+  "Key_Restored": "Key restored."
 }

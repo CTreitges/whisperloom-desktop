@@ -340,11 +340,9 @@
   "Key_AtEntry": "Der Key liegt beim Anbieter (Seite „Verbindungen“) und geht nur an dessen Adresse.",
   "Key_Check": "Verbindung testen",
   "Key_Delete": "Löschen",
-  "Key_Deleted": "Key gelöscht",
-  "Key_NewWatermark": "Neuen Key einfügen",
-  "Key_NotSet": "nicht gesetzt",
-  "Key_Replace": "Ersetzen",
-  "Key_Saved": "Key gespeichert",
+  "Key_Deleted": "Key gelöscht.",
+  "Key_Replace": "Ersetzen …",
+  "Key_Saved": "Key gespeichert.",
   "Key_StoreError": "Key-Ablage nicht erreichbar",
   "Language_Label": "Sprache",
   "Language_auto": "Automatisch",
@@ -896,5 +894,12 @@
   "Profile_Sum_Title": "nur Fenster mit „{0}“",
   "Profile_Sum_BadTitle": "Fenstertitel nicht lesbar, greift so nicht",
   "Profile_Sum_Inherits": "übernimmt alles von allgemein",
-  "Action_Undo": "Rückgängig"
+  "Action_Undo": "Rückgängig",
+  "Key_State_Set": "Key gespeichert",
+  "Key_State_None": "Kein Key gespeichert",
+  "Key_Enter": "Key eingeben …",
+  "Key_NewLabel": "Neuer API-Key",
+  "Key_NewHint": "Einfügen mit Strg+V; der Key wird nie angezeigt.",
+  "Key_SaveNew": "Key speichern",
+  "Key_Restored": "Key wiederhergestellt."
 }
