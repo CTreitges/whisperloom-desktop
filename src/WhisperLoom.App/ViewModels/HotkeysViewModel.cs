@@ -95,7 +95,16 @@ public sealed partial class HotkeysViewModel : ObservableObject
     }
 
     /// <summary>Seite nur unter Windows; unter Linux steuern Kürzel der Desktop-Umgebung die CLI.</summary>
-    public bool Available => OperatingSystem.IsWindows();
+    public bool Available => Windows;
+
+    /// <summary>Plattform (Tests setzen Linux nach).</summary>
+    internal bool Windows { get; init; } = OperatingSystem.IsWindows();
+
+    /// <summary>
+    /// Zeile „Tastenkürzel dafür“ der Markierung: nur unter Windows und nur, wenn das Kürzel an ist (Nur zeigen, was gilt;
+    /// Befund H2 unter WSLg: unter Linux stand dort „Ändern …“ ohne Wirkung).
+    /// </summary>
+    public bool ShowSelectionCombo => Available && SelectionOn;
 
     public bool Enabled
     {
@@ -139,6 +148,7 @@ public sealed partial class HotkeysViewModel : ObservableObject
             {
                 _selectionOn = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(ShowSelectionCombo));
                 RowChanged();
             }
         }
