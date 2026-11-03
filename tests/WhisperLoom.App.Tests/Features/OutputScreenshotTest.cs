@@ -41,7 +41,7 @@ public sealed class OutputScreenshotTest
 
     private static T OnDark<T>(T window) where T : Window
     {
-        window.Background = (Avalonia.Media.IBrush)Avalonia.Application.Current!.FindResource("WlBackground")!;
+        window.Background = (Avalonia.Media.IBrush)Avalonia.Application.Current!.FindResource(Avalonia.Styling.ThemeVariant.Dark, "Loom.Background")!;
         return window;
     }
 

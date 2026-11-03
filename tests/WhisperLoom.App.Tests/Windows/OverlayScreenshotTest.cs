@@ -32,7 +32,7 @@ public class OverlayScreenshotTest
     private static T OnDark<T>(T window) where T : Window
     {
         // Transparente Fenster würden schwarz gerendert; für das Bild der App-Hintergrund.
-        window.Background = (Avalonia.Media.IBrush)Avalonia.Application.Current!.FindResource("WlBackground")!;
+        window.Background = (Avalonia.Media.IBrush)Avalonia.Application.Current!.FindResource(Avalonia.Styling.ThemeVariant.Dark, "Loom.Background")!;
         return window;
     }
 
