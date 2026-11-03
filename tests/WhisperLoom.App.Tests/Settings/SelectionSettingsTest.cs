@@ -135,6 +135,24 @@ public sealed class SelectionSettingsTest
         Assert.Contains(nameof(HotkeysViewModel.ShowSelectionCombo), raised);
     }
 
+    /// <summary>Befund H2 (WSLg), Prüfer-Fund UX-5: die Zeile auf der Seite hängt an <c>ShowSelectionCombo</c>, nicht an SelectionOn.</summary>
+    [AvaloniaFact]
+    public void Seite_blendet_die_Kuerzel_Zeile_unter_Linux_aus()
+    {
+        Loc.Instance.SetLanguage("de");
+        using var f = new ControllerFixture();
+        var window = Open(f, out var vm);
+        SettingsUi.Show(window, "dictation");
+        var row = SettingsUi.Rows(window).Single(r => r.TitleKey == "Hotkey_SelectionCombo");
+        Assert.True(row.IsVisible);
+
+        vm.Hotkeys.Windows = false; // wie unter Linux, SelectionOn bleibt an
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(vm.Hotkeys.SelectionOn);
+        Assert.False(row.IsVisible);
+        window.Close();
+    }
+
     /// <summary>Befund H2 (UIA-Dump): die Liste der Tastenkürzel war die einzige unbenannte Stelle.</summary>
     [AvaloniaFact]
     public void Liste_der_Tastenkuerzel_hat_einen_Namen()

@@ -97,8 +97,19 @@ public sealed partial class HotkeysViewModel : ObservableObject
     /// <summary>Seite nur unter Windows; unter Linux steuern Kürzel der Desktop-Umgebung die CLI.</summary>
     public bool Available => Windows;
 
-    /// <summary>Plattform (Tests setzen Linux nach).</summary>
-    internal bool Windows { get; init; } = OperatingSystem.IsWindows();
+    /// <summary>Plattform; Tests setzen Linux nach (auch an einer offenen Seite, darum mit Meldung).</summary>
+    internal bool Windows
+    {
+        get => _windows;
+        set
+        {
+            _windows = value;
+            OnPropertyChanged(nameof(Available));
+            OnPropertyChanged(nameof(ShowSelectionCombo));
+        }
+    }
+
+    private bool _windows = OperatingSystem.IsWindows();
 
     /// <summary>
     /// Zeile „Tastenkürzel dafür“ der Markierung: nur unter Windows und nur, wenn das Kürzel an ist (Nur zeigen, was gilt;
