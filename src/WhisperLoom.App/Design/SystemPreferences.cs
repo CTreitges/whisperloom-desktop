@@ -10,7 +10,7 @@ public interface ISystemPreferences
     /// <summary>Faktor der Systemtextgröße, 1,0 bis 2,25 (Windows erlaubt 100–225 %).</summary>
     double TextScale { get; }
 
-    /// <summary>false, wenn das System Animationen abgeschaltet hat (Richtlinie 02 §2.7, reduzierte Bewegung).</summary>
+    /// <summary>false, wenn das System Animationen abgeschaltet hat (Richtlinie 02 §2.7, reduzierte Bewegung); genutzt ab UX-4 (Overlay).</summary>
     bool AnimationsEnabled { get; }
 }
 

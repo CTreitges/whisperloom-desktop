@@ -8,15 +8,10 @@ namespace WhisperLoom.App.Tests.Accessibility;
 /// <summary>Textgröße und „Animationen anzeigen“ des Systems lesen (UX-1). Windows nur unter einem eigenen Test-Schlüssel.</summary>
 public sealed class SystemPreferencesTest : IDisposable
 {
-    private readonly string _dir = Path.Combine(Path.GetTempPath(), "wl-prefs-" + Guid.NewGuid().ToString("N"));
     private readonly string _key = @"Software\WhisperLoom-Test-" + Guid.NewGuid().ToString("N");
 
     public void Dispose()
     {
-        if (Directory.Exists(_dir))
-        {
-            Directory.Delete(_dir, recursive: true);
-        }
         if (OperatingSystem.IsWindows())
         {
             Registry.CurrentUser.DeleteSubKeyTree(_key, throwOnMissingSubKey: false);
@@ -56,33 +51,26 @@ public sealed class SystemPreferencesTest : IDisposable
     }
 
     [Fact]
-    public void Linux_prefers_kde_font_dpi_over_gsettings()
+    public void Linux_leaves_text_size_to_avalonia_even_with_a_desktop_factor()
     {
-        Directory.CreateDirectory(_dir);
-        var gnome = new LinuxPreferences(_dir, key => key == "text-scaling-factor" ? "1.25\n" : "true\n");
-        Assert.Equal(1.25, gnome.TextScale);
-        Assert.True(gnome.AnimationsEnabled);
-
-        File.WriteAllText(Path.Combine(_dir, "kdeglobals"), "[General]\nfont=Noto Sans,10\nforceFontDPI=144\n");
-        Assert.Equal(1.5, new LinuxPreferences(_dir, _ => "1.25").TextScale);
+        // GNOME 125 % bzw. KDE forceFontDPI stecken schon in Xft.dpi, mit dem Avalonia die ganze Oberfläche skaliert.
+        var prefs = new LinuxPreferences(key => key == "text-scaling-factor" ? "1.25\n" : "true\n");
+        Assert.Equal(1.0, prefs.TextScale);
     }
 
     [Fact]
-    public void Linux_without_any_setting_is_100_percent_with_animations()
+    public void Linux_reads_animations_once_and_defaults_to_on()
     {
-        Directory.CreateDirectory(_dir);
-        File.WriteAllText(Path.Combine(_dir, "kcmfontsrc"), "[General]\nforceFontDPI=0\n");
-        var none = new LinuxPreferences(_dir, _ => null);
-        Assert.Equal(1.0, none.TextScale);
-        Assert.True(none.AnimationsEnabled);
-        Assert.False(new LinuxPreferences(_dir, key => key == "enable-animations" ? "false\n" : null).AnimationsEnabled);
+        var calls = 0;
+        var off = new LinuxPreferences(key =>
+        {
+            calls++;
+            return key == "enable-animations" ? "false\n" : null;
+        });
+        Assert.False(off.AnimationsEnabled);
+        Assert.False(off.AnimationsEnabled);
+        Assert.Equal(1, calls);
+        Assert.True(new LinuxPreferences(_ => null).AnimationsEnabled);
+        Assert.True(new LinuxPreferences(_ => "true\n").AnimationsEnabled);
     }
-
-    [Theory]
-    [InlineData("1.25\n", 1.25)]
-    [InlineData("uint32 2", 2.0)]
-    [InlineData("'abc'", null)]
-    [InlineData(null, null)]
-    public void Gsettings_output_is_parsed(string? output, double? expected) =>
-        Assert.Equal(expected, LinuxPreferences.ParseDouble(output));
 }

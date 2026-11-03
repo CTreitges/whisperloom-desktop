@@ -30,6 +30,18 @@ class NormalizePathTest(unittest.TestCase):
     def test_arc_keeps_flags_and_absolute_commands(self):
         self.assertEqual("M 12 3 a 9 9 0 1 0 0 18 z", gen.normalize_path("M12 3a9 9 0 1 0 0 18z"))
 
+    def test_compact_arc_flags_are_single_digits(self):
+        self.assertEqual("M 1 1 a 1 1 0 0 1 2 2", gen.normalize_path("M1 1a1 1 0 012 2"))
+        self.assertEqual("M 0 0 a 2 2 0 1 0 4 0 a 2 2 0 1 0 -4 0", gen.normalize_path("M0 0a2 2 0 104 0a2 2 0 10-4 0"))
+
+    def test_arc_flags_other_than_0_or_1_are_an_error(self):
+        with self.assertRaises(ValueError):
+            gen.normalize_path("M1 1a1 1 0 2 1 2 2")
+
+    def test_numbers_before_the_first_command_are_an_error(self):
+        with self.assertRaises(ValueError):
+            gen.normalize_path("12 3 M1 1")
+
     def test_wrong_argument_count_is_an_error(self):
         with self.assertRaises(ValueError):
             gen.normalize_path("M12 3 L4")
@@ -59,6 +71,12 @@ class DiskTest(unittest.TestCase):
     def test_large_dot_is_covered_without_gaps(self):
         for r in (0.9, 1.25, 3, 5.5):
             self.assert_full_disk(r)
+
+    def test_dot_smaller_than_half_the_stroke_is_an_error(self):
+        with self.assertRaises(ValueError):
+            gen.disk(12, 12, 0.5)
+        with self.assertRaises(ValueError):
+            gen.disk(12, 12, gen.STROKE / 2)
 
 
 class GeometryTest(unittest.TestCase):

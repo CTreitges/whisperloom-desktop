@@ -9,7 +9,7 @@ Dateien: `src/WhisperLoom.App/Design/` – `Tokens.axaml` (Farben, Abstände, Sc
 ## Hell/Dunkel/Hochkontrast
 - Die App steht global auf Dunkel (Bühne, Overlay, Verlauf bleiben bis UX-3/UX-4 so).
 - Ein Fenster mit Designsystem folgt dem System: im Konstruktor `SystemTheme.Follow(this, Application.Current?.PlatformSettings)` und `Classes="loom"` am Fenster. Ein Wechsel im System gilt sofort.
-- Hochkontrast: Ist im System ein Kontrastdesign an (`PlatformColorValues.ContrastPreference == High`), nimmt das Fenster die Variante `SystemTheme.HighContrast` (Rückfall Dunkel). Schwarz, Weiß, Akzent `#6FD9C7`, Gelb nur für den Fokus.
+- Hochkontrast: Ist im System ein Kontrastdesign an (`PlatformColorValues.ContrastPreference == High`), nimmt das Fenster die Variante `SystemTheme.HighContrast` (Rückfall Dunkel). Schwarz, Weiß, Akzent `#6FD9C7`, Gelb nur für den Fokus. Nur unter Windows: Avalonia liest unter Linux kein Kontrastdesign (`ContrastPreference` bleibt dort „keine Vorgabe“).
 - Farben nur als `{DynamicResource Loom.*}`, nie als feste Werte oder `StaticResource` – sonst wechselt die Farbe nicht mit.
 
 ## Farb-Tokens
@@ -23,6 +23,7 @@ Quelle: Loom-Palette der Android-App (`ui/theme/Color.kt`, `LoomPalette`). Dunke
 | `Loom.SurfaceHigh` | `#242A32` surfaceContainerHigh | `#E4E8EE` | `#000000` | Hinweis-Zeile, Kombi-Felder |
 | `Loom.Separator` | `#3A424D` outlineVariant | `#B8C0CC` onSurfaceVariant | `#FFFFFF` | Trennlinien (nur Schmuck) |
 | `Loom.Outline` | `#8A95A3` | `#6B7480` | `#FFFFFF` | Rahmen von Feld, Auswahlliste, Schalter aus (≥ 3:1) |
+| `Loom.SurfaceEdge` | transparent | transparent | `#FFFFFF` | Rand von Hinweis- und Verwaltet-Zeile (grenzt Schwarz auf Schwarz ab) |
 | `Loom.Text` | `#E4E8EE` onSurface | `#0E1116` background | `#FFFFFF` | Text |
 | `Loom.TextSecondary` | `#B8C0CC` onSurfaceVariant | `#3A424D` outlineVariant | `#FFFFFF` | Beschreibungen |
 | `Loom.Accent` / `Loom.OnAccent` | `#6FD9C7` / `#00382F` | `#0F5B50` / `#FFFFFF` | `#6FD9C7` / `#000000` | Links, Hauptaktion, Schalter an |
@@ -40,13 +41,14 @@ Outline, Fokus, Akzentfläche, Warn- und Aufnahme-Symbol ≥ 3:1.
 Fluent: Akzent hell `#0F5B50`, dunkel und Hochkontrast `#6FD9C7` (`App.axaml`; Hochkontrast über die Farben in `Tokens.axaml`,
 weil `FluentTheme.Palettes` nur Light/Dark kennt). In allen Varianten überschreibt `Tokens.axaml` die Fluent-Rahmen von Feld,
 Auswahlliste, Schalter aus, Kästchen und Optionsfeld mit `Loom.Outline`, den Fokusring mit `Loom.Focus` und Schrift bzw. Knopf
-auf Akzentflächen mit `Loom.OnAccent`.
+auf Akzentflächen mit `Loom.OnAccent`, die Auswahl in Auswahllisten, Listen (hell/dunkel) und markiertem Text mit `Loom.Selection`/`Loom.OnSelection`.
 
 ## Abstände, Radien, Schrift
 - Abstände nur 4/8/12/16/24/32/48: `Loom.Space.1` … `Loom.Space.7`. Seitenrand 24, Karte 16 + 1 px Rand, Textkante bei x = 41.
 - Radien: `Loom.Radius.Group` 10 (Gruppen), `Loom.Radius.Control` 6 (Steuerelemente, Kacheln).
 - Schrift (Systemschrift), Größen bei 100 %: `Loom.Font.Caption` 12, `Body` 14, `Title` 16 (Gruppentitel, halbfett), `PageTitle` 20, `WindowTitle` 24, `Display` 32.
-- Textgröße des Systems (Windows „Textgröße“, Linux Text-Skalierung, bis 225 %): `TextScale.Follow` beim Start und beim Öffnen eines Fensters multipliziert alle `Loom.Font.*` und die Fluent-Schriftgrößen. Ansichten nutzen darum nie feste Schriftgrößen.
+- Textgröße des Systems (Windows „Textgröße“, bis 225 %): `TextScale.Follow` beim Start und beim Öffnen eines Fensters multipliziert alle `Loom.Font.*` und die Fluent-Schriftgrößen. Ansichten nutzen darum nie feste Schriftgrößen. Unter Linux steckt die Textgröße des Desktops schon in `Xft.dpi`, mit dem Avalonia die ganze Oberfläche skaliert; dort bleibt der Faktor 1,0.
+- „Animationen anzeigen“ (`ISystemPreferences.AnimationsEnabled`) liest die App schon; genutzt wird es ab UX-4 (Pegel und Verarbeitung im Overlay ruhen bei reduzierter Bewegung).
 
 ## Symbole
 - Eigenes Set, 55 Strich-Symbole (24-px-Raster, Strich 1,75, runde Enden): Quellen `design/icons/*.svg`, erzeugt nach `Design/Icons.axaml` mit `py -3 -X utf8 tools/gen_icons.py` (Prüfen: `--check`). Schlüssel `Loom.Icon.<Name>`, Liste in `tools/gen_icons.py` (`NAMES`).

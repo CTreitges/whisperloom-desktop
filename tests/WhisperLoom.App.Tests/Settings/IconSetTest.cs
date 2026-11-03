@@ -106,6 +106,28 @@ public sealed partial class IconSetTest
     }
 
     [AvaloniaFact]
+    public void Filled_dots_are_drawn_solid()
+    {
+        // „Aufnahme“: Kreis r = 9 und gefüllter Punkt r = 3 in der Mitte (Ring-Trick aus tools/gen_icons.py).
+        var icon = new LoomIcon { Width = 48, Height = 48, Foreground = Brushes.Red, Data = (Geometry)Application.Current!.FindResource("Loom.Icon.Record")! };
+        var window = new Window { Width = 48, Height = 48, Background = Brushes.White, Content = icon };
+        window.Show();
+        try
+        {
+            // Mitte und Punkte im Radius 2 px (Raster 1 px) liegen im Punkt (r = 3 Raster = 6 px), nicht im Ring dazwischen.
+            foreach (var (dx, dy) in new[] { (0, 0), (2, 0), (0, 2), (-2, 0), (0, -2), (4, 0) })
+            {
+                Assert.True(IsRed(window, 24 + dx, 24 + dy), $"Punkt bei {dx},{dy} nicht gefüllt");
+            }
+            Assert.False(IsRed(window, 24 + 9, 24), "zwischen Punkt und Kreis muss frei sein");
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [AvaloniaFact]
     public void LoomIcon_measures_24_px_without_explicit_size()
     {
         var icon = new LoomIcon();
@@ -113,7 +135,7 @@ public sealed partial class IconSetTest
         Assert.Equal(new Size(24, 24), icon.DesiredSize);
     }
 
-    private static int RedPixels(Window window)
+    private static (byte[] Data, int Stride) Frame(Window window)
     {
         Dispatcher.UIThread.RunJobs();
         AvaloniaHeadlessPlatform.ForceRenderTimerTick(2);
@@ -122,12 +144,26 @@ public sealed partial class IconSetTest
         using var buffer = frame.Lock();
         var data = new byte[buffer.RowBytes * buffer.Size.Height];
         Marshal.Copy(buffer.Address, data, 0, data.Length);
+        return (data, buffer.RowBytes);
+    }
+
+    /// <summary>Kräftiges Rot, wenig Grün und Blau (BGRA oder RGBA, je nach Plattform).</summary>
+    private static bool Red(byte[] data, int i) =>
+        data[i + 1] < 120 && Math.Max(data[i], data[i + 2]) > 180 && Math.Min(data[i], data[i + 2]) < 120;
+
+    private static bool IsRed(Window window, int x, int y)
+    {
+        var (data, stride) = Frame(window);
+        return Red(data, (y * stride) + (x * 4));
+    }
+
+    private static int RedPixels(Window window)
+    {
+        var (data, _) = Frame(window);
         var count = 0;
         for (var i = 0; i + 3 < data.Length; i += 4)
         {
-            // Kräftiges Rot, wenig Grün und Blau (BGRA oder RGBA, je nach Plattform).
-            var (a, g, b) = (data[i], data[i + 1], data[i + 2]);
-            if (g < 120 && Math.Max(a, b) > 180 && Math.Min(a, b) < 120)
+            if (Red(data, i))
             {
                 count++;
             }

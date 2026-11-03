@@ -10,6 +10,14 @@
     <Setter Property="FontSize" Value="{DynamicResource Loom.Font.Body}" />
   </Style>
 
+  <!-- Markierter Text: Fläche TextControlSelectionHighlightColor = Loom.Selection (Tokens.axaml), Schrift Loom.OnSelection. -->
+  <Style Selector="TextBox">
+    <Setter Property="SelectionForegroundBrush" Value="{DynamicResource Loom.OnSelection}" />
+  </Style>
+  <Style Selector="SelectableTextBlock">
+    <Setter Property="SelectionForegroundBrush" Value="{DynamicResource Loom.OnSelection}" />
+  </Style>
+
   <!-- Text-Knopf (z. B. „Auf Firmenvorgabe zurücksetzen“). -->
   <Style Selector="Button.link">
     <Setter Property="Background" Value="Transparent" />

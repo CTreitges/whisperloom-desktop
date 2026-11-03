@@ -94,6 +94,10 @@ public sealed class DesignTokensTest
         Assert.Equal(Colors.White, ColorOf("Loom.Outline", hc));
         Assert.Equal(Color.Parse("#6FD9C7"), ColorOf("Loom.Accent", hc));
         Assert.Equal(Color.Parse("#FFFF00"), ColorOf("Loom.Focus", hc));
+        // Schwarze Flächen auf Schwarz (Hinweis-, Verwaltet-Zeile) grenzt nur ein weißer Rand ab; hell/dunkel ohne Rand.
+        Assert.Equal(Colors.White, ColorOf("Loom.SurfaceEdge", hc));
+        Assert.Equal(0, ColorOf("Loom.SurfaceEdge", ThemeVariant.Light).A);
+        Assert.Equal(0, ColorOf("Loom.SurfaceEdge", ThemeVariant.Dark).A);
     }
 
     [AvaloniaTheory]
@@ -112,6 +116,69 @@ public sealed class DesignTokensTest
         foreach (var key in new[] { "AccentButtonForeground", "CheckBoxCheckGlyphForegroundChecked", "ToggleSwitchKnobFillOn" })
         {
             Assert.True(ColorOf(key, variant) == onAccent, $"{variantName}: {key}");
+        }
+    }
+
+    /// <summary>
+    /// Was Fluent auf Akzent- und Auswahlflächen zeichnet (Schrift bzw. Punkt auf Fläche), mit Deckkraft über Loom.Surface
+    /// verrechnet: ≥ 4,5:1 (Hochkontrast 7:1). Mit dem hellen dunklen Akzent #6FD9C7 wäre Fluents Weiß darauf 1,7:1.
+    /// </summary>
+    private static readonly (string Fore, string Back)[] FluentPairs =
+    [
+        ("ComboBoxItemForegroundSelected", "ComboBoxItemBackgroundSelected"),
+        ("ComboBoxItemForegroundSelectedPointerOver", "ComboBoxItemBackgroundSelectedPointerOver"),
+        ("ComboBoxItemForegroundSelectedPressed", "ComboBoxItemBackgroundSelectedPressed"),
+        ("ToggleButtonForegroundChecked", "ToggleButtonBackgroundChecked"),
+        ("ToggleButtonForegroundCheckedPointerOver", "ToggleButtonBackgroundCheckedPointerOver"),
+        ("ToggleButtonForegroundCheckedPressed", "ToggleButtonBackgroundCheckedPressed"),
+        ("RadioButtonCheckGlyphFill", "RadioButtonOuterEllipseCheckedFill"),
+        ("AccentButtonForeground", "AccentButtonBackground"),
+        ("Loom.OnSelection", "TextControlSelectionHighlightColor"),
+    ];
+
+    private static Color Composited(string key, ThemeVariant variant)
+    {
+        Assert.True(Application.Current!.TryFindResource(key, variant, out var value), key);
+        var brush = (ISolidColorBrush)value!;
+        var top = brush.Color;
+        var alpha = top.A * brush.Opacity;
+        var under = ColorOf("Loom.Surface", variant);
+        byte Mix(byte a, byte b) => (byte)Math.Round(((a * alpha) + (b * (255 - alpha))) / 255.0);
+        return Color.FromRgb(Mix(top.R, under.R), Mix(top.G, under.G), Mix(top.B, under.B));
+    }
+
+    [AvaloniaTheory]
+    [MemberData(nameof(Variants))]
+    public void Fluent_text_and_glyphs_on_accent_and_selection_are_readable(string variantName)
+    {
+        var variant = VariantOf(variantName);
+        var min = variant == SystemTheme.HighContrast ? 7 : 4.5;
+        var failures = FluentPairs
+            .Select(p => (p, ratio: Contrast(Composited(p.Fore, variant), Composited(p.Back, variant))))
+            .Where(x => x.ratio < min)
+            .Select(x => $"{x.p.Fore} auf {x.p.Back}: {x.ratio:F2}")
+            .ToList();
+        Assert.Empty(failures);
+    }
+
+    [AvaloniaTheory]
+    [MemberData(nameof(Variants))]
+    public void Selected_text_in_fields_uses_on_selection(string variantName)
+    {
+        var variant = VariantOf(variantName);
+        var box = new TextBox { Text = "Diktat" };
+        var label = new SelectableTextBlock { Text = "Diktat" };
+        var window = new Window { RequestedThemeVariant = variant, Content = new StackPanel { Children = { box, label } } };
+        window.Show();
+        try
+        {
+            var expected = ColorOf("Loom.OnSelection", variant);
+            Assert.Equal(expected, ((ISolidColorBrush)box.SelectionForegroundBrush!).Color);
+            Assert.Equal(expected, ((ISolidColorBrush)label.SelectionForegroundBrush!).Color);
+        }
+        finally
+        {
+            window.Close();
         }
     }
 

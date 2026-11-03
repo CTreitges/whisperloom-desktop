@@ -67,7 +67,7 @@ public sealed class HelpScreenshot : Image
         {
             return;
         }
-        var theme = ActualThemeVariant == ThemeVariant.Dark ? "dark" : "light";
+        var theme = Design.SystemTheme.IsDark(ActualThemeVariant) ? "dark" : "light";
         Show(Shot is { } name ? HelpShot.AssetPath(name, Loc.Instance.Language, theme) : null);
     }
 

@@ -1,59 +1,23 @@
 using System.Diagnostics;
-using System.Globalization;
 using WhisperLoom.App.Design;
 
 namespace WhisperLoom.App.Platform.Linux;
 
 /// <summary>
-/// Linux: KDE Plasma setzt die Schriftgröße über <c>forceFontDPI</c> in <c>~/.config/kcmfontsrc</c> bzw. <c>kdeglobals</c>
-/// (Faktor = DPI / 96); GNOME und andere über <c>gsettings org.gnome.desktop.interface text-scaling-factor</c> und
-/// <c>enable-animations</c>. Einmal je Abfrage gelesen; scheitert das Lesen, gilt 100 % und Animationen an.
+/// Linux: Die Textgröße des Desktops (GNOME <c>text-scaling-factor</c>, KDE <c>forceFontDPI</c>) landet in <c>Xft.dpi</c>, und
+/// Avalonia skaliert unter X11/XWayland die ganze Oberfläche schon mit <c>Xft.dpi / 96</c>. Ein eigener Faktor würde die Schrift
+/// doppelt vergrößern (125 % → 156 %), darum gilt hier immer 1,0 (Review UX-1). „Animationen“ kommen aus
+/// <c>gsettings org.gnome.desktop.interface enable-animations</c>, einmal gelesen und gemerkt; scheitert das Lesen, gelten sie als an.
 /// </summary>
 // Doku: gitlab.gnome.org/GNOME/gsettings-desktop-schemas (org.gnome.desktop.interface.gschema.xml, abgerufen 2026-11-02).
-// Doku: invent.kde.org/plasma/plasma-workspace (kcms/fonts, forceFontDPI, abgerufen 2026-11-02).
-public sealed class LinuxPreferences(string? configHome = null, Func<string, string?>? gsettings = null) : ISystemPreferences
+// Doku: github.com/AvaloniaUI/Avalonia src/Avalonia.X11/Screens/X11Screens.Scaling.cs (XrdbScalingProvider, Xft.dpi; Review 2026-11-03).
+public sealed class LinuxPreferences(Func<string, string?>? gsettings = null) : ISystemPreferences
 {
-    private readonly string _config = configHome ?? (Environment.GetEnvironmentVariable("XDG_CONFIG_HOME") is { Length: > 0 } x
-        ? x
-        : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config"));
+    private readonly Lazy<bool> _animations = new(() => (gsettings ?? RunGsettings)("enable-animations")?.Trim() != "false");
 
-    private readonly Func<string, string?> _gsettings = gsettings ?? RunGsettings;
+    public double TextScale => 1.0;
 
-    public double TextScale =>
-        KdeFontDpi(_config) is { } dpi ? SystemPreferences.Clamp(dpi / 96.0)
-        : ParseDouble(_gsettings("text-scaling-factor")) is { } f ? SystemPreferences.Clamp(f)
-        : 1.0;
-
-    public bool AnimationsEnabled => _gsettings("enable-animations")?.Trim() != "false";
-
-    /// <summary><c>forceFontDPI</c> aus <c>kcmfontsrc</c> oder <c>kdeglobals</c>; 0 oder fehlend = nicht gesetzt.</summary>
-    public static int? KdeFontDpi(string configHome)
-    {
-        foreach (var file in new[] { "kcmfontsrc", "kdeglobals" })
-        {
-            var path = Path.Combine(configHome, file);
-            if (!File.Exists(path))
-            {
-                continue;
-            }
-            foreach (var line in File.ReadLines(path))
-            {
-                var parts = line.Split('=', 2, StringSplitOptions.TrimEntries);
-                if (parts.Length == 2 && parts[0] == "forceFontDPI" && int.TryParse(parts[1], CultureInfo.InvariantCulture, out var dpi) && dpi > 0)
-                {
-                    return dpi;
-                }
-            }
-        }
-        return null;
-    }
-
-    /// <summary>Ausgabe von <c>gsettings get</c> („1.25“, „uint32 1“) als Zahl.</summary>
-    public static double? ParseDouble(string? output)
-    {
-        var token = output?.Trim().Split(' ').LastOrDefault();
-        return double.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ? value : null;
-    }
+    public bool AnimationsEnabled => _animations.Value;
 
     private static string? RunGsettings(string key)
     {

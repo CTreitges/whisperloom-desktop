@@ -36,7 +36,6 @@ NAMES = {
     "zuklappen": "Collapse", "zurueck": "Back", "zwischenablage": "Clipboard",
 }
 
-_TOKEN = re.compile(r"[MmLlHhVvCcSsQqTtAaZz]|[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?")
 _ARGS = {"m": 2, "l": 2, "h": 1, "v": 1, "c": 6, "s": 4, "q": 4, "t": 2, "a": 7, "z": 0}
 _SVG = "{http://www.w3.org/2000/svg}"
 
@@ -46,37 +45,44 @@ def num(v: float) -> str:
     return "0" if text in ("-0", "") else text
 
 
-def normalize_path(d: str) -> str:
-    """SVG-Pfaddaten in eindeutig getrennte Zahlen (Avalonia liest „1.1.9“ oder „c-.8.4“ sonst nicht sicher)."""
-    tokens = _TOKEN.findall(d)
-    if "".join(tokens) != re.sub(r"[\s,]+", "", d):
-        raise ValueError(f"unbekannte Zeichen in Pfad: {d!r}")
-    out: list[str] = []
-    command = ""
-    args: list[str] = []
+_NUMBER = re.compile(r"[\s,]*([-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?)")
+_FLAG = re.compile(r"[\s,]*([01])")
+_SEGMENT = re.compile(r"([MmLlHhVvCcSsQqTtAaZz])([^MmLlHhVvCcSsQqTtAaZz]*)")
 
-    def flush() -> None:
+
+def _arguments(command: str, text: str, d: str) -> list[str]:
+    """Zahlen eines Befehls; bei Bögen sind die Flags je eine Ziffer („a1 1 0 012 2“ = Flags 0 und 1, Ziel 2 2)."""
+    arc = command.lower() == "a"
+    values: list[str] = []
+    pos = 0
+    while text[pos:].strip(" \t\r\n,"):
+        pattern = _FLAG if arc and len(values) % 7 in (3, 4) else _NUMBER
+        match = pattern.match(text, pos)
+        if not match:
+            raise ValueError(f"unbekannte Zeichen in Pfad: {d!r}")
+        values.append(match.group(1))
+        pos = match.end()
+    return values
+
+
+def normalize_path(d: str) -> str:
+    """SVG-Pfaddaten in eindeutig getrennte Zahlen (Avalonia liest „1.1.9“, „c-.8.4“ oder „a1 1 0 012 2“ sonst nicht sicher)."""
+    if not d.strip():
+        raise ValueError("leerer Pfad")
+    if _SEGMENT.sub("", d).strip(" \t\r\n,"):
+        raise ValueError(f"Zahl vor dem ersten Befehl oder unbekannte Zeichen: {d!r}")
+    out: list[str] = []
+    for command, text in _SEGMENT.findall(d):
+        args = _arguments(command, text, d)
         size = _ARGS[command.lower()]
+        out.append(command)
         if size == 0:
             if args:
                 raise ValueError(f"Z mit Zahlen: {d!r}")
-            return
+            continue
         if not args or len(args) % size:
             raise ValueError(f"{command} mit {len(args)} Zahlen: {d!r}")
         out.append(" ".join(num(float(a)) for a in args))
-
-    for token in tokens:
-        if token.isalpha():
-            if command:
-                flush()
-            command, args = token, []
-            out.append(token)
-        else:
-            if not command:
-                raise ValueError(f"Zahl vor dem ersten Befehl: {d!r}")
-            args.append(token)
-    if command:
-        flush()
     return " ".join(out)
 
 
@@ -87,6 +93,8 @@ def ring(cx: float, cy: float, r: float) -> str:
 def disk(cx: float, cy: float, r: float) -> list[str]:
     """Gefüllte Scheibe als Ringe der Strichbreite: jeder Ring deckt [ρ − s/2, ρ + s/2]; innen bleibt ein Ring mit ρ ≤ s/2."""
     half = STROKE / 2
+    if r <= half:
+        raise ValueError(f"gefüllter Punkt r={r} ist nicht größer als der halbe Strich ({half}) und würde zu groß gezeichnet")
     rings, rho = [], r - half
     while rho > half:
         rings.append(ring(cx, cy, rho))

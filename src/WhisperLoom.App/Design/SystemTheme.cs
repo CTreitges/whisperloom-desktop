@@ -52,6 +52,19 @@ public static class SystemTheme
         contrast == ColorContrastPreference.High ? HighContrast
         : variant == PlatformThemeVariant.Dark ? ThemeVariant.Dark : ThemeVariant.Light;
 
+    /// <summary>true für Dunkel und jede Variante, die von Dunkel erbt (Hochkontrast) – z. B. für Bilder je Variante.</summary>
+    public static bool IsDark(ThemeVariant? variant)
+    {
+        for (var v = variant; v is not null; v = v.InheritVariant)
+        {
+            if (v == ThemeVariant.Dark)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static void Follow(Window window, IPlatformSettings? settings)
     {
         if (settings is not null)

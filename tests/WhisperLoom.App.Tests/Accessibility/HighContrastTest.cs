@@ -23,6 +23,16 @@ public sealed class HighContrastTest
     public void System_contrast_wins_over_light_and_dark(PlatformThemeVariant variant, ColorContrastPreference contrast, string expected) =>
         Assert.Equal(expected, SystemTheme.VariantOf(variant, contrast).Key);
 
+    [Fact]
+    public void High_contrast_counts_as_dark()
+    {
+        Assert.True(SystemTheme.IsDark(SystemTheme.HighContrast));
+        Assert.True(SystemTheme.IsDark(ThemeVariant.Dark));
+        Assert.False(SystemTheme.IsDark(ThemeVariant.Light));
+        Assert.False(SystemTheme.IsDark(ThemeVariant.Default));
+        Assert.False(SystemTheme.IsDark(null));
+    }
+
     [AvaloniaFact]
     public void A_window_switches_to_high_contrast_and_back_live()
     {

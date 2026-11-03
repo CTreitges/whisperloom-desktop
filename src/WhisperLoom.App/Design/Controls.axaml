@@ -107,7 +107,9 @@
   <ControlTheme x:Key="{x:Type ds:HintRow}" TargetType="ds:HintRow">
     <Setter Property="Template">
       <ControlTemplate>
-        <Border Name="PART_Box" CornerRadius="{DynamicResource Loom.Radius.Control}" Padding="12,8" Background="{DynamicResource Loom.SurfaceHigh}">
+        <Border Name="PART_Box" CornerRadius="{DynamicResource Loom.Radius.Control}" Padding="11,7" Background="{DynamicResource Loom.SurfaceHigh}"
+                BorderBrush="{DynamicResource Loom.SurfaceEdge}" BorderThickness="1">
+          <!-- Rand 1 px (nur im Hochkontrast sichtbar) + Innenabstand 11,7 = Text an derselben Stelle wie vorher (12,8). -->
           <Grid ColumnDefinitions="Auto,*">
             <ds:LoomIcon Name="PART_Icon" Width="16" Height="16" Margin="0,1,10,0" VerticalAlignment="Top"
                       Data="{DynamicResource Loom.Icon.Info}" Foreground="{DynamicResource Loom.TextSecondary}" />

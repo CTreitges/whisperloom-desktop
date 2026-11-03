@@ -23,7 +23,6 @@ internal static class UxPending
             ["help-overview/light"] = "UX-3 Fenster",
             ["help-section/dark"] = "UX-3 Fenster",
             ["help-section/light"] = "UX-3 Fenster",
-            ["history/contrast"] = "UX-3 Fenster",
             ["history-empty/dark"] = "UX-3 Fenster",
             ["history-empty/light"] = "UX-3 Fenster",
             ["history/dark"] = "UX-3 Fenster",
