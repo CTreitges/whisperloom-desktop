@@ -5,6 +5,7 @@ namespace WhisperLoom.App.Tests.Ux;
 
 /// <summary>
 /// Jeder Eintrag in <see cref="UxPending"/> verletzt seine Regel noch – sonst muss er raus (die Liste soll nur schrumpfen).
+/// Maßgeblich ist das Rendering unter Windows; auf anderen Systemen wird ein dort haltender Eintrag übersprungen.
 /// </summary>
 public sealed class UxPendingTest
 {
@@ -39,6 +40,12 @@ public sealed class UxPendingTest
                 nameof(UxTextScaleTest) => UxRules.Clipped(scene.Target),
                 _ => throw new InvalidOperationException("Unbekannte Regel " + rule),
             };
+            if (violations.Count == 0 && !OperatingSystem.IsWindows())
+            {
+                // Die Liste beschreibt das Windows-Rendering (Segoe UI); unter Linux rendern andere Schriften mit anderen Maßen,
+                // ein Eintrag kann dort zufällig halten (CI ubuntu: settings-output/Textkante). Streng prüft der Windows-Lauf.
+                Assert.Skip($"{entry} erfüllt die Regel hier, aber nicht unter Windows");
+            }
             Assert.True(violations.Count > 0, $"{rule}: {entry} erfüllt die Regel – Eintrag aus UxPending entfernen");
         }
         finally
