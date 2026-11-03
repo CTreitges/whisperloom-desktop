@@ -990,5 +990,6 @@
   "Stage_Larger": "Schrift größer (Strg+Plus)",
   "Stage_NextHelp": "Klick wechselt zur nächsten Stufe",
   "Stage_ResultBadge": "{0} · KI",
-  "Stage_Smaller": "Schrift kleiner (Strg+Minus)"
+  "Stage_Smaller": "Schrift kleiner (Strg+Minus)",
+  "Set_StageDark_Desc": "Die Bühne bleibt dunkel, auch wenn das System hell ist; in der Bühne auch mit Strg+D"
 }

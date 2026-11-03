@@ -990,5 +990,6 @@
   "Stage_Larger": "Larger text (Ctrl+Plus)",
   "Stage_NextHelp": "Click switches to the next stage",
   "Stage_ResultBadge": "{0} · AI",
-  "Stage_Smaller": "Smaller text (Ctrl+Minus)"
+  "Stage_Smaller": "Smaller text (Ctrl+Minus)",
+  "Set_StageDark_Desc": "Keeps the stage dark even when the system is light; on the stage also with Ctrl+D"
 }

@@ -188,6 +188,27 @@ public sealed class SettingsAutoSaveTest
     }
 
     [AvaloniaFact]
+    public async Task Dark_for_projector_on_the_dictation_page_is_saved_and_used_by_the_next_stage()
+    {
+        Loc.Instance.SetLanguage("de");
+        using var f = new ControllerFixture();
+        var (window, _, vm) = Open(f);
+        SettingsUi.Show(window, "dictation");
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        var toggle = window.GetVisualDescendants().OfType<ToggleSwitch>().Single(t => t.Name == "StageDarkToggle");
+        Assert.False(toggle.IsChecked);
+
+        toggle.IsChecked = true;
+        await vm.Pending;
+        Assert.True(SettingsStore.Desktop(f.Store.Load()).StageDark);
+        window.Close();
+
+        var stage = new StageWindow(new StageViewModel(f.Controller));
+        Assert.True(((StageViewModel)stage.DataContext!).DarkForProjector);
+        stage.Close();
+    }
+
+    [AvaloniaFact]
     public async Task Only_changed_paths_are_written_so_changes_elsewhere_survive()
     {
         using var f = new ControllerFixture();
