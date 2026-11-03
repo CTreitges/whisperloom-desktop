@@ -59,7 +59,7 @@ Ist `policy.json` unlesbar, lehnen `WhisperLoom key set|delete` und `update` ab 
 `openai`) ist eine eigene `baseUrl` zu einem anderen Host ein Verstoß — im Einstellungsfenster wie beim Import — damit
 Diktate und der verteilte Key nicht an einen fremden Server gehen. `custom` (eigener Server) und `ollama` haben keine
 feste Adresse: Wer sie freigibt, gibt jeden Server frei; dann `stt.baseUrl` bzw. `llm.baseUrl` mitsperren.
-Auch „Zugang prüfen“ schickt einen Key nur an einen freigegebenen Server.
+Auch „Verbindung testen“ schickt einen Key nur an einen freigegebenen Server.
 
 **Provisioning ist der vertrauenswürdige Weg:** Anders als ein Import löscht `provision` keine vorhandenen Keys des
 Benutzers, wenn die Datei Adressen ändert — ein vorhandener Key ginge dann an die neue Adresse. Nur Dateien aus

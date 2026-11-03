@@ -45,7 +45,7 @@ Umgebungsvariable `HTTPS_PROXY=http://benutzer:passwort@proxy:3128` setzen und d
 Passwort steht dann im Klartext in der Umgebung des Benutzers – nur in Absprache mit der IT.
 
 ### Prüfen
-1. Einstellungen → Erkennung → **Zugang prüfen**. „Zugang funktioniert“ heißt: Proxy und Key passen.
+1. Einstellungen → Erkennung → **Verbindung testen**. „Zugang funktioniert“ heißt: Proxy und Key passen.
 2. Meldet die Prüfung „Netzwerkfehler“ oder HTTP 407 (Proxy-Anmeldung verlangt):
    - Modus **Manuell** mit der Adresse aus der PAC-Datei versuchen;
    - prüfen, ob die IT den Anbieter-Host freigegeben hat (Liste unten);

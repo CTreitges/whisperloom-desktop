@@ -37,7 +37,7 @@ Richtlinie), Modell `src/WhisperLoom.Core/Contracts/Settings/WhisperLoomSettings
   die Zeile `secrets.<zugang>: gespeichert → gelöscht (neues Ziel …)` mit Warnung. Beim Übernehmen wird dieser Key
   gelöscht, bevor die Einstellungen gespeichert werden; nur neu eingeben, wenn man dem neuen Ziel vertraut. Bleibt der
   Host gleich, bleibt der Key.
-  Bei `llm.providerId = "same"` zählt für den `llm`-Key die Adresse der Erkennung (dorthin schickt ihn „Zugang prüfen“).
+  Bei `llm.providerId = "same"` zählt für den `llm`-Key die Adresse der Erkennung (dorthin schickt ihn „Verbindung testen“).
   Felder in `desktop` und `local` zählen in jeder Groß-/Kleinschreibung, wie die App sie liest.
 - **Neue Ziele für Diktattext** nennt die Vorschau auch ohne Key („Diktate gehen künftig auch an …“): Erkennung,
   Textverbesserung und eingeschaltete Fallbacks. Die Antwort eines Textmodells wird eingefügt bzw. getippt.
