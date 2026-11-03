@@ -17,6 +17,14 @@ public sealed record HelpLegend(int Number, string Text);
 /// <summary>Screenshot mit Beschreibung (zugleich Alternativtext) und Legende der Ziffern.</summary>
 public sealed record HelpShotView(HelpShot Shot, string Caption, IReadOnlyList<HelpLegend> Legend);
 
+/// <summary>Aufgabe der Übersicht: Satz der aktuellen Sprache und der Abschnitt dahinter.</summary>
+public sealed record HelpTaskView(HelpSectionViewModel Section)
+{
+    public string Text => Loc.Instance["Help_Task_" + Section.Id];
+
+    public string SectionTitle => Section.Title;
+}
+
 /// <summary>Link mit Text der aktuellen Sprache.</summary>
 public sealed record HelpLinkView(string Label, string Url);
 
@@ -47,8 +55,10 @@ public sealed partial class HelpSectionViewModel : ObservableObject, IDisposable
     /// <summary>Überschrift der Gruppe, wenn dieser Abschnitt sie in der Seitenleiste eröffnet; sonst null.</summary>
     [ObservableProperty] private string? _groupTitle;
 
-    /// <summary>Nur in der Übersicht: Kacheln aller Abschnitte.</summary>
-    public IReadOnlyList<HelpSectionViewModel> Tiles { get; internal set; } = [];
+    /// <summary>Nur in der Übersicht: Aufgaben „Was willst du tun?“ mit dem Abschnitt dahinter.</summary>
+    public IReadOnlyList<HelpTaskView> Tasks => [.. TaskSections.Select(s => new HelpTaskView(s))];
+
+    internal IReadOnlyList<HelpSectionViewModel> TaskSections { get; set; } = [];
 
     public Geometry? IconGeometry { get; }
 

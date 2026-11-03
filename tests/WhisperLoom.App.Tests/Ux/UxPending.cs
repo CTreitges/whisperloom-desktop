@@ -15,10 +15,6 @@ internal static class UxPending
         },
         ["UxContrastTest"] = new(StringComparer.Ordinal)
         {
-            ["help-overview/dark"] = "UX-3 Fenster",
-            ["help-overview/light"] = "UX-3 Fenster",
-            ["help-section/dark"] = "UX-3 Fenster",
-            ["help-section/light"] = "UX-3 Fenster",
         },
         ["UxKeyboardTest"] = new(StringComparer.Ordinal)
         {
@@ -26,16 +22,12 @@ internal static class UxPending
         },
         ["UxTargetSizeTest"] = new(StringComparer.Ordinal)
         {
-            ["help-section"] = "UX-3 Fenster",
         },
         ["UxTextEdgeTest"] = new(StringComparer.Ordinal)
         {
-            ["help-section"] = "UX-3 Fenster",
         },
         ["UxTextScaleTest"] = new(StringComparer.Ordinal)
         {
-            ["help-overview"] = "UX-3 Fenster",
-            ["help-section"] = "UX-3 Fenster",
         },
     };
 

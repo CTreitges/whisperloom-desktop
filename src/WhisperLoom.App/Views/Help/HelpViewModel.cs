@@ -6,7 +6,7 @@ using WhisperLoom.App.Localization;
 namespace WhisperLoom.App.Views.Help;
 
 /// <summary>Ein Treffer der Suche: Abschnitt und die erste passende Zeile als Auszug.</summary>
-public sealed record HelpSearchResult(HelpSectionViewModel Section, string Title, string Snippet)
+public sealed record HelpSearchResult(HelpSectionViewModel Section, string Title, string Snippet, string Group = "")
 {
     public override string ToString() => Title;
 }
@@ -26,7 +26,7 @@ public sealed partial class HelpViewModel : ObservableObject, IDisposable
             Sections.Add(new HelpSectionViewModel(topic, [.. all.Where(s => s.Section == topic.Id)]));
         }
         Overview = Sections[0];
-        Overview.Tiles = [.. Sections.Skip(1)];
+        Overview.TaskSections = [.. HelpCatalog.Tasks.Select(Section)];
         UpdateGroupTitles();
         _selectedSection = Overview;
         Loc.Instance.PropertyChanged += OnLanguageChanged;
@@ -43,6 +43,14 @@ public sealed partial class HelpViewModel : ObservableObject, IDisposable
     private string _searchText = "";
 
     public bool IsSearching => SearchText.Trim().Length > 0;
+
+    /// <summary>Ansage über den Treffern (UX-3): „3 Treffer für „Proxy““ bzw. „Keine Treffer für „x“. …“.</summary>
+    public string SearchSummary =>
+        !IsSearching ? ""
+        : Results.Count == 0 ? Loc.Instance.Format("Help_SearchNoneFor", SearchText.Trim())
+        : Loc.Instance.Format(Results.Count == 1 ? "Help_SearchOneFor" : "Help_SearchCountFor", Results.Count, SearchText.Trim());
+
+    public bool ShowSection => !IsSearching;
 
     public ObservableCollection<HelpSearchResult> Results { get; } = [];
 
@@ -73,7 +81,12 @@ public sealed partial class HelpViewModel : ObservableObject, IDisposable
         }
     }
 
-    partial void OnSearchTextChanged(string value) => RunSearch();
+    partial void OnSearchTextChanged(string value)
+    {
+        RunSearch();
+        OnPropertyChanged(nameof(SearchSummary));
+        OnPropertyChanged(nameof(ShowSection));
+    }
 
     /// <summary>Alle Wörter müssen im Abschnitt vorkommen (Groß/klein egal); Auszug = erste Zeile mit dem ersten Wort.</summary>
     private void RunSearch()
@@ -93,7 +106,7 @@ public sealed partial class HelpViewModel : ObservableObject, IDisposable
                 continue;
             }
             var snippet = lines.Skip(1).FirstOrDefault(l => l.Contains(words[0], StringComparison.CurrentCultureIgnoreCase)) ?? section.Intro;
-            Results.Add(new HelpSearchResult(section, section.Title, Snippet(snippet, words[0])));
+            Results.Add(new HelpSearchResult(section, section.Title, Snippet(snippet, words[0]), Loc.Instance["HelpGroup_" + section.Group]));
         }
     }
 
@@ -134,5 +147,6 @@ public sealed partial class HelpViewModel : ObservableObject, IDisposable
         }
         UpdateGroupTitles();
         RunSearch();
+        OnPropertyChanged(nameof(SearchSummary));
     }
 }

@@ -3,14 +3,16 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
 using WhisperLoom.App.Design;
 
 namespace WhisperLoom.App.Views.Help;
 
 /// <summary>
-/// Hilfe-Fenster (W2-HELP). Tastatur: Tab-Reihenfolge Suche → Seitenleiste → Inhalt, Pfeiltasten in der Seitenleiste,
-/// Strg+F = Suche, ↓ aus der Suche in die Treffer, Enter bzw. Auswahl öffnet den Treffer, Esc leert die Suche bzw. schließt.
-/// Hell/Dunkel folgt dem System.
+/// Hilfe-Fenster (W2-HELP, UX-3). Tastatur: Tab-Reihenfolge Suche → Seitenleiste → Inhalt, Pfeiltasten in der Seitenleiste,
+/// Strg+F = Suche, ↓ aus der Suche in die Treffer, ↑/↓ zwischen den Treffern, Enter öffnet den Treffer, Esc leert die Suche
+/// bzw. schließt. Hell/Dunkel folgt dem System.
 /// </summary>
 public partial class HelpWindow : Window
 {
@@ -20,13 +22,6 @@ public partial class HelpWindow : Window
     {
         DataContext = help;
         help.PropertyChanged += OnHelpChanged;
-        ResultList.SelectionChanged += (_, _) =>
-        {
-            if (ResultList.SelectedItem is HelpSearchResult result)
-            {
-                help.SelectedSection = result.Section;
-            }
-        };
         SystemTheme.Follow(this, Application.Current?.PlatformSettings);
         Closed += (_, _) =>
         {
@@ -40,13 +35,16 @@ public partial class HelpWindow : Window
     /// <summary>Öffnet einen Link; Standard = Browser über den Launcher des Fensters. Tests ersetzen das.</summary>
     public Func<Uri, Task>? OpenUri { get; set; }
 
-    /// <summary>Abschnitt zeigen und den Fokus in die Seitenleiste legen (für „?“, F1 und Tray).</summary>
+    /// <summary>Abschnitt zeigen und den Fokus in die Seitenleiste legen (für „?“, F1, Tray, Aufgaben und Treffer).</summary>
     public void ShowTopic(string topic)
     {
         Help?.Open(topic);
         // Fokus ohne Fokusrahmen (Programm-Sprung, keine Tastatur-Navigation); Pfeiltasten wirken sofort.
         SectionList.ContainerFromItem(Help?.SelectedSection!)?.Focus();
     }
+
+    /// <summary>Knöpfe der Treffer in Reihenfolge (Tastatur, Tests).</summary>
+    internal List<Button> ResultButtons => [.. ResultList.GetVisualDescendants().OfType<Button>()];
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
@@ -74,27 +72,74 @@ public partial class HelpWindow : Window
                 Close();
             }
         }
-        else if (e.Key == Key.Down && e.Source == SearchBox && Help?.IsSearching == true && ResultList.ItemCount > 0)
+        else if (e.Key is Key.Down or Key.Up && e.KeyModifiers == KeyModifiers.None && Help?.IsSearching == true)
         {
-            ResultList.SelectedIndex = 0;
-            (ResultList.ContainerFromIndex(0) as InputElement)?.Focus(NavigationMethod.Directional);
-            e.Handled = true;
+            MoveInResults(e);
         }
+    }
+
+    /// <summary>↓ aus der Suche auf den ersten Treffer, ↑/↓ zwischen den Treffern, ↑ vom ersten zurück in die Suche.</summary>
+    private void MoveInResults(KeyEventArgs e)
+    {
+        var buttons = ResultButtons;
+        if (buttons.Count == 0)
+        {
+            return;
+        }
+        var at = e.Source is Visual source ? buttons.FindIndex(b => b == source || b.IsVisualAncestorOf(source)) : -1;
+        if (e.Source == SearchBox && e.Key == Key.Down)
+        {
+            buttons[0].Focus(NavigationMethod.Directional);
+        }
+        else if (at >= 0)
+        {
+            var next = at + (e.Key == Key.Down ? 1 : -1);
+            if (next < 0)
+            {
+                SearchBox.Focus(NavigationMethod.Directional);
+            }
+            else
+            {
+                buttons[Math.Min(next, buttons.Count - 1)].Focus(NavigationMethod.Directional);
+            }
+        }
+        else
+        {
+            return;
+        }
+        e.Handled = true;
     }
 
     private void OnHelpChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(HelpViewModel.SelectedSection))
+        if (e.PropertyName is nameof(HelpViewModel.SelectedSection) or nameof(HelpViewModel.SearchText))
         {
             ContentScroll.Offset = default;
         }
     }
 
-    private void OnTileClick(object? sender, RoutedEventArgs e)
+    private void OnClearSearch(object? sender, RoutedEventArgs e)
     {
-        if (sender is Control { DataContext: HelpSectionViewModel section })
+        if (Help is { } help)
         {
-            ShowTopic(section.Id);
+            help.SearchText = "";
+            Dispatcher.UIThread.Post(() => SearchBox.Focus(NavigationMethod.Tab), DispatcherPriority.Loaded);
+        }
+    }
+
+    private void OnResultClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Control { DataContext: HelpSearchResult result })
+        {
+            ShowTopic(result.Section.Id);
+        }
+    }
+
+    private void OnTaskClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Control { DataContext: HelpTaskView task })
+        {
+            ShowTopic(task.Section.Id);
         }
     }
 

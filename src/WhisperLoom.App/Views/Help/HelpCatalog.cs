@@ -59,6 +59,12 @@ public static class HelpCatalog
         new("it", "more", "Loom.Icon.System", "Gray", ServerReadme, Provisioning, Proxy),
     ];
 
+    /// <summary>
+    /// Übersicht „Was willst du tun?“ (UX-3, hilfe.html Befund 1): sieben Aufgaben als ganze Sätze (<c>Help_Task_&lt;Topic&gt;</c>)
+    /// mit dem Abschnitt dahinter; die Themen selbst stehen nur in der Seitenleiste.
+    /// </summary>
+    public static readonly IReadOnlyList<string> Tasks = ["start", "hotkeys", "selection", "history", "recognition", "company", "trouble"];
+
     /// <summary>Einstellungsseite (Id aus dem SettingsCatalog) → Abschnitt.</summary>
     public static readonly IReadOnlyDictionary<string, string> PageTopics = new Dictionary<string, string>
     {
