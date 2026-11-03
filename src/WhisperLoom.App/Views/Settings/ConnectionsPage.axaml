@@ -83,7 +83,7 @@
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
               <TextBlock Text="{Binding Error}" IsVisible="{Binding Error.Length}" Foreground="{DynamicResource Loom.Error}" TextWrapping="Wrap" />
-              <Button x:Name="AddProviderButton" Classes="accent" HorizontalAlignment="Left" Command="{Binding AddCommand}"
+              <Button x:Name="AddProviderButton" Classes="secondary" HorizontalAlignment="Left" Command="{Binding AddCommand}"
                       AutomationProperties.Name="{Binding [Providers_Add], Source={x:Static l:Loc.Instance}}">
                 <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
                   <ds:LoomIcon Data="{DynamicResource Loom.Icon.Add}" Width="16" Height="16" VerticalAlignment="Center" />
@@ -158,7 +158,7 @@
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
-              <Button x:Name="AddServerButton" Classes="accent" HorizontalAlignment="Left" Command="{Binding Local.AddServerCommand}"
+              <Button x:Name="AddServerButton" Classes="secondary" HorizontalAlignment="Left" Command="{Binding Local.AddServerCommand}"
                       AutomationProperties.Name="{Binding [Server_Add], Source={x:Static l:Loc.Instance}}">
                 <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
                   <ds:LoomIcon Data="{DynamicResource Loom.Icon.Add}" Width="16" Height="16" VerticalAlignment="Center" />

@@ -1,3 +1,4 @@
+using System.Globalization;
 using CommunityToolkit.Mvvm.Input;
 using WhisperLoom.App.Localization;
 
@@ -28,6 +29,25 @@ public sealed partial class SettingsViewModel
     {
         get => _pendingHistorySize ?? HistorySize;
         set => _ = ChooseHistorySizeAsync(value);
+    }
+
+    /// <summary>Größen als Optionsgruppe (Nachher-Audit UX-6 N7: sechs feste Werte als Optionsfelder statt Auswahlliste).</summary>
+    public IReadOnlyList<Choice> HistorySizeOptions =>
+        _historySizeOptions ??= [.. HistorySizes.Select(n => new Choice(n.ToString(CultureInfo.InvariantCulture), n.ToString(CultureInfo.CurrentCulture)))];
+
+    private IReadOnlyList<Choice>? _historySizeOptions;
+
+    /// <summary>Gewählte Größe der Optionsgruppe; schreibt über <see cref="HistorySizeChoice"/> (mit Rückfrage beim Verkleinern).</summary>
+    public Choice? HistorySizeOption
+    {
+        get => HistorySizeOptions.FirstOrDefault(c => c.Value == HistorySizeChoice.ToString(CultureInfo.InvariantCulture));
+        set
+        {
+            if (value is not null && int.TryParse(value.Value, CultureInfo.InvariantCulture, out var size) && size != HistorySizeChoice)
+            {
+                HistorySizeChoice = size;
+            }
+        }
     }
 
     /// <summary>Rückfrage „N ältere Diktate löschen?“ sichtbar.</summary>
@@ -87,6 +107,7 @@ public sealed partial class SettingsViewModel
         _pendingHistorySize = size;
         _historyExcess = excess;
         OnPropertyChanged(nameof(HistorySizeChoice));
+        OnPropertyChanged(nameof(HistorySizeOption));
         OnPropertyChanged(nameof(HistoryShrinkPending));
         OnPropertyChanged(nameof(HistoryShrinkText));
     }
