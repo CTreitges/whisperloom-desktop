@@ -72,26 +72,20 @@ internal static class UxStage
         (IBrush)Application.Current!.FindResource(theme, key)!;
 
     /// <summary>
-    /// Variante der Fenster, die nicht dem System folgen (Bühne, Overlay, Pille, Hinweis, Markierung, Update-Nachfrage): Die App
-    /// steht global auf Dunkel (<c>App.axaml</c>), nur Fenster mit <c>SystemTheme.Follow</c> wechseln. Die Szene bildet das nach.
-    /// </summary>
-    public static readonly ThemeVariant AppFixed = ThemeVariant.Dark;
-
-    /// <summary>
     /// Schwebende Fenster (Overlay, Pille, Hinweis) sind transparent und würden schwarz gerendert. Für das Bild liegt der
-    /// Hintergrund der Variante darunter – so sieht man sie wie über einer hellen bzw. dunklen Anwendung. Das Fenster selbst
-    /// bleibt in <see cref="AppFixed"/>.
+    /// Hintergrund der Variante darunter – so sieht man sie wie über einem Programm in derselben Variante. Seit UX-4 folgen sie
+    /// dem System (Punkt 3), das Fenster steht also in <paramref name="backdrop"/>.
     /// </summary>
     public static T OnBackdrop<T>(T window, ThemeVariant backdrop) where T : Window
     {
         window.Background = Brush(backdrop, "Loom.Background");
-        window.RequestedThemeVariant = AppFixed;
+        window.RequestedThemeVariant = backdrop;
         return window;
     }
 
     /// <summary>
     /// Nimmt den Inhalt eines Fensters heraus und legt ihn mit Rand auf den Hintergrund der Variante <paramref name="backdrop"/>;
-    /// der Inhalt bleibt in <see cref="AppFixed"/> wie zur Laufzeit.
+    /// der Inhalt steht wie zur Laufzeit in der Variante des Systems (<paramref name="backdrop"/>).
     /// </summary>
     public static Window Hosted(Window source, ThemeVariant backdrop, double width, double height, Thickness margin)
     {
@@ -108,7 +102,7 @@ internal static class UxStage
             Height = height,
             Content = content,
             Background = Brush(backdrop, "Loom.Background"),
-            RequestedThemeVariant = AppFixed,
+            RequestedThemeVariant = backdrop,
         };
     }
 }

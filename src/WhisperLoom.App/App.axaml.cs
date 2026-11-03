@@ -24,6 +24,7 @@ public partial class App : Application
     private AppHost? _host;
     private IpcServer? _server;
     private TrayIcon? _tray;
+    private TrayMenu? _trayMenu;
     private StageWindow? _stage;
     private HistoryWindow? _historyWindow;
     private SettingsWindow? _settingsWindow;
@@ -65,6 +66,8 @@ public partial class App : Application
 
         CreateTray(_host);
         StartHotkeys(_host);
+        // Die Windows-Bedienung steht erst jetzt: „Letzte Diktate“ heißen dann „Einfügen – …“ statt „Kopieren – …“.
+        _trayMenu?.Refresh();
         StartLengthWatch(_host);
         StartUpdates(_host);
         StartManagement(_host);
@@ -95,18 +98,25 @@ public partial class App : Application
                     {
                         await process(null, true);
                     }
-                });
+                },
+                // Letzte Diktate: einfügen, sobald die Windows-Bedienung läuft (startet nach dem Tray), sonst kopieren.
+                pastes: () => host.InsertRecent is not null);
             _ = menu.ReloadRecentAsync();
-            _tray = new TrayIcon
+            var tray = new TrayIcon
             {
                 Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://WhisperLoom/Assets/whisperloom.ico"))),
                 ToolTipText = menu.ToolTip,
                 Menu = menu.Menu,
                 IsVisible = true,
             };
-            _tray.Clicked += (_, _) => Open("stage");
-            host.Controller.PropertyChanged += (_, _) => _tray.ToolTipText = menu.ToolTip;
-            TrayIcon.SetIcons(this, [_tray]);
+            TrayIcon.SetIcons(this, [tray]);
+            _tray = tray;
+            _trayMenu = menu;
+            tray.Clicked += (_, _) => Open("stage");
+            // Abos erst nach SetIcons und auf das lokale Symbol: ohne Infobereich (catch unten, _tray = null) hängt nichts
+            // (Prüfer-Fund UX-4). Tooltip auch nach einem Sprachwechsel neu.
+            host.Controller.PropertyChanged += (_, _) => tray.ToolTipText = menu.ToolTip;
+            Localization.Loc.Instance.PropertyChanged += (_, _) => tray.ToolTipText = menu.ToolTip;
         }
         catch (Exception e) when (e is PlatformNotSupportedException or InvalidOperationException)
         {

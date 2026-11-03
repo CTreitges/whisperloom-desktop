@@ -134,19 +134,23 @@ internal static class UxWindowScenes
 
     public static Task<UxScene> Overlay(ThemeVariant theme, OverlayState state, bool picker = false)
     {
+        // Rückrufe wie in InputFlow: „Erneut senden“, „Verwerfen“ nach Fehler und „Ohne KI einfügen“ gibt es zur Laufzeit immer.
         var vm = new OverlayViewModel(() => { }, () => { }, () => { })
         {
+            Retry = () => { },
+            DismissError = () => { },
+            SkipRefine = () => { },
+            CanRetry = state == OverlayState.Error,
+            CanSkip = state == OverlayState.Processing,
             Stage = Loc.Instance["Stage_polish"],
             Elapsed = TimeSpan.FromSeconds(14),
             Level = 0.55,
             State = state,
             ErrorKey = state == OverlayState.Error ? "Error_Network" : null,
         };
-        if (picker)
-        {
-            vm.StagePicker = new StagePickerViewModel(RefineModes.SettingsFor(true).Select(m => (m.Key(), Loc.Instance["Stage_" + m.Key()])), "polish");
-            vm.IsStagePickerOpen = true;
-        }
+        // Zur Laufzeit hat jedes Diktat ohne IT-Sperre einen Wähler; offen nur in der Szene „overlay-stages“.
+        vm.StagePicker = new StagePickerViewModel(RefineModes.SettingsFor(true).Select(m => (m.Key(), Loc.Instance["Stage_" + m.Key()])), "polish");
+        vm.IsStagePickerOpen = picker;
         var window = UxStage.OnBackdrop(new OverlayWindow(vm), theme);
         window.Show();
         UxStage.Settle(window);
@@ -166,11 +170,11 @@ internal static class UxWindowScenes
         var window = UxStage.OnBackdrop(new HintWindow(), theme);
         if (toast)
         {
-            window.SetContent("toast", "WhisperLoom", Loc.Instance["Output_Hint_Copied"]);
+            window.SetContent("toast", "WhisperLoom", Loc.Instance["Hint_Copied"], HintTone.Copied, [Loc.Instance["Keycap_Paste"]]);
         }
         else
         {
-            window.SetContent("stage", Loc.Instance["Stage_Label"], Loc.Instance["Stage_beautify"]);
+            window.SetContent("stage", Loc.Instance["Stage_Label"], Loc.Instance["Stage_beautify"], HintTone.Stage);
         }
         window.Show();
         UxStage.Settle(window);
@@ -180,7 +184,9 @@ internal static class UxWindowScenes
     /// <summary>Schwebender Knopf neben einer Markierung (Inhalt des Fensters auf dem Hintergrund der Variante).</summary>
     public static Task<UxScene> SelectionButton(ThemeVariant theme)
     {
-        var window = UxStage.Hosted(new SelectionButtonWindow(), theme, 320, 120, new Thickness(24));
+        var source = new SelectionButtonWindow();
+        source.SetShortcut(WhisperLoom.Core.Contracts.Settings.SelectionSettings.DefaultHotkey);
+        var window = UxStage.Hosted(source, theme, 560, 140, new Thickness(24));
         window.Show();
         UxStage.Settle(window);
         return Task.FromResult(new UxScene(window, window, null, typeof(SelectionButtonWindow)));
@@ -195,8 +201,8 @@ internal static class UxWindowScenes
         var picker = new StagePickerViewModel(stages, "polish");
         picker.Move(1);
         var source = new SelectionPickerWindow(noActivate: false) { DataContext = picker };
-        var window = UxStage.Hosted(source, theme, 360, 320, new Thickness(24));
-        ((Control)window.Content!).Width = 290;
+        var window = UxStage.Hosted(source, theme, 400, 340, new Thickness(24));
+        ((Control)window.Content!).Width = 336;
         window.Show();
         UxStage.Settle(window);
         return Task.FromResult(new UxScene(window, window, null, typeof(SelectionPickerWindow)));

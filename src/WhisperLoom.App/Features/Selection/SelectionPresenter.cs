@@ -53,11 +53,12 @@ public sealed class SelectionPresenter(bool noActivate, Func<IntPtr, PixelPoint?
 
     public void HidePicker() => _picker?.Hide();
 
-    public void ShowButton(PixelPoint at, Action click)
+    public void ShowButton(PixelPoint at, Action click, string? shortcut = null)
     {
         _button ??= new SelectionButtonWindow();
         _button.SetClick(click);
-        Place(_button, at, new Size(130, 30));
+        _button.SetShortcut(shortcut);
+        Place(_button, at, new Size(160, 48));
         _button.Show();
     }
 

@@ -179,6 +179,18 @@ public sealed class KeyFieldUndoTest
         window.Close();
     }
 
+    /// <summary>Prüfer-Befund UX-4: Die Overlay-Tastenkappen hatten den Schlüssel <c>Key_Enter</c> überschrieben; der Hauptknopf hieß „Enter“.</summary>
+    [AvaloniaFact]
+    public async Task Enter_button_says_enter_key_not_the_keycap()
+    {
+        var (key, _) = await Make(withKey: false);
+        var view = new KeyFieldView { DataContext = key };
+        Assert.Equal("Key eingeben …", view.FindControl<Button>("EnterButton")!.Content);
+        Loc.Instance.SetLanguage("en");
+        Assert.Equal("Enter key …", view.FindControl<Button>("EnterButton")!.Content);
+        Loc.Instance.SetLanguage("de");
+    }
+
     /// <summary>Prüfer-Befund UX-2/2: Verschwindet die Ansicht (Fenster zu), verfällt „Rückgängig“; der gelöschte Key ist vergessen.</summary>
     [AvaloniaFact]
     public async Task Closing_the_view_forgets_the_deleted_key()

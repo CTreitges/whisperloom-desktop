@@ -238,7 +238,7 @@ public sealed class ComfortTest
     }
 
     /// <summary>Erkennung sofort, Verbesserung hängt, bis übersprungen wird (wie eine langsame KI).</summary>
-    private sealed class SlowRefinePipeline : IDictationPipeline, ISkippablePipeline
+    internal sealed class SlowRefinePipeline : IDictationPipeline, ISkippablePipeline
     {
         public Task<DictationResult> RunAsync(DictationRequest request, CancellationToken ct) =>
             throw new InvalidOperationException("ohne Ausweg aufgerufen");

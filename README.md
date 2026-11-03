@@ -55,7 +55,7 @@ Einstellungen → Allgemein → **Updates**:
   (einzelne Test-Builds aus Entwicklungszweigen).
 - **Vorabversionen automatisch installieren** (Standard aus): Aus bietet die automatische Prüfung nur stabile Versionen
   an, auch im Kanal Beta oder Test. An bietet zusätzlich die neueste Vorabversion des Kanals an.
-- **Version wählen …** (auch im Tray-Menü): Liste aller Versionen aus den GitHub-Releases mit Kanal, Datum und
+- **Version wählen …** (Einstellungen → System → Updates): Liste aller Versionen aus den GitHub-Releases mit Kanal, Datum und
   „installiert“. Jede Version lässt sich nach Rückfrage installieren; eine ältere Version ist ein Downgrade mit eigenem
   Hinweis. **Zurück zu Stabil** installiert die neueste stabile Version. Einstellungen und Keys bleiben erhalten.
 
@@ -73,7 +73,7 @@ Beim ersten Start führt ein Assistent in wenigen Schritten zum ersten Diktat:
 6. **Autostart** beim Anmelden (nur für den eigenen Benutzer)
 7. **Fertig**
 
-Überspringen geht jederzeit; erneut aufrufen über Tray → **Einrichtung …** oder `WhisperLoom setup`. Hat die IT
+Überspringen geht jederzeit; erneut aufrufen über Einstellungen → System → **Einrichtung** oder `WhisperLoom setup`. Hat die IT
 Einstellungen vorgegeben, entfallen die gesperrten Schritte.
 
 ### Bedienung
@@ -206,7 +206,7 @@ Settings → General → **Updates**:
   builds from development branches).
 - **Install pre-releases automatically** (default off): off, the automatic check only offers stable versions, even in
   the beta or test channel. On, it also offers the channel's newest pre-release.
-- **Choose version …** (also in the tray menu): all versions from GitHub Releases with channel, date and “installed”.
+- **Choose version …** (Settings → System → Updates): all versions from GitHub Releases with channel, date and “installed”.
   Any version installs after a confirmation; an older version is a downgrade with its own warning. **Back to stable**
   installs the newest stable version. Settings and keys are kept.
 
@@ -217,7 +217,7 @@ checks stable plus the chosen channel.
 On first start a wizard takes you to your first dictation: **language**, **microphone** with a level test,
 **recognition** (cloud with key and *Check access*, or local with model download), **stage**, **shortcuts** (Windows:
 test the combo; Linux: how to bind the desktop shortcut), **autostart** at sign-in (current user only), **done**.
-Skip it any time; run it again from tray → **Setup …** or with `WhisperLoom setup`. Steps locked by your IT are left out.
+Skip it any time; run it again from Settings → System → **Setup** or with `WhisperLoom setup`. Steps locked by your IT are left out.
 
 ### Usage
 | | Windows | Linux |

@@ -90,4 +90,4 @@ Regeln:
 4. `SettingsCoverageTest` muss grün bleiben.
 
 ## Tray-Menü
-Nach HIG „Menus“: Hauptaktion (Aufnahme starten/beenden) oben, dann Gruppen durch Trenner – Stufe und letzte Diktate (Untermenüs) | Bühne, Verlauf | Einstellungen …, Einrichtung … (Auslassungszeichen: öffnet ein Fenster mit weiteren Eingaben) | „WhisperLoom beenden“. Kurze Labels.
+Nach HIG „Menus“ (tray.html, UX-4): zehn Einträge, Häufiges zuerst – Hauptaktion (Aufnahme starten/beenden, nach einem Fehler „Letztes Diktat erneut senden“) | Stufe und Letzte Diktate (Untermenüs), Markierung verarbeiten … | Verlauf, Bühne | Einstellungen … (Auslassungszeichen: öffnet ein Fenster mit weiteren Eingaben), Hilfe | „WhisperLoom beenden“. Einrichtung und Version wählen stehen in Einstellungen › System. Letzte Diktate nennen Wirkung und Uhrzeit („Einfügen – … (14:21)“), der Tooltip die geltende Stufe. Kurze Labels.

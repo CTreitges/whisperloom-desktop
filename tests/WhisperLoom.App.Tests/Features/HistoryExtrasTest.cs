@@ -55,7 +55,8 @@ public sealed class HistoryExtrasTest
 
         var items = recent.Menu!.Items.OfType<NativeMenuItem>().ToList();
         Assert.Equal(10, items.Count);
-        Assert.Equal("Diktat 12", items[0].Header);
+        // Wirkung und Uhrzeit im Eintrag (tray.html Befund 5).
+        Assert.Equal(Loc.Instance.Format("Tray_RecentPaste", "Diktat 12", RecentHistory.Time(NewestFirst(12)[0])), items[0].Header);
         items[2].Command!.Execute(null);
         Assert.Equal("Diktat 10", clicked?.Text);
     }

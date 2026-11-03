@@ -132,7 +132,7 @@ public sealed partial class InputFlow
         {
             return;
         }
-        s.Ui.ShowButton(new PixelPoint(at.X + 14, at.Y + 14), () => _ = StartSelectionAsync(SelectionTrigger.Button, target, at));
+        s.Ui.ShowButton(new PixelPoint(at.X + 14, at.Y + 14), () => _ = StartSelectionAsync(SelectionTrigger.Button, target, at), SelectionShortcut());
         _buttonSince = s.Now();
         s.DismissOnKey(true);
         s.TransientChanged(s.Ui.Transient());
@@ -344,6 +344,10 @@ public sealed partial class InputFlow
         s.Ui.ShowPicker(picker, at, _target);
         s.TransientChanged(s.Ui.Transient());
     }
+
+    /// <summary>Kürzel „Markierung verarbeiten“ für die Tastenkappe am Knopf; null, wenn es aus ist oder alle Kürzel aus sind.</summary>
+    internal string? SelectionShortcut() =>
+        SettingsStore.Desktop(_controller.Settings).HotkeysEnabled && _controller.Settings.Selection.HotkeyCombo is { Length: > 0 } combo ? combo : null;
 
     private void ClosePicker()
     {

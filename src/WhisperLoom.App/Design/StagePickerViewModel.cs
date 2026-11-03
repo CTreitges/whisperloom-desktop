@@ -22,7 +22,11 @@ public sealed partial class StageOption(string key, string label, int number) : 
 
     /// <summary>Die aktuell eingestellte Stufe (Häkchen).</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AccessibleName))]
     private bool _isCurrent;
+
+    /// <summary>Name für Screenreader: das Häkchen sieht man nur, darum „Glätten, aktuelle Stufe“ (markierung.html Befund 6).</summary>
+    public string AccessibleName => IsCurrent ? Localization.Loc.Instance.Format("Stage_OptionCurrent", Label) : Label;
 }
 
 /// <summary>

@@ -179,11 +179,12 @@ public class UiTest
         var opened = new List<string>();
         var tray = new TrayMenu(f.Controller, opened.Add);
         var headers = tray.Menu.Items.OfType<NativeMenuItem>().Where(i => i is not NativeMenuItemSeparator).Select(i => i.Header).ToList();
-        // HIG (W2-UI1): Hauptaktion oben, kurze Labels, „…“ bei Fenstern mit Eingaben, „App beenden“ zuletzt.
-        Assert.Equal(["Aufnahme starten", "Stufe: Aus", "Letzte Diktate", "Bühne", "Verlauf", "Einstellungen …", "Einrichtung …", "Version wählen …", "Hilfe", "WhisperLoom beenden"], headers);
-        // Gruppen durch Trenner: Hauptaktion | Stufe, Letzte | Fenster | Einstellungen, Einrichtung, Version wählen (W3-CHAN), Hilfe (W2-HELP) | Beenden.
+        // HIG (W2-UI1, tray.html): Hauptaktion oben, Häufiges zuerst, „…“ bei Fenstern mit Eingaben, „App beenden“ zuletzt;
+        // Einrichtung und Version wählen stehen in Einstellungen › System (Entscheidung 20).
+        Assert.Equal(["Aufnahme starten", "Stufe: Aus", "Letzte Diktate", "Verlauf", "Bühne", "Einstellungen …", "Hilfe", "WhisperLoom beenden"], headers);
+        // Gruppen durch Trenner: Hauptaktion | Stufe, Letzte | Verlauf, Bühne | Einstellungen, Hilfe (W2-HELP) | Beenden.
         var shape = tray.Menu.Items.Select(i => i is NativeMenuItemSeparator ? "|" : "x");
-        Assert.Equal("x|xx|xx|xxxx|x", string.Concat(shape));
+        Assert.Equal("x|xx|xx|xx|x", string.Concat(shape));
         var stages = tray.Menu.Items.OfType<NativeMenuItem>().Where(i => i is not NativeMenuItemSeparator).ElementAt(1).Menu!.Items.OfType<NativeMenuItem>().Select(i => i.Header);
         Assert.Equal(["Aus", "Glätten", "Verschönern", "Zusammenfassen"], stages);
 
@@ -191,7 +192,7 @@ public class UiTest
         {
             item.Command!.Execute(null);
         }
-        Assert.Equal(["stage", "history", "settings", "setup", "versions", "help", "quit"], opened);
+        Assert.Equal(["history", "stage", "settings", "help", "quit"], opened);
 
         f.Controller.Start();
         Assert.Equal("Aufnahme beenden", tray.Menu.Items.OfType<NativeMenuItem>().First().Header);
