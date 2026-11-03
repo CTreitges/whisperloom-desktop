@@ -15,7 +15,17 @@
     <Style Selector="Button">
       <Setter Property="Focusable" Value="False" />
       <Setter Property="MinHeight" Value="32" />
+    </Style>
+    <!-- Nur Knöpfe mit Fläche bekommen Innenabstand; Textknöpfe bleiben auf der Textkante (Prüfer-Fund). -->
+    <Style Selector="Button.secondary, Button.accent">
       <Setter Property="Padding" Value="12,4" />
+    </Style>
+    <!-- Abstand zu „Pause“; nach einem Fehler steht „Verwerfen“ vorn an der Kante. -->
+    <Style Selector="Button#DiscardButton">
+      <Setter Property="Margin" Value="8,0,0,0" />
+    </Style>
+    <Style Selector="Button#DiscardButton.lead">
+      <Setter Property="Margin" Value="0" />
     </Style>
     <Style Selector="Button ds|LoomIcon">
       <Setter Property="Width" Value="16" />
@@ -82,7 +92,7 @@
             <TextBlock Text="{Binding PauseText}" VerticalAlignment="Center" />
           </StackPanel>
         </Button>
-        <Button x:Name="DiscardButton" Grid.Column="1" Classes="secondary danger" Margin="8,0,0,0" Command="{Binding DiscardCommand}"
+        <Button x:Name="DiscardButton" Grid.Column="1" Classes="secondary danger" Classes.lead="{Binding IsError}" Command="{Binding DiscardCommand}"
                 IsVisible="{Binding ShowDiscard}"
                 AutomationProperties.Name="{Binding [Overlay_Discard], Source={x:Static l:Loc.Instance}}">
           <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">

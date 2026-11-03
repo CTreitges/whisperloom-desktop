@@ -24,6 +24,7 @@ public partial class App : Application
     private AppHost? _host;
     private IpcServer? _server;
     private TrayIcon? _tray;
+    private TrayMenu? _trayMenu;
     private StageWindow? _stage;
     private HistoryWindow? _historyWindow;
     private SettingsWindow? _settingsWindow;
@@ -65,6 +66,8 @@ public partial class App : Application
 
         CreateTray(_host);
         StartHotkeys(_host);
+        // Die Windows-Bedienung steht erst jetzt: „Letzte Diktate“ heißen dann „Einfügen – …“ statt „Kopieren – …“.
+        _trayMenu?.Refresh();
         StartLengthWatch(_host);
         StartUpdates(_host);
         StartManagement(_host);
@@ -108,6 +111,9 @@ public partial class App : Application
             };
             _tray.Clicked += (_, _) => Open("stage");
             host.Controller.PropertyChanged += (_, _) => _tray.ToolTipText = menu.ToolTip;
+            // Tooltip auch nach einem Sprachwechsel neu (Prüfer-Fund UX-4).
+            Localization.Loc.Instance.PropertyChanged += (_, _) => _tray.ToolTipText = menu.ToolTip;
+            _trayMenu = menu;
             TrayIcon.SetIcons(this, [_tray]);
         }
         catch (Exception e) when (e is PlatformNotSupportedException or InvalidOperationException)

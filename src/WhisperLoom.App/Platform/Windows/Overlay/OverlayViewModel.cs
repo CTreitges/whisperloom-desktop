@@ -78,7 +78,7 @@ public sealed partial class OverlayViewModel : ObservableObject
 
     /// <summary>Diktat einer Anweisung zum Umschreiben der Markierung (markierung.html Befund 7): eigene Zustandswörter.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(StateText), nameof(AccessibleName))]
+    [NotifyPropertyChangedFor(nameof(StateText), nameof(AccessibleName), nameof(ShowSkip), nameof(KeysTemplate))]
     private bool _isRewrite;
 
     public bool IsProcessing => State == OverlayState.Processing;
@@ -119,7 +119,8 @@ public sealed partial class OverlayViewModel : ObservableObject
 
     public bool ShowRetry => IsError && CanRetry && Retry is not null;
 
-    public bool ShowSkip => IsProcessing && SkipRefine is not null;
+    /// <summary>„Ohne KI einfügen“ nur beim Diktat: Umschreiben läuft nicht über die überspringbare Verbesserung (Prüfer-Fund).</summary>
+    public bool ShowSkip => IsProcessing && !IsRewrite && SkipRefine is not null;
 
     public string StateText => State switch
     {
@@ -143,18 +144,19 @@ public sealed partial class OverlayViewModel : ObservableObject
 
     /// <summary>
     /// Tastenwege des Zustands als Tastenkappen (Befund 2), nur die, die wirklich wirken: in Aufnahme und Pause Enter und
-    /// Rücktaste (Overlay-Tasten des Hooks), beim Verarbeiten Esc. Nach einem Fehler sind die Overlay-Tasten frei: keine Zeile.
+    /// Rücktaste (Overlay-Tasten des Hooks), beim Verarbeiten Esc. Nach einem Fehler sind die Overlay-Tasten frei, beim
+    /// Umschreiben wirkt Esc nicht: keine Zeile.
     /// </summary>
     public string? KeysTemplate => State switch
     {
         OverlayState.Recording or OverlayState.Paused => Loc.Instance[CanPickStage ? "Overlay_Keys" : "Overlay_KeysNoStage"],
-        OverlayState.Processing => Loc.Instance["Overlay_KeysProcessing"],
+        OverlayState.Processing when !IsRewrite => Loc.Instance["Overlay_KeysProcessing"],
         _ => null,
     };
 
     public IReadOnlyList<string> Keys => State == OverlayState.Processing
-        ? [Loc.Instance["Key_Esc"]]
-        : [Loc.Instance["Key_Enter"], Loc.Instance["Key_Backspace"]];
+        ? [Loc.Instance["Keycap_Esc"]]
+        : [Loc.Instance["Keycap_Enter"], Loc.Instance["Keycap_Backspace"]];
 
     partial void OnElapsedChanged(TimeSpan value) => OnPropertyChanged(nameof(ElapsedText));
 

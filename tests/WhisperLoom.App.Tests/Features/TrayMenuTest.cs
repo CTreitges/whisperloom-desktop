@@ -63,6 +63,23 @@ public sealed class TrayMenuTest
         Assert.Equal("14:21", RecentHistory.Time(entry));
     }
 
+    /// <summary>Prüfer-Fund UX-4: Die Windows-Bedienung startet nach dem Tray; ein Refresh danach nennt die echte Wirkung.</summary>
+    [AvaloniaFact]
+    public void Refresh_fragt_die_Wirkung_neu()
+    {
+        Loc.Instance.SetLanguage("de");
+        using var f = new ControllerFixture();
+        var pastes = false;
+        var tray = new TrayMenu(f.Controller, _ => { }, pastes: () => pastes);
+        tray.SetRecent([Entry(DateTimeOffset.Now)]);
+        var recent = tray.Menu.Items.OfType<NativeMenuItem>().Single(i => i.Header == "Letzte Diktate");
+        Assert.StartsWith("Kopieren – ", recent.Menu!.Items.OfType<NativeMenuItem>().Single().Header, StringComparison.Ordinal);
+
+        pastes = true;
+        tray.Refresh();
+        Assert.StartsWith("Einfügen – ", recent.Menu!.Items.OfType<NativeMenuItem>().Single().Header, StringComparison.Ordinal);
+    }
+
     private static HistoryEntry Entry(DateTimeOffset at) =>
         new("1-a", at, "de", 1000, "roh", "Das Meeting ist am Donnerstag", new Refinement(RefineMode.Polish), "Fake-STT");
 }

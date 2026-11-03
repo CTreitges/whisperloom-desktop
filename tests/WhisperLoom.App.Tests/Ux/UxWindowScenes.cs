@@ -170,7 +170,7 @@ internal static class UxWindowScenes
         var window = UxStage.OnBackdrop(new HintWindow(), theme);
         if (toast)
         {
-            window.SetContent("toast", "WhisperLoom", Loc.Instance["Hint_Copied"], HintTone.Copied, [Loc.Instance["Key_Paste"]]);
+            window.SetContent("toast", "WhisperLoom", Loc.Instance["Hint_Copied"], HintTone.Copied, [Loc.Instance["Keycap_Paste"]]);
         }
         else
         {

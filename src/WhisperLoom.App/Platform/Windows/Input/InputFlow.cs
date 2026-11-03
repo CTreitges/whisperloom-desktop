@@ -329,6 +329,13 @@ public sealed partial class InputFlow
     /// </summary>
     private void OnControllerChanged(object? sender, PropertyChangedEventArgs e)
     {
+        // Ein neues Diktat (Kürzel, Tray, CLI) verwirft das gemerkte Audio: der Fehler mit „Erneut senden“ gilt nicht mehr
+        // (Prüfer-Fund UX-4). Ein neues Umschalt-Diktat öffnet das Overlay danach selbst wieder.
+        if (e.PropertyName == nameof(DictationController.State) && Overlay.State == OverlayState.Error && _controller.State == DictationState.Recording)
+        {
+            Overlay.CanRetry = false;
+            _ui.HideOverlay();
+        }
         // Ein Diktat von außen (CLI/IPC, Tray) schließt den Wähler und gibt seine Tasten frei (Review W2-SEL).
         if (e.PropertyName == nameof(DictationController.State) && _mode == Mode.Picker && _controller.State != DictationState.Idle)
         {
@@ -372,34 +379,5 @@ public sealed partial class InputFlow
         {
             Overlay.State = OverlayState.Paused;
         }
-    }
-
-    /// <summary>Stufen-Hotkey: mit aktivem Profil (laufendes Diktat bzw. Vordergrundfenster) dessen Stufe, sonst die Standard-Stufe.</summary>
-    private void NextStage()
-    {
-        var match = _mode == Mode.None ? ProfileFor(_foreground()) : _controller.ActiveProfile;
-        string label;
-        if (match is not null)
-        {
-            var stage = _controller.NextProfileStage(match.Index);
-            label = $"{AppProfiles.DisplayName(match.Profile)} · {Loc.Instance["Stage_" + stage.Key()]}";
-        }
-        else
-        {
-            try
-            {
-                _controller.SetStage("next");
-            }
-            catch (ArgumentException)
-            {
-                return;
-            }
-            label = StageLabel();
-        }
-        if (_mode != Mode.Rewrite)
-        {
-            Overlay.Stage = label;
-        }
-        _ui.ShowHint("stage", Loc.Instance["Stage_Label"], label, StageHintDuration, _foreground(), Pill.HintTone.Stage);
     }
 }

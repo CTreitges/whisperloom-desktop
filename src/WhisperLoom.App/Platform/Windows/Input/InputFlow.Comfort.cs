@@ -170,7 +170,7 @@ public sealed partial class InputFlow
         {
             case Core.Output.OutputHint.Copied:
                 // „Kopiert – einfügen mit Strg+V“ mit Tastenkappe (overlay.html Befund 9).
-                _ui.ShowHint("toast", "WhisperLoom", Loc.Instance["Hint_Copied"], ToastDuration, _target, Pill.HintTone.Copied, [Loc.Instance["Key_Paste"]]);
+                _ui.ShowHint("toast", "WhisperLoom", Loc.Instance["Hint_Copied"], ToastDuration, _target, Pill.HintTone.Copied, [Loc.Instance["Keycap_Paste"]]);
                 break;
             case Core.Output.OutputHint.None:
                 break;
@@ -188,13 +188,13 @@ public sealed partial class InputFlow
             Pill.HintTone.Error);
     }
 
-    /// <summary>Kurzer Hinweis; Grenzen und „nichts da“ als Warnung, der Rest als Auskunft.</summary>
+    /// <summary>Kurzer Hinweis; Grenzen und verlorene bzw. gesperrte Ergebnisse als Warnung, Fehler als Fehler, der Rest als Auskunft.</summary>
     private void Toast(string key) =>
         _ui.ShowHint("toast", "WhisperLoom", Loc.Instance[key], ToastDuration, _target, ToneOf(key));
 
     internal static Pill.HintTone ToneOf(string key) => key switch
     {
-        "Recording_Capped" or "Output_Hint_Password" => Pill.HintTone.Warning,
+        "Recording_Capped" or "Output_Hint_Password" or "Rewrite_TargetChanged" or "Rewrite_Locked" or "Selection_StageUnavailable" => Pill.HintTone.Warning,
         _ when key.StartsWith("Error_", StringComparison.Ordinal) || key == "Overlay_Error" => Pill.HintTone.Error,
         _ => Pill.HintTone.Info,
     };

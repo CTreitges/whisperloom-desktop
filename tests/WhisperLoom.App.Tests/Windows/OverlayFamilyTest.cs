@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
@@ -98,6 +99,37 @@ public sealed class OverlayFamilyTest
         Assert.Equal("Anweisung diktieren", vm.StateText);
         vm.State = OverlayState.Processing;
         Assert.Equal("Wird umgeschrieben …", vm.StateText);
+        // Prüfer-Fund UX-4: Umschreiben ist nicht überspringbar – kein „Ohne KI einfügen“, keine Esc-Zeile.
+        vm.SkipRefine = () => { };
+        Assert.False(vm.ShowSkip);
+        Assert.Null(vm.KeysTemplate);
+    }
+
+    /// <summary>Prüfer-Fund UX-4: Textknöpfe und „Verwerfen“ nach Fehler stehen auf der Innenkante wie das Zustandssymbol.</summary>
+    [AvaloniaFact]
+    public void Eine_Textkante_auch_nach_Fehler_und_beim_Verarbeiten()
+    {
+        var vm = new OverlayViewModel(() => { }, () => { }, () => { })
+        {
+            DismissError = () => { },
+            Retry = () => { },
+            SkipRefine = () => { },
+            CanRetry = true,
+            ErrorKey = "Error_Network",
+            State = OverlayState.Error,
+        };
+        var window = new OverlayWindow(vm);
+        window.Show();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        double Left(string name) => window.FindControl<Control>(name)!.TranslatePoint(default, window)!.Value.X;
+        Assert.Equal(Left("ErrorIcon"), Left("DiscardButton"), 1);
+
+        vm.State = OverlayState.Processing;
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        window.UpdateLayout();
+        var skipIcon = window.FindControl<Button>("SkipButton")!.GetLogicalDescendants().OfType<Design.LoomIcon>().First();
+        Assert.Equal(Left("ProcessingIcon"), skipIcon.TranslatePoint(default, window)!.Value.X, 1);
+        window.Close();
     }
 
     [AvaloniaFact]
@@ -137,6 +169,26 @@ public sealed class OverlayFamilyTest
         Assert.False(flow.Overlay.CanRetry);
         Assert.True(retryChanged); // Tray-Eintrag „Erneut senden“ verschwindet
         Assert.Equal("nothing", await f.Controller.RetryAsync());
+        GC.KeepAlive(send);
+    }
+
+    /// <summary>Prüfer-Fund UX-4: Ein neues Diktat (hier über das Tray) verwirft das Audio – das Fehler-Overlay schließt.</summary>
+    [AvaloniaFact]
+    public async Task Neues_Diktat_schliesst_das_Fehler_Overlay()
+    {
+        var (f, _, flow, ui) = Flow(Polish());
+        using var _ = f;
+        f.Pipeline.Failure = FakeFailure.SttNetwork;
+        await flow.HandleAsync(HotkeyAction.Toggle);
+        var send = flow.HandleAsync(HotkeyAction.OverlaySend);
+        await WaitFor(() => flow.Overlay.State == OverlayState.Error);
+        Assert.True(ui.Overlay);
+
+        f.Controller.Start();
+
+        Assert.False(ui.Overlay);
+        Assert.False(flow.Overlay.CanRetry);
+        f.Controller.Cancel();
         GC.KeepAlive(send);
     }
 
@@ -191,6 +243,8 @@ public sealed class OverlayFamilyTest
     [InlineData("Recording_Capped", HintTone.Warning)]
     [InlineData("Error_Network", HintTone.Error)]
     [InlineData("Overlay_Error", HintTone.Error)]
+    [InlineData("Rewrite_TargetChanged", HintTone.Warning)]
+    [InlineData("Rewrite_Locked", HintTone.Warning)]
     [InlineData("Recording_Long", HintTone.Info)]
     [InlineData("Output_Hint_RawOnly", HintTone.Info)]
     public void Art_des_Hinweises_aus_dem_Schluessel(string key, HintTone tone) =>
