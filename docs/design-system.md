@@ -48,6 +48,10 @@ Quelle: Loom-Palette der Android-App (`ui/theme/Color.kt`, `LoomPalette`). Dunke
 | `Loom.Focus` | `#6FD9C7` | `#0F5B50` | `#FFFF00` | Fokusring 2 px |
 | `Loom.Record` | `#FF4D4D` | `#B3261E` | `#FF6B6B` | Aufnahme-Symbol (nur Symbol, nie Fläche) |
 | `Loom.Tile.*` | Container-Töne | gleich | gleich | Symbol-Kacheln (weiße Glyphe) |
+| `Loom.HoverTint` / `Loom.PressedTint` | `#14808080` / `#28808080` | gleich | gleich | Hover/Gedrückt auf neutralen Flächen (halbtransparent) |
+| `Loom.Shadow.Float` | `0 4 14 0 #40000000` | gleich | gleich | Schatten schwebender Fenster (`Border.float`) |
+
+Außerhalb von `Tokens.axaml` steht keine Hex-Farbe in Ansichten und Styles (`UxRawColorTest`; einzige Ausnahme der Fluent-Akzent in `App.axaml`).
 
 Kontrast, geprüft von `DesignTokensTest` (WCAG 2.x, relative Leuchtdichte): Text auf Fläche ≥ 4,5:1, im Hochkontrast ≥ 7:1;
 Outline, Fokus, Akzentfläche, Warn- und Aufnahme-Symbol ≥ 3:1.
@@ -93,6 +97,8 @@ Regeln:
 - **Sofort speichern**: Auswahl und Schalter speichern bei Änderung, Textfelder beim Verlassen bzw. Enter (`UpdateSourceTrigger=LostFocus`). Ungültige Werte zeigen den Fehler in der Zeile und werden nicht gespeichert. Zerstörende Änderungen (Verlauf aus) fragen inline nach.
 - **Knöpfe**: ein Hauptknopf je Bereich (`accent`), Nebenaktionen als `secondary` oder Textknopf (`text`), Zerstörendes als `text danger` mit Gegenstand im Namen („Profil ‚Terminal‘ löschen“). Symbolknöpfe `icon` (32 × 32) nur mit Namen.
 - **Rückgängig statt Rückfrage**, wo es geht: Statuszeile „… gelöscht.“ mit Textknopf „Rückgängig“, gilt bis zur nächsten Aktion (kein Timer, kein Stapel); der Fokus springt auf „Rückgängig“. Nicht umkehrbar (Anbieter samt Key, Verlauf) fragt inline nach.
+- **Hinweise über fremden Programmen**: Stufe, „Kopiert“ und Auskünfte verschwinden nach kurzer Zeit; Warnungen und Fehler (nicht eingefügt, Grenze erreicht, Diktat gescheitert) bleiben stehen, bis „Hinweis schließen“ oder das nächste Diktat sie wegnimmt (UX-6).
+- **Texte**: Meldungen sagen, was zu tun ist – ohne „bitte“, „ungültig“ oder „klicken“ (`UxWritingTest`, Ausnahme D9).
 - **Nur zeigen, was gilt**: abhängige Zeilen erscheinen erst mit ihrer Voraussetzung (z. B. Proxy-Adresse nur bei „Eigener Proxy“).
 - **Hover und Gedrückt** auf Akzent- und Auswahlflächen sind einen Ton abgesetzt; Schrift darauf bleibt ≥ 4,5:1 (`DesignTokensTest`).
 - **Texte** nur über `Localization/*.json` (DE+EN), Schlüssel-Präfixe: `Page_`, `Section_`, `G_` (Gruppe), `Set_` (Zeile), `Validation_`, `Managed_`.
