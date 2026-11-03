@@ -139,7 +139,7 @@ public class SyncUiTest
 
         await sync.Preview("kein json");
         Assert.False(sync.CanApply);
-        Assert.StartsWith("Invalid file:", sync.Status, StringComparison.Ordinal);
+        Assert.StartsWith("Cannot use this file:", sync.Status, StringComparison.Ordinal);
 
         await sync.Preview(File.ReadAllText(SyncCommandsTest.Fixture("settings-v1-provisioning.json")));
         Assert.True(sync.CanApply);

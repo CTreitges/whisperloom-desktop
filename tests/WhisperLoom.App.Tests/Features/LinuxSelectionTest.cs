@@ -107,7 +107,7 @@ public sealed class LinuxSelectionTest
         using (f)
         {
             Assert.Equal("no-tool", await flow.RunAsync("polish"));
-            Assert.Equal("Markierung nicht lesbar: xclip fehlt – bitte installieren", notes[^1]);
+            Assert.Equal("Markierung nicht lesbar: xclip fehlt – xclip installieren", notes[^1]);
         }
         var (g, notes2, flow2) = Flow(new Runner { Installed = { ["xclip"] = new ProcessResult(0, " ", "") } });
         using (g)
