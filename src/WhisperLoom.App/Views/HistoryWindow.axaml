@@ -295,7 +295,7 @@
                 <Border Classes="keycap"><TextBlock Text="{Binding [History_KeyDelete], Source={x:Static l:Loc.Instance}}" /></Border>
               </StackPanel>
             </Button>
-            <Button x:Name="EditButton" Classes="secondary" Click="OnEditClick"
+            <Button x:Name="EditButton" Classes="secondary" Click="OnEditClick" IsEnabled="{Binding Detail.CanEdit, FallbackValue=False}"
                     AutomationProperties.Name="{Binding [History_Edit], Source={x:Static l:Loc.Instance}}"
                     AutomationProperties.AcceleratorKey="{Binding [History_KeyEdit], Source={x:Static l:Loc.Instance}}">
               <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">

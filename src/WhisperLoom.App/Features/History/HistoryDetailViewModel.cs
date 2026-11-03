@@ -92,6 +92,7 @@ public sealed partial class HistoryDetailViewModel : ObservableObject
         // Während „Neu verarbeiten“ läuft, baut das Ergebnis die Fassungen neu auf; eine Bearbeitung ginge dabei verloren (N14).
         if (RunningStage is not null)
         {
+            Status = Loc.Instance["History_EditAfterRun"];
             return;
         }
         EditText = Text;
@@ -163,7 +164,11 @@ public sealed partial class HistoryDetailViewModel : ObservableObject
 
     /// <summary>Läuft gerade eine Rechnung für diesen Eintrag (Ladeanzeige).</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanEdit))]
     private string? _runningStage;
+
+    /// <summary>Bearbeiten erst nach einer laufenden Neuverarbeitung (deren Ergebnis baut die Fassungen neu auf).</summary>
+    public bool CanEdit => RunningStage is null;
 
     [ObservableProperty]
     private string _status = "";
@@ -196,6 +201,16 @@ public sealed partial class HistoryDetailViewModel : ObservableObject
     [RelayCommand]
     public Task ConfirmReplace()
     {
+        // Auch über „Ersetzen?“ startet keine Rechnung über einen Entwurf (Prüfer Runde 4).
+        if (EditChanged)
+        {
+            DiscardPending = true;
+            return Task.CompletedTask;
+        }
+        if (IsEditing)
+        {
+            DiscardEdit();
+        }
         var stage = PendingStage;
         PendingStage = null;
         return stage is null ? Task.CompletedTask : ReprocessAsync(stage);

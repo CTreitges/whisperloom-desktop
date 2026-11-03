@@ -192,6 +192,10 @@ public partial class HistoryWindow : Window
     private void BeginEdit(HistoryViewModel vm)
     {
         vm.EditSelected();
+        if (vm.Detail is not { IsEditing: true })
+        {
+            return; // z. B. während einer Neuverarbeitung: die Statuszeile sagt warum
+        }
         Dispatcher.UIThread.Post(() => this.GetVisualDescendants().OfType<TextBox>().FirstOrDefault(t => t.Name == "EditBox")?.Focus(),
             DispatcherPriority.Loaded);
     }

@@ -335,8 +335,31 @@ public sealed class HistoryWindowTest : IDisposable
 
         detail.DiscardEdit();
         detail.RunningStage = "summarize"; // Rechnung läuft
+        Assert.False(detail.CanEdit);
         detail.BeginEdit();
         Assert.False(detail.IsEditing);
+        Assert.Equal(Loc.Instance["History_EditAfterRun"], detail.Status); // sagt, warum nichts passiert
+    }
+
+    /// <summary>Prüfer Runde 4: auch „Ersetzen?“ bestätigt keine Rechnung über einen Entwurf.</summary>
+    [AvaloniaFact]
+    public async Task Ersetzen_mit_Entwurf_fragt_erst_nach_dem_Entwurf()
+    {
+        var vm = await Model();
+        var detail = vm.Detail!;
+        detail.BeginEdit();
+        detail.EditText = "Handarbeit";
+        await detail.SaveEdit();
+        await detail.RequestReprocessAsync("polish");
+        Assert.True(detail.ConfirmReplacePending);
+
+        detail.BeginEdit();
+        detail.EditText = "noch mehr Handarbeit";
+        await detail.ConfirmReplace();
+        Assert.True(detail.DiscardPending);
+        Assert.True(detail.IsEditing);
+        Assert.Null(detail.RunningStage);
+        Assert.Equal("noch mehr Handarbeit", detail.EditText);
     }
 
     [Theory]
