@@ -142,6 +142,15 @@ public sealed class KeyFieldUndoTest
 
             Assert.Equal(ownKeyBefore ? "test-key-not-real-82" : null, user.Values.GetValueOrDefault(name));
             Assert.Equal("test-key-not-real-81", company.Values[name]); // Firmen-Ablage unberührt
+
+            if (!ownKeyBefore)
+            {
+                // Nachprüfung B1: ohne eigenen Key löscht der Klick nichts – das Feld sagt das, statt „Key gelöscht“ zu zeigen.
+                await key.DeleteCommand.ExecuteAsync(null);
+                Assert.True(key.IsSet);
+                Assert.False(key.CanUndo);
+                Assert.Equal(Loc.Instance["Key_FromCompany"], key.Status);
+            }
         }
         finally
         {

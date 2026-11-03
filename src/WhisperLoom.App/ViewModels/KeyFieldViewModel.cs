@@ -128,8 +128,9 @@ public sealed partial class KeyFieldViewModel : ObservableObject
             var own = (_store as Management.CompanySecretStore)?.UserStore ?? _store;
             var current = await own.GetAsync(Name, CancellationToken.None);
             await _store.DeleteAsync(Name, CancellationToken.None);
-            IsSet = false;
-            Status = Loc.Instance["Key_Deleted"];
+            // Zustand neu lesen: unter Verwaltung kann danach weiter ein Firmen-Key gelten (Nachprüfung B1).
+            IsSet = await _store.GetAsync(Name, CancellationToken.None) is not null;
+            Status = Loc.Instance[current is null && IsSet ? "Key_FromCompany" : "Key_Deleted"];
             _deleted = current;
             CanUndo = current is not null;
         }

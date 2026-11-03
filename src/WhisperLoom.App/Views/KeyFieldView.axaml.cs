@@ -25,6 +25,7 @@ public partial class KeyFieldView : UserControl
     {
         base.OnDataContextChanged(e);
         Unsubscribe();
+        _follow = false; // eine Aktion am alten Modell darf den Fokus nicht nachträglich herziehen (Nachprüfung B2)
         _vm = DataContext as KeyFieldViewModel;
         Subscribe();
     }
@@ -42,6 +43,7 @@ public partial class KeyFieldView : UserControl
         _vm?.Forget();
         Unsubscribe();
         _attached = false;
+        _follow = false;
         base.OnDetachedFromVisualTree(e);
     }
 

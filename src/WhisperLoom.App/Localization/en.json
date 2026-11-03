@@ -901,5 +901,6 @@
   "Key_NewLabel": "New API key",
   "Key_NewHint": "Paste with Ctrl+V; the key is never shown.",
   "Key_SaveNew": "Save key",
-  "Key_Restored": "Key restored."
+  "Key_Restored": "Key restored.",
+  "Key_FromCompany": "This key comes from your company and can't be deleted here."
 }

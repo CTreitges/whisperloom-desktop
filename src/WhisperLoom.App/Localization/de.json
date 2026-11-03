@@ -901,5 +901,6 @@
   "Key_NewLabel": "Neuer API-Key",
   "Key_NewHint": "Einfügen mit Strg+V; der Key wird nie angezeigt.",
   "Key_SaveNew": "Key speichern",
-  "Key_Restored": "Key wiederhergestellt."
+  "Key_Restored": "Key wiederhergestellt.",
+  "Key_FromCompany": "Dieser Key kommt von deiner Firma und lässt sich hier nicht löschen."
 }
