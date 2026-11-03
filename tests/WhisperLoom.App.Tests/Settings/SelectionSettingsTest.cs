@@ -144,6 +144,8 @@ public sealed class SelectionSettingsTest
         var window = Open(f, out var vm);
         SettingsUi.Show(window, "dictation");
         var row = SettingsUi.Rows(window).Single(r => r.TitleKey == "Hotkey_SelectionCombo");
+        vm.Hotkeys.Windows = true; // Ausgangslage unabhängig vom Betriebssystem (CI läuft auch auf Linux; Prüfer-Fund UX-5)
+        Dispatcher.UIThread.RunJobs();
         Assert.True(row.IsVisible);
 
         vm.Hotkeys.Windows = false; // wie unter Linux, SelectionOn bleibt an
