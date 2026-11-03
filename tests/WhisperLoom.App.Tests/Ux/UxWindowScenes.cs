@@ -87,10 +87,10 @@ internal static class UxWindowScenes
         }
         var actions = new HistoryActions(_ => Task.FromResult(true), _ => Task.FromResult("Pasted"),
             (id, stage) => f.Controller.ReprocessVersionAsync(id, stage), f.Controller.EditHistoryAsync,
-            [.. RefineModes.SettingsFor(true).Select(m => (m.Key(), Loc.Instance["Stage_" + m.Key()]))]);
+            [.. RefineModes.SettingsFor(true).Select(m => (m.Key(), Loc.Instance["Stage_" + m.Key()]))], StartKeys: ["Ctrl+Win", "Ctrl+Space"]);
         var vm = new HistoryViewModel(f.History, actions, () => now);
         await vm.LoadAsync();
-        var window = new HistoryWindow(vm) { Width = 960, Height = 640, RequestedThemeVariant = theme };
+        var window = new HistoryWindow(vm) { Width = 1040, Height = 640, RequestedThemeVariant = theme };
         window.Show();
         if (!empty)
         {

@@ -1,0 +1,54 @@
+using CommunityToolkit.Mvvm.Input;
+using WhisperLoom.App.Localization;
+
+namespace WhisperLoom.App.Features.History;
+
+/// <summary>Texte des Verlaufs nach UX-3 (mockups/verlauf.html): Trefferzahl, Rückfrage mit Anzahl, Leerzustand.</summary>
+public sealed partial class HistoryViewModel
+{
+    /// <summary>Ansage unter der Suche: „3 Treffer“ bzw. „Keine Treffer für „x“.“; leer ohne Suche.</summary>
+    public string SearchSummary =>
+        Search.Trim().Length == 0 || _all.Count == 0 ? ""
+        : Rows.Count == 0 ? Loc.Instance.Format("History_NoMatchesFor", Search.Trim())
+        : Loc.Instance.Format(Rows.Count == 1 ? "History_MatchOne" : "History_Matches", Rows.Count);
+
+    /// <summary>Rückfrage vor „Verlauf löschen“ mit Anzahl (Befund 7): „Alle 4 Diktate löschen? …“.</summary>
+    public string ClearQuestion => Loc.Instance.Format(_all.Count == 1 ? "History_ClearConfirmOne" : "History_ClearConfirm", _all.Count);
+
+    /// <summary>Leerzustand: Satz mit den Tastenkürzeln als Tastenkappen (Windows) bzw. dem Desktop-Kürzel (Linux).</summary>
+    public string EmptyTemplate => Loc.Instance[actions.StartKeys is { Count: >= 2 } ? "History_EmptyHint" : "History_EmptyHintLinux"];
+
+    public IReadOnlyList<string> EmptyKeys => actions.StartKeys ?? [];
+
+    /// <summary>Werkzeugleiste nur mit gewähltem Eintrag; sonst steht rechts der Leerzustand bzw. „keine Treffer“.</summary>
+    public bool ShowToolbar => HasSelection;
+
+    public bool HasStatus => Status.Length > 0;
+
+    /// <summary>Fuß rechts: Statuszeile und/oder Werkzeugleiste.</summary>
+    public bool ShowFoot => HasStatus || ShowToolbar;
+
+    /// <summary>Überschrift rechts: Datum des Eintrags, sonst „Noch keine Diktate“ bzw. „Keine Treffer“.</summary>
+    public string HeaderText =>
+        Detail?.Header ?? Loc.Instance[IsEmpty ? "History_Empty" : NoMatches ? "History_NoMatches" : "History_NoSelection"];
+
+    [RelayCommand]
+    public void ClearSearch() => Search = "";
+
+    partial void OnStatusChanged(string value)
+    {
+        OnPropertyChanged(nameof(HasStatus));
+        OnPropertyChanged(nameof(ShowFoot));
+    }
+
+    partial void OnDetailChanged(HistoryDetailViewModel? value) => OnPropertyChanged(nameof(HeaderText));
+
+    private void RaiseListTexts()
+    {
+        OnPropertyChanged(nameof(SearchSummary));
+        OnPropertyChanged(nameof(ClearQuestion));
+        OnPropertyChanged(nameof(ShowToolbar));
+        OnPropertyChanged(nameof(ShowFoot));
+        OnPropertyChanged(nameof(HeaderText));
+    }
+}

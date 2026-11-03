@@ -231,6 +231,7 @@ public sealed partial class HistoryDetailViewModel : ObservableObject
 /// <param name="Stages">Wählbare Stufen (Schlüssel, Anzeige).</param>
 /// <param name="Changed">Eintrag geändert oder gelöscht (Tray-Liste neu laden).</param>
 /// <param name="Cleared">Verlauf geleert (auch das letzte Ergebnis vergessen).</param>
+/// <param name="StartKeys">Tastenkürzel Halten und Umschalten für den Leerzustand; null = ohne globale Kürzel (Linux).</param>
 public sealed record HistoryActions(
     Func<string, Task<bool>> Copy,
     Func<string, Task<string>>? Insert,
@@ -238,4 +239,5 @@ public sealed record HistoryActions(
     Func<string, string, string, Task<HistoryEntry?>> Edit,
     IReadOnlyList<(string Key, string Label)> Stages,
     Action<HistoryEntry?>? Changed = null,
-    Action? Cleared = null);
+    Action? Cleared = null,
+    IReadOnlyList<string>? StartKeys = null);

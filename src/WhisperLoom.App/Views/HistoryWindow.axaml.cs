@@ -160,6 +160,18 @@ public partial class HistoryWindow : Window
         }
     }, DispatcherPriority.Loaded);
 
+    /// <summary>Hilfe-Abschnitt „Verlauf“ (wie F1).</summary>
+    private void OnHelp(object? sender, RoutedEventArgs e) => Help.HelpLauncher.Open("history");
+
+    /// <summary>„Bearbeiten“ wie F2: Textfeld zeigen und fokussieren.</summary>
+    private void OnEditClick(object? sender, RoutedEventArgs e)
+    {
+        if (Vm is { } vm)
+        {
+            BeginEdit(vm);
+        }
+    }
+
     /// <summary>„Neu verarbeiten“ öffnet den Wähler und gibt ihm den Fokus (Tastatur sofort nutzbar).</summary>
     private void OnReprocessClick(object? sender, RoutedEventArgs e) =>
         Dispatcher.UIThread.Post(() => this.GetVisualDescendants().OfType<StagePicker>().FirstOrDefault(p => p.IsVisible)?.Focus(),

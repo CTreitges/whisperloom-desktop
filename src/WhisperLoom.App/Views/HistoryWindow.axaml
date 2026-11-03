@@ -8,135 +8,317 @@
         Classes="loom"
         Title="{Binding [History_Title], Source={x:Static l:Loc.Instance}}"
         Icon="/Assets/whisperloom.ico"
-        Width="960" Height="640" MinWidth="640" MinHeight="420"
-        Background="{DynamicResource Loom.Background}">
-  <!-- Verlauf (W2-OUT): links Suche + Liste nach Tagen (Seitenleiste wie die Einstellungen), rechts das Detail mit
-       Ursprung/Fassungen. Tasten: ↑/↓, Enter einfügen, Strg+C kopieren, Entf löschen, Strg+Z rückgängig, F2 bearbeiten, Strg+F suchen. -->
-  <Grid ColumnDefinitions="340,*" RowDefinitions="*,Auto">
-    <Border Grid.RowSpan="2" Background="{DynamicResource Loom.Sidebar}">
-      <DockPanel Margin="12">
-        <TextBox x:Name="SearchBox" DockPanel.Dock="Top" Text="{Binding Search}" Margin="0,0,0,10"
-                 PlaceholderText="{Binding [History_Search], Source={x:Static l:Loc.Instance}}"
-                 AutomationProperties.Name="{Binding [History_Search], Source={x:Static l:Loc.Instance}}" />
-        <StackPanel DockPanel.Dock="Bottom" Spacing="6" Margin="0,10,0,0">
-          <Border Background="{DynamicResource Loom.Surface}" CornerRadius="8" Padding="10,6" IsVisible="{Binding Status.Length}">
-            <DockPanel>
-              <Button x:Name="UndoButton" DockPanel.Dock="Right" Classes="link" Content="{Binding [History_Undo], Source={x:Static l:Loc.Instance}}"
-                      Command="{Binding UndoCommand}" IsVisible="{Binding CanUndo}"
-                      ToolTip.Tip="{Binding [History_KeyUndo], Source={x:Static l:Loc.Instance}}" />
-              <TextBlock x:Name="StatusText" Text="{Binding Status}" Foreground="{DynamicResource Loom.Text}" VerticalAlignment="Center"
-                         TextWrapping="Wrap" />
-            </DockPanel>
-          </Border>
-          <Button x:Name="ClearButton" Content="{Binding [History_Clear], Source={x:Static l:Loc.Instance}}" Command="{Binding AskClearCommand}"
-                  IsVisible="{Binding !ClearPending}" IsEnabled="{Binding !IsEmpty}" />
-          <StackPanel IsVisible="{Binding ClearPending}" Spacing="6">
-            <TextBlock Text="{Binding [History_ClearConfirm], Source={x:Static l:Loc.Instance}}" TextWrapping="Wrap"
-                       Foreground="{DynamicResource Loom.Text}" />
-            <StackPanel Orientation="Horizontal" Spacing="8">
-              <Button Content="{Binding [Action_Cancel], Source={x:Static l:Loc.Instance}}" Command="{Binding CancelClearCommand}" />
-              <Button x:Name="ClearConfirmButton" Content="{Binding [History_Clear], Source={x:Static l:Loc.Instance}}" Command="{Binding ClearCommand}"
-                      Foreground="{DynamicResource Loom.Error}" />
+        Width="1040" Height="640" MinWidth="720" MinHeight="480">
+  <!--
+    Verlauf (UX-3, mockups/verlauf.html): links Suche mit Beschriftung und die Liste nach Tagen (Auswahl wie jede Seitenleiste),
+    darunter „Verlauf löschen …“ mit Rückfrage samt Anzahl. Rechts Überschrift mit Hilfe (F1), Gruppe „Fassung“, Textkarte und
+    unten Statuszeile (Ansage, „Rückgängig“) und Werkzeugleiste nach Gebrauch: Mehr ▸ Löschen, Bearbeiten, Neu verarbeiten,
+    Kopieren, Einfügen (Hauptknopf) – mit sichtbaren Tastenkappen.
+    Tasten: ↑/↓, Enter einfügen, Strg+C kopieren, Entf löschen, Strg+Z rückgängig, F2 bearbeiten, Strg+F suchen.
+  -->
+  <Window.Styles>
+    <Style Selector="Border.sideItem TextBlock.meta">
+      <Setter Property="FontSize" Value="{DynamicResource Loom.Font.Caption}" />
+      <Setter Property="Foreground" Value="{DynamicResource Loom.TextSecondary}" />
+      <Setter Property="FontWeight" Value="Normal" />
+    </Style>
+    <Style Selector="ListBoxItem:selected Border.sideItem TextBlock.meta">
+      <Setter Property="Foreground" Value="{DynamicResource Loom.OnSelection}" />
+    </Style>
+    <Style Selector="Border.sideItem ds|LoomIcon.meta">
+      <Setter Property="Foreground" Value="{DynamicResource Loom.TextSecondary}" />
+    </Style>
+    <Style Selector="ListBoxItem:selected Border.sideItem ds|LoomIcon.meta">
+      <Setter Property="Foreground" Value="{DynamicResource Loom.OnSelection}" />
+    </Style>
+    <Style Selector="TextBlock.day">
+      <Setter Property="FontSize" Value="{DynamicResource Loom.Font.Caption}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource Loom.TextSecondary}" />
+      <Setter Property="Margin" Value="24,12,12,4" />
+    </Style>
+    <!-- Fassung: Umschaltknopf; gewählt mit Selection-Fläche und Fettschrift (nicht nur Farbe). -->
+    <Style Selector="ToggleButton.version">
+      <Setter Property="CornerRadius" Value="14" />
+      <Setter Property="Padding" Value="12,4" />
+      <Setter Property="MinHeight" Value="28" />
+      <Setter Property="Background" Value="{DynamicResource Loom.Surface}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Loom.Outline}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Foreground" Value="{DynamicResource Loom.Text}" />
+    </Style>
+    <Style Selector="ToggleButton.version:checked /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.version:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Loom.Selection}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Loom.Accent}" />
+      <Setter Property="Foreground" Value="{DynamicResource Loom.OnSelection}" />
+    </Style>
+    <Style Selector="ToggleButton.version:checked TextBlock">
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="MenuItem.danger">
+      <Setter Property="Foreground" Value="{DynamicResource Loom.Error}" />
+    </Style>
+    <Style Selector="Button Border.keycap">
+      <Setter Property="Padding" Value="5,0" />
+      <Setter Property="Margin" Value="4,0,0,0" />
+    </Style>
+  </Window.Styles>
+
+  <Grid ColumnDefinitions="300,*">
+    <!-- Liste -->
+    <Border Grid.Column="0" Background="{DynamicResource Loom.Sidebar}" BorderBrush="{DynamicResource Loom.CardEdge}" BorderThickness="0,0,1,0">
+      <DockPanel Margin="0,16,0,12">
+        <StackPanel DockPanel.Dock="Top" Margin="24,0,12,4" Spacing="{DynamicResource Loom.Space.1}">
+          <TextBlock x:Name="SearchLabel" Text="{Binding [History_SearchLabel], Source={x:Static l:Loc.Instance}}" FontWeight="SemiBold" TextWrapping="Wrap" />
+          <TextBox x:Name="SearchBox" Text="{Binding Search}"
+                   AutomationProperties.Name="{Binding [History_SearchLabel], Source={x:Static l:Loc.Instance}}"
+                   AutomationProperties.HelpText="{Binding [History_SearchHelp], Source={x:Static l:Loc.Instance}}">
+            <TextBox.InnerLeftContent>
+              <ds:LoomIcon Data="{DynamicResource Loom.Icon.Search}" Width="16" Height="16" Margin="8,0,0,0" Foreground="{DynamicResource Loom.TextSecondary}" />
+            </TextBox.InnerLeftContent>
+            <TextBox.InnerRightContent>
+              <Button x:Name="ClearSearchButton" Classes="flat" Width="24" Height="24" Padding="0" Margin="0,0,4,0" Command="{Binding ClearSearchCommand}"
+                      IsVisible="{Binding Search, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                      AutomationProperties.Name="{Binding [Search_Clear], Source={x:Static l:Loc.Instance}}"
+                      ToolTip.Tip="{Binding [Search_Clear], Source={x:Static l:Loc.Instance}}">
+                <ds:LoomIcon Data="{DynamicResource Loom.Icon.Close}" Width="16" Height="16" />
+              </Button>
+            </TextBox.InnerRightContent>
+          </TextBox>
+          <TextBlock x:Name="SearchSummary" Text="{Binding SearchSummary}" Classes="caption" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"
+                     IsVisible="{Binding SearchSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+        </StackPanel>
+
+        <!-- Rückfrage-Kasten hängt 12 px vor der Kante, sein Text steht auf ihr. -->
+        <StackPanel DockPanel.Dock="Bottom" Margin="12,8,12,0" Spacing="{DynamicResource Loom.Space.2}">
+          <Button x:Name="ClearButton" Classes="text danger" Margin="12,0,0,0" HorizontalAlignment="Left" Command="{Binding AskClearCommand}"
+                  Content="{Binding [History_Clear], Source={x:Static l:Loc.Instance}}">
+            <Button.IsVisible>
+              <MultiBinding Converter="{x:Static BoolConverters.And}">
+                <Binding Path="!ClearPending" />
+                <Binding Path="!IsEmpty" />
+              </MultiBinding>
+            </Button.IsVisible>
+          </Button>
+          <Border x:Name="ClearConfirm" Classes="confirm" IsVisible="{Binding ClearPending}">
+            <StackPanel Spacing="{DynamicResource Loom.Space.2}">
+              <TextBlock x:Name="ClearQuestion" Text="{Binding ClearQuestion}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Assertive" />
+              <WrapPanel ItemSpacing="16" LineSpacing="8">
+                <Button x:Name="ClearConfirmButton" Classes="secondary danger" Content="{Binding [History_ClearAll], Source={x:Static l:Loc.Instance}}"
+                        Command="{Binding ClearCommand}" />
+                <Button x:Name="ClearKeepButton" Classes="text" VerticalAlignment="Center" Content="{Binding [History_Keep], Source={x:Static l:Loc.Instance}}"
+                        Command="{Binding CancelClearCommand}" />
+              </WrapPanel>
             </StackPanel>
+          </Border>
+        </StackPanel>
+
+        <ListBox x:Name="Entries" Classes="sidebar" ItemsSource="{Binding Rows}" SelectedItem="{Binding Selected}"
+                 AutomationProperties.Name="{Binding [History_ListName], Source={x:Static l:Loc.Instance}}">
+          <ListBox.Styles>
+            <Style Selector="ListBoxItem" x:DataType="h:HistoryRow">
+              <Setter Property="AutomationProperties.Name" Value="{Binding Preview}" />
+              <Setter Property="AutomationProperties.HelpText" Value="{Binding MetaLine}" />
+            </Style>
+          </ListBox.Styles>
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="h:HistoryRow">
+              <StackPanel>
+                <TextBlock Classes="day" Text="{Binding DayLabel}" IsVisible="{Binding FirstOfDay}" />
+                <Border Classes="sideItem">
+                  <StackPanel Spacing="2">
+                    <TextBlock Text="{Binding Preview}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+                    <WrapPanel ItemSpacing="8" LineSpacing="2">
+                      <TextBlock Classes="meta" Text="{Binding MetaLine}" TextWrapping="Wrap" />
+                      <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding VersionsText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <ds:LoomIcon Classes="meta" Data="{DynamicResource Loom.Icon.Reprocess}" Width="12" Height="12" VerticalAlignment="Center" />
+                        <TextBlock Classes="meta" Text="{Binding VersionsText}" />
+                      </StackPanel>
+                    </WrapPanel>
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+    </Border>
+
+    <!-- Detail -->
+    <DockPanel Grid.Column="1">
+      <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="24,20,24,0">
+        <TextBlock x:Name="HeaderText" Text="{Binding HeaderText}" Margin="17,0,0,0" FontSize="{DynamicResource Loom.Font.PageTitle}" FontWeight="SemiBold"
+                   Foreground="{DynamicResource Loom.Text}" TextWrapping="Wrap" VerticalAlignment="Center" AutomationProperties.HeadingLevel="1" />
+        <Button x:Name="HelpButton" Grid.Column="1" Classes="icon" CornerRadius="16" Margin="12,0,0,0" VerticalAlignment="Top" Click="OnHelp"
+                ToolTip.Tip="{Binding [History_HelpName], Source={x:Static l:Loc.Instance}}"
+                AutomationProperties.Name="{Binding [History_HelpName], Source={x:Static l:Loc.Instance}}">
+          <ds:LoomIcon Data="{DynamicResource Loom.Icon.Help}" Width="20" Height="20" />
+        </Button>
+      </Grid>
+
+      <!-- Fuß: Statuszeile (Ansage) und Werkzeugleiste. -->
+      <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource Loom.Separator}" BorderThickness="0,1,0,0" Padding="24,12" IsVisible="{Binding ShowFoot}">
+        <StackPanel Spacing="{DynamicResource Loom.Space.2}">
+          <WrapPanel x:Name="StatusRow" Margin="17,0,0,0" ItemSpacing="12" LineSpacing="4" IsVisible="{Binding HasStatus}">
+            <TextBlock x:Name="StatusText" Text="{Binding Status}" TextWrapping="Wrap" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" />
+            <Button x:Name="UndoButton" Classes="text" Command="{Binding UndoCommand}" IsVisible="{Binding CanUndo}"
+                    AutomationProperties.Name="{Binding [History_Undo], Source={x:Static l:Loc.Instance}}"
+                    AutomationProperties.AcceleratorKey="{Binding [History_KeyUndo], Source={x:Static l:Loc.Instance}}">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <ds:LoomIcon Data="{DynamicResource Loom.Icon.Undo}" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding [History_Undo], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
+                <Border Classes="keycap"><TextBlock Text="{Binding [History_KeyUndo], Source={x:Static l:Loc.Instance}}" /></Border>
+              </StackPanel>
+            </Button>
+          </WrapPanel>
+          <WrapPanel x:Name="Toolbar" HorizontalAlignment="Right" ItemSpacing="8" LineSpacing="8" IsVisible="{Binding ShowToolbar}">
+            <Button x:Name="MoreButton" Classes="icon" CornerRadius="{DynamicResource Loom.Radius.Control}"
+                    AutomationProperties.Name="{Binding [History_More], Source={x:Static l:Loc.Instance}}"
+                    ToolTip.Tip="{Binding [History_More], Source={x:Static l:Loc.Instance}}">
+              <ds:LoomIcon Data="{DynamicResource Loom.Icon.More}" Width="20" Height="20" />
+              <Button.Flyout>
+                <MenuFlyout Placement="TopEdgeAlignedLeft">
+                  <MenuItem x:Name="DeleteMenuItem" Classes="danger" Header="{Binding [Action_Delete], Source={x:Static l:Loc.Instance}}"
+                            InputGesture="Delete" Command="{Binding DeleteSelectedCommand}">
+                    <MenuItem.Icon>
+                      <ds:LoomIcon Data="{DynamicResource Loom.Icon.Delete}" Width="16" Height="16" Foreground="{DynamicResource Loom.Error}" />
+                    </MenuItem.Icon>
+                  </MenuItem>
+                </MenuFlyout>
+              </Button.Flyout>
+            </Button>
+            <Button x:Name="EditButton" Classes="secondary" Click="OnEditClick"
+                    AutomationProperties.Name="{Binding [History_Edit], Source={x:Static l:Loc.Instance}}"
+                    AutomationProperties.AcceleratorKey="{Binding [History_KeyEdit], Source={x:Static l:Loc.Instance}}">
+              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
+                <ds:LoomIcon Data="{DynamicResource Loom.Icon.Edit}" Width="16" Height="16" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding [History_Edit], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
+                <Border Classes="keycap"><TextBlock Text="{Binding [History_KeyEdit], Source={x:Static l:Loc.Instance}}" /></Border>
+              </StackPanel>
+            </Button>
+            <Button x:Name="ReprocessButton" Classes="secondary" Click="OnReprocessClick" Command="{Binding Detail.ToggleStagePickerCommand, FallbackValue={x:Null}}"
+                    IsVisible="{Binding Detail.CanReprocess, FallbackValue=False}"
+                    AutomationProperties.Name="{Binding [History_Reprocess], Source={x:Static l:Loc.Instance}}"
+                    AutomationProperties.HelpText="{Binding [History_ReprocessTip], Source={x:Static l:Loc.Instance}}">
+              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
+                <ds:LoomIcon Data="{DynamicResource Loom.Icon.Reprocess}" Width="16" Height="16" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding [History_Reprocess], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+            <Button x:Name="CopyButton" Classes="secondary" Command="{Binding CopySelectedCommand}"
+                    AutomationProperties.Name="{Binding [Action_Copy], Source={x:Static l:Loc.Instance}}"
+                    AutomationProperties.AcceleratorKey="{Binding [History_KeyCopy], Source={x:Static l:Loc.Instance}}">
+              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
+                <ds:LoomIcon Data="{DynamicResource Loom.Icon.Copy}" Width="16" Height="16" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding [Action_Copy], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
+                <Border Classes="keycap"><TextBlock Text="{Binding [History_KeyCopy], Source={x:Static l:Loc.Instance}}" /></Border>
+              </StackPanel>
+            </Button>
+            <Button x:Name="InsertButton" Classes="accent" Command="{Binding InsertSelectedCommand}"
+                    AutomationProperties.Name="{Binding [History_Insert], Source={x:Static l:Loc.Instance}}"
+                    AutomationProperties.AcceleratorKey="{Binding [History_KeyInsert], Source={x:Static l:Loc.Instance}}">
+              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
+                <ds:LoomIcon Data="{DynamicResource Loom.Icon.Paste}" Width="16" Height="16" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding [History_Insert], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
+                <Border Classes="keycap"><TextBlock Text="{Binding [History_KeyInsert], Source={x:Static l:Loc.Instance}}" /></Border>
+              </StackPanel>
+            </Button>
+          </WrapPanel>
+        </StackPanel>
+      </Border>
+
+      <Panel>
+        <!-- Leerzustand bzw. keine Treffer -->
+        <StackPanel x:Name="EmptyState" Margin="24,12,24,24" Spacing="{DynamicResource Loom.Space.3}" IsVisible="{Binding !HasSelection}">
+          <ds:KeycapText x:Name="EmptyHint" Margin="17,0,0,0" MaxWidth="560" HorizontalAlignment="Left" Template="{Binding EmptyTemplate}" Keys="{Binding EmptyKeys}"
+                         IsVisible="{Binding IsEmpty}" />
+          <StackPanel Margin="17,0,0,0" Spacing="{DynamicResource Loom.Space.2}" IsVisible="{Binding NoMatches}">
+            <TextBlock Text="{Binding SearchSummary}" TextWrapping="Wrap" />
+            <Button x:Name="EmptyClearSearchButton" Classes="text" HorizontalAlignment="Left" Command="{Binding ClearSearchCommand}"
+                    Content="{Binding [Search_Clear], Source={x:Static l:Loc.Instance}}" />
           </StackPanel>
         </StackPanel>
-        <Panel>
-          <TextBlock Text="{Binding [History_Empty], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding IsEmpty}"
-                     Foreground="{DynamicResource Loom.TextSecondary}" HorizontalAlignment="Center" Margin="0,24" />
-          <TextBlock Text="{Binding [History_NoMatches], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding NoMatches}"
-                     Foreground="{DynamicResource Loom.TextSecondary}" HorizontalAlignment="Center" Margin="0,24" />
-          <ListBox x:Name="Entries" ItemsSource="{Binding Rows}" SelectedItem="{Binding Selected}" Background="Transparent"
-                   AutomationProperties.Name="{Binding [History_Title], Source={x:Static l:Loc.Instance}}">
-            <ListBox.ItemTemplate>
-              <DataTemplate x:DataType="h:HistoryRow">
-                <StackPanel Spacing="2" Margin="0,2">
-                  <TextBlock Text="{Binding DayLabel}" IsVisible="{Binding FirstOfDay}" FontWeight="SemiBold" FontSize="12"
-                             Foreground="{DynamicResource Loom.TextSecondary}" Margin="0,6,0,4" />
-                  <TextBlock Text="{Binding Preview}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"
-                             Foreground="{DynamicResource Loom.Text}" />
-                  <StackPanel Orientation="Horizontal" Spacing="6">
-                    <Border Background="{DynamicResource Loom.SurfaceHigh}" BorderBrush="{DynamicResource Loom.Separator}" BorderThickness="1"
-                            CornerRadius="4" Padding="6,1">
-                      <TextBlock Text="{Binding StageLabel}" FontSize="11" Foreground="{DynamicResource Loom.Text}" />
-                    </Border>
-                    <TextBlock Text="{Binding Meta}" FontSize="11" Foreground="{DynamicResource Loom.TextSecondary}" VerticalAlignment="Center" />
-                    <TextBlock Text="＋" FontSize="11" IsVisible="{Binding HasMore}" Foreground="{DynamicResource Loom.TextSecondary}" VerticalAlignment="Center"
-                               ToolTip.Tip="{Binding [History_MoreVersions], Source={x:Static l:Loc.Instance}}" />
-                  </StackPanel>
-                </StackPanel>
-              </DataTemplate>
-            </ListBox.ItemTemplate>
-          </ListBox>
-        </Panel>
-      </DockPanel>
-    </Border>
 
-    <ContentControl Grid.Column="1" Content="{Binding Detail}" Margin="24,20,24,12">
-      <ContentControl.ContentTemplate>
-        <DataTemplate x:DataType="h:HistoryDetailViewModel">
-          <DockPanel>
-            <StackPanel DockPanel.Dock="Top" Spacing="10" Margin="0,0,0,14">
-              <TextBlock Text="{Binding Header}" FontSize="22" FontWeight="SemiBold" Foreground="{DynamicResource Loom.Text}" />
-              <ItemsControl x:Name="Chips" ItemsSource="{Binding Chips}">
-                <ItemsControl.ItemsPanel>
-                  <ItemsPanelTemplate>
-                    <WrapPanel ItemSpacing="6" LineSpacing="6" />
-                  </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="h:VersionChip">
-                    <ToggleButton Content="{Binding Label}" IsChecked="{Binding IsSelected, Mode=OneWay}" CornerRadius="14" Padding="12,4"
-                                  Command="{Binding $parent[ItemsControl].((h:HistoryDetailViewModel)DataContext).SelectCommand}"
-                                  CommandParameter="{Binding}" />
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </StackPanel>
-            <StackPanel DockPanel.Dock="Bottom" Spacing="10" Margin="0,12,0,0">
-              <StackPanel IsVisible="{Binding ConfirmReplacePending}" Spacing="6">
-                <TextBlock Text="{Binding [History_ReplaceEdited], Source={x:Static l:Loc.Instance}}" TextWrapping="Wrap" Foreground="{DynamicResource Loom.Text}" />
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                  <Button Content="{Binding [Action_Cancel], Source={x:Static l:Loc.Instance}}" Command="{Binding CancelReplaceCommand}" />
-                  <Button x:Name="ReplaceButton" Classes="accent" Content="{Binding [History_Replace], Source={x:Static l:Loc.Instance}}" Command="{Binding ConfirmReplaceCommand}" />
+        <ContentControl Content="{Binding Detail}" IsVisible="{Binding HasSelection}">
+          <ContentControl.ContentTemplate>
+            <DataTemplate x:DataType="h:HistoryDetailViewModel">
+              <DockPanel Margin="24,12,24,12">
+                <StackPanel DockPanel.Dock="Top" Margin="17,0,0,12" Spacing="{DynamicResource Loom.Space.1}">
+                  <TextBlock x:Name="VersionsLabel" Text="{Binding [History_Version], Source={x:Static l:Loc.Instance}}" Classes="caption" />
+                  <ItemsControl x:Name="Chips" ItemsSource="{Binding Chips}"
+                                AutomationProperties.Name="{Binding [History_Version], Source={x:Static l:Loc.Instance}}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate>
+                        <WrapPanel ItemSpacing="8" LineSpacing="8" />
+                      </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="h:VersionChip">
+                        <ToggleButton Classes="version" IsChecked="{Binding IsSelected, Mode=OneWay}" AutomationProperties.Name="{Binding Label}"
+                                      Command="{Binding $parent[ItemsControl].((h:HistoryDetailViewModel)DataContext).SelectCommand}" CommandParameter="{Binding}">
+                          <StackPanel Orientation="Horizontal" Spacing="4">
+                            <ds:LoomIcon Data="{DynamicResource Loom.Icon.Edit}" Width="14" Height="14" VerticalAlignment="Center" IsVisible="{Binding Edited}" />
+                            <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+                          </StackPanel>
+                        </ToggleButton>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
                 </StackPanel>
-              </StackPanel>
-              <Border IsVisible="{Binding IsStagePickerOpen}" Background="{DynamicResource Loom.Surface}" CornerRadius="10" Padding="6" MaxWidth="320" HorizontalAlignment="Left">
-                <ds:StagePicker x:Name="StagePickerView" DataContext="{Binding StagePicker}" />
-              </Border>
-              <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsEditing}">
-                <Button x:Name="SaveEditButton" Classes="accent" Content="{Binding [Action_Save], Source={x:Static l:Loc.Instance}}" Command="{Binding SaveEditCommand}" />
-                <Button Content="{Binding [Action_Cancel], Source={x:Static l:Loc.Instance}}" Command="{Binding CancelEditCommand}" />
-              </StackPanel>
-              <TextBlock Text="{Binding Status}" Foreground="{DynamicResource Loom.TextSecondary}" IsVisible="{Binding Status.Length}" />
-            </StackPanel>
-            <Panel>
-              <ScrollViewer IsVisible="{Binding !IsEditing}">
-                <SelectableTextBlock x:Name="DetailText" Text="{Binding Text}" TextWrapping="Wrap" FontSize="16" Foreground="{DynamicResource Loom.Text}" />
-              </ScrollViewer>
-              <TextBox x:Name="EditBox" Text="{Binding EditText}" IsVisible="{Binding IsEditing}" AcceptsReturn="True" TextWrapping="Wrap" FontSize="16"
-                       AutomationProperties.Name="{Binding [History_Edit], Source={x:Static l:Loc.Instance}}" />
-            </Panel>
-          </DockPanel>
-        </DataTemplate>
-      </ContentControl.ContentTemplate>
-    </ContentControl>
 
-    <Border Grid.Column="1" Grid.Row="1" BorderBrush="{DynamicResource Loom.Separator}" BorderThickness="0,1,0,0" Padding="24,10">
-      <DockPanel>
-        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-          <Button x:Name="DeleteButton" Content="{Binding [Action_Delete], Source={x:Static l:Loc.Instance}}" Command="{Binding DeleteSelectedCommand}"
-                  IsEnabled="{Binding HasSelection}" ToolTip.Tip="{Binding [History_KeyDelete], Source={x:Static l:Loc.Instance}}" />
-          <Button x:Name="EditButton" Content="{Binding [History_Edit], Source={x:Static l:Loc.Instance}}" Command="{Binding EditSelectedCommand}"
-                  IsEnabled="{Binding HasSelection}" ToolTip.Tip="{Binding [History_KeyEdit], Source={x:Static l:Loc.Instance}}" />
-          <Button x:Name="ReprocessButton" Click="OnReprocessClick" Content="{Binding [History_Reprocess], Source={x:Static l:Loc.Instance}}"
-                  Command="{Binding Detail.ToggleStagePickerCommand, FallbackValue={x:Null}}" IsEnabled="{Binding HasSelection}"
-                  IsVisible="{Binding Detail.CanReprocess, FallbackValue=False}" ToolTip.Tip="{Binding [History_ReprocessTip], Source={x:Static l:Loc.Instance}}" />
-          <Button x:Name="CopyButton" Content="{Binding [Action_Copy], Source={x:Static l:Loc.Instance}}" Command="{Binding CopySelectedCommand}"
-                  IsEnabled="{Binding HasSelection}" ToolTip.Tip="{Binding [History_KeyCopy], Source={x:Static l:Loc.Instance}}" />
-          <Button x:Name="InsertButton" Classes="accent" Content="{Binding [History_Insert], Source={x:Static l:Loc.Instance}}" Command="{Binding InsertSelectedCommand}"
-                  IsEnabled="{Binding HasSelection}" ToolTip.Tip="{Binding [History_KeyInsert], Source={x:Static l:Loc.Instance}}" />
-        </StackPanel>
-      </DockPanel>
-    </Border>
+                <StackPanel DockPanel.Dock="Bottom" Margin="0,12,0,0" Spacing="{DynamicResource Loom.Space.2}">
+                  <!-- Neu verarbeiten: Kasten mit Satz und Stufen 1–4. -->
+                  <Border Classes="confirm" IsVisible="{Binding IsStagePickerOpen}" MaxWidth="460" HorizontalAlignment="Left">
+                    <Grid ColumnDefinitions="Auto,*">
+                      <ds:LoomIcon Data="{DynamicResource Loom.Icon.Reprocess}" Width="20" Height="20" Margin="0,0,10,0" VerticalAlignment="Top"
+                                   Foreground="{DynamicResource Loom.TextSecondary}" />
+                      <StackPanel Grid.Column="1" Spacing="{DynamicResource Loom.Space.2}">
+                        <TextBlock Text="{Binding [History_ReprocessTip], Source={x:Static l:Loc.Instance}}" TextWrapping="Wrap" />
+                        <ds:StagePicker x:Name="StagePickerView" DataContext="{Binding StagePicker}" />
+                      </StackPanel>
+                    </Grid>
+                  </Border>
+                  <Border Classes="confirm" IsVisible="{Binding ConfirmReplacePending}">
+                    <Grid ColumnDefinitions="Auto,*">
+                      <ds:LoomIcon Data="{DynamicResource Loom.Icon.Warning}" Width="20" Height="20" Margin="0,0,10,0" VerticalAlignment="Top"
+                                   Foreground="{DynamicResource Loom.Warning}" />
+                      <StackPanel Grid.Column="1" Spacing="{DynamicResource Loom.Space.2}">
+                        <TextBlock Text="{Binding [History_ReplaceEdited], Source={x:Static l:Loc.Instance}}" TextWrapping="Wrap"
+                                   AutomationProperties.LiveSetting="Assertive" />
+                        <WrapPanel ItemSpacing="16" LineSpacing="8">
+                          <Button x:Name="ReplaceButton" Classes="accent" Content="{Binding [History_Replace], Source={x:Static l:Loc.Instance}}"
+                                  Command="{Binding ConfirmReplaceCommand}" />
+                          <Button Classes="text" VerticalAlignment="Center" Content="{Binding [History_KeepEdit], Source={x:Static l:Loc.Instance}}"
+                                  Command="{Binding CancelReplaceCommand}" />
+                        </WrapPanel>
+                      </StackPanel>
+                    </Grid>
+                  </Border>
+                  <WrapPanel Margin="17,0,0,0" ItemSpacing="16" LineSpacing="8" IsVisible="{Binding IsEditing}">
+                    <Button x:Name="SaveEditButton" Classes="accent" Content="{Binding [Action_Save], Source={x:Static l:Loc.Instance}}" Command="{Binding SaveEditCommand}" />
+                    <Button x:Name="CancelEditButton" Classes="text" VerticalAlignment="Center" Content="{Binding [Action_Cancel], Source={x:Static l:Loc.Instance}}"
+                            Command="{Binding CancelEditCommand}" />
+                  </WrapPanel>
+                  <TextBlock x:Name="DetailStatus" Margin="17,0,0,0" Text="{Binding Status}" TextWrapping="Wrap" Foreground="{DynamicResource Loom.TextSecondary}"
+                             IsVisible="{Binding Status.Length}" AutomationProperties.LiveSetting="Polite" />
+                </StackPanel>
+
+                <Border Classes="card">
+                  <Panel>
+                    <ScrollViewer IsVisible="{Binding !IsEditing}">
+                      <SelectableTextBlock x:Name="DetailText" Text="{Binding Text}" Margin="16" TextWrapping="Wrap" FontSize="{DynamicResource Loom.Font.Title}"
+                                           Foreground="{DynamicResource Loom.Text}" />
+                    </ScrollViewer>
+                    <TextBox x:Name="EditBox" Text="{Binding EditText}" IsVisible="{Binding IsEditing}" AcceptsReturn="True" TextWrapping="Wrap"
+                             FontSize="{DynamicResource Loom.Font.Title}" Margin="16"
+                             AutomationProperties.Name="{Binding [History_Edit], Source={x:Static l:Loc.Instance}}" />
+                  </Panel>
+                </Border>
+              </DockPanel>
+            </DataTemplate>
+          </ContentControl.ContentTemplate>
+        </ContentControl>
+      </Panel>
+    </DockPanel>
   </Grid>
 </Window>

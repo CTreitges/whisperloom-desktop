@@ -236,10 +236,10 @@ internal static class HelpShotScenes
         }
         var actions = new HistoryActions(_ => Task.FromResult(true), _ => Task.FromResult("Pasted"),
             (id, stage) => f.Controller.ReprocessVersionAsync(id, stage), f.Controller.EditHistoryAsync,
-            [.. RefineModes.SettingsFor(true).Select(m => (m.Key(), Loc.Instance["Stage_" + m.Key()]))]);
+            [.. RefineModes.SettingsFor(true).Select(m => (m.Key(), Loc.Instance["Stage_" + m.Key()]))], StartKeys: ["Ctrl+Win", "Ctrl+Space"]);
         var vm = new HistoryViewModel(f.History, actions, () => now);
         await vm.LoadAsync();
-        var window = new HistoryWindow(vm) { Width = 900, Height = 560, RequestedThemeVariant = theme };
+        var window = new HistoryWindow(vm) { Width = 1040, Height = 560, RequestedThemeVariant = theme };
         window.Show();
         vm.Selected = vm.Rows[1];
         Dispatcher.UIThread.RunJobs();
