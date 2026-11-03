@@ -5,7 +5,7 @@ using Avalonia.Data.Converters;
 
 namespace WhisperLoom.App.Design;
 
-/// <summary>Ressourcen-Schlüssel (z. B. <c>Loom.Icon.General</c>) → Ressource der App; für Symbole aus ViewModels.</summary>
+/// <summary>Ressourcen-Schlüssel (z. B. <c>Loom.Icon.System</c>) → Ressource der App; für Symbole aus ViewModels.</summary>
 public sealed class ResourceKeyConverter : IValueConverter
 {
     public static ResourceKeyConverter Instance { get; } = new();

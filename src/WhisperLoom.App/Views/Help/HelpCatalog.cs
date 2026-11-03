@@ -44,19 +44,19 @@ public static class HelpCatalog
     public static readonly IReadOnlyList<HelpTopic> Topics =
     [
         new("start", "basics", "Loom.Icon.Info", "Teal"),
-        new("dictation", "basics", "Loom.Icon.Recognition", "Teal", LinuxShortcuts),
-        new("stages", "basics", "Loom.Icon.Text", "Violet"),
+        new("dictation", "basics", "Loom.Icon.Dictation", "Teal", LinuxShortcuts),
+        new("stages", "basics", "Loom.Icon.TextStage", "Violet"),
         new("hotkeys", "basics", "Loom.Icon.Hotkeys", "Gray", LinuxShortcuts),
-        new("selection", "features", HelpIcons.Selection, "Violet", LinuxShortcuts),
-        new("history", "features", HelpIcons.History, "Blue"),
+        new("selection", "features", "Loom.Icon.Selection", "Violet", LinuxShortcuts),
+        new("history", "features", "Loom.Icon.History", "Blue"),
         new("output", "features", "Loom.Icon.Output", "Blue"),
-        new("recognition", "sources", "Loom.Icon.Recognition", "Teal"),
-        new("providers", "sources", "Loom.Icon.Providers", "Green", LocalModels),
-        new("company", "sources", HelpIcons.Company, "Blue"),
-        new("network", "sources", "Loom.Icon.Network", "Gray", Proxy),
+        new("recognition", "sources", "Loom.Icon.Dictation", "Teal"),
+        new("providers", "sources", "Loom.Icon.Recognition", "Green", LocalModels),
+        new("company", "sources", "Loom.Icon.Company", "Blue"),
+        new("network", "sources", "Loom.Icon.Connections", "Gray", Proxy),
         new("privacy", "more", "Loom.Icon.Privacy", "Green"),
-        new("trouble", "more", HelpIcons.Trouble, "Amber"),
-        new("it", "more", "Loom.Icon.Providers", "Gray", ServerReadme, Provisioning, Proxy),
+        new("trouble", "more", "Loom.Icon.Warning", "Amber"),
+        new("it", "more", "Loom.Icon.System", "Gray", ServerReadme, Provisioning, Proxy),
     ];
 
     /// <summary>Einstellungsseite (Id aus dem SettingsCatalog) → Abschnitt.</summary>

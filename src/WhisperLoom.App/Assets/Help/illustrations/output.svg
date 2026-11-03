@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="320" height="240" viewBox="0 0 320 240">
   <path d="M18,0 h284 a18,18 0 0 1 18,18 v204 a18,18 0 0 1 -18,18 h-284 a18,18 0 0 1 -18,-18 v-204 a18,18 0 0 1 18,-18 z" fill="#E4E8EE" data-fill="SurfaceHigh"/>
   <path d="M26,120 a26,26 0 1 0 52,0 a26,26 0 1 0 -52,0 z" fill="#0F5B50" data-fill="Accent"/>
-  <path d="M12,2L14.5,9.5L22,12L14.5,14.5L12,22L9.5,14.5L2,12L9.5,9.5Z" fill="#FFFFFF" data-fill="OnAccent" transform="translate(37.05 105.05) scale(1.25)"/>
+  <path d="M 3 19 h 5 v -5 h 5 V 9 h 5 V 4" fill="none" stroke="#FFFFFF" data-stroke="OnAccent" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" transform="translate(37.05 105.05) scale(1.25)"/>
   <path d="M84,120 L118,120" fill="none" stroke="#0F5B50" data-stroke="Accent" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
   <path d="M111,125.6 L118,120 L111,114.4" fill="none" stroke="#0F5B50" data-stroke="Accent" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
   <path d="M134,72 h52 a10,10 0 0 1 10,10 v76 a10,10 0 0 1 -10,10 h-52 a10,10 0 0 1 -10,-10 v-76 a10,10 0 0 1 10,-10 z" fill="#FFFFFF" data-fill="Surface" stroke="#B8C0CC" data-stroke="Separator" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>

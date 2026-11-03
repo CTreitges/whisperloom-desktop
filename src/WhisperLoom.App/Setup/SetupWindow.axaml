@@ -160,7 +160,7 @@
             </StackPanel>
 
             <StackPanel x:Name="CompanyApproved" Orientation="Horizontal" Spacing="10" IsVisible="{Binding Join.IsApproved, FallbackValue=False}">
-              <PathIcon Data="{DynamicResource Loom.Icon.Managed}" Width="18" Height="18" Foreground="{DynamicResource Loom.Accent}" />
+              <ds:LoomIcon Data="{DynamicResource Loom.Icon.Managed}" Width="20" Height="20" Foreground="{DynamicResource Loom.Accent}" />
               <TextBlock Classes="intro" Text="{Binding Join.ApprovedText, FallbackValue=''}" VerticalAlignment="Center" />
             </StackPanel>
 

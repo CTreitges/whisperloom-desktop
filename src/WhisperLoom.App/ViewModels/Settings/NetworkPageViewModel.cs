@@ -3,7 +3,7 @@ namespace WhisperLoom.App.ViewModels.Settings;
 /// <summary>Seite „Netzwerk“: Proxy; die Adresse gilt nur bei „Manuell“.</summary>
 public sealed class NetworkPageViewModel : SettingsPageViewModel
 {
-    public NetworkPageViewModel(SettingsViewModel session) : base("network", "Network", "Blue", session)
+    public NetworkPageViewModel(SettingsViewModel session) : base("network", "Connections", "Blue", session)
     {
         session.PropertyChanged += OnSessionChanged;
     }

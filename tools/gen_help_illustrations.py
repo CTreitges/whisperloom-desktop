@@ -32,14 +32,14 @@ def start(c: Canvas) -> None:
         else:
             c.circle(88, y, 13, fill="Surface", stroke="Accent", width=2.5)
         c.text_lines(112, y - 8, [120, 84], gap=12)
-    c.badge(250, 196, 22, "Recognition")
+    c.badge(250, 196, 22, "Microphone")
 
 
 def dictation(c: Canvas) -> None:
     """Diktieren: Tasten halten, Mikrofon nimmt auf, Text erscheint im Fenster."""
     c.key(24, 172, 56, pressed=True)
     c.key(88, 172, 56, pressed=True)
-    c.badge(84, 92, 32, "Recognition")
+    c.badge(84, 92, 32, "Microphone")
     c.wave(128, 92, [10, 22, 34, 18, 28, 12], step=8)
     c.arrow(182, 92, 196, 92)
     c.window(204, 40, 100, 132)
@@ -53,7 +53,7 @@ def stages(c: Canvas) -> None:
     c.text_lines(32, 62, [52, 18, 70], gap=14)
     c.text_lines(32, 104, [30, 44], gap=14)
     c.text_lines(90, 62, [26], token="Error")
-    c.badge(160, 88, 20, "Text")
+    c.badge(160, 88, 20, "TextStage")
     c.window(188, 28, 112, 120)
     c.text_lines(200, 62, [88, 82, 88, 54], gap=14)
     for i in range(5):
@@ -69,7 +69,7 @@ def selection(c: Canvas) -> None:
     c.rect(32, 82, 150, 18, 4, fill="Selection")
     c.text_lines(36, 88, [140], token="OnSelection")
     c.text_lines(36, 112, [160, 120, 90], gap=14)
-    c.badge(198, 91, 13, "Text")
+    c.badge(198, 91, 13, "TextStage")
     c.rect(170, 112, 128, 104, 10, fill="Surface", stroke="Separator", width=1.5)
     for i in range(4):
         y = 124 + i * 22
@@ -96,7 +96,7 @@ def history(c: Canvas) -> None:
 
 def output(c: Canvas) -> None:
     """Ausgabe: Ergebnis wird eingefügt; die Zwischenablage hält eine Kopie."""
-    c.badge(52, 120, 26, "Text")
+    c.badge(52, 120, 26, "TextStage")
     c.arrow(84, 120, 118, 120)
     c.rect(124, 72, 72, 96, 10, fill="Surface", stroke="Separator", width=1.5)
     c.rect(144, 64, 32, 16, 5, fill="Accent")
@@ -109,7 +109,7 @@ def output(c: Canvas) -> None:
 
 def recognition(c: Canvas) -> None:
     """Erkennung: Mikrofon → Wolke (online) oder Chip (lokal)."""
-    c.badge(64, 120, 30, "Recognition")
+    c.badge(64, 120, 30, "Microphone")
     c.arrow(100, 108, 176, 70)
     c.arrow(100, 132, 176, 170)
     # Wolke aus Kreisen.
@@ -118,17 +118,17 @@ def recognition(c: Canvas) -> None:
     c.rect(194, 66, 86, 22, 11, fill="Surface")
     c.wave(216, 72, [8, 14, 10, 16, 8], step=8)
     c.rect(196, 140, 72, 64, 12, fill="Managed")
-    c.icon("LocalModels", 208, 148, 48, "OnManaged")
+    c.icon("Download", 208, 148, 48, "OnManaged")
 
 
 def providers(c: Canvas) -> None:
     """Eigene Anbieter und lokale Modelle: Server-Stapel und Chip, an die App angeschlossen."""
     c.window(118, 72, 96, 96)
-    c.badge(166, 128, 18, "Recognition")
+    c.badge(166, 128, 18, "Microphone")
     c.rect(22, 40, 72, 72, 14, fill="Accent")
-    c.icon("Providers", 34, 52, 48, "OnAccent")
+    c.icon("Connections", 34, 52, 48, "OnAccent")
     c.rect(22, 140, 72, 72, 14, fill="Managed")
-    c.icon("LocalModels", 34, 152, 48, "OnManaged")
+    c.icon("Download", 34, 152, 48, "OnManaged")
     c.line([(94, 76), (106, 76), (106, 110), (118, 110)], "Accent", 2.5)
     c.line([(94, 176), (106, 176), (106, 140), (118, 140)], "Accent", 2.5)
     c.rect(238, 44, 64, 150, 10, fill="Surface", stroke="Separator", width=1.5)
@@ -178,7 +178,7 @@ def hotkeys(c: Canvas) -> None:
     c.key(70, 166, 30, 22, pressed=True)
     c.key(108, 166, 116, 22)
     c.key(232, 166, 54, 22)
-    c.badge(160, 36, 20, "Recognition")
+    c.badge(160, 36, 20, "Microphone")
 
 
 def trouble(c: Canvas) -> None:
@@ -196,7 +196,7 @@ def trouble(c: Canvas) -> None:
 def network(c: Canvas) -> None:
     """Netzwerk: App → Proxy → Internet."""
     c.window(18, 76, 84, 88)
-    c.badge(60, 128, 16, "Recognition")
+    c.badge(60, 128, 16, "Microphone")
     c.arrow(106, 120, 132, 120)
     c.rect(138, 92, 52, 56, 10, fill="Managed")
     c.rect(150, 104, 28, 6, 3, fill="OnManaged")
@@ -204,13 +204,13 @@ def network(c: Canvas) -> None:
     c.rect(150, 128, 18, 6, 3, fill="OnManaged")
     c.arrow(194, 120, 220, 120)
     c.circle(262, 120, 38, fill="Surface", stroke="Separator", width=1.5)
-    c.icon("Network", 230, 88, 64, "Accent")
+    c.icon("Connections", 230, 88, 64, "Accent")
 
 
 def it(c: Canvas) -> None:
     """Für die IT: Firmen-Server bzw. Vorgabedatei verteilt Einstellungen an mehrere Geräte."""
     c.rect(24, 40, 70, 70, 14, fill="Accent")
-    c.icon("Providers", 35, 51, 48, "OnAccent")
+    c.icon("Connections", 35, 51, 48, "OnAccent")
     c.rect(32, 132, 54, 70, 6, fill="Surface", stroke="Separator", width=1.5)
     c.text_lines(42, 148, [34, 26, 34, 20], gap=11, height=4)
     for i in range(3):

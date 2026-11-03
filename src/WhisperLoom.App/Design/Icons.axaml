@@ -1,0 +1,62 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    Erzeugt von tools/gen_icons.py aus design/icons/*.svg – nicht von Hand ändern.
+    Eigenes Symbol-Set (zielstruktur.md §8): 24-px-Raster, Strich 1,75, runde Enden; gezeichnet von ds:LoomIcon.
+  -->
+  <StreamGeometry x:Key="Loom.Icon.Add">M 12 5 v 14 M 5 12 h 14</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Back">M 15 5 l -7 7 7 7</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Check">M 5 12.5 l 4.5 4.5 L 19 7</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Clipboard">M 9 4 h 6 v 3 H 9 z M 15 5 h 2 a 2 2 0 0 1 2 2 v 12 a 2 2 0 0 1 -2 2 H 7 a 2 2 0 0 1 -2 -2 V 7 a 2 2 0 0 1 2 -2 h 2</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Close">M 6 6 l 12 12 M 18 6 L 6 18</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Collapse">M 6 15 l 6 -6 6 6</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Company">M 4 21 V 5 a 1 1 0 0 1 1 -1 h 9 a 1 1 0 0 1 1 1 v 16 M 15 10 h 4 a 1 1 0 0 1 1 1 v 10 M 3 21 h 18 M 8 8 h 2 M 8 12 h 2 M 8 16 h 2</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Connections">M 9 3 v 4 M 15 3 v 4 M 6 7 h 12 v 3 a 6 6 0 0 1 -12 0 z M 12 16 v 5</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Copy">M 8 8 h 12 v 12 H 8 z M 16 8 V 6 a 2 2 0 0 0 -2 -2 H 6 a 2 2 0 0 0 -2 2 v 8 a 2 2 0 0 0 2 2 h 2</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Delete">M 4 7 h 16 M 9 7 V 4 h 6 v 3 M 6 7 l 1 13 h 10 l 1 -13 M 10 11 v 6 M 14 11 v 6</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Dictation">M 11 3 a 3 3 0 0 1 3 3 v 5 a 3 3 0 0 1 -6 0 V 6 a 3 3 0 0 1 3 -3 z M 6 11 a 5 5 0 0 0 10 0 M 11 16 v 5 M 8 21 h 6 M 18 6.5 c 1.6 1.8 1.6 5.2 0 7</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Discard">M 4 4 h 16 v 16 H 4 z M 9 9 l 6 6 M 15 9 l -6 6</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Download">M 12 4 v 11 M 7 10 l 5 5 5 -5 M 4 20 h 16</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Edit">M 4 20 l 4 -1 L 19 8 l -3 -3 L 5 16 z M 14 7 l 3 3</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Error">M 12 3 a 9 9 0 1 0 0 18 a 9 9 0 1 0 0 -18 z M 9 9 l 6 6 M 15 9 l -6 6</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Expand">M 6 9 l 6 6 6 -6</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.External">M 14 4 h 6 v 6 M 20 4 l -9 9 M 18 14 v 5 a 1 1 0 0 1 -1 1 H 5 a 1 1 0 0 1 -1 -1 V 7 a 1 1 0 0 1 1 -1 h 5</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.File">M 6 3 h 8 l 5 5 v 13 H 6 z M 14 3 v 5 h 5 M 9 13 h 6 M 9 17 h 6</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Folder">M 3 7 a 2 2 0 0 1 2 -2 h 4 l 2 2 h 8 a 2 2 0 0 1 2 2 v 9 a 2 2 0 0 1 -2 2 H 5 a 2 2 0 0 1 -2 -2 z</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Forward">M 9 5 l 7 7 -7 7</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Help">M 12 3 a 9 9 0 1 0 0 18 a 9 9 0 1 0 0 -18 z M 9.5 9.5 a 2.5 2.5 0 1 1 3.6 2.2 c -0.8 0.4 -1.1 0.9 -1.1 1.6 v 0.5 M 11.875 17 A 0.125 0.125 0 1 0 12.125 17 A 0.125 0.125 0 1 0 11.875 17 Z</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.History">M 4.5 12 a 7.5 7.5 0 1 0 2.2 -5.3 M 4 4 v 3 h 3 M 12 8 v 4 l 3 2</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Hotkeys">M 3 6 h 18 v 12 H 3 z M 8 14 h 8 M 6.975 10 A 0.025 0.025 0 1 0 7.025 10 A 0.025 0.025 0 1 0 6.975 10 Z M 10.975 10 A 0.025 0.025 0 1 0 11.025 10 A 0.025 0.025 0 1 0 10.975 10 Z M 14.975 10 A 0.025 0.025 0 1 0 15.025 10 A 0.025 0.025 0 1 0 14.975 10 Z</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Info">M 12 3 a 9 9 0 1 0 0 18 a 9 9 0 1 0 0 -18 z M 12 11 v 5 M 11.875 8 A 0.125 0.125 0 1 0 12.125 8 A 0.125 0.125 0 1 0 11.875 8 Z</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Language">M 4 5 h 16 v 10 H 10 l -4 4 v -4 H 4 z M 8 10 h 8</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Managed">M 7 11 V 8 a 5 5 0 0 1 10 0 v 3 M 5 11 h 14 v 10 H 5 z M 11.625 16 A 0.375 0.375 0 1 0 12.375 16 A 0.375 0.375 0 1 0 11.625 16 Z</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Microphone">M 12 3 a 3 3 0 0 1 3 3 v 5 a 3 3 0 0 1 -6 0 V 6 a 3 3 0 0 1 3 -3 z M 7 11 a 5 5 0 0 0 10 0 M 12 16 v 5 M 9 21 h 6</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.More">M 5.625 12 A 0.375 0.375 0 1 0 6.375 12 A 0.375 0.375 0 1 0 5.625 12 Z M 11.625 12 A 0.375 0.375 0 1 0 12.375 12 A 0.375 0.375 0 1 0 11.625 12 Z M 17.625 12 A 0.375 0.375 0 1 0 18.375 12 A 0.375 0.375 0 1 0 17.625 12 Z</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.MoveDown">M 12 5 v 14 M 6 13 l 6 6 6 -6</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.MoveUp">M 12 19 V 5 M 6 11 l 6 -6 6 6</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Output">M 14 4 h 5 a 2 2 0 0 1 2 2 v 12 a 2 2 0 0 1 -2 2 h -5 M 3 12 h 11 M 10 8 l 4 4 -4 4</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Paste">M 9 4 h 6 v 3 H 9 z M 15 5 h 2 a 2 2 0 0 1 2 2 v 12 a 2 2 0 0 1 -2 2 H 7 a 2 2 0 0 1 -2 -2 V 7 a 2 2 0 0 1 2 -2 h 2 M 9 12 h 6 M 9 16 h 4</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Pause">M 8 5 h 2 v 14 H 8 z M 14 5 h 2 v 14 h -2 z</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.PickApp">M 8 8 V 6 a 2 2 0 0 1 2 -2 h 9 a 2 2 0 0 1 2 2 v 9 a 2 2 0 0 1 -2 2 h -2 M 3 8 h 13 v 12 H 3 z M 3 12 h 13</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Play">M 8 5 l 11 7 -11 7 z</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Presentation">M 3 5 h 18 v 11 H 3 z M 12 16 v 4 M 8 20 h 8</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Priority">M 5 21 V 4 M 5 4 h 12 l -3 4 3 4 H 5</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Privacy">M 12 3 l 8 3 v 6 c 0 4.5 -3.5 8 -8 9 -4.5 -1 -8 -4.5 -8 -9 V 6 z M 9 12 l 2 2 4 -4</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Processing">M 12 3 a 9 9 0 1 0 9 9</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Recognition">M 3 10 v 4 M 6 7 v 10 M 9 10 v 4 M 14 8 h 7 M 14 12 h 7 M 14 16 h 5</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Recommended">M 12 3.5 l 2.6 5.4 5.9 0.8 -4.3 4.1 1.1 5.9 L 12 17 l -5.3 2.7 1.1 -5.9 L 3.5 9.7 l 5.9 -0.8 z</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Record">M 12 3 a 9 9 0 1 0 0 18 a 9 9 0 1 0 0 -18 z M 9.875 12 A 2.125 2.125 0 1 0 14.125 12 A 2.125 2.125 0 1 0 9.875 12 Z M 11.45 12 A 0.55 0.55 0 1 0 12.55 12 A 0.55 0.55 0 1 0 11.45 12 Z</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Refresh">M 20 12 a 8 8 0 1 1 -2.4 -5.7 M 20 4 v 4 h -4</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Reprocess">M 20 12 a 8 8 0 0 1 -13.7 5.6 M 4 12 a 8 8 0 0 1 13.7 -5.6 M 4 18 v -4 h 4 M 20 6 v 4 h -4</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Resend">M 3 11 l 17 -7 -5 17 -3 -7 z M 12 14 l 8 -10 M 3 17 a 5 5 0 0 0 5 4</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Search">M 10.5 4 a 6.5 6.5 0 1 0 0 13 a 6.5 6.5 0 1 0 0 -13 z M 15.5 15.5 L 21 21</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Selection">M 4 7 h 16 M 4 11 h 6 M 4 15 h 16 M 4 19 h 9 M 12 9 h 9 v 4 h -9 z</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Send">M 3 11 l 17 -7 -5 17 -3 -7 z M 12 14 l 8 -10</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Setup">M 12 3 v 18 M 12 6 h 7 l 2 2 -2 2 h -7 M 12 13 H 6 l -2 2 2 2 h 6</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Stop">M 12 3 a 9 9 0 1 0 0 18 a 9 9 0 1 0 0 -18 z M 9 9 h 6 v 6 H 9 z</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.System">M 4 7 h 9 M 19 7 h 1 M 4 17 h 5 M 15 17 h 5 M 16 4.5 a 2.5 2.5 0 1 0 0 5 a 2.5 2.5 0 1 0 0 -5 z M 12 14.5 a 2.5 2.5 0 1 0 0 5 a 2.5 2.5 0 1 0 0 -5 z</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.TextStage">M 3 19 h 5 v -5 h 5 V 9 h 5 V 4</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Undo">M 4 10 h 10 a 5 5 0 0 1 0 10 h -3 M 8 6 l -4 4 4 4</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Update">M 12 3 a 9 9 0 1 0 0 18 a 9 9 0 1 0 0 -18 z M 12 16 V 8 M 8.5 11.5 L 12 8 l 3.5 3.5</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Warning">M 12 4 l 9 15 H 3 z M 12 10 v 4 M 11.875 17 A 0.125 0.125 0 1 0 12.125 17 A 0.125 0.125 0 1 0 11.875 17 Z</StreamGeometry>
+</ResourceDictionary>

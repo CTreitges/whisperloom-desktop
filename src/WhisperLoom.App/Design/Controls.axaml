@@ -11,7 +11,7 @@
     <Setter Property="Template">
       <ControlTemplate>
         <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-          <StackPanel Margin="28,20,28,28" Spacing="{DynamicResource Loom.Space.L}" MaxWidth="760" HorizontalAlignment="Stretch">
+          <StackPanel Margin="28,20,28,28" Spacing="{DynamicResource Loom.Space.4}" MaxWidth="760" HorizontalAlignment="Stretch">
             <Grid ColumnDefinitions="*,Auto">
               <TextBlock Text="{TemplateBinding Title}" FontSize="{DynamicResource Loom.Font.PageTitle}" FontWeight="SemiBold"
                          Foreground="{DynamicResource Loom.Text}" />
@@ -35,7 +35,7 @@
     <Setter Property="Template">
       <ControlTemplate>
         <StackPanel Spacing="6" IsVisible="{TemplateBinding IsShown}">
-          <TextBlock Text="{TemplateBinding Header}" FontSize="{DynamicResource Loom.Font.GroupTitle}" FontWeight="SemiBold"
+          <TextBlock Text="{TemplateBinding Header}" FontSize="{DynamicResource Loom.Font.Title}" FontWeight="SemiBold"
                      Foreground="{DynamicResource Loom.TextSecondary}" Margin="4,0,0,0" />
           <Border Background="{DynamicResource Loom.Surface}" CornerRadius="{DynamicResource Loom.Radius.Group}"
                   BorderBrush="{DynamicResource Loom.Separator}" BorderThickness="1" ClipToBounds="True">
@@ -107,9 +107,11 @@
   <ControlTheme x:Key="{x:Type ds:HintRow}" TargetType="ds:HintRow">
     <Setter Property="Template">
       <ControlTemplate>
-        <Border Name="PART_Box" CornerRadius="{DynamicResource Loom.Radius.Control}" Padding="12,8" Background="{DynamicResource Loom.SurfaceHigh}">
+        <Border Name="PART_Box" CornerRadius="{DynamicResource Loom.Radius.Control}" Padding="11,7" Background="{DynamicResource Loom.SurfaceHigh}"
+                BorderBrush="{DynamicResource Loom.SurfaceEdge}" BorderThickness="1">
+          <!-- Rand 1 px (nur im Hochkontrast sichtbar) + Innenabstand 11,7 = Text an derselben Stelle wie vorher (12,8). -->
           <Grid ColumnDefinitions="Auto,*">
-            <PathIcon Name="PART_Icon" Width="16" Height="16" Margin="0,1,10,0" VerticalAlignment="Top"
+            <ds:LoomIcon Name="PART_Icon" Width="16" Height="16" Margin="0,1,10,0" VerticalAlignment="Top"
                       Data="{DynamicResource Loom.Icon.Info}" Foreground="{DynamicResource Loom.TextSecondary}" />
             <TextBlock Name="PART_Text" Grid.Column="1" Text="{TemplateBinding ShownText}" TextWrapping="Wrap"
                        FontSize="{DynamicResource Loom.Font.Caption}" Foreground="{DynamicResource Loom.Text}" />
@@ -117,14 +119,14 @@
         </Border>
       </ControlTemplate>
     </Setter>
-    <Style Selector="^:warning /template/ PathIcon#PART_Icon">
+    <Style Selector="^:warning /template/ ds|LoomIcon#PART_Icon">
       <Setter Property="Data" Value="{DynamicResource Loom.Icon.Warning}" />
-      <Setter Property="Foreground" Value="{DynamicResource Loom.Error}" />
+      <Setter Property="Foreground" Value="{DynamicResource Loom.Warning}" />
     </Style>
     <Style Selector="^:managed /template/ Border#PART_Box">
       <Setter Property="Background" Value="{DynamicResource Loom.Managed}" />
     </Style>
-    <Style Selector="^:managed /template/ PathIcon#PART_Icon">
+    <Style Selector="^:managed /template/ ds|LoomIcon#PART_Icon">
       <Setter Property="Data" Value="{DynamicResource Loom.Icon.Managed}" />
       <Setter Property="Foreground" Value="{DynamicResource Loom.OnManaged}" />
     </Style>

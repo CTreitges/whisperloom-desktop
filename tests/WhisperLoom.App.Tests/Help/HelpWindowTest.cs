@@ -167,6 +167,10 @@ public sealed class HelpWindowTest
         Assert.NotEqual(light, ((ISolidColorBrush)ill.Brush("Accent")!).Color);
         Assert.Contains("-dark/", shot.CurrentPath);
         Assert.Null(ill.Brush("GibtEsNicht"));
+        // Hochkontrast erbt von Dunkel: dunkle Bilder, nicht helle auf schwarzer Oberfläche.
+        window.RequestedThemeVariant = WhisperLoom.App.Design.SystemTheme.HighContrast;
+        Dispatcher.UIThread.RunJobs();
+        Assert.Contains("-dark/", shot.CurrentPath);
         window.Close();
     }
 

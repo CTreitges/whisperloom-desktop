@@ -60,7 +60,8 @@ class HelpIllustrationTest(unittest.TestCase):
         colors, icons = load_tokens(ROOT)
         self.assertEqual(colors["Accent"], {"light": "#0F5B50", "dark": "#6FD9C7"})
         self.assertEqual(colors["Tile.Teal"]["light"], colors["Tile.Teal"]["dark"])
-        self.assertIn("Recognition", icons)
+        self.assertIn("Microphone", icons)
+        self.assertEqual(55, len(icons))
 
     def test_number_format_is_stable(self):
         self.assertEqual(num(1.0), "1")

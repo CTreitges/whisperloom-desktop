@@ -76,7 +76,7 @@
                  PlaceholderText="{Binding [Help_SearchPlaceholder], Source={x:Static l:Loc.Instance}}"
                  AutomationProperties.Name="{Binding [Help_SearchName], Source={x:Static l:Loc.Instance}}">
           <TextBox.InnerLeftContent>
-            <PathIcon Data="{DynamicResource Loom.Icon.Search}" Width="14" Height="14" Margin="8,0,0,0" Foreground="{DynamicResource Loom.TextSecondary}" />
+            <ds:LoomIcon Data="{DynamicResource Loom.Icon.Search}" Width="16" Height="16" Margin="8,0,0,0" Foreground="{DynamicResource Loom.TextSecondary}" />
           </TextBox.InnerLeftContent>
         </TextBox>
 
@@ -95,7 +95,7 @@
                   <Border Classes="sideItem">
                     <Grid ColumnDefinitions="Auto,*" ToolTip.Tip="{Binding Title}">
                       <Border Classes="tile" Background="{Binding Tile, Converter={x:Static ds:ResourceKeyConverter.Instance}}">
-                        <PathIcon Data="{Binding IconGeometry}" />
+                        <ds:LoomIcon Data="{Binding IconGeometry}" />
                       </Border>
                       <TextBlock Grid.Column="1" Margin="10,0,0,0" Text="{Binding Title}" VerticalAlignment="Center" Foreground="{DynamicResource Loom.Text}"
                                  TextTrimming="CharacterEllipsis" />
@@ -136,12 +136,12 @@
     <ScrollViewer x:Name="ContentScroll" Grid.Column="1" HorizontalScrollBarVisibility="Disabled" Focusable="True"
                   Background="{DynamicResource Loom.Background}">
       <StackPanel x:Name="SectionContent" DataContext="{Binding SelectedSection}" x:DataType="h:HelpSectionViewModel"
-                  Margin="28,20,28,32" Spacing="{DynamicResource Loom.Space.L}" MaxWidth="760" HorizontalAlignment="Left">
+                  Margin="28,20,28,32" Spacing="{DynamicResource Loom.Space.4}" MaxWidth="760" HorizontalAlignment="Left">
         <TextBlock x:Name="SectionTitle" Text="{Binding Title}" FontSize="{DynamicResource Loom.Font.PageTitle}" FontWeight="SemiBold"
                    Foreground="{DynamicResource Loom.Text}" TextWrapping="Wrap" />
 
         <!-- Übersicht: Einleitung und Kacheln aller Abschnitte. -->
-        <StackPanel IsVisible="{Binding IsOverview}" Spacing="{DynamicResource Loom.Space.L}">
+        <StackPanel IsVisible="{Binding IsOverview}" Spacing="{DynamicResource Loom.Space.4}">
           <TextBlock Classes="body" Text="{Binding Intro}" />
           <ItemsControl x:Name="Tiles" ItemsSource="{Binding Tiles}">
             <ItemsControl.ItemsPanel>
@@ -153,7 +153,7 @@
                   <StackPanel Spacing="8">
                     <StackPanel Orientation="Horizontal" Spacing="10">
                       <Border Classes="tile" Background="{Binding Tile, Converter={x:Static ds:ResourceKeyConverter.Instance}}">
-                        <PathIcon Data="{Binding IconGeometry}" />
+                        <ds:LoomIcon Data="{Binding IconGeometry}" />
                       </Border>
                       <TextBlock Text="{Binding Title}" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource Loom.Text}"
                                  TextWrapping="Wrap" MaxWidth="150" />
@@ -167,7 +167,7 @@
         </StackPanel>
 
         <!-- Abschnitt: Illustration und Einleitung, Text, Screenshots, Links. -->
-        <StackPanel IsVisible="{Binding !IsOverview}" Spacing="{DynamicResource Loom.Space.L}">
+        <StackPanel IsVisible="{Binding !IsOverview}" Spacing="{DynamicResource Loom.Space.4}">
           <Grid ColumnDefinitions="Auto,*">
             <h:HelpIllustration x:Name="Illustration" Width="256" Height="192" Source="{Binding Illustration}" VerticalAlignment="Top"
                                 AutomationProperties.Name="{Binding ImageAlt}" ToolTip.Tip="{Binding ImageAlt}" />

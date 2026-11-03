@@ -16,7 +16,7 @@ public sealed class TextPageViewModel : SettingsPageViewModel
     private static readonly string[] Cleanups = ["plain", "clean", "readable"];
     private static readonly string[] Forms = ["auto", "prose"];
 
-    public TextPageViewModel(SettingsViewModel session) : base("text", "Text", "Violet", session)
+    public TextPageViewModel(SettingsViewModel session) : base("text", "TextStage", "Violet", session)
     {
         var loc = Loc.Instance;
         CleanupChoices = [.. Cleanups.Select(c => new Choice(c, loc["Cleanup_" + c]))];

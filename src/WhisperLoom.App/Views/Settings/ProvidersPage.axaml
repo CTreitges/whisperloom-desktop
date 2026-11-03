@@ -31,7 +31,7 @@
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:CustomProviderRow">
             <StackPanel Spacing="6">
-            <TextBlock Text="{Binding Name}" FontSize="{DynamicResource Loom.Font.GroupTitle}" FontWeight="SemiBold"
+            <TextBlock Text="{Binding Name}" FontSize="{DynamicResource Loom.Font.Title}" FontWeight="SemiBold"
                        Foreground="{DynamicResource Loom.TextSecondary}" Margin="4,0,0,0" />
             <Border Background="{DynamicResource Loom.Surface}" CornerRadius="{DynamicResource Loom.Radius.Group}"
                     BorderBrush="{DynamicResource Loom.Separator}" BorderThickness="1" ClipToBounds="True">

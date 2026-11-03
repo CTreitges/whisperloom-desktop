@@ -13,13 +13,15 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 TOKENS_FILE = Path("src/WhisperLoom.App/Design/Tokens.axaml")
+ICONS_FILE = Path("src/WhisperLoom.App/Design/Icons.axaml")
+ICON_STROKE = 1.75
 WIDTH, HEIGHT = 320, 240
 _X = "{http://schemas.microsoft.com/winfx/2006/xaml}Key"
 _NS = "{https://github.com/avaloniaui}"
 
 
 def load_tokens(root: Path) -> tuple[dict[str, dict[str, str]], dict[str, str]]:
-    """Liest Farben (Token → {"light", "dark"}) und Glyphen (Name → Pfaddaten) aus ``Tokens.axaml``.
+    """Liest Farben (Token → {"light", "dark"}) aus ``Tokens.axaml`` und Symbole (Name → Pfaddaten) aus ``Icons.axaml``.
 
     Themen-Farben heißen wie ihr Pinsel ohne ``Loom.`` (z. B. ``Accent``), Kachel-Farben ``Tile.Teal`` usw. (gleich in
     beiden Varianten).
@@ -39,7 +41,9 @@ def load_tokens(root: Path) -> tuple[dict[str, dict[str, str]], dict[str, str]]:
         if element.tag == f"{_NS}SolidColorBrush" and key.startswith("Loom.Tile."):
             value = element.get("Color").upper()
             colors[key.removeprefix("Loom.")] = {"light": value, "dark": value}
-        elif element.tag == f"{_NS}StreamGeometry" and key.startswith("Loom.Icon."):
+    for element in ElementTree.parse(root / ICONS_FILE).getroot():
+        key = element.get(_X) or ""
+        if element.tag == f"{_NS}StreamGeometry" and key.startswith("Loom.Icon."):
             icons[key.removeprefix("Loom.Icon.")] = (element.text or "").strip()
     return colors, icons
 
@@ -98,11 +102,11 @@ class Canvas:
     def polygon(self, points: list[tuple[float, float]], fill: str) -> None:
         self.path("M" + " L".join(f"{num(x)},{num(y)}" for x, y in points) + " z", fill)
 
-    def icon(self, name: str, x: float, y: float, size: float, fill: str) -> None:
-        """Glyphe aus dem Designsystem (24×24) an (x, y) in der Größe ``size``."""
+    def icon(self, name: str, x: float, y: float, size: float, color: str) -> None:
+        """Strich-Symbol aus dem Designsystem (24×24, Strich 1,75 wie ``LoomIcon``) an (x, y) in der Größe ``size``."""
         if name not in self._icons:
             raise KeyError(f"Unbekannte Glyphe: {name}")
-        self.path(self._icons[name], fill, transform=f"translate({num(x)} {num(y)}) scale({num(size / 24)})")
+        self.path(self._icons[name], stroke=color, width=ICON_STROKE, transform=f"translate({num(x)} {num(y)}) scale({num(size / 24)})")
 
     # Zusammengesetzte Motive --------------------------------------------------------------------------------------------
     def backdrop(self) -> None:
