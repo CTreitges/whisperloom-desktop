@@ -49,6 +49,7 @@
             <StackPanel Orientation="Horizontal" Spacing="4">
               <ds:LoomIcon Data="{DynamicResource Loom.Icon.Copy}" VerticalAlignment="Center" />
               <TextBlock x:Name="CopyDeviceText" Text="{Binding [Action_Copy], Source={x:Static l:Loc.Instance}}" />
+              <TextBlock x:Name="CopyDeviceDone" Text="{Binding [Action_Copied], Source={x:Static l:Loc.Instance}}" IsVisible="False" />
             </StackPanel>
           </Button>
         </Grid>

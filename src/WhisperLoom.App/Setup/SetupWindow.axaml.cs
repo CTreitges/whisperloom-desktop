@@ -1,9 +1,10 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
-using WhisperLoom.App.Localization;
+using Avalonia.VisualTree;
 
 namespace WhisperLoom.App.Setup;
 
@@ -24,11 +25,13 @@ public partial class SetupWindow : Window
         Design.SystemTheme.Follow(this, Avalonia.Application.Current?.PlatformSettings);
         _micTimer.Tick += (_, _) => viewModel.Mic?.Tick();
         _micTimer.Start();
+        viewModel.PropertyChanged += OnViewModelChanged;
         // Schließen per Fensterknopf: ein laufender Pegel-Test endet, die Aufnahme wird verworfen.
         Closed += (_, _) =>
         {
             _micTimer.Stop();
             viewModel.CloseRequested -= Close;
+            viewModel.PropertyChanged -= OnViewModelChanged;
             if (viewModel.Mic is { Running: true } mic)
             {
                 mic.Stop();
@@ -38,6 +41,26 @@ public partial class SetupWindow : Window
     }
 
     private SetupViewModel? ViewModel => DataContext as SetupViewModel;
+
+    /// <summary>
+    /// Sprung über die Schrittliste: Der fokussierte „Zurück zu Schritt n“-Knopf verschwindet mit dem Schrittwechsel; der Fokus
+    /// geht auf das erste Bedienelement des Schritts, sonst auf den Hauptknopf (Prüfer-Fund PR #42).
+    /// </summary>
+    private void OnViewModelChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        // Die Schrittliste wird vor „Current“ neu aufgebaut; der Fokus ist dann schon weg (null) oder steht noch in der Liste.
+        var focused = FocusManager?.GetFocusedElement() as Visual;
+        if (e.PropertyName != nameof(SetupViewModel.Current) || (focused is not null && !StepList.IsVisualAncestorOf(focused)))
+        {
+            return;
+        }
+        Dispatcher.UIThread.Post(() =>
+        {
+            var first = StepContent.GetVisualDescendants().OfType<InputElement>()
+                .FirstOrDefault(c => c.Focusable && c.IsEffectivelyVisible && c.IsEffectivelyEnabled);
+            (first ?? (ViewModel is { ShowNext: true } ? NextButton : FinishButton)).Focus(NavigationMethod.Tab);
+        }, DispatcherPriority.Loaded);
+    }
 
     /// <summary>Hilfe-Abschnitt zum aktuellen Schritt (wie F1).</summary>
     private void OnHelp(object? sender, RoutedEventArgs e) =>
@@ -73,7 +96,7 @@ public partial class SetupWindow : Window
         if (ViewModel is { } vm && Clipboard is { } clipboard)
         {
             await clipboard.SetTextAsync(vm.ToggleCommand);
-            CopyCommandText.Text = Loc.Instance["Action_Copied"];
+            Design.CopyFeedback.Show(CopyCommandText, CopyCommandDone);
         }
     }
 }

@@ -145,8 +145,8 @@
     </Border>
 
     <!-- Detail -->
-    <DockPanel Grid.Column="1">
-      <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="24,20,24,0">
+    <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto">
+      <Grid ColumnDefinitions="*,Auto" Margin="24,20,24,0">
         <TextBlock x:Name="HeaderText" Text="{Binding HeaderText}" Margin="17,0,0,0" FontSize="{DynamicResource Loom.Font.PageTitle}" FontWeight="SemiBold"
                    Foreground="{DynamicResource Loom.Text}" TextWrapping="Wrap" VerticalAlignment="Center" AutomationProperties.HeadingLevel="1" />
         <Button x:Name="HelpButton" Grid.Column="1" Classes="icon" CornerRadius="16" Margin="12,0,0,0" VerticalAlignment="Top" Click="OnHelp"
@@ -156,78 +156,8 @@
         </Button>
       </Grid>
 
-      <!-- Fuß: Statuszeile (Ansage) und Werkzeugleiste. -->
-      <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource Loom.Separator}" BorderThickness="0,1,0,0" Padding="24,12" IsVisible="{Binding ShowFoot}">
-        <StackPanel Spacing="{DynamicResource Loom.Space.2}">
-          <WrapPanel x:Name="StatusRow" Margin="17,0,0,0" ItemSpacing="12" LineSpacing="4" IsVisible="{Binding HasStatus}">
-            <TextBlock x:Name="StatusText" Text="{Binding Status}" TextWrapping="Wrap" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" />
-            <Button x:Name="UndoButton" Classes="text" Command="{Binding UndoCommand}" IsVisible="{Binding CanUndo}"
-                    AutomationProperties.Name="{Binding [History_Undo], Source={x:Static l:Loc.Instance}}"
-                    AutomationProperties.AcceleratorKey="{Binding [History_KeyUndo], Source={x:Static l:Loc.Instance}}">
-              <StackPanel Orientation="Horizontal" Spacing="4">
-                <ds:LoomIcon Data="{DynamicResource Loom.Icon.Undo}" VerticalAlignment="Center" />
-                <TextBlock Text="{Binding [History_Undo], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
-                <Border Classes="keycap"><TextBlock Text="{Binding [History_KeyUndo], Source={x:Static l:Loc.Instance}}" /></Border>
-              </StackPanel>
-            </Button>
-          </WrapPanel>
-          <WrapPanel x:Name="Toolbar" HorizontalAlignment="Right" ItemSpacing="8" LineSpacing="8" IsVisible="{Binding ShowToolbar}">
-            <Button x:Name="MoreButton" Classes="icon" CornerRadius="{DynamicResource Loom.Radius.Control}"
-                    AutomationProperties.Name="{Binding [History_More], Source={x:Static l:Loc.Instance}}"
-                    ToolTip.Tip="{Binding [History_More], Source={x:Static l:Loc.Instance}}">
-              <ds:LoomIcon Data="{DynamicResource Loom.Icon.More}" Width="20" Height="20" />
-              <Button.Flyout>
-                <MenuFlyout Placement="TopEdgeAlignedLeft">
-                  <MenuItem x:Name="DeleteMenuItem" Classes="danger" Header="{Binding [Action_Delete], Source={x:Static l:Loc.Instance}}"
-                            InputGesture="Delete" Command="{Binding DeleteSelectedCommand}">
-                    <MenuItem.Icon>
-                      <ds:LoomIcon Data="{DynamicResource Loom.Icon.Delete}" Width="16" Height="16" Foreground="{DynamicResource Loom.Error}" />
-                    </MenuItem.Icon>
-                  </MenuItem>
-                </MenuFlyout>
-              </Button.Flyout>
-            </Button>
-            <Button x:Name="EditButton" Classes="secondary" Click="OnEditClick"
-                    AutomationProperties.Name="{Binding [History_Edit], Source={x:Static l:Loc.Instance}}"
-                    AutomationProperties.AcceleratorKey="{Binding [History_KeyEdit], Source={x:Static l:Loc.Instance}}">
-              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
-                <ds:LoomIcon Data="{DynamicResource Loom.Icon.Edit}" Width="16" Height="16" VerticalAlignment="Center" />
-                <TextBlock Text="{Binding [History_Edit], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
-                <Border Classes="keycap"><TextBlock Text="{Binding [History_KeyEdit], Source={x:Static l:Loc.Instance}}" /></Border>
-              </StackPanel>
-            </Button>
-            <Button x:Name="ReprocessButton" Classes="secondary" Click="OnReprocessClick" Command="{Binding Detail.ToggleStagePickerCommand, FallbackValue={x:Null}}"
-                    IsVisible="{Binding Detail.CanReprocess, FallbackValue=False}"
-                    AutomationProperties.Name="{Binding [History_Reprocess], Source={x:Static l:Loc.Instance}}"
-                    AutomationProperties.HelpText="{Binding [History_ReprocessTip], Source={x:Static l:Loc.Instance}}">
-              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
-                <ds:LoomIcon Data="{DynamicResource Loom.Icon.Reprocess}" Width="16" Height="16" VerticalAlignment="Center" />
-                <TextBlock Text="{Binding [History_Reprocess], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
-              </StackPanel>
-            </Button>
-            <Button x:Name="CopyButton" Classes="secondary" Command="{Binding CopySelectedCommand}"
-                    AutomationProperties.Name="{Binding [Action_Copy], Source={x:Static l:Loc.Instance}}"
-                    AutomationProperties.AcceleratorKey="{Binding [History_KeyCopy], Source={x:Static l:Loc.Instance}}">
-              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
-                <ds:LoomIcon Data="{DynamicResource Loom.Icon.Copy}" Width="16" Height="16" VerticalAlignment="Center" />
-                <TextBlock Text="{Binding [Action_Copy], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
-                <Border Classes="keycap"><TextBlock Text="{Binding [History_KeyCopy], Source={x:Static l:Loc.Instance}}" /></Border>
-              </StackPanel>
-            </Button>
-            <Button x:Name="InsertButton" Classes="accent" Command="{Binding InsertSelectedCommand}"
-                    AutomationProperties.Name="{Binding [History_Insert], Source={x:Static l:Loc.Instance}}"
-                    AutomationProperties.AcceleratorKey="{Binding [History_KeyInsert], Source={x:Static l:Loc.Instance}}">
-              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
-                <ds:LoomIcon Data="{DynamicResource Loom.Icon.Paste}" Width="16" Height="16" VerticalAlignment="Center" />
-                <TextBlock Text="{Binding [History_Insert], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
-                <Border Classes="keycap"><TextBlock Text="{Binding [History_KeyInsert], Source={x:Static l:Loc.Instance}}" /></Border>
-              </StackPanel>
-            </Button>
-          </WrapPanel>
-        </StackPanel>
-      </Border>
 
-      <Panel>
+      <Panel Grid.Row="1">
         <!-- Leerzustand bzw. keine Treffer -->
         <StackPanel x:Name="EmptyState" Margin="24,12,24,24" Spacing="{DynamicResource Loom.Space.3}" IsVisible="{Binding !HasSelection}">
           <ds:KeycapText x:Name="EmptyHint" Margin="17,0,0,0" MaxWidth="560" HorizontalAlignment="Left" Template="{Binding EmptyTemplate}" Keys="{Binding EmptyKeys}"
@@ -319,6 +249,77 @@
           </ContentControl.ContentTemplate>
         </ContentControl>
       </Panel>
-    </DockPanel>
+
+      <!-- Fuß: Statuszeile (Ansage) und Werkzeugleiste; im Markup nach dem Inhalt, damit Tab erst ins Detail führt. -->
+      <Border Grid.Row="2" BorderBrush="{DynamicResource Loom.Separator}" BorderThickness="0,1,0,0" Padding="24,12" IsVisible="{Binding ShowFoot}">
+        <StackPanel Spacing="{DynamicResource Loom.Space.2}">
+          <WrapPanel x:Name="StatusRow" Margin="17,0,0,0" ItemSpacing="12" LineSpacing="4" IsVisible="{Binding HasStatus}">
+            <TextBlock x:Name="StatusText" Text="{Binding Status}" TextWrapping="Wrap" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" />
+            <Button x:Name="UndoButton" Classes="text" Command="{Binding UndoCommand}" IsVisible="{Binding CanUndo}"
+                    AutomationProperties.Name="{Binding [History_Undo], Source={x:Static l:Loc.Instance}}"
+                    AutomationProperties.AcceleratorKey="{Binding [History_KeyUndo], Source={x:Static l:Loc.Instance}}">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <ds:LoomIcon Data="{DynamicResource Loom.Icon.Undo}" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding [History_Undo], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
+                <Border Classes="keycap"><TextBlock Text="{Binding [History_KeyUndo], Source={x:Static l:Loc.Instance}}" /></Border>
+              </StackPanel>
+            </Button>
+          </WrapPanel>
+          <WrapPanel x:Name="Toolbar" HorizontalAlignment="Right" ItemSpacing="8" LineSpacing="8" IsVisible="{Binding ShowToolbar}">
+            <Button x:Name="MoreButton" Classes="icon" CornerRadius="{DynamicResource Loom.Radius.Control}"
+                    AutomationProperties.Name="{Binding [History_More], Source={x:Static l:Loc.Instance}}"
+                    ToolTip.Tip="{Binding [History_More], Source={x:Static l:Loc.Instance}}">
+              <ds:LoomIcon Data="{DynamicResource Loom.Icon.More}" Width="20" Height="20" />
+              <Button.Flyout>
+                <MenuFlyout Placement="TopEdgeAlignedLeft">
+                  <MenuItem x:Name="DeleteMenuItem" Classes="danger" Header="{Binding [Action_Delete], Source={x:Static l:Loc.Instance}}"
+                            InputGesture="Delete" Command="{Binding DeleteSelectedCommand}">
+                    <MenuItem.Icon>
+                      <ds:LoomIcon Data="{DynamicResource Loom.Icon.Delete}" Width="16" Height="16" Foreground="{DynamicResource Loom.Error}" />
+                    </MenuItem.Icon>
+                  </MenuItem>
+                </MenuFlyout>
+              </Button.Flyout>
+            </Button>
+            <Button x:Name="EditButton" Classes="secondary" Click="OnEditClick"
+                    AutomationProperties.Name="{Binding [History_Edit], Source={x:Static l:Loc.Instance}}"
+                    AutomationProperties.AcceleratorKey="{Binding [History_KeyEdit], Source={x:Static l:Loc.Instance}}">
+              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
+                <ds:LoomIcon Data="{DynamicResource Loom.Icon.Edit}" Width="16" Height="16" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding [History_Edit], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
+                <Border Classes="keycap"><TextBlock Text="{Binding [History_KeyEdit], Source={x:Static l:Loc.Instance}}" /></Border>
+              </StackPanel>
+            </Button>
+            <Button x:Name="ReprocessButton" Classes="secondary" Click="OnReprocessClick" Command="{Binding Detail.ToggleStagePickerCommand, FallbackValue={x:Null}}"
+                    IsVisible="{Binding Detail.CanReprocess, FallbackValue=False}"
+                    AutomationProperties.Name="{Binding [History_Reprocess], Source={x:Static l:Loc.Instance}}"
+                    AutomationProperties.HelpText="{Binding [History_ReprocessTip], Source={x:Static l:Loc.Instance}}">
+              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
+                <ds:LoomIcon Data="{DynamicResource Loom.Icon.Reprocess}" Width="16" Height="16" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding [History_Reprocess], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+            <Button x:Name="CopyButton" Classes="secondary" Command="{Binding CopySelectedCommand}"
+                    AutomationProperties.Name="{Binding [Action_Copy], Source={x:Static l:Loc.Instance}}"
+                    AutomationProperties.AcceleratorKey="{Binding [History_KeyCopy], Source={x:Static l:Loc.Instance}}">
+              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
+                <ds:LoomIcon Data="{DynamicResource Loom.Icon.Copy}" Width="16" Height="16" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding [Action_Copy], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
+                <Border Classes="keycap"><TextBlock Text="{Binding [History_KeyCopy], Source={x:Static l:Loc.Instance}}" /></Border>
+              </StackPanel>
+            </Button>
+            <Button x:Name="InsertButton" Classes="accent" Command="{Binding InsertSelectedCommand}"
+                    AutomationProperties.Name="{Binding [History_Insert], Source={x:Static l:Loc.Instance}}"
+                    AutomationProperties.AcceleratorKey="{Binding [History_KeyInsert], Source={x:Static l:Loc.Instance}}">
+              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
+                <ds:LoomIcon Data="{DynamicResource Loom.Icon.Paste}" Width="16" Height="16" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding [History_Insert], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
+                <Border Classes="keycap"><TextBlock Text="{Binding [History_KeyInsert], Source={x:Static l:Loc.Instance}}" /></Border>
+              </StackPanel>
+            </Button>
+          </WrapPanel>
+        </StackPanel>
+      </Border>
+    </Grid>
   </Grid>
 </Window>

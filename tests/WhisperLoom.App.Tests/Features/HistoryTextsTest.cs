@@ -1,6 +1,10 @@
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
+using WhisperLoom.App.Design;
 using WhisperLoom.App.Features.History;
 using WhisperLoom.App.Localization;
 using WhisperLoom.App.Views;
@@ -138,5 +142,61 @@ public sealed class HistoryTextsTest : IDisposable
         Assert.False(w.FindControl<Button>("ClearButton")!.IsVisible);
         Assert.True(w.FindControl<Border>("ClearConfirm")!.IsVisible);
         w.Close();
+    }
+
+    [AvaloniaFact]
+    public async Task Tab_fuehrt_nach_der_Hilfe_erst_ins_Detail_dann_in_die_Werkzeugleiste()
+    {
+        // Prüfer-Fund PR #42: Der Fuß stand im Markup vor dem Inhalt; Tab sprang von „Hilfe“ direkt in die Werkzeugleiste.
+        Loc.Instance.SetLanguage("de");
+        await Add("Eins", Now.AddHours(-1));
+        var vm = new HistoryViewModel(_f.History, Actions(), () => Now);
+        await vm.LoadAsync();
+        var w = new HistoryWindow(vm);
+        w.Show();
+        Dispatcher.UIThread.RunJobs();
+        w.FindControl<Button>("HelpButton")!.Focus(Avalonia.Input.NavigationMethod.Tab);
+
+        w.KeyPress(Avalonia.Input.Key.Tab, Avalonia.Input.RawInputModifiers.None, Avalonia.Input.PhysicalKey.Tab, null);
+        var focused = w.FocusManager?.GetFocusedElement() as Avalonia.Visual;
+        Assert.NotNull(focused);
+        Assert.False(w.FindControl<WrapPanel>("Toolbar")!.IsVisualAncestorOf(focused));
+        Assert.IsType<ToggleButton>(focused); // erste Fassung („Ursprung“)
+        w.Close();
+    }
+
+    [AvaloniaFact]
+    public async Task Sprachwechsel_erneuert_Ueberschrift_und_Leerzustand_bis_zum_Schliessen()
+    {
+        // Prüfer-Fund PR #42: Überschrift und Leerzustand sind berechnet und folgten der Sprache nicht mehr.
+        Loc.Instance.SetLanguage("de");
+        var vm = new HistoryViewModel(_f.History, Actions(["Ctrl+Win", "Ctrl+Space"]), () => Now);
+        await vm.LoadAsync();
+        var w = new HistoryWindow(vm);
+        w.Show();
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal("Noch keine Diktate", w.FindControl<TextBlock>("HeaderText")!.Text);
+
+        Loc.Instance.SetLanguage("en");
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(Loc.Instance["History_Empty"], w.FindControl<TextBlock>("HeaderText")!.Text);
+        Assert.Equal(Loc.Instance["History_EmptyHint"], w.FindControl<KeycapText>("EmptyHint")!.Template);
+
+        w.Close();
+        var raised = 0;
+        vm.PropertyChanged += (_, _) => raised++;
+        Loc.Instance.SetLanguage("de");
+        Assert.Equal(0, raised); // geschlossen: kein Abo mehr auf Loc.Instance
+    }
+
+    [Fact]
+    public void Starttasten_nur_unter_Windows_mit_eingeschalteten_Tastenkuerzeln()
+    {
+        // Prüfer-Fund PR #42: Der Leerzustand nannte die Kürzel auch bei desktop.hotkeysEnabled = false.
+        var on = new Services.DesktopSettings { HotkeyHold = "Ctrl+Win", HotkeyToggle = "Ctrl+Space" };
+        Assert.Equal(["Ctrl+Win", "Ctrl+Space"], HistoryActions.StartKeysFor(on, windows: true));
+        Assert.Null(HistoryActions.StartKeysFor(on, windows: false));
+        on.HotkeysEnabled = false;
+        Assert.Null(HistoryActions.StartKeysFor(on, windows: true));
     }
 }

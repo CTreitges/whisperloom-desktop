@@ -1,7 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
-using WhisperLoom.App.Localization;
 
 namespace WhisperLoom.App.Setup;
 
@@ -16,7 +15,7 @@ public partial class CompanyJoinView : UserControl
         if (DataContext is CompanyJoinViewModel { DeviceId: { Length: > 0 } id } && TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard)
         {
             await clipboard.SetTextAsync(id);
-            CopyDeviceText.Text = Loc.Instance["Action_Copied"];
+            Design.CopyFeedback.Show(CopyDeviceText, CopyDeviceDone);
         }
     }
 }

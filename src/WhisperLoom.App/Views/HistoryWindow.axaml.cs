@@ -28,6 +28,10 @@ public partial class HistoryWindow : Window
     public HistoryWindow(HistoryViewModel viewModel) : this()
     {
         DataContext = viewModel;
+        // Überschrift, Leerzustand und Ansagen sind berechnet: bei Sprachwechsel neu melden, Abo endet mit dem Fenster.
+        void OnLanguage(object? sender, System.ComponentModel.PropertyChangedEventArgs e) => viewModel.RefreshTexts();
+        Localization.Loc.Instance.PropertyChanged += OnLanguage;
+        Closed += (_, _) => Localization.Loc.Instance.PropertyChanged -= OnLanguage;
     }
 
     private HistoryViewModel? Vm => DataContext as HistoryViewModel;

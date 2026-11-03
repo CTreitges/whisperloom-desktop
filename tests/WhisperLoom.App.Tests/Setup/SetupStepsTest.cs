@@ -76,6 +76,96 @@ public sealed class SetupStepsTest
     }
 
     [AvaloniaFact]
+    public void Zuruecksprung_per_Tastatur_setzt_den_Fokus_in_den_Schritt()
+    {
+        // Prüfer-Fund PR #42: Der fokussierte „Zurück zu Schritt 1“-Knopf verschwindet beim Sprung; der Fokus stand danach nirgends.
+        Loc.Instance.SetLanguage("de");
+        using var s = new SetupFixture();
+        var window = SetupUiTest.Show(s.Vm);
+        s.Vm.Next();
+        Dispatcher.UIThread.RunJobs();
+        var back = SetupUiTest.Named<ItemsControl>(window, "StepList").GetVisualDescendants().OfType<Button>().Single(SetupUiTest.Shown);
+        back.Focus(NavigationMethod.Tab);
+
+        window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(SetupStep.Language, s.Vm.Current);
+        var focused = window.FocusManager?.GetFocusedElement() as Avalonia.Visual;
+        Assert.NotNull(focused);
+        Assert.True(SetupUiTest.Named<ScrollViewer>(window, "StepContent").IsVisualAncestorOf(focused));
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public async Task Kopiert_folgt_der_Sprache_und_geht_wieder_auf_Kopieren()
+    {
+        // Prüfer-Fund PR #42: Der Kopier-Knopf überschrieb seinen Text dauerhaft mit „Kopiert“ (ohne Sprachbindung).
+        Loc.Instance.SetLanguage("de");
+        using var s = new SetupFixture(windows: false);
+        var window = SetupUiTest.Show(s.Vm);
+        while (s.Vm.Current != SetupStep.Hotkey)
+        {
+            s.Vm.Next();
+        }
+        Dispatcher.UIThread.RunJobs();
+        var button = SetupUiTest.Named<Button>(window, "CopyCommandButton");
+        string Label() => button.GetVisualDescendants().OfType<TextBlock>().Single(SetupUiTest.Shown).Text!;
+        Assert.Equal("Kopieren", Label());
+
+        button.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal("Kopiert", Label());
+        Loc.Instance.SetLanguage("en");
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal("Copied", Label());
+
+        await Task.Delay(CopyFeedback.Duration + TimeSpan.FromMilliseconds(300));
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal("Copy", Label());
+        window.Close();
+        Loc.Instance.SetLanguage("de");
+    }
+
+    [AvaloniaFact]
+    public void Sprachwechsel_erneuert_Nutzungswahl_und_Satz_auf_Fertig()
+    {
+        // Prüfer-Fund PR #42: Vorlage auf „Fertig“ und die Nutzungswahl blieben nach dem Sprachwechsel in der alten Sprache.
+        Loc.Instance.SetLanguage("de");
+        using var s = new SetupFixture();
+        var window = SetupUiTest.Show(s.Vm);
+        while (s.Vm.Current != SetupStep.Done)
+        {
+            s.Vm.Next();
+        }
+        Dispatcher.UIThread.RunJobs();
+
+        Loc.Instance.SetLanguage("en");
+        Dispatcher.UIThread.RunJobs();
+        Assert.Contains(s.Vm.DoneTemplate, new[] { Loc.Instance["Setup_DoneWindows"], Loc.Instance["Setup_DoneLinux"] });
+        Assert.Equal(s.Vm.DoneTemplate, SetupUiTest.Named<KeycapText>(window, "DoneHintText").Template);
+        Assert.Equal(Loc.Instance["Setup_UsagePersonal"], s.Vm.UsageChoices[0].Label);
+        Assert.Same(s.Vm.UsageChoices[0], s.Vm.Usage);
+        window.Close();
+        Loc.Instance.SetLanguage("de");
+    }
+
+    [AvaloniaFact]
+    public void Sprachwechsel_behaelt_die_Wahl_mit_Firma()
+    {
+        Loc.Instance.SetLanguage("de");
+        using var s = new SetupFixture();
+        var window = SetupUiTest.Show(s.Vm);
+        s.Vm.Usage = s.Vm.UsageChoices[1];
+        Dispatcher.UIThread.RunJobs();
+        Loc.Instance.SetLanguage("en");
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(s.Vm.UseCompany); // die neue Liste setzt die Wahl nicht zurück
+        Assert.Same(s.Vm.UsageChoices[1], s.Vm.Usage);
+        window.Close();
+        Loc.Instance.SetLanguage("de");
+    }
+
+    [AvaloniaFact]
     public async Task Esc_fragt_spaeter_fortsetzen_und_speichert_ohne_erledigt()
     {
         Loc.Instance.SetLanguage("de");

@@ -102,8 +102,10 @@ public sealed partial class SetupViewModel : IDisposable
     /// <summary>Fußzeile unter der Karte im Schritt Erkennung, je nach Weg.</summary>
     public string RecognitionFooter => Loc.Instance[ShowOnline ? "Setup_RecognitionFootOnline" : "Setup_RecognitionFootLocal"];
 
-    /// <summary>Wahl im ersten Schritt als Optionsfelder mit Erklärung.</summary>
-    public IReadOnlyList<Choice> UsageChoices { get; } =
+    /// <summary>Wahl im ersten Schritt als Optionsfelder mit Erklärung; neu bei jedem Sprachwechsel.</summary>
+    public IReadOnlyList<Choice> UsageChoices { get; private set; } = BuildUsageChoices();
+
+    private static Choice[] BuildUsageChoices() =>
     [
         new("personal", Loc.Instance["Setup_UsagePersonal"], Loc.Instance["Setup_UsagePersonalDesc"]),
         new("company", Loc.Instance["Setup_UsageCompany"], Loc.Instance["Setup_UsageCompanyDesc"]),
@@ -112,7 +114,14 @@ public sealed partial class SetupViewModel : IDisposable
     public Choice Usage
     {
         get => UsageChoices[UseCompany ? 1 : 0];
-        set => UseCompany = value?.Value == "company";
+        set
+        {
+            // null kommt nur beim Tausch der Liste (Sprachwechsel) aus der Auswahl zurück; die Wahl bleibt.
+            if (value is not null)
+            {
+                UseCompany = value.Value == "company";
+            }
+        }
     }
 
     /// <summary>Esc hat „Einrichtung später fortsetzen?“ gefragt; der Fuß zeigt die Rückfrage statt der Knöpfe.</summary>
@@ -222,6 +231,10 @@ public sealed partial class SetupViewModel : IDisposable
         OnPropertyChanged(nameof(MicButtonText));
         OnPropertyChanged(nameof(RecognitionFooter));
         OnPropertyChanged(nameof(DoneHint));
+        OnPropertyChanged(nameof(DoneTemplate));
+        UsageChoices = BuildUsageChoices();
+        OnPropertyChanged(nameof(UsageChoices));
+        OnPropertyChanged(nameof(Usage));
     }
 
     private void OnMicChanged(object? sender, PropertyChangedEventArgs e)

@@ -169,7 +169,7 @@
         </StackPanel>
       </Border>
 
-      <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+      <ScrollViewer x:Name="StepContent" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="24,12,24,24" Spacing="{DynamicResource Loom.Space.4}" MaxWidth="760" HorizontalAlignment="Stretch">
           <TextBlock x:Name="IntroText" Text="{Binding Intro}" IsVisible="{Binding HasIntro}" Margin="17,0,0,0" TextWrapping="Wrap"
                      Foreground="{DynamicResource Loom.TextSecondary}" />
@@ -317,6 +317,7 @@
                       <StackPanel Orientation="Horizontal" Spacing="4">
                         <ds:LoomIcon Data="{DynamicResource Loom.Icon.Copy}" VerticalAlignment="Center" />
                         <TextBlock x:Name="CopyCommandText" Text="{Binding [Action_Copy], Source={x:Static l:Loc.Instance}}" />
+                        <TextBlock x:Name="CopyCommandDone" Text="{Binding [Action_Copied], Source={x:Static l:Loc.Instance}}" IsVisible="False" />
                       </StackPanel>
                     </Button>
                   </StackPanel>

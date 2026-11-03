@@ -43,6 +43,13 @@ public sealed partial class HistoryViewModel
 
     partial void OnDetailChanged(HistoryDetailViewModel? value) => OnPropertyChanged(nameof(HeaderText));
 
+    /// <summary>Sprachwechsel bei offenem Fenster (das Fenster meldet ihn und löst das Abo beim Schließen).</summary>
+    public void RefreshTexts()
+    {
+        RaiseListTexts();
+        OnPropertyChanged(nameof(EmptyTemplate));
+    }
+
     private void RaiseListTexts()
     {
         OnPropertyChanged(nameof(SearchSummary));

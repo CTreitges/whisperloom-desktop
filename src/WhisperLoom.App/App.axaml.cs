@@ -365,7 +365,7 @@ public partial class App : Application
                 .Select(m => (Core.Contracts.RefineModes.Key(m), Localization.Loc.Instance["Stage_" + Core.Contracts.RefineModes.Key(m)]))],
             entry => c.NotifyHistoryChanged(cleared: false),
             () => c.NotifyHistoryChanged(cleared: true),
-            OperatingSystem.IsWindows() && SettingsStore.Desktop(c.Settings) is { } desktop ? [desktop.HotkeyHold, desktop.HotkeyToggle] : null);
+            Features.History.HistoryActions.StartKeysFor(SettingsStore.Desktop(c.Settings), OperatingSystem.IsWindows()));
     }
 
     private SettingsViewModel CreateSettings(AppHost host) =>

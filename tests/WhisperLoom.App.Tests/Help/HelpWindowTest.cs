@@ -118,6 +118,27 @@ public sealed class HelpWindowTest
     }
 
     [AvaloniaFact]
+    public void Choosing_a_topic_in_the_sidebar_during_search_ends_the_search()
+    {
+        // Prüfer-Fund PR #42: Die Seitenleiste bleibt bei der Suche bedienbar; ein Klick dort zeigte weiter nur die Treffer.
+        var window = Open("history");
+        var list = Named<ListBox>(window, "SectionList");
+        window.Help!.SearchText = "Proxy";
+        Assert.Null(list.SelectedItem); // während der Suche ist kein Abschnitt gewählt
+
+        list.SelectedItem = window.Help.Section("history"); // auch der vorher gewählte Abschnitt wirkt
+        Assert.False(window.Help.IsSearching);
+        Assert.True(window.Help.ShowSection);
+        Assert.Equal("history", window.Help.SelectedSection!.Id);
+
+        // Suche leeren (Esc) bringt den vorherigen Abschnitt zurück.
+        window.Help.SearchText = "Proxy";
+        window.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
+        Assert.Equal("history", window.Help.SelectedSection!.Id);
+        window.Close();
+    }
+
+    [AvaloniaFact]
     public void Arrow_keys_in_the_sidebar_switch_sections()
     {
         var window = Open();

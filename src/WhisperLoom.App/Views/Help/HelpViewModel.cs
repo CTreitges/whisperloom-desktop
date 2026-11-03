@@ -72,17 +72,40 @@ public sealed partial class HelpViewModel : ObservableObject, IDisposable
         }
     }
 
+    /// <summary>Abschnitt vor der Suche; kommt zurück, wenn die Suche ohne Wahl endet (Esc, ×).</summary>
+    private HelpSectionViewModel? _beforeSearch;
+
     partial void OnSelectedSectionChanged(HelpSectionViewModel? value)
     {
-        // Die Seitenleiste darf nie „nichts gewählt“ zeigen.
         if (value is null)
         {
-            SelectedSection = Overview;
+            // Während der Suche ist in der Seitenleiste nichts gewählt; sonst darf sie nie „nichts gewählt“ zeigen.
+            if (!IsSearching)
+            {
+                SelectedSection = _beforeSearch ?? Overview;
+            }
+            return;
+        }
+        if (IsSearching)
+        {
+            // Wahl in der Seitenleiste während der Suche: Suche beenden und den Abschnitt zeigen (Prüfer-Fund PR #42).
+            _beforeSearch = null;
+            SearchText = "";
         }
     }
 
     partial void OnSearchTextChanged(string value)
     {
+        if (IsSearching && SelectedSection is not null)
+        {
+            _beforeSearch = SelectedSection;
+            SelectedSection = null;
+        }
+        else if (!IsSearching && SelectedSection is null)
+        {
+            SelectedSection = _beforeSearch ?? Overview;
+            _beforeSearch = null;
+        }
         RunSearch();
         OnPropertyChanged(nameof(SearchSummary));
         OnPropertyChanged(nameof(ShowSection));
