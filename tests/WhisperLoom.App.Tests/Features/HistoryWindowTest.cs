@@ -210,6 +210,51 @@ public sealed class HistoryWindowTest : IDisposable
         w.Close();
     }
 
+    /// <summary>UX-6 N14/N22 (Nachprüfung): auch Fassungs- und Eintragswechsel fragen; während der Rückfrage kein „Speichern“.</summary>
+    [AvaloniaFact]
+    public async Task Wechsel_waehrend_geaenderter_Bearbeitung_fragt_erst()
+    {
+        var vm = await Model();
+        var w = await Show(vm);
+        var detail = vm.Detail!;
+        var entry = vm.Selected!;
+        detail.BeginEdit();
+        detail.EditText = "Entwurf";
+        Assert.True(detail.ShowEditActions);
+
+        var origin = detail.Chips.Single(c => c.Key == VersionChip.Origin);
+        detail.SelectCommand.Execute(origin);
+        Assert.True(detail.DiscardPending);
+        Assert.True(detail.IsEditing);
+        Assert.NotEqual(origin, detail.SelectedChip); // Fassung bleibt, bis verworfen wird
+        Assert.False(detail.ShowEditActions);
+
+        vm.Selected = vm.Rows.First(r => r != entry);
+        await Settle();
+        Assert.Same(entry, vm.Selected); // Auswahl springt zurück
+        Assert.Same(detail, vm.Detail);
+        Assert.Equal("Entwurf", detail.EditText);
+
+        detail.DiscardEditCommand.Execute(null);
+        detail.SelectCommand.Execute(origin);
+        Assert.Equal(origin, detail.SelectedChip);
+        w.Close();
+    }
+
+    [AvaloniaFact]
+    public async Task Neuaufbau_schliesst_eine_offene_Rueckfrage()
+    {
+        var vm = await Model();
+        var detail = vm.Detail!;
+        detail.BeginEdit();
+        detail.EditText = "Entwurf";
+        detail.CancelEdit();
+        Assert.True(detail.DiscardPending);
+        detail.SelectedChip = detail.Chips.Single(c => c.Key == VersionChip.Origin); // wie Rebuild nach „Neu verarbeiten“
+        Assert.False(detail.DiscardPending);
+        Assert.False(detail.IsEditing);
+    }
+
     /// <summary>UX-6 N15/N16: „Löschen“ ist ein eigener Knopf (kein Ein-Eintrag-Menü), der Stufen-Wähler zeigt seine Tasten.</summary>
     [AvaloniaFact]
     public async Task Loeschen_als_Knopf_und_Tastenzeile_am_Waehler()

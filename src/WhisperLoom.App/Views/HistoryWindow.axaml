@@ -235,7 +235,7 @@
                         <TextBlock Text="{Binding [History_DiscardQuestion], Source={x:Static l:Loc.Instance}}" TextWrapping="Wrap"
                                    AutomationProperties.LiveSetting="Assertive" />
                         <WrapPanel ItemSpacing="16" LineSpacing="8">
-                          <Button x:Name="KeepEditButton" Classes="accent" Content="{Binding [History_KeepEditing], Source={x:Static l:Loc.Instance}}"
+                          <Button x:Name="KeepEditButton" Classes="secondary" Content="{Binding [History_KeepEditing], Source={x:Static l:Loc.Instance}}"
                                   Command="{Binding KeepEditingCommand}" Click="OnKeepEditingClick" />
                           <Button x:Name="DiscardEditButton" Classes="text danger" VerticalAlignment="Center"
                                   Content="{Binding [History_DiscardEdit], Source={x:Static l:Loc.Instance}}" Command="{Binding DiscardEditCommand}" />
@@ -243,7 +243,7 @@
                       </StackPanel>
                     </Grid>
                   </Border>
-                  <WrapPanel Margin="17,0,0,0" ItemSpacing="16" LineSpacing="8" IsVisible="{Binding IsEditing}">
+                  <WrapPanel Margin="17,0,0,0" ItemSpacing="16" LineSpacing="8" IsVisible="{Binding ShowEditActions}">
                     <Button x:Name="SaveEditButton" Classes="accent" Content="{Binding [Action_Save], Source={x:Static l:Loc.Instance}}" Command="{Binding SaveEditCommand}" />
                     <Button x:Name="CancelEditButton" Classes="text" VerticalAlignment="Center" Content="{Binding [Action_Cancel], Source={x:Static l:Loc.Instance}}"
                             Command="{Binding CancelEditCommand}" Click="OnCancelEditClick" />

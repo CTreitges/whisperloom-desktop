@@ -66,6 +66,7 @@ public sealed partial class HistoryDetailViewModel : ObservableObject
     // --- Bearbeiten -----------------------------------------------------------------------
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowEditActions))]
     private bool _isEditing;
 
     [ObservableProperty]
@@ -73,7 +74,11 @@ public sealed partial class HistoryDetailViewModel : ObservableObject
 
     /// <summary>Rückfrage „Änderungen verwerfen?“ sichtbar (UX-6 N14: Abbrechen verliert keine Eingabe still).</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowEditActions))]
     private bool _discardPending;
+
+    /// <summary>„Speichern“/„Abbrechen“ nur ohne offene Rückfrage (UX-6 N22: ein Hauptknopf zur Zeit).</summary>
+    public bool ShowEditActions => IsEditing && !DiscardPending;
 
     /// <summary>Der Text im Bearbeitungsfeld weicht von der Fassung ab.</summary>
     public bool EditChanged => IsEditing && EditText != Text;
@@ -221,16 +226,25 @@ public sealed partial class HistoryDetailViewModel : ObservableObject
         {
             chip.IsSelected = chip == value;
         }
+        // Auch der Neuaufbau nach „Neu verarbeiten“ beendet die Bearbeitung samt offener Rückfrage (kein Kasten ohne Textfeld).
+        DiscardPending = false;
         IsEditing = false;
     }
 
     [RelayCommand]
     private void Select(VersionChip? chip)
     {
-        if (chip is not null)
+        if (chip is null || chip == SelectedChip)
         {
-            SelectedChip = chip;
+            return;
         }
+        // Geänderter Text geht beim Fassungswechsel nicht still verloren (UX-6 N14): erst die Rückfrage.
+        if (EditChanged)
+        {
+            DiscardPending = true;
+            return;
+        }
+        SelectedChip = chip;
     }
 
     private string TextOf(string key) =>

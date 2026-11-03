@@ -64,8 +64,16 @@ public sealed partial class HistoryViewModel(IHistoryStore store, HistoryActions
 
     partial void OnSearchChanged(string value) => Apply(Selected?.Entry.Id);
 
-    partial void OnSelectedChanged(HistoryRow? value)
+    partial void OnSelectedChanged(HistoryRow? oldValue, HistoryRow? newValue)
     {
+        // Ein anderer Eintrag während einer geänderten Bearbeitung: Auswahl zurück und Rückfrage zeigen (UX-6 N14).
+        if (Detail is { EditChanged: true } editing && oldValue is not null && newValue is not null && newValue.Entry.Id != editing.Entry.Id)
+        {
+            editing.DiscardPending = true;
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => Selected = oldValue);
+            return;
+        }
+        var value = newValue;
         OnPropertyChanged(nameof(ShowToolbar));
         OnPropertyChanged(nameof(ShowFoot));
         if (value is null)

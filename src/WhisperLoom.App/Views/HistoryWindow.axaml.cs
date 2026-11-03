@@ -178,7 +178,18 @@ public partial class HistoryWindow : Window
         DispatcherPriority.Loaded);
 
     /// <summary>„Abbrechen“ mit Änderungen: Rückfrage erscheint, Fokus auf „Weiter bearbeiten“ (UX-6 N14).</summary>
-    private void OnCancelEditClick(object? sender, RoutedEventArgs e) => FocusNamed("KeepEditButton");
+    private void OnCancelEditClick(object? sender, RoutedEventArgs e) => Dispatcher.UIThread.Post(() =>
+    {
+        // Click läuft vor dem Command: erst danach steht fest, ob die Rückfrage offen ist; sonst zurück in die Liste.
+        if (Vm?.Detail is { DiscardPending: true })
+        {
+            FocusNamed("KeepEditButton");
+        }
+        else
+        {
+            FocusList();
+        }
+    }, DispatcherPriority.Background);
 
     /// <summary>„Weiter bearbeiten“: zurück ins Textfeld.</summary>
     private void OnKeepEditingClick(object? sender, RoutedEventArgs e) => FocusNamed("EditBox");
