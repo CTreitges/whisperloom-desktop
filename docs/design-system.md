@@ -97,7 +97,7 @@ Regeln:
 - **Sofort speichern**: Auswahl und Schalter speichern bei Änderung, Textfelder beim Verlassen bzw. Enter (`UpdateSourceTrigger=LostFocus`). Ungültige Werte zeigen den Fehler in der Zeile und werden nicht gespeichert. Zerstörende Änderungen (Verlauf aus) fragen inline nach.
 - **Knöpfe**: ein Hauptknopf je Bereich (`accent`), Nebenaktionen als `secondary` oder Textknopf (`text`), Zerstörendes als `text danger` mit Gegenstand im Namen („Profil ‚Terminal‘ löschen“). Symbolknöpfe `icon` (32 × 32) nur mit Namen.
 - **Rückgängig statt Rückfrage**, wo es geht: Statuszeile „… gelöscht.“ mit Textknopf „Rückgängig“, gilt bis zur nächsten Aktion (kein Timer, kein Stapel); der Fokus springt auf „Rückgängig“. Nicht umkehrbar (Anbieter samt Key, Verlauf) fragt inline nach.
-- **Hinweise über fremden Programmen**: Stufe, „Kopiert“ und Auskünfte verschwinden nach kurzer Zeit; Warnungen und Fehler (nicht eingefügt, Grenze erreicht, Diktat gescheitert) bleiben stehen, bis „Hinweis schließen“ oder das nächste Diktat sie wegnimmt (UX-6).
+- **Hinweise über fremden Programmen** (Windows; unter Linux zeigt die Desktop-Benachrichtigung sie mit deren eigener Dauer): Stufe, „Kopiert“ und Auskünfte verschwinden nach kurzer Zeit; Warnungen und Fehler (nicht eingefügt, Grenze erreicht, Diktat gescheitert) bleiben stehen, bis „Hinweis schließen“ oder das nächste Diktat sie wegnimmt (UX-6).
 - **Texte**: Meldungen sagen, was zu tun ist – ohne „bitte“, „ungültig“ oder „klicken“ (`UxWritingTest`, Ausnahme D9).
 - **Nur zeigen, was gilt**: abhängige Zeilen erscheinen erst mit ihrer Voraussetzung (z. B. Proxy-Adresse nur bei „Eigener Proxy“).
 - **Hover und Gedrückt** auf Akzent- und Auswahlflächen sind einen Ton abgesetzt; Schrift darauf bleibt ≥ 4,5:1 (`DesignTokensTest`).
