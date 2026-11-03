@@ -48,7 +48,7 @@ public sealed class VelopackFeedTest : IDisposable
         public string? CurrentVersion => version;
         public Task<UpdateRelease?> CheckAsync(string channel, CancellationToken ct) => inner.CheckAsync(channel, ct);
         public Task<IReadOnlyList<UpdateRelease>> ListAsync(string channel, CancellationToken ct) => inner.ListAsync(channel, ct);
-        public Task DownloadAsync(UpdateRelease release, bool downgrade, CancellationToken ct) => Task.CompletedTask;
+        public Task DownloadAsync(UpdateRelease release, bool downgrade, CancellationToken ct, Action<int>? progress = null) => Task.CompletedTask;
         public void ApplyAndRestart(UpdateRelease release) { }
         public void ApplyAndExit(UpdateRelease release) { }
     }

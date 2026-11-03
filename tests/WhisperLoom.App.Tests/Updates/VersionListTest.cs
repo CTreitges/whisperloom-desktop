@@ -106,10 +106,10 @@ public sealed class VersionListTest : IDisposable
         public string? CurrentVersion => inner.CurrentVersion;
         public Task<UpdateRelease?> CheckAsync(string channel, CancellationToken ct) => inner.CheckAsync(channel, ct);
         public Task<IReadOnlyList<UpdateRelease>> ListAsync(string channel, CancellationToken ct) => inner.ListAsync(channel, ct);
-        public async Task DownloadAsync(UpdateRelease release, bool downgrade, CancellationToken ct)
+        public async Task DownloadAsync(UpdateRelease release, bool downgrade, CancellationToken ct, Action<int>? progress = null)
         {
-            await inner.DownloadAsync(release, downgrade, ct);
-            await Release.Task;
+            await inner.DownloadAsync(release, downgrade, ct, progress);
+            await Release.Task.WaitAsync(ct);
         }
         public void ApplyAndRestart(UpdateRelease release) => inner.ApplyAndRestart(release);
         public void ApplyAndExit(UpdateRelease release) => inner.ApplyAndExit(release);

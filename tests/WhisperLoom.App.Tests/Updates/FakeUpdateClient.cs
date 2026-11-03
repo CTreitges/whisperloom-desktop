@@ -55,9 +55,16 @@ internal sealed class FakeUpdateClient : IUpdateClient
         return Task.FromResult(list);
     }
 
-    public Task DownloadAsync(UpdateRelease release, bool downgrade, CancellationToken ct)
+    /// <summary>Fortschritt, den <see cref="DownloadAsync"/> meldet (Prozent, der Reihe nach).</summary>
+    public int[] ProgressSteps { get; set; } = [];
+
+    public Task DownloadAsync(UpdateRelease release, bool downgrade, CancellationToken ct, Action<int>? progress = null)
     {
         Downloaded.Add((release.Version, release.Channel, downgrade));
+        foreach (var p in ProgressSteps)
+        {
+            progress?.Invoke(p);
+        }
         return Task.CompletedTask;
     }
 

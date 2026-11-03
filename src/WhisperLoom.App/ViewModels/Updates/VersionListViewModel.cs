@@ -62,6 +62,18 @@ public sealed partial class VersionListViewModel(
     [ObservableProperty] private string _status = "";
     [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(BackToStableCommand))] private bool _isBusy;
 
+    /// <summary>Ein Download läuft: Balken mit Prozent und „Abbrechen“ (UX-6 N19, Richtlinie 03 §3.2: &gt; 10 s).</summary>
+    [ObservableProperty] private bool _isDownloading;
+
+    /// <summary>Fortschritt des Downloads in Prozent.</summary>
+    [ObservableProperty] private int _progress;
+
+    private CancellationTokenSource? _download;
+
+    /// <summary>Bricht den laufenden Download ab; die installierte Version bleibt.</summary>
+    [RelayCommand]
+    private void CancelDownload() => _download?.Cancel();
+
     /// <summary>false bei <c>policy.updatesEnabled=false</c>.</summary>
     public bool Allowed => policy().UpdatesEnabled != false;
 
@@ -149,10 +161,30 @@ public sealed partial class VersionListViewModel(
             return UpdateOutcome.Declined;
         }
         IsBusy = true;
+        IsDownloading = true;
+        Progress = 0;
         Status = Loc.Instance.Format("Channel_Downloading", row.Version);
+        using var download = _download = new CancellationTokenSource();
+        var started = System.Diagnostics.Stopwatch.StartNew();
+        void Show(int percent)
+        {
+            Progress = Math.Clamp(percent, 0, 100);
+            Status = Loc.Instance.Format("Channel_DownloadingProgress", row.Version, DownloadText.OfPercent(percent, started.Elapsed));
+        }
         try
         {
-            await client.DownloadAsync(row.Release, row.IsDowngrade, CancellationToken.None);
+            await client.DownloadAsync(row.Release, row.IsDowngrade, download.Token, percent =>
+            {
+                if (Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
+                {
+                    Show(percent);
+                }
+                else
+                {
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() => Show(percent));
+                }
+            });
+            download.Token.ThrowIfCancellationRequested();
             log.Event("update.apply", ("version", row.Version), ("channel", row.Release.Channel), ("downgrade", row.IsDowngrade), ("source", "list"));
             if (channelChosen is not null)
             {
@@ -160,6 +192,12 @@ public sealed partial class VersionListViewModel(
             }
             client.ApplyAndRestart(row.Release);
             return UpdateOutcome.Applied;
+        }
+        catch (OperationCanceledException) when (download.IsCancellationRequested)
+        {
+            log.Event("update.manual", ("status", "canceled"), ("version", row.Version), ("channel", row.Release.Channel));
+            Status = Loc.Instance["Channel_DownloadCanceled"];
+            return UpdateOutcome.Declined;
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
@@ -169,6 +207,8 @@ public sealed partial class VersionListViewModel(
         }
         finally
         {
+            _download = null;
+            IsDownloading = false;
             IsBusy = false;
         }
     }

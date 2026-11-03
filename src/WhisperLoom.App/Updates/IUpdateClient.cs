@@ -25,7 +25,8 @@ public interface IUpdateClient
     Task<IReadOnlyList<UpdateRelease>> ListAsync(string channel, CancellationToken ct);
 
     /// <summary>Lädt die Version; eine niedrigere oder gleiche Version (Downgrade, Kanalwechsel) nur mit <paramref name="downgrade"/>.</summary>
-    Task DownloadAsync(UpdateRelease release, bool downgrade, CancellationToken ct);
+    /// <param name="progress">Fortschritt in Prozent (0–100), aus einem beliebigen Thread; null = keiner.</param>
+    Task DownloadAsync(UpdateRelease release, bool downgrade, CancellationToken ct, Action<int>? progress = null);
 
     /// <summary>Installiert die geladene Version und startet die App neu; beendet den Prozess.</summary>
     void ApplyAndRestart(UpdateRelease release);

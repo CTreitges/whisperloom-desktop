@@ -104,6 +104,13 @@
 
       <Button x:Name="BackToStableButton" Classes="text" Margin="17,0,0,0" HorizontalAlignment="Left" Command="{Binding BackToStableCommand}"
               IsVisible="{Binding ShowBackToStable}" Content="{Binding BackToStableText}" />
+      <!-- Laden mit Prozent, Restzeit (Status) und Abbrechen (UX-6 N19). -->
+      <Grid x:Name="DownloadRow" Margin="17,0,0,0" ColumnDefinitions="*,Auto" IsVisible="{Binding IsDownloading}">
+        <ProgressBar x:Name="DownloadBar" Minimum="0" Maximum="100" Value="{Binding Progress}" VerticalAlignment="Center"
+                     AutomationProperties.Name="{Binding Status}" />
+        <Button x:Name="CancelDownloadButton" Grid.Column="1" Classes="text" Margin="12,0,0,0" Command="{Binding CancelDownloadCommand}"
+                Content="{Binding [Action_Cancel], Source={x:Static l:Loc.Instance}}" />
+      </Grid>
       <TextBlock x:Name="StatusText" Margin="17,0,0,0" Text="{Binding Status}" TextWrapping="Wrap" Foreground="{DynamicResource Loom.TextSecondary}"
                  AutomationProperties.LiveSetting="Polite">
         <!-- Gesperrt: die Verwaltet-Zeile oben sagt es schon. -->
