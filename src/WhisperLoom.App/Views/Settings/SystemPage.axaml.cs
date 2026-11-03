@@ -45,7 +45,7 @@ public partial class SystemPage : UserControl
         }
         catch (IOException)
         {
-            sync.Status = Loc.Instance["Sync_Invalid"];
+            sync.Status = Loc.Instance["Sync_ExportFailed"];
         }
     }
 

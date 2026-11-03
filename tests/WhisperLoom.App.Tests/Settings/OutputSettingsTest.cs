@@ -96,6 +96,32 @@ public sealed class OutputSettingsTest
         window.Close();
     }
 
+    /// <summary>UX-6 N7: „Anzahl Einträge“ als Optionsgruppe; die Wahl läuft über dieselbe Rückfrage wie zuvor die Auswahlliste.</summary>
+    [AvaloniaFact]
+    public async Task Groesse_als_Optionsgruppe_mit_Rueckfrage()
+    {
+        Loc.Instance.SetLanguage("de");
+        using var f = new ControllerFixture(new WhisperLoomSettings { History = new HistorySettings { Size = 25 } });
+        await Fill(f, 12);
+        var (window, vm) = Open(f);
+        Assert.Equal(["10", "25", "50", "100", "250", "500"], vm.HistorySizeOptions.Select(o => o.Value));
+        Assert.Equal("25", vm.HistorySizeOption!.Value);
+
+        vm.HistorySizeOption = vm.HistorySizeOptions[0];
+        await vm.HistorySizePending;
+        Assert.True(vm.HistoryShrinkPending);
+        Assert.Equal("10", vm.HistorySizeOption!.Value); // Auswahl bleibt sichtbar, solange die Rückfrage steht
+        vm.CancelHistoryShrinkCommand.Execute(null);
+        Assert.Equal("25", vm.HistorySizeOption!.Value);
+
+        vm.HistorySizeOption = vm.HistorySizeOptions[2];
+        await vm.HistorySizePending;
+        await vm.Pending;
+        Assert.Equal(50, f.Controller.Settings.History.Size);
+        Assert.Equal("50", vm.HistorySizeOption!.Value);
+        window.Close();
+    }
+
     [AvaloniaFact]
     public async Task Verkleinern_ohne_Ueberhang_und_Vergroessern_fragen_nicht()
     {

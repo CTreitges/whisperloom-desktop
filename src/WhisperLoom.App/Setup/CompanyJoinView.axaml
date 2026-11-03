@@ -18,6 +18,8 @@
         <TextBox x:Name="ServerBox" Classes="row" HorizontalAlignment="Left" Text="{Binding Server}"
                  AutomationProperties.Name="{Binding [Company_Server], Source={x:Static l:Loc.Instance}}"
                  AutomationProperties.HelpText="{Binding [Company_ServerHint], Source={x:Static l:Loc.Instance}}" />
+        <TextBlock x:Name="ServerError" Text="{Binding ServerError}" IsVisible="{Binding ServerError.Length}" Classes="caption" Foreground="{DynamicResource Loom.Error}"
+                   TextWrapping="Wrap" AutomationProperties.LiveSetting="Assertive" />
       </StackPanel>
       <StackPanel Spacing="{DynamicResource Loom.Space.1}">
         <TextBlock Text="{Binding [Company_Code], Source={x:Static l:Loc.Instance}}" FontWeight="SemiBold" TextWrapping="Wrap" />
@@ -25,12 +27,15 @@
         <TextBox x:Name="CodeBox" Classes="field" Text="{Binding Code}" FontFamily="monospace"
                  AutomationProperties.Name="{Binding [Company_Code], Source={x:Static l:Loc.Instance}}"
                  AutomationProperties.HelpText="{Binding [Company_CodeHint], Source={x:Static l:Loc.Instance}}" />
+        <TextBlock x:Name="CodeError" Text="{Binding CodeError}" IsVisible="{Binding CodeError.Length}" Classes="caption" Foreground="{DynamicResource Loom.Error}"
+                   TextWrapping="Wrap" AutomationProperties.LiveSetting="Assertive" />
       </StackPanel>
       <ds:HintRow TextKey="Setup_CompanyLinkHint" />
       <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.3}">
         <Button x:Name="JoinButton" Classes="accent" Content="{Binding [Company_Join], Source={x:Static l:Loc.Instance}}" Command="{Binding JoinCommand}" />
-        <ProgressBar IsIndeterminate="True" Width="120" VerticalAlignment="Center" IsVisible="{Binding IsBusy}"
-                     AutomationProperties.Name="{Binding [Company_Joining], Source={x:Static l:Loc.Instance}}" />
+        <!-- Statt Endlos-Balken ein ruhiger Text (UX-6 N10: keine Bewegung, die „Animationen anzeigen“ übergeht). -->
+        <TextBlock x:Name="JoiningText" Text="{Binding [Company_Joining], Source={x:Static l:Loc.Instance}}" IsVisible="{Binding IsBusy}"
+                   VerticalAlignment="Center" Foreground="{DynamicResource Loom.TextSecondary}" AutomationProperties.LiveSetting="Polite" />
       </StackPanel>
     </StackPanel>
 

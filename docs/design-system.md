@@ -1,13 +1,27 @@
-# Designsystem (W2-UI1, UX-1, UX-2)
+# Designsystem (Stand UX-Lauf 3, UX-1 bis UX-5)
 
 Gemeinsame Tokens, Styles und Bausteine für alle Fenster nach den eigenen UI/UX-Richtlinien (Skill ui-ux-guidelines, ohne
-fremden Hersteller-Look). Begründete Abweichungen für den Desktop: `docs/ux-exceptions.md`.
+fremden Hersteller-Look). Begründete Abweichungen für den Desktop: `docs/ux-exceptions.md`. Kurz:
+- **Aufbau**: Einstellungen in sieben Aufgabenseiten plus „Firma“, Einrichtung in Schritten, alle Fenster im Loom-Look (Abschnitt „Aufbau“).
+- **Symbole**: eigenes Strich-Set (`design/icons/*.svg` → `Design/Icons.axaml`), keine fremden Icon-Sätze.
+- **Hochkontrast**: jedes Fenster und Overlay folgt dem Kontrastdesign von Windows (Schwarz/Weiß, Fokus gelb).
+- **Textgröße**: alle Schriften aus `Loom.Font.*`, wachsen mit der Textgröße des Systems bis 225 %; geprüft bei 200 %.
+- **Prüfung**: sechs Ux-Testklassen über alle Ansichten (Textkante, Kontrast, 200 %, Namen, Tastatur, Klickziele).
+
+## Aufbau
+- **Einstellungen**: Leiste mit Suche und sieben Seiten nach Aufgabe – Diktat (Tastenkürzel, Mikrofon, Markierung, Bühne),
+  Erkennung (online, lokal, Vokabular, Ersatz), Text (Stufen, Sprachmodell, Bereinigung), Ausgabe (Einfügen, App-Profile),
+  Verbindungen (eigene Anbieter, lokale Server, Proxy), Datenschutz (Verlauf, Keys), System (Oberfläche, Update-Kanal und
+  Versionen, Übertragen, Einrichtung) – abgesetzt darunter „Firma“. Jede Seite hat einen Hilfe-Knopf (?).
+- **Weitere Fenster**: Einrichtung (Schrittliste links, ein Hauptknopf), Verlauf, Hilfe, Bühne, Versionsliste,
+  Update-Nachfrage; schwebend Overlay, Pegel-Pille, Hinweis/Toast, Markierungs-Knopf und -Wähler; Tray-Menü.
+- **Liste aller Ansichten**: `tests/WhisperLoom.App.Tests/Ux/UxViews.cs` – aus ihr kommen Ux-Tests und Screenshots.
 
 Dateien: `src/WhisperLoom.App/Design/` – `Tokens.axaml` (Farben, Abstände, Schrift), `Icons.axaml` (Symbole, erzeugt), `Controls.axaml`
 (Vorlagen der Bausteine), `Styles.axaml` (Klassen), dazu die Bausteine als C#-Klassen. Eingebunden in `App.axaml`.
 
 ## Hell/Dunkel/Hochkontrast
-- Die App steht global auf Dunkel; Overlay, Pille und Hinweise bleiben bis UX-4 so. Einstellungen, Einrichtung, Verlauf, Hilfe, Versionsliste, Update-Nachfrage und Bühne folgen dem System (die Bühne zusätzlich mit „Dunkel für Beamer“, D7).
+- Alle Fenster folgen dem System, auch Overlay, Pille, Hinweise und Markierung (UX-4); die Bühne zusätzlich mit „Dunkel für Beamer“ (D7).
 - Ein Fenster mit Designsystem folgt dem System: im Konstruktor `SystemTheme.Follow(this, Application.Current?.PlatformSettings)` und `Classes="loom"` am Fenster. Ein Wechsel im System gilt sofort.
 - Hochkontrast: Ist im System ein Kontrastdesign an (`PlatformColorValues.ContrastPreference == High`), nimmt das Fenster die Variante `SystemTheme.HighContrast` (Rückfall Dunkel). Schwarz, Weiß, Akzent `#6FD9C7`, Gelb nur für den Fokus. Nur unter Windows: Avalonia liest unter Linux kein Kontrastdesign (`ContrastPreference` bleibt dort „keine Vorgabe“).
 - Farben nur als `{DynamicResource Loom.*}`, nie als feste Werte oder `StaticResource` – sonst wechselt die Farbe nicht mit.
@@ -34,6 +48,10 @@ Quelle: Loom-Palette der Android-App (`ui/theme/Color.kt`, `LoomPalette`). Dunke
 | `Loom.Focus` | `#6FD9C7` | `#0F5B50` | `#FFFF00` | Fokusring 2 px |
 | `Loom.Record` | `#FF4D4D` | `#B3261E` | `#FF6B6B` | Aufnahme-Symbol (nur Symbol, nie Fläche) |
 | `Loom.Tile.*` | Container-Töne | gleich | gleich | Symbol-Kacheln (weiße Glyphe) |
+| `Loom.HoverTint` / `Loom.PressedTint` | `#14808080` / `#28808080` | gleich | gleich | Hover/Gedrückt auf neutralen Flächen (halbtransparent) |
+| `Loom.Shadow.Float` | `0 4 14 0 #40000000` | gleich | gleich | Schatten schwebender Fenster (`Border.float`) |
+
+Außerhalb von `Tokens.axaml` steht keine Hex-Farbe in Ansichten und Styles (`UxRawColorTest`; einzige Ausnahme der Fluent-Akzent in `App.axaml`).
 
 Kontrast, geprüft von `DesignTokensTest` (WCAG 2.x, relative Leuchtdichte): Text auf Fläche ≥ 4,5:1, im Hochkontrast ≥ 7:1;
 Outline, Fokus, Akzentfläche, Warn- und Aufnahme-Symbol ≥ 3:1.
@@ -48,7 +66,7 @@ auf Akzentflächen mit `Loom.OnAccent`, die Auswahl in Auswahllisten, Listen (he
 - Radien: `Loom.Radius.Group` 10 (Gruppen), `Loom.Radius.Control` 6 (Steuerelemente, Kacheln).
 - Schrift (Systemschrift), Größen bei 100 %: `Loom.Font.Caption` 12, `Body` 14, `Title` 16 (Gruppentitel, halbfett), `PageTitle` 20, `WindowTitle` 24, `Display` 32.
 - Textgröße des Systems (Windows „Textgröße“, bis 225 %): `TextScale.Follow` beim Start und beim Öffnen eines Fensters multipliziert alle `Loom.Font.*` und die Fluent-Schriftgrößen. Ansichten nutzen darum nie feste Schriftgrößen. Unter Linux steckt die Textgröße des Desktops schon in `Xft.dpi`, mit dem Avalonia die ganze Oberfläche skaliert; dort bleibt der Faktor 1,0.
-- „Animationen anzeigen“ (`ISystemPreferences.AnimationsEnabled`) liest die App schon; genutzt wird es ab UX-4 (Pegel und Verarbeitung im Overlay ruhen bei reduzierter Bewegung).
+- „Animationen anzeigen“ (`ISystemPreferences.AnimationsEnabled`) liest die App; Pegel und Verarbeitung in Overlay und Pille ruhen bei reduzierter Bewegung (UX-4).
 
 ## Symbole
 - Eigenes Set, 55 Strich-Symbole (24-px-Raster, Strich 1,75, runde Enden): Quellen `design/icons/*.svg`, erzeugt nach `Design/Icons.axaml` mit `py -3 -X utf8 tools/gen_icons.py` (Prüfen: `--check`). Schlüssel `Loom.Icon.<Name>`, Liste in `tools/gen_icons.py` (`NAMES`).
@@ -79,6 +97,8 @@ Regeln:
 - **Sofort speichern**: Auswahl und Schalter speichern bei Änderung, Textfelder beim Verlassen bzw. Enter (`UpdateSourceTrigger=LostFocus`). Ungültige Werte zeigen den Fehler in der Zeile und werden nicht gespeichert. Zerstörende Änderungen (Verlauf aus) fragen inline nach.
 - **Knöpfe**: ein Hauptknopf je Bereich (`accent`), Nebenaktionen als `secondary` oder Textknopf (`text`), Zerstörendes als `text danger` mit Gegenstand im Namen („Profil ‚Terminal‘ löschen“). Symbolknöpfe `icon` (32 × 32) nur mit Namen.
 - **Rückgängig statt Rückfrage**, wo es geht: Statuszeile „… gelöscht.“ mit Textknopf „Rückgängig“, gilt bis zur nächsten Aktion (kein Timer, kein Stapel); der Fokus springt auf „Rückgängig“. Nicht umkehrbar (Anbieter samt Key, Verlauf) fragt inline nach.
+- **Hinweise über fremden Programmen** (Windows; unter Linux zeigt die Desktop-Benachrichtigung sie mit deren eigener Dauer): Stufe, „Kopiert“ und Auskünfte verschwinden nach kurzer Zeit; Warnungen und Fehler (nicht eingefügt, Grenze erreicht, Diktat gescheitert) bleiben stehen, bis „Hinweis schließen“ oder das nächste Diktat sie wegnimmt (UX-6).
+- **Texte**: Meldungen sagen, was zu tun ist – ohne „bitte“, „ungültig“ oder „klicken“ (`UxWritingTest`, Ausnahme D9).
 - **Nur zeigen, was gilt**: abhängige Zeilen erscheinen erst mit ihrer Voraussetzung (z. B. Proxy-Adresse nur bei „Eigener Proxy“).
 - **Hover und Gedrückt** auf Akzent- und Auswahlflächen sind einen Ton abgesetzt; Schrift darauf bleibt ≥ 4,5:1 (`DesignTokensTest`).
 - **Texte** nur über `Localization/*.json` (DE+EN), Schlüssel-Präfixe: `Page_`, `Section_`, `G_` (Gruppe), `Set_` (Zeile), `Validation_`, `Managed_`.

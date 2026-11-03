@@ -199,8 +199,8 @@
   <Style Selector="Expander.advanced">
     <Style.Resources>
       <SolidColorBrush x:Key="ExpanderHeaderBackground" Color="Transparent" />
-      <SolidColorBrush x:Key="ExpanderHeaderBackgroundPointerOver" Color="#14808080" />
-      <SolidColorBrush x:Key="ExpanderHeaderBackgroundPressed" Color="#28808080" />
+      <StaticResource x:Key="ExpanderHeaderBackgroundPointerOver" ResourceKey="Loom.HoverTint" />
+      <StaticResource x:Key="ExpanderHeaderBackgroundPressed" ResourceKey="Loom.PressedTint" />
       <SolidColorBrush x:Key="ExpanderHeaderBorderBrush" Color="Transparent" />
       <SolidColorBrush x:Key="ExpanderHeaderBorderBrushPointerOver" Color="Transparent" />
       <SolidColorBrush x:Key="ExpanderHeaderBorderBrushPressed" Color="Transparent" />
@@ -366,7 +366,7 @@
     <Setter Property="BorderBrush" Value="{DynamicResource Loom.Outline}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="{DynamicResource Loom.Radius.Group}" />
-    <Setter Property="BoxShadow" Value="0 4 14 0 #40000000" />
+    <Setter Property="BoxShadow" Value="{StaticResource Loom.Shadow.Float}" />
     <Setter Property="Margin" Value="8" />
   </Style>
 

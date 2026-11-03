@@ -22,6 +22,9 @@ public sealed partial class VersionChip(string key, string label, bool edited) :
 
     [ObservableProperty]
     private bool _isSelected;
+
+    /// <summary>Meldet die Auswahl neu: ein ToggleButton, der sich beim Klick selbst umgeschaltet hat, zeigt wieder den echten Stand.</summary>
+    public void Refresh() => OnPropertyChanged(nameof(IsSelected));
 }
 
 /// <summary>
@@ -66,20 +69,60 @@ public sealed partial class HistoryDetailViewModel : ObservableObject
     // --- Bearbeiten -----------------------------------------------------------------------
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowEditActions))]
     private bool _isEditing;
 
     [ObservableProperty]
     private string _editText = "";
 
+    /// <summary>Rückfrage „Änderungen verwerfen?“ sichtbar (UX-6 N14: Abbrechen verliert keine Eingabe still).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowEditActions))]
+    private bool _discardPending;
+
+    /// <summary>„Speichern“/„Abbrechen“ nur ohne offene Rückfrage (UX-6 N22: ein Hauptknopf zur Zeit).</summary>
+    public bool ShowEditActions => IsEditing && !DiscardPending;
+
+    /// <summary>Der Text im Bearbeitungsfeld weicht von der Fassung ab.</summary>
+    public bool EditChanged => IsEditing && EditText != Text;
+
     [RelayCommand]
     public void BeginEdit()
     {
+        // Während „Neu verarbeiten“ läuft, baut das Ergebnis die Fassungen neu auf; eine Bearbeitung ginge dabei verloren (N14).
+        if (RunningStage is not null)
+        {
+            Status = Loc.Instance["History_EditAfterRun"];
+            return;
+        }
         EditText = Text;
+        DiscardPending = false;
         IsEditing = true;
     }
 
+    /// <summary>Abbrechen (Knopf oder Esc): ohne Änderung sofort, sonst erst die Rückfrage.</summary>
     [RelayCommand]
-    public void CancelEdit() => IsEditing = false;
+    public void CancelEdit()
+    {
+        if (EditChanged)
+        {
+            DiscardPending = true;
+            return;
+        }
+        DiscardEdit();
+    }
+
+    /// <summary>Rückfrage bestätigt: Änderungen verwerfen.</summary>
+    [RelayCommand]
+    public void DiscardEdit()
+    {
+        DiscardPending = false;
+        IsEditing = false;
+    }
+
+    /// <summary>Rückfrage verneint: weiter bearbeiten.</summary>
+    [RelayCommand]
+    public void KeepEditing() => DiscardPending = false;
 
     [RelayCommand]
     public async Task SaveEdit()
@@ -90,6 +133,7 @@ public sealed partial class HistoryDetailViewModel : ObservableObject
         }
         var key = SelectedChip.Key == VersionChip.Origin ? HistoryVersions.Edited : SelectedChip.Key;
         var updated = await _actions.Edit(Entry.Id, key, EditText);
+        DiscardPending = false;
         IsEditing = false;
         if (updated is null)
         {
@@ -120,7 +164,11 @@ public sealed partial class HistoryDetailViewModel : ObservableObject
 
     /// <summary>Läuft gerade eine Rechnung für diesen Eintrag (Ladeanzeige).</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanEdit))]
     private string? _runningStage;
+
+    /// <summary>Bearbeiten erst nach einer laufenden Neuverarbeitung (deren Ergebnis baut die Fassungen neu auf).</summary>
+    public bool CanEdit => RunningStage is null;
 
     [ObservableProperty]
     private string _status = "";
@@ -132,6 +180,16 @@ public sealed partial class HistoryDetailViewModel : ObservableObject
     public Task RequestReprocessAsync(string stage)
     {
         IsStagePickerOpen = false;
+        // Geänderte Bearbeitung zuerst klären (N14): der Neuaufbau nach der Rechnung würde sie beenden.
+        if (EditChanged)
+        {
+            DiscardPending = true;
+            return Task.CompletedTask;
+        }
+        if (IsEditing)
+        {
+            DiscardEdit();
+        }
         if (HistoryVersions.NeedsConfirmBeforeReplace(Entry, stage))
         {
             PendingStage = stage;
@@ -143,6 +201,16 @@ public sealed partial class HistoryDetailViewModel : ObservableObject
     [RelayCommand]
     public Task ConfirmReplace()
     {
+        // Auch über „Ersetzen?“ startet keine Rechnung über einen Entwurf (Prüfer Runde 4).
+        if (EditChanged)
+        {
+            DiscardPending = true;
+            return Task.CompletedTask;
+        }
+        if (IsEditing)
+        {
+            DiscardEdit();
+        }
         var stage = PendingStage;
         PendingStage = null;
         return stage is null ? Task.CompletedTask : ReprocessAsync(stage);
@@ -191,16 +259,31 @@ public sealed partial class HistoryDetailViewModel : ObservableObject
         {
             chip.IsSelected = chip == value;
         }
+        // Auch der Neuaufbau nach „Neu verarbeiten“ beendet die Bearbeitung samt offener Rückfrage (kein Kasten ohne Textfeld).
+        DiscardPending = false;
         IsEditing = false;
     }
 
     [RelayCommand]
     private void Select(VersionChip? chip)
     {
-        if (chip is not null)
+        if (chip is null)
         {
-            SelectedChip = chip;
+            return;
         }
+        if (chip == SelectedChip)
+        {
+            chip.Refresh(); // Klick auf den gewählten Chip hat ihn optisch ausgeschaltet
+            return;
+        }
+        // Geänderter Text geht beim Fassungswechsel nicht still verloren (UX-6 N14): erst die Rückfrage.
+        if (EditChanged)
+        {
+            chip.Refresh(); // abgelehnter Klick: Chip zeigt wieder „nicht gewählt“
+            DiscardPending = true;
+            return;
+        }
+        SelectedChip = chip;
     }
 
     private string TextOf(string key) =>

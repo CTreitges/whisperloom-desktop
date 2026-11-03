@@ -21,7 +21,7 @@
             </StackPanel>
           </ds:SettingRow>
           <ds:SettingRow Path="history.size">
-            <ComboBox x:Name="HistorySizeBox" Classes="row" ItemsSource="{Binding Session.HistorySizes}" SelectedItem="{Binding Session.HistorySizeChoice}" />
+            <ds:OptionGroup x:Name="HistorySizeBox" ItemsSource="{Binding Session.HistorySizeOptions}" SelectedItem="{Binding Session.HistorySizeOption}" />
           </ds:SettingRow>
           <ds:SettingRow x:Name="HistoryShrinkConfirm" TitleKey="History_ShrinkConfirm" IsVisible="{Binding Session.HistoryShrinkPending}">
             <StackPanel Spacing="6">

@@ -237,6 +237,12 @@
   <SolidColorBrush x:Key="Loom.Tile.Amber" Color="#4A3600" />
   <SolidColorBrush x:Key="Loom.Tile.Gray" Color="#3A424D" />
 
+  <!-- Tönung für Hover/Gedrückt auf neutralen Flächen (halbtransparentes Grau, wirkt auf hell und dunkel) und Schatten
+       schwebender Fenster; alle Varianten (UX-6: keine Rohwerte in Styles). -->
+  <SolidColorBrush x:Key="Loom.HoverTint" Color="#14808080" />
+  <SolidColorBrush x:Key="Loom.PressedTint" Color="#28808080" />
+  <BoxShadows x:Key="Loom.Shadow.Float">0 4 14 0 #40000000</BoxShadows>
+
   <!-- Abstände (zielstruktur.md §4): nur 4 / 8 / 12 / 16 / 24 / 32 / 48. -->
   <x:Double x:Key="Loom.Space.1">4</x:Double>
   <x:Double x:Key="Loom.Space.2">8</x:Double>

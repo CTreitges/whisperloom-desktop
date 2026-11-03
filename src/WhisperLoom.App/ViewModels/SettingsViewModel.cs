@@ -275,7 +275,11 @@ public sealed partial class SettingsViewModel : ObservableObject
     partial void OnLanguageChanged(Choice value) => Touch();
     partial void OnStageChanged(Choice value) => Touch();
     partial void OnProxyModeChanged(Choice value) => Touch();
-    partial void OnHistorySizeChanged(int value) => Touch();
+    partial void OnHistorySizeChanged(int value)
+    {
+        Touch();
+        OnPropertyChanged(nameof(HistorySizeOption));
+    }
     partial void OnOutputChanged(Choice value) => Touch();
     partial void OnMicrophoneChanged(Choice value) => Touch();
     partial void OnUiLanguageChanged(Choice value) => Touch();

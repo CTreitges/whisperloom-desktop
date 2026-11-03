@@ -19,4 +19,21 @@ public static class DownloadText
         var seconds = (total - bytes) / (double)bytesPerSec;
         return seconds < 60 ? loc.Format("Download_EtaUnderMinute", done) : loc.Format("Download_Eta", done, (int)Math.Ceiling(seconds / 60));
     }
+
+    /// <summary>
+    /// Fortschritt ohne Bytes (Velopack meldet nur Prozent, UX-6 N19): „42 % · noch etwa 2 Min.“; die Restzeit schätzt die
+    /// bisherige Dauer hoch, erst ab 5 % und 2 s (vorher schwankt sie zu stark).
+    /// </summary>
+    public static string OfPercent(int percent, TimeSpan elapsed)
+    {
+        var loc = Loc.Instance;
+        percent = Math.Clamp(percent, 0, 100);
+        var done = loc.Format("Download_Percent", percent);
+        if (percent < 5 || percent >= 100 || elapsed < TimeSpan.FromSeconds(2))
+        {
+            return done;
+        }
+        var seconds = elapsed.TotalSeconds * (100 - percent) / percent;
+        return seconds < 60 ? loc.Format("Download_EtaUnderMinute", done) : loc.Format("Download_Eta", done, (int)Math.Ceiling(seconds / 60));
+    }
 }

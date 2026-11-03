@@ -62,10 +62,28 @@ public sealed partial class HistoryViewModel(IHistoryStore store, HistoryActions
         Apply(select ?? Selected?.Entry.Id);
     }
 
-    partial void OnSearchChanged(string value) => Apply(Selected?.Entry.Id);
+    /// <summary>Eintrag, der für die laufende Suche stehen bleibt, weil bei Suchbeginn ein Entwurf darin lag.</summary>
+    private string? _pinned;
 
-    partial void OnSelectedChanged(HistoryRow? value)
+    partial void OnSearchChanged(string value)
     {
+        // Entwurf bleibt für diese Suche stehen, auch nach Speichern oder Verwerfen (Prüfer Runde 3).
+        _pinned = Detail is { EditChanged: true } draft ? draft.Entry.Id : null;
+        Apply(Selected?.Entry.Id);
+    }
+
+    partial void OnSelectedChanged(HistoryRow? oldValue, HistoryRow? newValue)
+    {
+        // Ein anderer Eintrag während einer geänderten Bearbeitung: Auswahl zurück und Rückfrage zeigen (UX-6 N14).
+        if (Detail is { EditChanged: true } editing && oldValue is not null && newValue is not null && newValue.Entry.Id != editing.Entry.Id)
+        {
+            editing.DiscardPending = true;
+            // Zeile per Id suchen: ein Neuaufbau der Liste dazwischen ersetzt die Instanz. Den Fokus setzt das Fenster
+            // (es folgt DiscardPending auf „Weiter bearbeiten“), damit Entf/Enter nicht den bearbeiteten Eintrag treffen.
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => Selected = Rows.FirstOrDefault(r => r.Entry.Id == editing.Entry.Id) ?? oldValue);
+            return;
+        }
+        var value = newValue;
         OnPropertyChanged(nameof(ShowToolbar));
         OnPropertyChanged(nameof(ShowFoot));
         if (value is null)
@@ -209,7 +227,10 @@ public sealed partial class HistoryViewModel(IHistoryStore store, HistoryActions
     {
         var detail = Detail;
         Rows.Clear();
-        foreach (var row in HistoryRow.Build(_all.Where(e => HistoryRow.Matches(e, Search)), (now ?? (() => DateTimeOffset.Now))()))
+        // Ein Eintrag mit geänderter Bearbeitung bleibt auch bei einer Suche ohne Treffer stehen (UX-6 N14: nichts still verlieren).
+        var editing = detail is { EditChanged: true } ? detail.Entry.Id : null;
+        foreach (var row in HistoryRow.Build(_all.Where(e => e.Id == editing || e.Id == _pinned || HistoryRow.Matches(e, Search)),
+            (now ?? (() => DateTimeOffset.Now))()))
         {
             Rows.Add(row);
         }

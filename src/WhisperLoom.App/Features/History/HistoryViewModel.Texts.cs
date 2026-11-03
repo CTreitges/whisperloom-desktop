@@ -9,8 +9,11 @@ public sealed partial class HistoryViewModel
     /// <summary>Ansage unter der Suche: „3 Treffer“ bzw. „Keine Treffer für „x“.“; leer ohne Suche.</summary>
     public string SearchSummary =>
         Search.Trim().Length == 0 || _all.Count == 0 ? ""
-        : Rows.Count == 0 ? Loc.Instance.Format("History_NoMatchesFor", Search.Trim())
-        : Loc.Instance.Format(Rows.Count == 1 ? "History_MatchOne" : "History_Matches", Rows.Count);
+        : MatchCount == 0 ? Loc.Instance.Format("History_NoMatchesFor", Search.Trim())
+        : Loc.Instance.Format(MatchCount == 1 ? "History_MatchOne" : "History_Matches", MatchCount);
+
+    /// <summary>Echte Treffer; ein stehen gebliebener Entwurf zählt nicht mit.</summary>
+    private int MatchCount => Rows.Count(r => HistoryRow.Matches(r.Entry, Search));
 
     /// <summary>Rückfrage vor „Verlauf löschen“ mit Anzahl (Befund 7): „Alle 4 Diktate löschen? …“.</summary>
     public string ClearQuestion => Loc.Instance.Format(_all.Count == 1 ? "History_ClearConfirmOne" : "History_ClearConfirm", _all.Count);

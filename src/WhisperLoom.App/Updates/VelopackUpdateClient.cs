@@ -69,8 +69,8 @@ internal sealed class VelopackUpdateClient : IUpdateClient
         return [.. feed.Assets.Where(a => a.Type == VelopackAssetType.Full).Select(a => Release(a, channel))];
     }
 
-    public Task DownloadAsync(UpdateRelease release, bool downgrade, CancellationToken ct) =>
-        Manager(release.Channel, downgrade).DownloadUpdatesAsync(new UpdateInfo(Asset(release), downgrade), cancelToken: ct);
+    public Task DownloadAsync(UpdateRelease release, bool downgrade, CancellationToken ct, Action<int>? progress = null) =>
+        Manager(release.Channel, downgrade).DownloadUpdatesAsync(new UpdateInfo(Asset(release), downgrade), progress, cancelToken: ct);
 
     public void ApplyAndRestart(UpdateRelease release) =>
         Manager(release.Channel, true).ApplyUpdatesAndRestart(Asset(release), _restartArgs);

@@ -266,6 +266,53 @@ public sealed class OverlayFamilyTest
         Assert.Equal("Loom.Icon.TextStage", HintWindow.IconKey(HintTone.Stage));
     }
 
+    /// <summary>UX-6 N21: Warnung und Fehler tragen Wesentliches und laufen nicht per Zeit ab; „Schließen“ nimmt sie weg.</summary>
+    [AvaloniaTheory]
+    [InlineData(HintTone.Warning, true)]
+    [InlineData(HintTone.Error, true)]
+    [InlineData(HintTone.Copied, false)]
+    [InlineData(HintTone.Info, false)]
+    [InlineData(HintTone.Stage, false)]
+    public void Warnung_und_Fehler_bleiben_stehen(HintTone tone, bool sticks) =>
+        Assert.Equal(sticks, InputPresenter.Sticks(tone));
+
+    [AvaloniaFact]
+    public void Presenter_laesst_Warnung_stehen_bis_zum_naechsten_Diktat()
+    {
+        Loc.Instance.SetLanguage("de");
+        var presenter = new InputPresenter(_ => null);
+        presenter.ShowHint("toast", "WhisperLoom", "Passwortfeld – nicht eingefügt", TimeSpan.FromSeconds(4), IntPtr.Zero, HintTone.Warning);
+        Assert.NotNull(presenter.Status()["hint"]);
+        Assert.False(presenter.HintTimerRunning); // kein Ablauf per Zeit
+
+        presenter.ShowPill(IntPtr.Zero); // nächstes Diktat nimmt ihn weg
+        Assert.Null(presenter.Status()["hint"]);
+        presenter.HidePill();
+
+        presenter.ShowHint("toast", "WhisperLoom", "Kopiert", TimeSpan.FromSeconds(4), IntPtr.Zero, HintTone.Copied);
+        Assert.NotNull(presenter.Status()["hint"]);
+        Assert.True(presenter.HintTimerRunning); // Auskunft läuft wieder ab
+        presenter.ShowPill(IntPtr.Zero);
+        Assert.NotNull(presenter.Status()["hint"]); // nicht stehend: bleibt bis zum Ablauf
+        presenter.HidePill();
+    }
+
+    [AvaloniaFact]
+    public void Stehender_Hinweis_hat_Schliessen_mit_Namen()
+    {
+        Loc.Instance.SetLanguage("de");
+        var hint = new HintWindow();
+        hint.SetContent("toast", "WhisperLoom", "Passwortfeld – nicht eingefügt", HintTone.Warning);
+        var close = hint.FindControl<Button>("CloseButton")!;
+        Assert.False(close.IsVisible);
+        hint.Sticky = true;
+        hint.Show();
+        Assert.True(close.IsEffectivelyVisible);
+        Assert.Equal(Loc.Instance["Hint_Close"], AutomationProperties.GetName(close));
+        close.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+        Assert.False(hint.IsVisible);
+    }
+
     // --- Pille --------------------------------------------------------------------------------------------------------
 
     [AvaloniaFact]

@@ -3,6 +3,15 @@
 Diktieren mit KI-Textstufen für Windows und Linux – der Kern von [WhisperLoom für Android](https://github.com/CTreitges/whisperloom-android)
 als Hintergrund-App. **[English version below](#english).**
 
+<p>
+<img src="docs/screens/settings-dictation-light.png" width="380" alt="Einstellungen, Seite Diktat (hell) / Settings, Dictation page (light)">
+<img src="docs/screens/settings-output-dark.png" width="380" alt="Einstellungen, Seite Ausgabe mit App-Profilen (dunkel) / Settings, Output page with app profiles (dark)">
+</p>
+<p>
+<img src="docs/screens/setup-recognition-light.png" width="380" alt="Einrichtung, Schritt Erkennung / Setup, recognition step">
+<img src="docs/screens/overlay-recording-dark.png" width="380" alt="Overlay während der Aufnahme / Overlay while recording">
+</p>
+
 ---
 
 ## Deutsch

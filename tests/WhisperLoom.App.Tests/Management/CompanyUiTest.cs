@@ -133,10 +133,16 @@ public sealed class CompanyUiTest
         join.Server = "http://wl.example.test";
         join.Code = "abcd efgh jkmn pqrs";
         await join.JoinCommand.ExecuteAsync(null);
-        Assert.Equal(Loc.Instance["Company_ServerHttps"], join.Status); // http ins Internet abgelehnt
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(Loc.Instance["Company_ServerHttps"], join.ServerError); // http ins Internet abgelehnt, Meldung am Feld (UX-6 N11)
+        Assert.Equal("", join.Status);
+        Assert.Equal("", join.CodeError);
+        Assert.True(Named<TextBlock>(window, "ServerError").IsEffectivelyVisible);
+        Assert.True(Named<TextBox>(window, "ServerBox").IsFocused); // Fokus auf das fehlerhafte Feld
         Assert.Empty(server.Requests);
 
         join.Server = FakeManagementServer.Url;
+        Assert.Equal("", join.ServerError); // Ändern räumt die Meldung
         await join.JoinCommand.ExecuteAsync(null);
         Dispatcher.UIThread.RunJobs();
         Assert.Equal(JoinPhase.Pending, join.Phase);

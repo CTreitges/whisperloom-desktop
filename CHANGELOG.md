@@ -5,6 +5,17 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- **New interface** (UX run 3, UX-1 to UX-6): settings regrouped into seven task pages (Dictation, Recognition, Text,
+  Output, Connections, Privacy, System) plus Company, with search and a help button per page; setup, history, help,
+  stage, version list, overlay, level pill, hints, selection button/picker and tray menu redrawn in the Loom look with an
+  own stroke icon set. Every window follows the system theme including Windows high contrast and text size up to 225 %;
+  all controls have accessible names, are reachable by keyboard and at least 24 × 24 px. No function was removed;
+  existing settings files keep working. Design notes: `docs/design-system.md`, desktop exceptions: `docs/ux-exceptions.md`.
+- Windows warnings and errors over other programs (not inserted, limit reached, dictation failed) stay until closed or
+  the next dictation; version download shows percent, time left and Cancel; history asks before discarding an edit and
+  has its own Delete button; history size is chosen with option buttons; messages say what to do (UX-6).
+
 ### Added
 - Company proxy: vocabulary (`keywords[]`) and “German + English” (two `languages[]`) now reach the upstream provider
   like with direct access (OpenAI gpt-transcribe, Mistral `context_bias[]`, ElevenLabs `keyterms`); strict field checks

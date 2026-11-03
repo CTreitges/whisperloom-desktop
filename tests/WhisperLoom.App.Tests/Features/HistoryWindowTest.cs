@@ -169,17 +169,240 @@ public sealed class HistoryWindowTest : IDisposable
     }
 
     [AvaloniaFact]
-    public async Task Esc_verwirft_die_Bearbeitung()
+    public async Task Esc_ohne_Aenderung_beendet_die_Bearbeitung_sofort()
     {
         var vm = await Model();
         var w = await Show(vm);
         Press(w, Key.F2, physical: PhysicalKey.F2);
         await Settle();
-        vm.Detail!.EditText = "verworfen";
         Press(w, Key.Escape, physical: PhysicalKey.Escape);
         await Settle();
+        Assert.False(vm.Detail!.IsEditing);
+        Assert.False(vm.Detail.DiscardPending);
+        w.Close();
+    }
+
+    /// <summary>UX-6 N14: Esc mit geändertem Text fragt erst; „Weiter bearbeiten“ ist der Standard, Verwerfen nur ausdrücklich.</summary>
+    [AvaloniaFact]
+    public async Task Esc_mit_Aenderung_fragt_vor_dem_Verwerfen()
+    {
+        var vm = await Model();
+        var w = await Show(vm);
+        Press(w, Key.F2, physical: PhysicalKey.F2);
+        await Settle();
+        vm.Detail!.EditText = "verworfen?";
+        Press(w, Key.Escape, physical: PhysicalKey.Escape);
+        await Settle();
+        Assert.True(vm.Detail.IsEditing); // nichts still verloren
+        Assert.True(vm.Detail.DiscardPending);
+        Assert.True(w.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "KeepEditButton").IsFocused);
+
+        vm.Detail.KeepEditingCommand.Execute(null);
+        Assert.False(vm.Detail.DiscardPending);
+        Assert.Equal("verworfen?", vm.Detail.EditText);
+
+        vm.Detail.CancelEditCommand.Execute(null); // „Abbrechen“ fragt genauso
+        Assert.True(vm.Detail.DiscardPending);
+        vm.Detail.DiscardEditCommand.Execute(null);
         Assert.False(vm.Detail.IsEditing);
+        Assert.False(vm.Detail.DiscardPending);
         Assert.Equal("Vier heute.", (await _f.History.GetAsync(vm.Selected!.Entry.Id, CancellationToken.None))!.Text);
+        w.Close();
+    }
+
+    /// <summary>UX-6 N14/N22 (Nachprüfung): auch Fassungs- und Eintragswechsel fragen; während der Rückfrage kein „Speichern“.</summary>
+    [AvaloniaFact]
+    public async Task Wechsel_waehrend_geaenderter_Bearbeitung_fragt_erst()
+    {
+        var vm = await Model();
+        var w = await Show(vm);
+        var detail = vm.Detail!;
+        var entry = vm.Selected!;
+        detail.BeginEdit();
+        detail.EditText = "Entwurf";
+        Assert.True(detail.ShowEditActions);
+
+        var origin = detail.Chips.Single(c => c.Key == VersionChip.Origin);
+        detail.SelectCommand.Execute(origin);
+        Assert.True(detail.DiscardPending);
+        Assert.True(detail.IsEditing);
+        Assert.NotEqual(origin, detail.SelectedChip); // Fassung bleibt, bis verworfen wird
+        Assert.False(detail.ShowEditActions);
+
+        vm.Selected = vm.Rows.First(r => r != entry);
+        await Settle();
+        Assert.Same(entry, vm.Selected); // Auswahl springt zurück
+        Assert.Same(detail, vm.Detail);
+        Assert.Equal("Entwurf", detail.EditText);
+
+        detail.DiscardEditCommand.Execute(null);
+        detail.SelectCommand.Execute(origin);
+        Assert.Equal(origin, detail.SelectedChip);
+        w.Close();
+    }
+
+    /// <summary>Prüfer Runde 2: ↓ in der Liste während einer geänderten Bearbeitung – Auswahl zurück, Fokus auf „Weiter bearbeiten“.</summary>
+    [AvaloniaFact]
+    public async Task Pfeil_in_der_Liste_fragt_und_fokussiert_die_Rueckfrage()
+    {
+        var vm = await Model();
+        var w = await Show(vm);
+        var entry = vm.Selected!;
+        Press(w, Key.F2, physical: PhysicalKey.F2);
+        await Settle();
+        vm.Detail!.EditText = "Entwurf";
+        var list = w.GetVisualDescendants().OfType<ListBox>().First(l => l.Name == "Entries");
+        (list.ContainerFromItem(entry) as Control)!.Focus();
+        Press(w, Key.Down, physical: PhysicalKey.ArrowDown);
+        await Settle();
+        Assert.Equal(entry.Entry.Id, vm.Selected!.Entry.Id);
+        Assert.True(vm.Detail!.DiscardPending);
+        Assert.Equal("Entwurf", vm.Detail.EditText);
+        Assert.True(w.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "KeepEditButton").IsFocused);
+        w.Close();
+    }
+
+    /// <summary>Prüfer Runde 2: ein abgelehnter Klick auf einen Fassungs-Chip lässt ihn nicht gedrückt stehen.</summary>
+    [AvaloniaFact]
+    public async Task Abgelehnter_Chip_bleibt_nicht_gedrueckt()
+    {
+        var vm = await Model();
+        var w = await Show(vm);
+        vm.Detail!.BeginEdit();
+        vm.Detail.EditText = "Entwurf";
+        await Settle();
+        var origin = w.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.ToggleButton>()
+            .Single(t => t.DataContext is VersionChip { Key: VersionChip.Origin });
+        origin.SetCurrentValue(Avalonia.Controls.Primitives.ToggleButton.IsCheckedProperty, true); // wie ToggleButton.OnClick
+        origin.Command!.Execute(origin.CommandParameter);
+        await Settle();
+        Assert.True(vm.Detail.DiscardPending);
+        Assert.False(origin.IsChecked);
+        w.Close();
+    }
+
+    [AvaloniaFact]
+    public async Task Suche_filtert_einen_geaenderten_Entwurf_nicht_weg()
+    {
+        var vm = await Model();
+        var detail = vm.Detail!;
+        var id = detail.Entry.Id;
+        detail.BeginEdit();
+        detail.EditText = "Entwurf";
+        vm.Search = "zzz-kein-treffer";
+        await Settle();
+        Assert.Contains(vm.Rows, r => r.Entry.Id == id);
+        Assert.Same(detail, vm.Detail);
+        Assert.Equal("Entwurf", vm.Detail!.EditText);
+
+        detail.DiscardEdit();
+        vm.Search = "zzz-kein-treffer-2";
+        await Settle();
+        Assert.DoesNotContain(vm.Rows, r => r.Entry.Id == id); // ohne Entwurf filtert die Suche wieder normal
+    }
+
+    /// <summary>Prüfer Runde 3: Trefferzahl zählt den Entwurf nicht; Speichern während der Suche lässt ihn gewählt.</summary>
+    [AvaloniaFact]
+    public async Task Entwurf_in_der_Suche_zaehlt_nicht_und_bleibt_nach_dem_Speichern()
+    {
+        var vm = await Model();
+        var detail = vm.Detail!;
+        var id = detail.Entry.Id;
+        detail.BeginEdit();
+        detail.EditText = "Entwurf";
+        vm.Search = "zzz";
+        await Settle();
+        Assert.Equal(Loc.Instance.Format("History_NoMatchesFor", "zzz"), vm.SearchSummary);
+
+        await detail.SaveEdit();
+        await Settle();
+        Assert.Equal(id, vm.Selected!.Entry.Id);
+        Assert.Equal("Entwurf", vm.Detail!.Text);
+    }
+
+    /// <summary>Nachprüfung 3 (N14): während „Neu verarbeiten“ läuft, beginnt keine Bearbeitung; mit Entwurf startet keine Rechnung.</summary>
+    [AvaloniaFact]
+    public async Task Bearbeiten_und_Neu_verarbeiten_schliessen_sich_aus()
+    {
+        var vm = await Model();
+        var detail = vm.Detail!;
+        detail.BeginEdit();
+        detail.EditText = "Entwurf";
+        await detail.RequestReprocessAsync("summarize");
+        Assert.True(detail.DiscardPending);
+        Assert.Null(detail.RunningStage);
+        Assert.Equal("Entwurf", detail.EditText);
+
+        detail.DiscardEdit();
+        detail.RunningStage = "summarize"; // Rechnung läuft
+        Assert.False(detail.CanEdit);
+        detail.BeginEdit();
+        Assert.False(detail.IsEditing);
+        Assert.Equal(Loc.Instance["History_EditAfterRun"], detail.Status); // sagt, warum nichts passiert
+    }
+
+    /// <summary>Prüfer Runde 4: auch „Ersetzen?“ bestätigt keine Rechnung über einen Entwurf.</summary>
+    [AvaloniaFact]
+    public async Task Ersetzen_mit_Entwurf_fragt_erst_nach_dem_Entwurf()
+    {
+        var vm = await Model();
+        var detail = vm.Detail!;
+        detail.BeginEdit();
+        detail.EditText = "Handarbeit";
+        await detail.SaveEdit();
+        await detail.RequestReprocessAsync("polish");
+        Assert.True(detail.ConfirmReplacePending);
+
+        detail.BeginEdit();
+        detail.EditText = "noch mehr Handarbeit";
+        await detail.ConfirmReplace();
+        Assert.True(detail.DiscardPending);
+        Assert.True(detail.IsEditing);
+        Assert.Null(detail.RunningStage);
+        Assert.Equal("noch mehr Handarbeit", detail.EditText);
+    }
+
+    [Theory]
+    [InlineData(false, WindowCloseReason.WindowClosing, true, true)]
+    [InlineData(false, WindowCloseReason.WindowClosing, false, false)]
+    [InlineData(true, WindowCloseReason.WindowClosing, true, false)]
+    [InlineData(false, WindowCloseReason.ApplicationShutdown, true, false)]
+    [InlineData(false, WindowCloseReason.OSShutdown, true, false)]
+    public void Schliessen_fragt_nur_den_Nutzer_mit_Entwurf(bool programmatic, WindowCloseReason reason, bool changed, bool asks) =>
+        Assert.Equal(asks, HistoryWindow.ShouldAskOnClose(programmatic, reason, changed));
+
+    [AvaloniaFact]
+    public async Task Neuaufbau_schliesst_eine_offene_Rueckfrage()
+    {
+        var vm = await Model();
+        var detail = vm.Detail!;
+        detail.BeginEdit();
+        detail.EditText = "Entwurf";
+        detail.CancelEdit();
+        Assert.True(detail.DiscardPending);
+        detail.SelectedChip = detail.Chips.Single(c => c.Key == VersionChip.Origin); // wie Rebuild nach „Neu verarbeiten“
+        Assert.False(detail.DiscardPending);
+        Assert.False(detail.IsEditing);
+    }
+
+    /// <summary>UX-6 N15/N16: „Löschen“ ist ein eigener Knopf (kein Ein-Eintrag-Menü), der Stufen-Wähler zeigt seine Tasten.</summary>
+    [AvaloniaFact]
+    public async Task Loeschen_als_Knopf_und_Tastenzeile_am_Waehler()
+    {
+        var vm = await Model();
+        var w = await Show(vm);
+        Assert.DoesNotContain(w.GetVisualDescendants().OfType<Button>(), b => b.Name == "MoreButton");
+        var delete = w.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "DeleteButton");
+        Assert.True(delete.IsEffectivelyVisible);
+        delete.Command!.Execute(null);
+        await Settle();
+        Assert.Equal(3, vm.Rows.Count);
+        Assert.True(vm.CanUndo);
+
+        w.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "ReprocessButton").Command!.Execute(null);
+        await Settle();
+        var keys = w.GetVisualDescendants().OfType<WhisperLoom.App.Design.KeycapText>().Single(k => k.Name == "ReprocessKeys");
+        Assert.True(keys.IsEffectivelyVisible);
         w.Close();
     }
 

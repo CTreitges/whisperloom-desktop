@@ -32,9 +32,61 @@ public partial class HistoryWindow : Window
         void OnLanguage(object? sender, System.ComponentModel.PropertyChangedEventArgs e) => viewModel.RefreshTexts();
         Localization.Loc.Instance.PropertyChanged += OnLanguage;
         Closed += (_, _) => Localization.Loc.Instance.PropertyChanged -= OnLanguage;
+        // Jede Rückfrage „Änderungen verwerfen?“ (Esc, Abbrechen, Fassungs-/Eintragswechsel, Schließen) holt den Fokus auf
+        // „Weiter bearbeiten“: so treffen Entf/Enter nie eine andere Zeile (UX-6 N14).
+        viewModel.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(HistoryViewModel.Detail))
+            {
+                Watch(viewModel.Detail);
+            }
+        };
+        Watch(viewModel.Detail);
+    }
+
+    private Features.History.HistoryDetailViewModel? _watched;
+
+    private void Watch(Features.History.HistoryDetailViewModel? detail)
+    {
+        if (_watched is not null)
+        {
+            _watched.PropertyChanged -= OnDetailChanged;
+        }
+        _watched = detail;
+        if (detail is not null)
+        {
+            detail.PropertyChanged += OnDetailChanged;
+        }
+    }
+
+    private void OnDetailChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(Features.History.HistoryDetailViewModel.DiscardPending) && _watched is { DiscardPending: true })
+        {
+            FocusNamed("KeepEditButton");
+        }
     }
 
     private HistoryViewModel? Vm => DataContext as HistoryViewModel;
+
+    /// <summary>Nur Schließen durch den Nutzer bei geändertem Text fragt; App-Ende und Code schließen immer.</summary>
+    internal static bool ShouldAskOnClose(bool programmatic, WindowCloseReason reason, bool editChanged) =>
+        editChanged && !programmatic && reason == WindowCloseReason.WindowClosing;
+
+    /// <summary>
+    /// Schließen durch den Nutzer bei geänderter Bearbeitung: Fenster bleibt offen, die Rückfrage erscheint (UX-6 N14).
+    /// Programmatisches Schließen (App-Ende) geht durch.
+    /// </summary>
+    protected override void OnClosing(WindowClosingEventArgs e)
+    {
+        if (ShouldAskOnClose(e.IsProgrammatic, e.CloseReason, Vm?.Detail is { EditChanged: true }) && Vm?.Detail is { } detail)
+        {
+            e.Cancel = true;
+            detail.DiscardPending = true;
+            FocusNamed("KeepEditButton");
+        }
+        base.OnClosing(e);
+    }
 
     private void OnKey(object? sender, KeyEventArgs e)
     {
@@ -56,8 +108,16 @@ public partial class HistoryWindow : Window
             }
             else if (none && e.Key == Key.Escape)
             {
+                // Geänderter Text: erst fragen, Fokus auf „Weiter bearbeiten“ (zerstörend nie Standard).
                 vm.Detail?.CancelEdit();
-                FocusList();
+                if (vm.Detail is { DiscardPending: true })
+                {
+                    FocusNamed("KeepEditButton");
+                }
+                else
+                {
+                    FocusList();
+                }
                 e.Handled = true;
             }
             return;
@@ -132,6 +192,10 @@ public partial class HistoryWindow : Window
     private void BeginEdit(HistoryViewModel vm)
     {
         vm.EditSelected();
+        if (vm.Detail is not { IsEditing: true })
+        {
+            return; // z. B. während einer Neuverarbeitung: die Statuszeile sagt warum
+        }
         Dispatcher.UIThread.Post(() => this.GetVisualDescendants().OfType<TextBox>().FirstOrDefault(t => t.Name == "EditBox")?.Focus(),
             DispatcherPriority.Loaded);
     }
@@ -163,6 +227,28 @@ public partial class HistoryWindow : Window
             Entries.Focus();
         }
     }, DispatcherPriority.Loaded);
+
+    /// <summary>Fokus auf ein benanntes Element im Detail (liegt in einem Template, darum über den Visual-Baum).</summary>
+    private void FocusNamed(string name) => Dispatcher.UIThread.Post(
+        () => this.GetVisualDescendants().OfType<Control>().FirstOrDefault(c => c.Name == name && c.IsEffectivelyVisible)?.Focus(),
+        DispatcherPriority.Loaded);
+
+    /// <summary>„Abbrechen“ mit Änderungen: Rückfrage erscheint, Fokus auf „Weiter bearbeiten“ (UX-6 N14).</summary>
+    private void OnCancelEditClick(object? sender, RoutedEventArgs e) => Dispatcher.UIThread.Post(() =>
+    {
+        // Click läuft vor dem Command: erst danach steht fest, ob die Rückfrage offen ist; sonst zurück in die Liste.
+        if (Vm?.Detail is { DiscardPending: true })
+        {
+            FocusNamed("KeepEditButton");
+        }
+        else
+        {
+            FocusList();
+        }
+    }, DispatcherPriority.Background);
+
+    /// <summary>„Weiter bearbeiten“: zurück ins Textfeld.</summary>
+    private void OnKeepEditingClick(object? sender, RoutedEventArgs e) => FocusNamed("EditBox");
 
     /// <summary>Hilfe-Abschnitt „Verlauf“ (wie F1).</summary>
     private void OnHelp(object? sender, RoutedEventArgs e) => Help.HelpLauncher.Open("history");

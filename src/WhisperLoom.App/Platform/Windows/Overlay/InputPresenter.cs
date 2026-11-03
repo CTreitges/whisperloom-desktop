@@ -34,6 +34,7 @@ public sealed class InputPresenter : IInputPresenter
 
     public void ShowOverlay(OverlayViewModel overlay, IntPtr target)
     {
+        HideStickyHint();
         overlay.Motion = _preferences.AnimationsEnabled;
         _overlay ??= new OverlayWindow(overlay);
         Show(_overlay, target, new Size(560, 130));
@@ -43,6 +44,7 @@ public sealed class InputPresenter : IInputPresenter
 
     public void ShowPill(IntPtr target)
     {
+        HideStickyHint();
         _pill.Level = 0;
         _pill.Processing = false;
         _pill.Motion = _preferences.AnimationsEnabled;
@@ -63,12 +65,32 @@ public sealed class InputPresenter : IInputPresenter
     {
         _hint ??= new HintWindow();
         _hint.SetContent(kind, caption, message, tone, keys);
+        // Warnung/Fehler tragen Wesentliches (nicht eingefügt, Grenze, Fehler): kein Ablauf per Zeit (Richtlinie 04 §4.9, WCAG 2.2.1).
+        _hint.Sticky = Sticks(tone);
         // Der Hinweis sitzt über Overlay bzw. Pille.
         var lift = _overlay?.IsVisible == true || _pillWindow?.IsVisible == true ? 150 : 0;
         Show(_hint, target, new Size(360, 64), ScreenPlacement.BottomMarginDip + lift);
         _hintTimer.Stop();
-        _hintTimer.Interval = duration;
-        _hintTimer.Start();
+        if (!_hint.Sticky)
+        {
+            _hintTimer.Interval = duration;
+            _hintTimer.Start();
+        }
+    }
+
+    /// <summary>Welche Hinweise stehen bleiben: Warnung und Fehler; Stufe, Kopiert und Auskunft verschwinden von selbst.</summary>
+    internal static bool Sticks(HintTone tone) => tone is HintTone.Warning or HintTone.Error;
+
+    /// <summary>Läuft die Zeit des Hinweises (Tests: stehende Hinweise starten sie nicht).</summary>
+    internal bool HintTimerRunning => _hintTimer.IsEnabled;
+
+    /// <summary>Ein neues Diktat nimmt einen stehenden Hinweis weg; er gehört zum vorigen.</summary>
+    private void HideStickyHint()
+    {
+        if (_hint is { Sticky: true, IsVisible: true })
+        {
+            _hint.Hide();
+        }
     }
 
     public JsonObject Status() => new()
