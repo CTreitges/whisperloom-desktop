@@ -17,6 +17,10 @@ versions follow [Semantic Versioning](https://semver.org/).
   has its own Delete button; history size is chosen with option buttons; messages say what to do (UX-6).
 
 ### Added
+- **“What's next” after setup** (#46): the last setup page shows where WhisperLoom now runs (Windows: small taskbar
+  sketch with the ^ arrow), that the tray icon opens the stage and its menu the settings, and whether WhisperLoom starts
+  by itself (autostart on, off or not available; Linux with neutral wording). The stage has a labelled **Settings**
+  button with a gear icon in its header.
 - Company proxy: vocabulary (`keywords[]`) and “German + English” (two `languages[]`) now reach the upstream provider
   like with direct access (OpenAI gpt-transcribe, Mistral `context_bias[]`, ElevenLabs `keyterms`); strict field checks
   in the proxy. An own key stored (CLI `key set` or key field) while the company fixes the target is no longer sent to
