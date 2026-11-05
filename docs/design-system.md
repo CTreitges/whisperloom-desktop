@@ -69,7 +69,7 @@ auf Akzentflächen mit `Loom.OnAccent`, die Auswahl in Auswahllisten, Listen (he
 - „Animationen anzeigen“ (`ISystemPreferences.AnimationsEnabled`) liest die App; Pegel und Verarbeitung in Overlay und Pille ruhen bei reduzierter Bewegung (UX-4).
 
 ## Symbole
-- Eigenes Set, 55 Strich-Symbole (24-px-Raster, Strich 1,75, runde Enden): Quellen `design/icons/*.svg`, erzeugt nach `Design/Icons.axaml` mit `py -3 -X utf8 tools/gen_icons.py` (Prüfen: `--check`). Schlüssel `Loom.Icon.<Name>`, Liste in `tools/gen_icons.py` (`NAMES`).
+- Eigenes Set, 56 Strich-Symbole (24-px-Raster, Strich 1,75, runde Enden): Quellen `design/icons/*.svg`, erzeugt nach `Design/Icons.axaml` mit `py -3 -X utf8 tools/gen_icons.py` (Prüfen: `--check`). Schlüssel `Loom.Icon.<Name>`, Liste in `tools/gen_icons.py` (`NAMES`).
 - Gezeichnet mit `ds:LoomIcon` (Kontur, Farbe aus `Foreground`): 16 px neben Text, 20 px in Knöpfen und Leiste, 24 px allein. `PathIcon` füllt nur und passt nicht zu Strich-Symbolen.
 - Symbole tragen nie allein Bedeutung – immer mit Text oder Namen.
 

@@ -18,9 +18,11 @@ public sealed partial class StageViewModel : ObservableObject, IDisposable
     public const double MaxFontSize = 96;
     public const double ZoomStep = 4;
 
-    public StageViewModel(DictationController controller)
+    /// <param name="openSettings">Öffnet die Einstellungen wie das Tray-Menü; null = Knopf „Einstellungen“ ausgeblendet.</param>
+    public StageViewModel(DictationController controller, Action? openSettings = null)
     {
         Controller = controller;
+        _openSettings = openSettings;
         var desktop = SettingsStore.Desktop(controller.Settings);
         _fontSize = Math.Clamp(desktop.StageFontSize, MinFontSize, MaxFontSize);
         _darkForProjector = desktop.StageDark;
@@ -114,6 +116,14 @@ public sealed partial class StageViewModel : ObservableObject, IDisposable
 
     [RelayCommand]
     private void NextStage() => Controller.SetStage("next");
+
+    private readonly Action? _openSettings;
+
+    /// <summary>Knopf „Einstellungen“ im Kopf, nur mit Öffnen-Aufruf (in der App immer).</summary>
+    public bool CanOpenSettings => _openSettings is not null;
+
+    [RelayCommand]
+    private void OpenSettings() => _openSettings?.Invoke();
 
     [RelayCommand]
     public void ToggleDark()

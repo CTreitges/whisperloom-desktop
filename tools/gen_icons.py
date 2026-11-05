@@ -24,7 +24,7 @@ STROKE = 1.75
 NAMES = {
     "abspielen": "Play", "aktualisieren": "Refresh", "aufklappen": "Expand", "aufnahme": "Record", "ausgabe": "Output",
     "bearbeiten": "Edit", "buehne": "Presentation", "datei": "File", "datenschutz": "Privacy", "diktat": "Dictation",
-    "einfuegen": "Paste", "einrichtung": "Setup", "empfohlen": "Recommended", "erkennung": "Recognition",
+    "einfuegen": "Paste", "einrichtung": "Setup", "einstellungen": "Settings", "empfohlen": "Recommended", "erkennung": "Recognition",
     "erneut-senden": "Resend", "extern": "External", "fehler": "Error", "firma": "Company", "haekchen": "Check",
     "herunterladen": "Download", "hilfe": "Help", "hinzufuegen": "Add", "info": "Info", "kopieren": "Copy",
     "loeschen": "Delete", "markierung": "Selection", "mehr": "More", "mikrofon": "Microphone", "nach-oben": "MoveUp",

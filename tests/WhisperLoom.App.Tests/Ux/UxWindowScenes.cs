@@ -117,7 +117,7 @@ internal static class UxWindowScenes
     {
         var f = new ControllerFixture(new WhisperLoomSettings { Language = "de", Refine = new RefineSettings { Stage = "polish" } });
         f.Pipeline.RawText = "ähm also das meeting ist am donnerstag um zehn und bitte bringt die zahlen mit";
-        var vm = new StageViewModel(f.Controller);
+        var vm = new StageViewModel(f.Controller, openSettings: () => { }); // mit Knopf „Einstellungen“ wie in der App
         var window = new StageWindow(vm) { Width = 1200, Height = 700, RequestedThemeVariant = theme }; // UX-3: folgt dem System
         window.Show();
         f.Controller.Start();

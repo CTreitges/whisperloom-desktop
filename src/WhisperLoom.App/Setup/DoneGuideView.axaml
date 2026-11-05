@@ -1,0 +1,81 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:s="using:WhisperLoom.App.Setup"
+             xmlns:ds="using:WhisperLoom.App.Design"
+             xmlns:l="using:WhisperLoom.App.Localization"
+             x:Class="WhisperLoom.App.Setup.DoneGuideView"
+             x:DataType="s:SetupViewModel">
+  <!--
+    „So geht's weiter“ auf der Seite „Fertig“ (Goal 2026-11-05-wld-tray-hinweis): unter Windows eine kleine Skizze der Taskleiste
+    rechts (Pfeil ^, Symbole, WhisperLoom hervorgehoben und beschriftet, Uhr) aus Design-Tokens, dann drei nummerierte Punkte:
+    wo das Symbol sitzt, was Links- und Rechtsklick tun, ob WhisperLoom von selbst startet. Linux: dieselben Punkte neutral,
+    ohne Skizze. Für Screenreader ist die Skizze ein Bild mit Beschreibung; die Information steht vollständig im Text.
+  -->
+  <UserControl.Styles>
+    <Style Selector="TextBlock.num">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource Loom.Text}" />
+    </Style>
+    <!-- Symbole der Skizze in Schriftgröße: wachsen mit der Textgröße des Systems (Font-Tokens, UX-1). -->
+    <Style Selector="Border.sketchIcon">
+      <Setter Property="Width" Value="{DynamicResource Loom.Font.Body}" />
+      <Setter Property="Height" Value="{DynamicResource Loom.Font.Body}" />
+      <Setter Property="CornerRadius" Value="3" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Loom.TextSecondary}" />
+      <Setter Property="BorderThickness" Value="1.5" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border#TaskbarSketch TextBlock">
+      <Setter Property="AutomationProperties.AccessibilityView" Value="Raw" />
+    </Style>
+  </UserControl.Styles>
+
+  <StackPanel Spacing="{DynamicResource Loom.Space.3}" MaxWidth="560" HorizontalAlignment="Left">
+    <TextBlock x:Name="DoneGuideTitle" Text="{Binding [Setup_DoneGuideTitle], Source={x:Static l:Loc.Instance}}"
+               FontSize="{DynamicResource Loom.Font.Title}" FontWeight="SemiBold" TextWrapping="Wrap"
+               AutomationProperties.HeadingLevel="2" />
+
+    <!-- Skizze: Taskleiste rechts unten (Windows 11). Zeile 0 Beschriftung über dem Symbol, Zeile 1 die Leiste. -->
+    <Border x:Name="TaskbarSketch" IsVisible="{Binding ShowTaskbarSketch}" HorizontalAlignment="Left"
+            AutomationProperties.Name="{Binding [Setup_DoneGuideSketch], Source={x:Static l:Loc.Instance}}"
+            AutomationProperties.AccessibilityView="Content" AutomationProperties.ControlTypeOverride="Image">
+      <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="Auto,Auto,Auto,Auto">
+        <StackPanel Grid.Column="2" HorizontalAlignment="Center" Margin="0,0,0,2">
+          <TextBlock x:Name="SketchLabel" Text="WhisperLoom" FontSize="{DynamicResource Loom.Font.Caption}" FontWeight="SemiBold"
+                     Foreground="{DynamicResource Loom.Text}" HorizontalAlignment="Center" />
+          <ds:LoomIcon Data="{DynamicResource Loom.Icon.MoveDown}" Width="{DynamicResource Loom.Font.Title}" Height="{DynamicResource Loom.Font.Title}" HorizontalAlignment="Center"
+                       Foreground="{DynamicResource Loom.Accent}" />
+        </StackPanel>
+        <Border Grid.Row="1" Grid.ColumnSpan="4" Background="{DynamicResource Loom.SurfaceHigh}"
+                BorderBrush="{DynamicResource Loom.Outline}" BorderThickness="1" CornerRadius="{DynamicResource Loom.Radius.Control}" />
+        <!-- Pfeil ^ der ausgeblendeten Symbole: als Symbol gezeichnet (Form wie unter Windows 11), nicht als Text. -->
+        <ds:LoomIcon x:Name="SketchChevron" Grid.Row="1" Data="{DynamicResource Loom.Icon.Collapse}"
+                     Width="{DynamicResource Loom.Font.Title}" Height="{DynamicResource Loom.Font.Title}"
+                     Foreground="{DynamicResource Loom.Text}" VerticalAlignment="Center" Margin="10,6,10,6" />
+        <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,8,0">
+          <Border Classes="sketchIcon" />
+          <Border Classes="sketchIcon" />
+        </StackPanel>
+        <Border x:Name="SketchTrayIcon" Grid.Row="1" Grid.Column="2" Margin="4,4" Padding="4"
+                BorderBrush="{DynamicResource Loom.Accent}" BorderThickness="2" CornerRadius="4"
+                Background="{DynamicResource Loom.Surface}" HorizontalAlignment="Center" VerticalAlignment="Center">
+          <Image Source="/Assets/whisperloom.png" Width="{DynamicResource Loom.Font.PageTitle}" Height="{DynamicResource Loom.Font.PageTitle}"
+                 AutomationProperties.AccessibilityView="Raw" />
+        </Border>
+        <TextBlock Grid.Row="1" Grid.Column="3" Text="12:30" FontSize="{DynamicResource Loom.Font.Caption}"
+                   Foreground="{DynamicResource Loom.Text}" VerticalAlignment="Center" Margin="10,6,12,6" />
+      </Grid>
+    </Border>
+
+    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="{DynamicResource Loom.Space.2}"
+          RowSpacing="{DynamicResource Loom.Space.2}">
+      <TextBlock Classes="num" Text="1." />
+      <TextBlock x:Name="DoneGuideTray" Grid.Column="1" Text="{Binding DoneGuideTray}" TextWrapping="Wrap" />
+      <TextBlock Classes="num" Grid.Row="1" Text="2." />
+      <TextBlock x:Name="DoneGuideClicks" Grid.Row="1" Grid.Column="1" TextWrapping="Wrap"
+                 Text="{Binding DoneGuideClicks}" />
+      <TextBlock Classes="num" Grid.Row="2" Text="3." />
+      <TextBlock x:Name="DoneGuideAutostart" Grid.Row="2" Grid.Column="1" Text="{Binding DoneGuideAutostart}" TextWrapping="Wrap" />
+    </Grid>
+  </StackPanel>
+</UserControl>
