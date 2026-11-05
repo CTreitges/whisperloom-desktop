@@ -52,6 +52,7 @@
   <StreamGeometry x:Key="Loom.Icon.Search">M 10.5 4 a 6.5 6.5 0 1 0 0 13 a 6.5 6.5 0 1 0 0 -13 z M 15.5 15.5 L 21 21</StreamGeometry>
   <StreamGeometry x:Key="Loom.Icon.Selection">M 4 7 h 16 M 4 11 h 6 M 4 15 h 16 M 4 19 h 9 M 12 9 h 9 v 4 h -9 z</StreamGeometry>
   <StreamGeometry x:Key="Loom.Icon.Send">M 3 11 l 17 -7 -5 17 -3 -7 z M 12 14 l 8 -10</StreamGeometry>
+  <StreamGeometry x:Key="Loom.Icon.Settings">M 12 9 a 3 3 0 1 0 0 6 a 3 3 0 1 0 0 -6 z M 12 5.5 a 6.5 6.5 0 1 0 0 13 a 6.5 6.5 0 1 0 0 -13 z M 12 2.5 v 3 M 12 18.5 v 3 M 2.5 12 h 3 M 18.5 12 h 3 M 5.3 5.3 l 2.1 2.1 M 16.6 16.6 l 2.1 2.1 M 5.3 18.7 l 2.1 -2.1 M 16.6 7.4 l 2.1 -2.1</StreamGeometry>
   <StreamGeometry x:Key="Loom.Icon.Setup">M 12 3 v 18 M 12 6 h 7 l 2 2 -2 2 h -7 M 12 13 H 6 l -2 2 2 2 h 6</StreamGeometry>
   <StreamGeometry x:Key="Loom.Icon.Stop">M 12 3 a 9 9 0 1 0 0 18 a 9 9 0 1 0 0 -18 z M 9 9 h 6 v 6 H 9 z</StreamGeometry>
   <StreamGeometry x:Key="Loom.Icon.System">M 4 7 h 9 M 19 7 h 1 M 4 17 h 5 M 15 17 h 5 M 16 4.5 a 2.5 2.5 0 1 0 0 5 a 2.5 2.5 0 1 0 0 -5 z M 12 14.5 a 2.5 2.5 0 1 0 0 5 a 2.5 2.5 0 1 0 0 -5 z</StreamGeometry>

@@ -11,7 +11,7 @@ using WhisperLoom.App.Design;
 namespace WhisperLoom.App.Tests.Settings;
 
 /// <summary>
-/// Eigenes Symbol-Set (UX-1, zielstruktur.md §8): 55 Symbole aus design/icons, alle im 24-px-Raster mit 2 px Rand, jeder
+/// Eigenes Symbol-Set (UX-1, zielstruktur.md §8): 56 Symbole aus design/icons, alle im 24-px-Raster mit 2 px Rand, jeder
 /// verwendete Schlüssel existiert, keine Material-Glyphen und kein <c>PathIcon</c> mehr; <see cref="LoomIcon"/> zeichnet die Kontur.
 /// </summary>
 public sealed partial class IconSetTest
@@ -38,7 +38,7 @@ public sealed partial class IconSetTest
     public void Every_source_svg_is_a_geometry_inside_the_24_px_grid()
     {
         var declared = Declared();
-        Assert.Equal(55, declared.Count);
+        Assert.Equal(56, declared.Count);
         Assert.Equal(Directory.GetFiles(Path.Combine(Root, "design", "icons"), "*.svg").Length, declared.Count);
         foreach (var key in declared)
         {
