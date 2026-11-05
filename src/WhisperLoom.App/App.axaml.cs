@@ -263,7 +263,8 @@ public partial class App : Application
             case "stage":
                 if (_stage is null)
                 {
-                    _stage = new StageWindow(new StageViewModel(host.Controller));
+                    // Knopf „Einstellungen“ im Bühnenkopf: dieselbe Öffnen-Logik wie das Tray-Menü.
+                    _stage = new StageWindow(new StageViewModel(host.Controller, () => Open("settings")));
                     _stage.Closed += (_, _) => _stage = null;
                 }
                 Activate(_stage);

@@ -232,6 +232,7 @@ public sealed partial class SetupViewModel : IDisposable
         OnPropertyChanged(nameof(RecognitionFooter));
         OnPropertyChanged(nameof(DoneHint));
         OnPropertyChanged(nameof(DoneTemplate));
+        RaiseDoneGuideTexts();
         UsageChoices = BuildUsageChoices();
         OnPropertyChanged(nameof(UsageChoices));
         OnPropertyChanged(nameof(Usage));

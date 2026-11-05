@@ -15,11 +15,14 @@ internal sealed class FakeAutostart : IAutostart
     public void Disable() => IsEnabled = false;
 }
 
-/// <summary>Assistent mit Fakes: Controller, Key-Ablage, Zugangsprüfung, Mikrofon, Hotkey-Rekorder, Autostart.</summary>
+/// <summary>
+/// Assistent mit Fakes: Controller, Key-Ablage, Zugangsprüfung, Mikrofon, Hotkey-Rekorder, Autostart
+/// (<c>autostartAvailable: false</c> = OS ohne Autostart, der Assistent bekommt keinen).
+/// </summary>
 internal sealed class SetupFixture : IDisposable
 {
     public SetupFixture(bool windows = true, PolicySettings? policy = null, WhisperLoomSettings? settings = null,
-        Func<Task<string?>>? recordHotkey = null, IAutostart? autostart = null)
+        Func<Task<string?>>? recordHotkey = null, IAutostart? autostart = null, bool autostartAvailable = true)
     {
         F = new ControllerFixture(settings);
         if (policy is not null)
@@ -30,7 +33,7 @@ internal sealed class SetupFixture : IDisposable
         Autostart = autostart ?? new FakeAutostart();
         Settings = new SettingsViewModel(F.Controller, Secrets, new FakeAccessChecker(), ["Headset-Mikrofon", "USB-Mikrofon"], null, recordHotkey);
         Mic = new MicLevelTest(Recorder, () => Settings.Microphone.Value);
-        Vm = new SetupViewModel(Settings, State, Autostart, Mic, recordHotkey, windows, "\"/opt/WhisperLoom/WhisperLoom\" toggle");
+        Vm = new SetupViewModel(Settings, State, autostartAvailable ? Autostart : null, Mic, recordHotkey, windows, "\"/opt/WhisperLoom/WhisperLoom\" toggle");
         Vm.CloseRequested += () => Closed++;
     }
 

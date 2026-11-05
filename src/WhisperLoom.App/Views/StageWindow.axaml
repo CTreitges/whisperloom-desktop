@@ -104,6 +104,16 @@
 
       <StackPanel Grid.Column="1" Spacing="{DynamicResource Loom.Space.3}" HorizontalAlignment="Right" VerticalAlignment="Top">
         <WrapPanel ItemSpacing="12" LineSpacing="8" HorizontalAlignment="Right">
+          <Button x:Name="SettingsButton" Classes="secondary" Command="{Binding OpenSettingsCommand}" VerticalAlignment="Center"
+                  IsVisible="{Binding CanOpenSettings}"
+                  AutomationProperties.Name="{Binding [Stage_Settings], Source={x:Static l:Loc.Instance}}"
+                  AutomationProperties.HelpText="{Binding [Stage_SettingsHelp], Source={x:Static l:Loc.Instance}}"
+                  ToolTip.Tip="{Binding [Stage_SettingsHelp], Source={x:Static l:Loc.Instance}}">
+            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
+              <ds:LoomIcon Data="{DynamicResource Loom.Icon.Settings}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding [Stage_Settings], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
           <Button x:Name="StageButton" Classes="text" Command="{Binding NextStageCommand}" VerticalAlignment="Center"
                   AutomationProperties.Name="{Binding StageChipText}" AutomationProperties.HelpText="{Binding [Stage_NextHelp], Source={x:Static l:Loc.Instance}}"
                   ToolTip.Tip="{Binding [Stage_NextHelp], Source={x:Static l:Loc.Instance}}">

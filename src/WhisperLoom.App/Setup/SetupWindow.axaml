@@ -343,6 +343,7 @@
           <Border x:Name="DonePanel" Classes="card" IsVisible="{Binding ShowDone}">
             <StackPanel Margin="16,12,16,16" Spacing="{DynamicResource Loom.Space.3}">
               <ds:KeycapText x:Name="DoneHintText" Template="{Binding DoneTemplate}" Keys="{Binding DoneKeys}" MaxWidth="560" HorizontalAlignment="Left" />
+              <s:DoneGuideView x:Name="DoneGuide" Margin="0,4,0,0" />
               <TextBlock Text="{Binding [Setup_DoneAgain], Source={x:Static l:Loc.Instance}}" Classes="caption" TextWrapping="Wrap" />
             </StackPanel>
           </Border>

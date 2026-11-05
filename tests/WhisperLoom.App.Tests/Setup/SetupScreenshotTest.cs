@@ -34,6 +34,45 @@ public sealed class SetupScreenshotTest
         }
     }
 
+    /// <summary>Fertig-Seite „So geht's weiter“ hell/dunkel, Autostart aus, und die Bühne mit dem Knopf „Einstellungen“ (<c>p9-*.png</c>).</summary>
+    [AvaloniaFact]
+    public void Render_Fertig_So_gehts_weiter_und_Buehne()
+    {
+        if (Dir is null)
+        {
+            Assert.Skip("WLD_SCREENSHOT_DIR nicht gesetzt");
+            return;
+        }
+        Loc.Instance.SetLanguage("de");
+        foreach (var (name, theme, autostart) in new[]
+        {
+            ("p9-1-fertig-hell.png", Avalonia.Styling.ThemeVariant.Light, true),
+            ("p9-2-fertig-dunkel.png", Avalonia.Styling.ThemeVariant.Dark, true),
+            ("p9-3-fertig-autostart-aus.png", Avalonia.Styling.ThemeVariant.Light, false),
+        })
+        {
+            using var s = new SetupFixture();
+            s.Vm.AutostartEnabled = autostart;
+            var window = new SetupWindow(s.Vm) { RequestedThemeVariant = theme };
+            window.Show();
+            GoTo(s.Vm, SetupStep.Done);
+            Save(window, name);
+            window.Close();
+        }
+
+        using var f = new ControllerFixture();
+        f.Controller.LastRaw = "ähm also das meeting ist am donnerstag";
+        f.Controller.LastResult = "Das Meeting ist am Donnerstag.";
+        var stage = new Views.StageWindow(new ViewModels.StageViewModel(f.Controller, () => { })) { Width = 1200, Height = 675 };
+        stage.Show();
+        Dispatcher.UIThread.RunJobs();
+        var frame = stage.CaptureRenderedFrame();
+        Assert.NotNull(frame);
+        Assert.True(frame.PixelSize.Width <= 1200, $"Breite {frame.PixelSize.Width}");
+        frame.Save(Path.Combine(Dir!, "p9-4-buehne-einstellungen.png"), Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
+        stage.Close();
+    }
+
     [AvaloniaFact]
     public async Task Render_alle_Schritte()
     {
