@@ -24,11 +24,12 @@ public partial class SettingsWindow : Window
     }
 
     /// <summary>
-    /// Breite der Seitenleiste zur Textgröße (TP-WSETTINGS): 220 px bei 100 %, je weitere 100 % die Hälfte dazu (200 % → 330).
-    /// So passen die längsten Seitennamen („Verbindungen“, „Datenschutz“) als ganzes Wort, und der Inhalt behält genug Platz.
+    /// Breite der Seitenleiste zur Textgröße (TP-WSETTINGS): 220 px bei 100 %, je weitere 100 % plus 80 px (200 % → 300).
+    /// So passen die längsten Seitennamen („Verbindungen“, „Datenschutz“) als ganzes Wort, und der Inhalt behält genug Platz
+    /// (bei 330 px schnitt die Seite „Ausgabe“ bei 200 % den Knopf „Aus laufenden Programmen wählen…“ ab).
     /// Gilt beim Öffnen; die Textgröße übernimmt die App ebenfalls beim Öffnen eines Fensters.
     /// </summary>
-    internal static double SidebarWidth(double textScale) => Math.Round(220 * (1 + (Math.Max(textScale, 1.0) - 1) / 2));
+    internal static double SidebarWidth(double textScale) => Math.Round(220 + 80 * (Math.Max(textScale, 1.0) - 1));
 
     public SettingsWindow(SettingsViewModel session) : this(new SettingsShellViewModel(session))
     {
