@@ -119,22 +119,36 @@ public sealed partial class SettingsShellViewModel : ObservableObject, IDisposab
 
     private void OnImported() => Avalonia.Threading.Dispatcher.UIThread.Post(Reload);
 
-    /// <summary>Ergebnis eines Sofort-Speicherns aus der Arbeitskopie: „Gespeichert“ zeigen und später ausblenden bzw. den Fehler.</summary>
-    private void OnCommitted(bool saved)
+    /// <summary>
+    /// Jedes Sofort-Speichern setzt <see cref="SettingsViewModel.SaveStatus"/>: „Gespeichert“ zeigen und später ausblenden, sonst
+    /// den Fehler. Danach leert die Hülle den Status wieder, damit das nächste „Gespeichert“ erneut gemeldet wird (gleicher Wert
+    /// löst sonst kein PropertyChanged aus).
+    /// </summary>
+    private void OnSessionChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (!Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
+        if (e.PropertyName != nameof(SettingsViewModel.SaveStatus) || sender is not SettingsViewModel session || session.SaveStatus.Length == 0)
         {
-            Avalonia.Threading.Dispatcher.UIThread.Post(() => OnCommitted(saved));
             return;
         }
+        var status = session.SaveStatus;
+        session.SaveStatus = "";
         var version = ++_saveVersion;
+        var saved = status == Loc.Instance["Settings_Saved"];
         SaveFailed = !saved;
-        SaveNotice = saved ? Loc.Instance["Settings_Saved"] : Session.SaveStatus;
+        SaveNotice = saved ? status : FailureText(session, status);
         if (saved)
         {
             _ = HideSavedAsync(version);
         }
     }
+
+    /// <summary>
+    /// Die Arbeitskopie meldet bei jedem Schreibfehler „Gespeichert, aber der Verlauf ließ sich nicht löschen“. Das stimmt nur, wenn
+    /// der Verlauf tatsächlich ausgeschaltet wurde (dann gilt der neue Stand). Ist er beim aktuellen Stand der App noch an, wurde
+    /// gar nichts gespeichert, und die Hülle sagt das (TP-WSETTINGS).
+    /// </summary>
+    private static string FailureText(SettingsViewModel session, string status) =>
+        status == Loc.Instance["Settings_HistoryClearError"] && session.Current.History.Enabled ? Loc.Instance["Settings.SaveFailed"] : status;
 
     private async Task HideSavedAsync(int version)
     {
@@ -147,7 +161,7 @@ public sealed partial class SettingsShellViewModel : ObservableObject, IDisposab
 
     public void Dispose()
     {
-        Session.Committed -= OnCommitted;
+        Session.PropertyChanged -= OnSessionChanged;
         Session.Sync.Applied -= OnImported;
         if (Session.Company is { } company)
         {
@@ -179,7 +193,7 @@ public sealed partial class SettingsShellViewModel : ObservableObject, IDisposab
         if (Session is not null)
         {
             Session.Sync.Applied -= OnImported;
-            Session.Committed -= OnCommitted;
+            Session.PropertyChanged -= OnSessionChanged;
             if (Session.Company is { } previous)
             {
                 previous.Changed -= OnManagementChanged;
@@ -187,7 +201,7 @@ public sealed partial class SettingsShellViewModel : ObservableObject, IDisposab
         }
         session.AutoSave = true;
         session.Sync.Applied += OnImported;
-        session.Committed += OnCommitted;
+        session.PropertyChanged += OnSessionChanged;
         if (session.Company is { } company)
         {
             company.Changed += OnManagementChanged;

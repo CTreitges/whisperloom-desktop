@@ -191,7 +191,6 @@ public sealed partial class SettingsViewModel
             if (!preview.CanApply)
             {
                 SaveStatus = string.Join(Environment.NewLine, preview.Errors);
-                Committed?.Invoke(false);
                 return false;
             }
             result = preview.Settings!;
@@ -206,25 +205,13 @@ public sealed partial class SettingsViewModel
         {
             await _controller.ApplySettingsAsync(result);
             SaveStatus = Loc.Instance["Settings_Saved"];
-            Committed?.Invoke(true);
         }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        catch (IOException)
         {
-            // Stand übernommen = die Datei ist geschrieben, nur das Löschen des Verlaufs scheiterte. Sonst ist nichts gespeichert:
-            // Basis bleibt, die nächste Änderung versucht es erneut (TP-WSETTINGS).
-            var saved = ReferenceEquals(_controller.Settings, result);
-            SaveStatus = Loc.Instance[saved ? "Settings_HistoryClearError" : "Settings.SaveFailed"];
-            Committed?.Invoke(false);
-            return saved;
+            SaveStatus = Loc.Instance["Settings_HistoryClearError"];
         }
         return true;
     }
-
-    /// <summary>
-    /// Nach jedem Sofort-Speichern: true = gespeichert, false = nicht (vollständig) gespeichert, Grund in <see cref="SaveStatus"/>.
-    /// Die Hülle zeigt daraus „Gespeichert“ bzw. den Fehler (TP-WSETTINGS).
-    /// </summary>
-    public event Action<bool>? Committed;
 
     /// <summary>Verstöße („stt.baseUrl: …“) als Inline-Fehler am Pfad.</summary>
     private void ShowPolicyErrors(IReadOnlyList<string> errors)

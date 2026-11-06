@@ -59,6 +59,12 @@ public sealed class SettingsSavedNoticeTest
         Assert.Equal("", text.Text ?? "");
         Assert.False(shell.IsSaved);
         Assert.False(Named<Avalonia.Controls.Control>(window, "SavedIcon").IsVisible);
+
+        // Die nächste Änderung meldet erneut „Gespeichert“ (gleicher Status-Text wie zuvor).
+        shell.Session.Language = shell.Session.Languages.Single(c => c.Value == "fr");
+        await shell.Session.Pending;
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal("Gespeichert", text.Text);
         window.Close();
     }
 
