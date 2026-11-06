@@ -1,6 +1,7 @@
 using Microsoft.Win32;
 using WhisperLoom.App.Platform.Linux;
 using WhisperLoom.App.Platform.Windows;
+using WhisperLoom.App.Setup;
 
 namespace WhisperLoom.App.Tests.Setup;
 
@@ -83,17 +84,16 @@ public sealed class AutostartTest
     }
 
     [Fact]
-    public void Linux_erkennt_eine_Desktop_Datei_mit_fremdem_Exec()
+    public void Linux_vergleicht_den_Pfad_noch_nicht_und_repariert_darum_nichts()
     {
         var dir = Path.Combine(Path.GetTempPath(), "wl-autostart-" + Guid.NewGuid().ToString("N"), "autostart");
         try
         {
-            var own = new LinuxAutostart(dir, "/home/test/Apps/WhisperLoom.AppImage");
-            Assert.False(own.PointsElsewhere);
             new LinuxAutostart(dir, "/home/test/old/WhisperLoom.AppImage").Enable();
-            Assert.True(own.PointsElsewhere);
-            own.Enable();
-            Assert.False(own.PointsElsewhere);
+            IAutostart own = new LinuxAutostart(dir, "/home/test/Apps/WhisperLoom.AppImage");
+            Assert.True(own.IsEnabled);
+            Assert.False(own.PointsElsewhere); // Standard des Interfaces
+            Assert.Equal("unchanged", Autostart.Repair(own, installed: true));
         }
         finally
         {

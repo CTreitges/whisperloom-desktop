@@ -28,22 +28,6 @@ public sealed class LinuxAutostart(string directory, string exePath) : IAutostar
 
     public bool IsEnabled => File.Exists(FilePath);
 
-    /// <summary>Datei vorhanden, aber ihre Exec-Zeile startet eine andere Datei (z. B. ein verschobenes AppImage).</summary>
-    public bool PointsElsewhere
-    {
-        get
-        {
-            try
-            {
-                return File.Exists(FilePath) && !File.ReadAllLines(FilePath).Contains($"Exec={QuoteExec(_exePath)}", StringComparer.Ordinal);
-            }
-            catch (UnauthorizedAccessException e)
-            {
-                throw new IOException("Autostart-Datei nicht lesbar", e);
-            }
-        }
-    }
-
     public void Enable()
     {
         try

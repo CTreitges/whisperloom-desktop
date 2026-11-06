@@ -11,9 +11,10 @@ public interface IAutostart
 
     /// <summary>
     /// Eintrag vorhanden, startet aber eine andere Datei als diese App (z. B. einen alten Dev-Build nach der Installation).
-    /// Fehlt der Eintrag, ist das false.
+    /// Fehlt der Eintrag, ist das false. Standard false (kein Pfadvergleich): Linux vergleicht noch nicht, nur Windows
+    /// (Fund 2026-11-04 betraf den Run-Eintrag); so bleibt die Erweiterung additiv.
     /// </summary>
-    bool PointsElsewhere { get; }
+    bool PointsElsewhere => false;
 
     /// <summary>Schreibt den Eintrag (überschreibt einen alten, z. B. nach Umzug der App).</summary>
     /// <exception cref="IOException">Eintrag nicht schreibbar.</exception>
