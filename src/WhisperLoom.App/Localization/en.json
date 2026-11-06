@@ -1032,5 +1032,6 @@
   "Channel_DownloadCanceled": "Download canceled; the installed version stays.",
   "Hint_Close": "Close the notice",
   "Sync_ExportFailed": "Export failed: the file could not be written. Choose another folder.",
-  "History_EditAfterRun": "You can edit once the new run has finished."
+  "History_EditAfterRun": "You can edit once the new run has finished.",
+  "Updates.Channel_test_Desc": "Test builds for trying things out, plus betas and stable versions"
 }

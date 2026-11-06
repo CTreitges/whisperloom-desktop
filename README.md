@@ -61,15 +61,18 @@ Empfohlene Linux-Pakete: `wl-clipboard` (Wayland) bzw. `xclip` (X11), `libsecret
 Einstellungen → Allgemein → **Updates**:
 
 - **Update-Kanal**: *Stabil* (Standard, geprüfte Releases), *Beta* (Vorabversionen vor einem Release) oder *Test*
-  (einzelne Test-Builds aus Entwicklungszweigen).
+  (einzelne Test-Builds aus Entwicklungszweigen). Die Kanäle bauen aufeinander auf: Test ⊇ Beta ⊇ Stabil.
 - **Vorabversionen automatisch installieren** (Standard aus): Aus bietet die automatische Prüfung nur stabile Versionen
-  an, auch im Kanal Beta oder Test. An bietet zusätzlich die neueste Vorabversion des Kanals an.
+  an, auch im Kanal Beta oder Test. An bietet zusätzlich die neueste Vorabversion an: im Kanal Beta Betas, im Kanal Test
+  Betas und Test-Builds.
+- Eine Änderung von Kanal oder Schalter löst nach etwa zwei Sekunden eine Update-Prüfung aus (nicht erst beim nächsten
+  Start); installiert wird wie immer erst nach Rückfrage.
 - **Version wählen …** (Einstellungen → System → Updates): Liste aller Versionen aus den GitHub-Releases mit Kanal, Datum und
   „installiert“. Jede Version lässt sich nach Rückfrage installieren; eine ältere Version ist ein Downgrade mit eigenem
   Hinweis. **Zurück zu Stabil** installiert die neueste stabile Version. Einstellungen und Keys bleiben erhalten.
 
-Die IT-Richtlinie `updatesEnabled=false` sperrt auch Kanal, Schalter und Versionsliste. `WhisperLoom update` prüft
-Stabil und den eingestellten Kanal.
+Die IT-Richtlinie `updatesEnabled=false` sperrt auch Kanal, Schalter, Versionsliste und die Sofortprüfung.
+`WhisperLoom update` prüft Stabil und den eingestellten Kanal (Test: auch Beta).
 
 ### Erster Start: Einrichtungs-Assistent
 Beim ersten Start führt ein Assistent in wenigen Schritten zum ersten Diktat:
@@ -212,15 +215,18 @@ Recommended Linux packages: `wl-clipboard` (Wayland) or `xclip` (X11), `libsecre
 Settings → General → **Updates**:
 
 - **Update channel**: *Stable* (default, tested releases), *Beta* (pre-releases before a release) or *Test* (single test
-  builds from development branches).
+  builds from development branches). The channels nest: test ⊇ beta ⊇ stable.
 - **Install pre-releases automatically** (default off): off, the automatic check only offers stable versions, even in
-  the beta or test channel. On, it also offers the channel's newest pre-release.
+  the beta or test channel. On, it also offers the newest pre-release: betas in the beta channel, betas and test builds
+  in the test channel.
+- Changing the channel or the switch runs an update check about two seconds later (not only at the next start); as
+  always, nothing installs without a confirmation.
 - **Choose version …** (Settings → System → Updates): all versions from GitHub Releases with channel, date and “installed”.
   Any version installs after a confirmation; an older version is a downgrade with its own warning. **Back to stable**
   installs the newest stable version. Settings and keys are kept.
 
-The IT policy `updatesEnabled=false` also locks the channel, the switch and the version list. `WhisperLoom update`
-checks stable plus the chosen channel.
+The IT policy `updatesEnabled=false` also locks the channel, the switch, the version list and the immediate check.
+`WhisperLoom update` checks stable plus the chosen channel (test: beta as well).
 
 ### First start: setup wizard
 On first start a wizard takes you to your first dictation: **language**, **microphone** with a level test,

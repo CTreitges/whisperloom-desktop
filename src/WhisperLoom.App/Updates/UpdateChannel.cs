@@ -42,8 +42,15 @@ public static class UpdateChannels
 
     /// <summary>
     /// Kanäle der automatischen Prüfung: immer Stabil; der gewählte Vorab-Kanal nur mit „Vorabversionen automatisch
-    /// installieren“. Ohne den Schalter bietet die Prüfung auch im Kanal Beta/Test nur stabile Versionen an.
+    /// installieren“. Ohne den Schalter bietet die Prüfung auch im Kanal Beta/Test nur stabile Versionen an. Die Kanäle
+    /// sind geschachtelt (Test ⊇ Beta ⊇ Stabil, TP-WUPDATE): Test bietet auch Betas an, sonst verpasste ein Test-Nutzer
+    /// eine Beta, die neuer ist als sein letzter Test-Build.
     /// </summary>
     public static IReadOnlyList<UpdateChannel> AutoChannels(UpdateChannel chosen, bool prereleaseAuto) =>
-        chosen == UpdateChannel.Stable || !prereleaseAuto ? [UpdateChannel.Stable] : [UpdateChannel.Stable, chosen];
+        !prereleaseAuto ? [UpdateChannel.Stable] : chosen switch
+        {
+            UpdateChannel.Beta => [UpdateChannel.Stable, UpdateChannel.Beta],
+            UpdateChannel.Test => [UpdateChannel.Stable, UpdateChannel.Beta, UpdateChannel.Test],
+            _ => [UpdateChannel.Stable],
+        };
 }
