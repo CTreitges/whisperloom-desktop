@@ -1032,5 +1032,15 @@
   "Channel_DownloadCanceled": "Laden abgebrochen; die installierte Version bleibt.",
   "Hint_Close": "Hinweis schließen",
   "Sync_ExportFailed": "Export gescheitert: Die Datei ließ sich nicht schreiben. Einen anderen Ordner wählen.",
-  "History_EditAfterRun": "Bearbeiten geht, sobald die Neuverarbeitung fertig ist."
+  "History_EditAfterRun": "Bearbeiten geht, sobald die Neuverarbeitung fertig ist.",
+  "Setup_ServerUrl": "Server-Adresse",
+  "Setup_ServerUrlDesc": "Basis-URL deines Servers, meist mit /v1, z. B. http://192.168.1.20:8000/v1. http:// nur zu Adressen im eigenen Netz",
+  "Setup_ServerUrlMissing": "Gib die Adresse deines Servers ein, z. B. http://192.168.1.20:8000/v1.",
+  "Setup_ServerModel": "Modell",
+  "Setup_ServerModelDesc": "Modell-ID auf dem Server, z. B. Systran/faster-whisper-small; leer = Standard des Servers",
+  "Setup_OwnServerTitle": "Eigener Server",
+  "Setup_OwnServerIntro": "Eigener Whisper- oder OpenAI-kompatibler Server (faster-whisper-server, speaches, LocalAI, LM Studio …), im eigenen Netz oder im Internet. Key optional.",
+  "Setup_OwnServerAdd": "Eigenen Server hinzufügen",
+  "Setup_OwnServerNext": "Adresse eintragen, dann unter Erkennung bzw. Text als Anbieter wählen.",
+  "Setup_OwnServerName": "Eigener Server"
 }

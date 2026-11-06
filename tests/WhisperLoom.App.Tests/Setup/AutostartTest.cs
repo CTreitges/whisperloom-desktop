@@ -49,6 +49,62 @@ public sealed class AutostartTest
     }
 
     [Fact]
+    public void Windows_erkennt_einen_fremden_Pfad_im_Run_Eintrag()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Skip("nur Windows");
+            return;
+        }
+        var exe = @"C:\Users\Test User\AppData\Local\WhisperLoom\current\WhisperLoom.exe";
+        var autostart = new WindowsAutostart(TestKey, exe);
+        try
+        {
+            Assert.False(autostart.PointsElsewhere); // fehlt: nicht fremd
+            using (var key = Registry.CurrentUser.CreateSubKey(TestKey, writable: true))
+            {
+                key.SetValue(WindowsAutostart.ValueName, "\"C:\\dev\\whisperloom-desktop\\bin\\Debug\\WhisperLoom.exe\"");
+            }
+            Assert.True(autostart.IsEnabled);
+            Assert.True(autostart.PointsElsewhere);
+
+            autostart.Enable();
+            Assert.False(autostart.PointsElsewhere);
+            using (var key = Registry.CurrentUser.CreateSubKey(TestKey, writable: true))
+            {
+                key.SetValue(WindowsAutostart.ValueName, exe.ToUpperInvariant()); // ohne Anführungszeichen, andere Schreibweise
+            }
+            Assert.False(autostart.PointsElsewhere);
+        }
+        finally
+        {
+            Registry.CurrentUser.DeleteSubKeyTree(TestRoot, throwOnMissingSubKey: false);
+        }
+    }
+
+    [Fact]
+    public void Linux_erkennt_eine_Desktop_Datei_mit_fremdem_Exec()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "wl-autostart-" + Guid.NewGuid().ToString("N"), "autostart");
+        try
+        {
+            var own = new LinuxAutostart(dir, "/home/test/Apps/WhisperLoom.AppImage");
+            Assert.False(own.PointsElsewhere);
+            new LinuxAutostart(dir, "/home/test/old/WhisperLoom.AppImage").Enable();
+            Assert.True(own.PointsElsewhere);
+            own.Enable();
+            Assert.False(own.PointsElsewhere);
+        }
+        finally
+        {
+            if (Directory.Exists(Path.GetDirectoryName(dir)))
+            {
+                Directory.Delete(Path.GetDirectoryName(dir)!, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void Linux_schreibt_und_entfernt_die_Desktop_Datei()
     {
         var dir = Path.Combine(Path.GetTempPath(), "wl-autostart-" + Guid.NewGuid().ToString("N"), "autostart");

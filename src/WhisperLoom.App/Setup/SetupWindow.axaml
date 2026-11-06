@@ -255,6 +255,17 @@
                   <ds:SettingRow Path="stt.providerId">
                     <ComboBox x:Name="ProviderBox" Classes="row" ItemsSource="{Binding Settings.SttProviders}" SelectedItem="{Binding Settings.SttProvider}" />
                   </ds:SettingRow>
+                  <!-- TP-WSETUP: eigener Server braucht Adresse (Pflicht) und ggf. Modell; geprüft wird per „Zugang prüfen“ am Key. -->
+                  <StackPanel x:Name="ServerPanel" IsVisible="{Binding ShowServer}">
+                    <ds:SettingRow TitleKey="Setup_ServerUrl" DescriptionKey="Setup_ServerUrlDesc" Stacked="True" Error="{Binding ServerError}">
+                      <TextBox x:Name="ServerUrlBox" Classes="wide" Text="{Binding ServerUrl, UpdateSourceTrigger=LostFocus}"
+                               AutomationProperties.Name="{Binding [Setup_ServerUrl], Source={x:Static l:Loc.Instance}}" />
+                    </ds:SettingRow>
+                    <ds:SettingRow TitleKey="Setup_ServerModel" DescriptionKey="Setup_ServerModelDesc" Stacked="True">
+                      <TextBox x:Name="ServerModelBox" Classes="field" Text="{Binding ServerModel, UpdateSourceTrigger=LostFocus}"
+                               AutomationProperties.Name="{Binding [Setup_ServerModel], Source={x:Static l:Loc.Instance}}" />
+                    </ds:SettingRow>
+                  </StackPanel>
                   <ds:SettingRow Path="secrets.stt" Stacked="True">
                     <v:KeyFieldView x:Name="SttKeyField" DataContext="{Binding Settings.SttKey}" />
                   </ds:SettingRow>
