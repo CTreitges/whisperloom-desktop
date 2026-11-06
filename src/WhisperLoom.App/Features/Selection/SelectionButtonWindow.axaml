@@ -8,14 +8,15 @@
         FontSize="{DynamicResource Loom.Font.Body}"
         Background="Transparent" TransparencyLevelHint="Transparent">
   <!-- Schwebender Knopf neben einer Maus-Markierung (W2-SEL, markierung.html): klein, kurz sichtbar, fokusfrei, folgt dem
-       Systemthema. Markierungs-Symbol aus dem eigenen Set, daneben das Tastenkürzel als Tastenkappe (Befund 4). -->
-  <Border Classes="float" CornerRadius="16" Padding="0">
-    <Button x:Name="ActionButton" Focusable="False" CornerRadius="16" Padding="12,4" MinHeight="32"
+       Systemthema. Markierungs-Symbol aus dem eigenen Set, daneben das Tastenkürzel als Tastenkappe (Befund 4).
+       TP-WBUTTON: kompakter (Höhe 32 → 28, Symbol 20 → 16, Innenabstand 12,4 → 8,2); Bedienfläche bleibt ≥ 24 × 24 (WCAG 2.5.8). -->
+  <Border Classes="float" CornerRadius="14" Padding="0">
+    <Button x:Name="ActionButton" Focusable="False" CornerRadius="14" Padding="8,2" MinHeight="28" MinWidth="28"
             Background="Transparent" Foreground="{DynamicResource Loom.Text}" BorderThickness="0"
             ToolTip.Tip="{Binding [Selection_ButtonTip], Source={x:Static l:Loc.Instance}}"
             AutomationProperties.Name="{Binding [Selection_ButtonTip], Source={x:Static l:Loc.Instance}}">
       <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
-        <ds:LoomIcon Data="{DynamicResource Loom.Icon.Selection}" Width="20" Height="20" VerticalAlignment="Center" Foreground="{DynamicResource Loom.Accent}" />
+        <ds:LoomIcon Data="{DynamicResource Loom.Icon.Selection}" Width="16" Height="16" VerticalAlignment="Center" Foreground="{DynamicResource Loom.Accent}" />
         <TextBlock Text="{Binding [Selection_Button], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" />
         <Border x:Name="ShortcutCap" Classes="keycap" IsVisible="False">
           <TextBlock x:Name="ShortcutText" />
