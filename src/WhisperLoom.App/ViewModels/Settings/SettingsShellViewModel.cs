@@ -58,6 +58,26 @@ public sealed partial class SettingsShellViewModel : ObservableObject, IDisposab
 
     public bool IsSearching => SearchText.Trim().Length > 0;
 
+    /// <summary>
+    /// Rückmeldung nach dem Sofort-Speichern (TP-WSETTINGS): kurz „Gespeichert“, danach leer; ein Fehler bleibt stehen, bis
+    /// wieder gespeichert wurde. Leer = nichts zeigen (die Ansicht sagt den Text als Live-Region an, sobald er erscheint).
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSaved))]
+    private string _saveNotice = "";
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSaved))]
+    private bool _saveFailed;
+
+    /// <summary>„Gespeichert“ steht gerade da (Häkchen sichtbar).</summary>
+    public bool IsSaved => !SaveFailed && SaveNotice.Length > 0;
+
+    /// <summary>So lange steht „Gespeichert“ da (Tests kürzen es).</summary>
+    internal TimeSpan SavedVisibleFor { get; set; } = TimeSpan.FromSeconds(2.5);
+
+    private int _saveVersion;
+
     public ObservableCollection<SearchResult> Results { get; } = [];
 
     /// <summary>Statuszeile über den Treffern: Anzahl bzw. nächster Schritt, wenn nichts passt (B33).</summary>
@@ -99,8 +119,35 @@ public sealed partial class SettingsShellViewModel : ObservableObject, IDisposab
 
     private void OnImported() => Avalonia.Threading.Dispatcher.UIThread.Post(Reload);
 
+    /// <summary>Ergebnis eines Sofort-Speicherns aus der Arbeitskopie: „Gespeichert“ zeigen und später ausblenden bzw. den Fehler.</summary>
+    private void OnCommitted(bool saved)
+    {
+        if (!Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => OnCommitted(saved));
+            return;
+        }
+        var version = ++_saveVersion;
+        SaveFailed = !saved;
+        SaveNotice = saved ? Loc.Instance["Settings_Saved"] : Session.SaveStatus;
+        if (saved)
+        {
+            _ = HideSavedAsync(version);
+        }
+    }
+
+    private async Task HideSavedAsync(int version)
+    {
+        await Task.Delay(SavedVisibleFor);
+        if (version == _saveVersion)
+        {
+            SaveNotice = "";
+        }
+    }
+
     public void Dispose()
     {
+        Session.Committed -= OnCommitted;
         Session.Sync.Applied -= OnImported;
         if (Session.Company is { } company)
         {
@@ -132,6 +179,7 @@ public sealed partial class SettingsShellViewModel : ObservableObject, IDisposab
         if (Session is not null)
         {
             Session.Sync.Applied -= OnImported;
+            Session.Committed -= OnCommitted;
             if (Session.Company is { } previous)
             {
                 previous.Changed -= OnManagementChanged;
@@ -139,6 +187,7 @@ public sealed partial class SettingsShellViewModel : ObservableObject, IDisposab
         }
         session.AutoSave = true;
         session.Sync.Applied += OnImported;
+        session.Committed += OnCommitted;
         if (session.Company is { } company)
         {
             company.Changed += OnManagementChanged;

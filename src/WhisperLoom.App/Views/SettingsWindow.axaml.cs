@@ -17,7 +17,18 @@ namespace WhisperLoom.App.Views;
 /// </summary>
 public partial class SettingsWindow : Window
 {
-    public SettingsWindow() => InitializeComponent();
+    public SettingsWindow()
+    {
+        InitializeComponent();
+        Root.ColumnDefinitions[0].Width = new GridLength(SidebarWidth(TextScale.Current));
+    }
+
+    /// <summary>
+    /// Breite der Seitenleiste zur Textgröße (TP-WSETTINGS): 220 px bei 100 %, je weitere 100 % die Hälfte dazu (200 % → 330).
+    /// So passen die längsten Seitennamen („Verbindungen“, „Datenschutz“) als ganzes Wort, und der Inhalt behält genug Platz.
+    /// Gilt beim Öffnen; die Textgröße übernimmt die App ebenfalls beim Öffnen eines Fensters.
+    /// </summary>
+    internal static double SidebarWidth(double textScale) => Math.Round(220 * (1 + (Math.Max(textScale, 1.0) - 1) / 2));
 
     public SettingsWindow(SettingsViewModel session) : this(new SettingsShellViewModel(session))
     {

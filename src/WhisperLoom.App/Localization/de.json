@@ -1032,5 +1032,6 @@
   "Channel_DownloadCanceled": "Laden abgebrochen; die installierte Version bleibt.",
   "Hint_Close": "Hinweis schließen",
   "Sync_ExportFailed": "Export gescheitert: Die Datei ließ sich nicht schreiben. Einen anderen Ordner wählen.",
-  "History_EditAfterRun": "Bearbeiten geht, sobald die Neuverarbeitung fertig ist."
+  "History_EditAfterRun": "Bearbeiten geht, sobald die Neuverarbeitung fertig ist.",
+  "Settings.SaveFailed": "Nicht gespeichert: Die Einstellungsdatei ließ sich nicht schreiben. Die nächste Änderung versucht es erneut."
 }
