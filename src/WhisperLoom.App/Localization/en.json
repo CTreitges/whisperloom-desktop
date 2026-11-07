@@ -1043,5 +1043,6 @@
   "Setup_OwnServerAdd": "Add own server",
   "Setup_OwnServerNext": "Enter the address, then choose it as provider under Recognition or Text.",
   "Setup_OwnServerName": "Own server",
+  "Updates.Channel_test_Desc": "Test builds for trying things out, plus betas and stable versions",
   "Settings.SaveFailed": "Not saved: the settings file could not be written. The next change will try again."
 }

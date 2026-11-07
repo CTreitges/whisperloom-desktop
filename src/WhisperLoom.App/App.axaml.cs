@@ -225,6 +225,8 @@ public partial class App : Application
             preferences: () => UpdatePreferences.From(SettingsStore.Desktop(host.Controller.Settings)));
         // Auf dem Thread-Pool: die Feed-Abfrage soll den UI-Thread nie blockieren.
         _ = Task.Run(() => service.RunAsync(_updates.Token));
+        // TP-WUPDATE: Kanal oder Vorab-Schalter geändert → kurz danach eine Prüfung (entprellt, nie parallel).
+        UpdateCheckRequests.Handler = () => _ = Task.Run(service.RequestCheckAsync);
     }
 
     /// <summary>
