@@ -23,7 +23,16 @@ internal static class Program
         // Velopack zuerst: Installer- und Update-Hooks (--veloapp-*) erledigt es selbst und beendet den Prozess.
         // Kein Auto-Anwenden beim Start: ein Update wird nur nach Bestätigung bzw. per "update" installiert.
         // Doku: docs.velopack.io/getting-started/csharp, docs.velopack.io/integrating/hooks (abgerufen 2026-11-01).
-        VelopackApp.Build().SetAutoApplyOnStartup(false).Run();
+        // Deinstallation: Autostart-Eintrag entfernen, sonst startet die Anmeldung eine gelöschte Datei. FastCallback läuft
+        // nur unter Windows, danach beendet Velopack den Prozess (Limit 30 s).
+        // Doku: Velopack 1.2.161 XML-Doku VelopackApp.OnBeforeUninstallFastCallback (NuGet-Paket, abgerufen 2026-11-06;
+        // Context7 in dieser Session nicht verfügbar).
+        var velopack = VelopackApp.Build();
+        if (OperatingSystem.IsWindows())
+        {
+            velopack = velopack.OnBeforeUninstallFastCallback(_ => Setup.Autostart.RemoveOnUninstall(Setup.Autostart.ForCurrentOs()));
+        }
+        velopack.SetAutoApplyOnStartup(false).Run();
         UseUtf8WhenRedirected();
 
         CliRequest request;
@@ -80,6 +89,7 @@ internal static class Program
         }
 
         Startup = (request, instanceLock);
+        RepairAutostart(request.Options);
         return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args, Avalonia.Controls.ShutdownMode.OnExplicitShutdown);
     }
 
@@ -177,6 +187,20 @@ internal static class Program
     {
         output.WriteLine(CommandLine.Usage);
         return 0;
+    }
+
+    /// <summary>
+    /// Beim Start der ersten Instanz: zeigt der Autostart-Eintrag auf eine andere Datei (z. B. den Dev-Build vor der
+    /// Installation), auf diese installierte App umschreiben. Nie im Testbetrieb (Test-Audio, Ausgabedatei, Test-Präfix).
+    /// </summary>
+    private static void RepairAutostart(AppOptions options)
+    {
+        if (options.TestAudio is not null || options.OutputFile is not null || options.SecretPrefix != AppOptions.DefaultSecretPrefix)
+        {
+            return;
+        }
+        var status = Setup.Autostart.Repair(Setup.Autostart.ForCurrentOs(), new VelopackUpdateClient(feed: null, restartArgs: []).IsInstalled);
+        new Services.AppLog(options.DataDir).Event("autostart.repair", ("status", status));
     }
 
     private static int RunVersion()
