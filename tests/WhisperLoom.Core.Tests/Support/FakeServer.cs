@@ -87,6 +87,7 @@ public sealed class FakeServer : IAsyncDisposable
                 await stream.WriteAsync(Encoding.ASCII.GetBytes(head), _stop.Token);
                 await stream.WriteAsync(body, _stop.Token);
                 await stream.FlushAsync(_stop.Token);
+                await AwaitClientCloseAsync(stream);
             }
             catch (Exception) when (_stop.IsCancellationRequested)
             {
@@ -97,6 +98,31 @@ public sealed class FakeServer : IAsyncDisposable
             }
         }
     }
+
+    /// <summary>
+    /// Der Client schließt zuerst (er liest bis Content-Length und trennt bei <c>Connection: close</c>). Schlösse der Server
+    /// zuerst, bliebe TIME_WAIT auf (Server-Port, Client-Port): im vollen Testlauf vergibt Windows denselben Client-Port
+    /// wieder an denselben Server, und die nächste Verbindung scheitert oder hängt bis zum Connect-Limit (TP-WAUDIO,
+    /// <see cref="FakeServerTest"/>). Höchstens <see cref="CloseWaitMs"/> warten, dann trotzdem schließen.
+    /// </summary>
+    private async Task AwaitClientCloseAsync(NetworkStream stream)
+    {
+        using var limit = CancellationTokenSource.CreateLinkedTokenSource(_stop.Token);
+        limit.CancelAfter(CloseWaitMs);
+        var sink = new byte[256];
+        try
+        {
+            while (await stream.ReadAsync(sink, limit.Token) > 0)
+            {
+            }
+        }
+        catch (OperationCanceledException) when (!_stop.IsCancellationRequested)
+        {
+            // Client hält die Verbindung offen: nach der Frist schließt der Server.
+        }
+    }
+
+    private const int CloseWaitMs = 5_000;
 
     private async Task<FakeRequest?> ReadRequestAsync(NetworkStream stream)
     {

@@ -1,4 +1,5 @@
 using WhisperLoom.Core.Api;
+using WhisperLoom.Core.Audio;
 using WhisperLoom.Core.Contracts;
 using WhisperLoom.Core.Contracts.Settings;
 
@@ -33,7 +34,7 @@ public sealed class DictationPipelineOptions
 }
 
 /// <summary>
-/// Der ganze Weg eines Diktats (Port von <c>TranscriptionEngine</c> ohne Android-Context): Stille trimmen → Erkennung (mit
+/// Der ganze Weg eines Diktats (Port von <c>TranscriptionEngine</c> ohne Android-Context): Stille trimmen, lange Pausen schneiden (<see cref="PauseCut"/>) → Erkennung (mit
 /// Fallback) → Verbesserung (<see cref="RefinePlan"/>: online → Fallback-Zugang → lokal → Rohtext) → Regeln
 /// (<see cref="ITextPolisher"/>). Die Einstellungen und Keys gelten je Auftrag frisch.
 /// </summary>
@@ -60,11 +61,18 @@ public sealed class DictationPipeline(
         var keys = await SettingsAccess.KeysAsync(secrets, ct, s).ConfigureAwait(false);
         await RequireConfiguredAsync(s, keys, ct).ConfigureAwait(false);
         var backend = Backend(s, keys);
-        var result = await backend.TranscribeAsync(Trim(request.Audio), request.Language, ct).ConfigureAwait(false);
+        var duration = request.Audio.DurationMs;
+        var audio = Trim(request.Audio);
+        if (audio.IsEmpty && !request.Audio.IsEmpty)
+        {
+            // Nur lange Stille (PauseCut): nichts senden, Ergebnis wie „nichts erkannt“.
+            return new DictationResult("", EffectiveLanguage(request.Language, null), duration,
+                new RefinedText(request.Refinement, ""), backend.Label, false);
+        }
+        var result = await backend.TranscribeAsync(audio, request.Language, ct).ConfigureAwait(false);
         var sttNote = SttFallbackNote(backend);
         var usedFallback = backend is FallbackBackend { UsedFallback: true };
         var language = EffectiveLanguage(request.Language, result.DetectedLanguage);
-        var duration = request.Audio.DurationMs;
         if (string.IsNullOrWhiteSpace(result.Text))
         {
             return new DictationResult("", language, duration, new RefinedText(request.Refinement, "", Note: sttNote), backend.Label, usedFallback);
@@ -291,7 +299,8 @@ public sealed class DictationPipeline(
         }
     }
 
-    private AudioBuffer Trim(AudioBuffer audio) => _options.TrimSilence?.Invoke(audio) ?? audio;
+    /// <summary>Rand-Stille (Option) und danach immer Pausen ab <see cref="PauseCut.MinPauseMs"/>: gesendet und abgerechnet wird nur der Rest.</summary>
+    private AudioBuffer Trim(AudioBuffer audio) => PauseCut.Apply(_options.TrimSilence?.Invoke(audio) ?? audio);
 
     private bool Network(string baseUrl, bool proven) => _options.NetworkCheck?.Invoke(baseUrl, proven) ?? DefaultNetwork(baseUrl, proven);
 
