@@ -188,7 +188,7 @@ public sealed class WindowsInput : IDisposable
                     await Flow.OnCtrlRightClickAsync(at);
                     break;
                 case MouseAction.SelectionGesture:
-                    await Flow.OnSelectionGestureAsync(at);
+                    await Flow.OnSelectionGestureAsync(at, decision.TextCursor);
                     break;
                 case MouseAction.Dismiss:
                     Flow.CancelPicker();

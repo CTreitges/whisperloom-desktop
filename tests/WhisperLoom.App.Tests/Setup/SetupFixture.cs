@@ -5,14 +5,47 @@ using WhisperLoom.Core.Settings;
 
 namespace WhisperLoom.App.Tests.Setup;
 
-/// <summary>Autostart-Ersatz für UI-Tests, die nur den Schalter prüfen.</summary>
-internal sealed class FakeAutostart : IAutostart
+/// <summary>
+/// Autostart-Ersatz: <see cref="Target"/> ist die Datei, die der Eintrag startet (null = kein Eintrag). Nie ein echter
+/// Run-Wert. <see cref="FailWrites"/> lässt <see cref="Enable"/> und <see cref="Disable"/> scheitern.
+/// </summary>
+internal sealed class FakeAutostart(string self = FakeAutostart.Self) : IAutostart
 {
-    public bool IsEnabled { get; set; }
+    public const string Self = @"C:\Users\Test\AppData\Local\WhisperLoom\current\WhisperLoom.exe";
 
-    public void Enable() => IsEnabled = true;
+    public string? Target { get; set; }
 
-    public void Disable() => IsEnabled = false;
+    public bool FailWrites { get; set; }
+
+    /// <summary>Anzahl erfolgreicher <see cref="Enable"/>-Aufrufe.</summary>
+    public int Writes { get; private set; }
+
+    public bool IsEnabled
+    {
+        get => Target is not null;
+        set => Target = value ? self : null;
+    }
+
+    public bool PointsElsewhere => Target is not null && Target != self;
+
+    public void Enable()
+    {
+        if (FailWrites)
+        {
+            throw new IOException("Fake: nicht schreibbar");
+        }
+        Writes++;
+        Target = self;
+    }
+
+    public void Disable()
+    {
+        if (FailWrites)
+        {
+            throw new IOException("Fake: nicht entfernbar");
+        }
+        Target = null;
+    }
 }
 
 /// <summary>
@@ -22,7 +55,8 @@ internal sealed class FakeAutostart : IAutostart
 internal sealed class SetupFixture : IDisposable
 {
     public SetupFixture(bool windows = true, PolicySettings? policy = null, WhisperLoomSettings? settings = null,
-        Func<Task<string?>>? recordHotkey = null, IAutostart? autostart = null, bool autostartAvailable = true)
+        Func<Task<string?>>? recordHotkey = null, IAutostart? autostart = null, bool autostartAvailable = true,
+        Services.IAccessChecker? checker = null)
     {
         F = new ControllerFixture(settings);
         if (policy is not null)
@@ -31,7 +65,7 @@ internal sealed class SetupFixture : IDisposable
         }
         State = new SetupState(F.DataDir);
         Autostart = autostart ?? new FakeAutostart();
-        Settings = new SettingsViewModel(F.Controller, Secrets, new FakeAccessChecker(), ["Headset-Mikrofon", "USB-Mikrofon"], null, recordHotkey);
+        Settings = new SettingsViewModel(F.Controller, Secrets, checker ?? new FakeAccessChecker(), ["Headset-Mikrofon", "USB-Mikrofon"], null, recordHotkey);
         Mic = new MicLevelTest(Recorder, () => Settings.Microphone.Value);
         Vm = new SetupViewModel(Settings, State, autostartAvailable ? Autostart : null, Mic, recordHotkey, windows, "\"/opt/WhisperLoom/WhisperLoom\" toggle");
         Vm.CloseRequested += () => Closed++;

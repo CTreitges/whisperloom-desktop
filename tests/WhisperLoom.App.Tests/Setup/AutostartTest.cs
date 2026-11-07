@@ -1,6 +1,7 @@
 using Microsoft.Win32;
 using WhisperLoom.App.Platform.Linux;
 using WhisperLoom.App.Platform.Windows;
+using WhisperLoom.App.Setup;
 
 namespace WhisperLoom.App.Tests.Setup;
 
@@ -46,6 +47,61 @@ public sealed class AutostartTest
             Registry.CurrentUser.DeleteSubKeyTree(TestRoot, throwOnMissingSubKey: false);
         }
         Assert.Null(Registry.CurrentUser.OpenSubKey(TestRoot));
+    }
+
+    [Fact]
+    public void Windows_erkennt_einen_fremden_Pfad_im_Run_Eintrag()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Skip("nur Windows");
+            return;
+        }
+        var exe = @"C:\Users\Test User\AppData\Local\WhisperLoom\current\WhisperLoom.exe";
+        var autostart = new WindowsAutostart(TestKey, exe);
+        try
+        {
+            Assert.False(autostart.PointsElsewhere); // fehlt: nicht fremd
+            using (var key = Registry.CurrentUser.CreateSubKey(TestKey, writable: true))
+            {
+                key.SetValue(WindowsAutostart.ValueName, "\"C:\\dev\\whisperloom-desktop\\bin\\Debug\\WhisperLoom.exe\"");
+            }
+            Assert.True(autostart.IsEnabled);
+            Assert.True(autostart.PointsElsewhere);
+
+            autostart.Enable();
+            Assert.False(autostart.PointsElsewhere);
+            using (var key = Registry.CurrentUser.CreateSubKey(TestKey, writable: true))
+            {
+                key.SetValue(WindowsAutostart.ValueName, exe.ToUpperInvariant()); // ohne Anführungszeichen, andere Schreibweise
+            }
+            Assert.False(autostart.PointsElsewhere);
+        }
+        finally
+        {
+            Registry.CurrentUser.DeleteSubKeyTree(TestRoot, throwOnMissingSubKey: false);
+        }
+    }
+
+    [Fact]
+    public void Linux_vergleicht_den_Pfad_noch_nicht_und_repariert_darum_nichts()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "wl-autostart-" + Guid.NewGuid().ToString("N"), "autostart");
+        try
+        {
+            new LinuxAutostart(dir, "/home/test/old/WhisperLoom.AppImage").Enable();
+            IAutostart own = new LinuxAutostart(dir, "/home/test/Apps/WhisperLoom.AppImage");
+            Assert.True(own.IsEnabled);
+            Assert.False(own.PointsElsewhere); // Standard des Interfaces
+            Assert.Equal("unchanged", Autostart.Repair(own, installed: true));
+        }
+        finally
+        {
+            if (Directory.Exists(Path.GetDirectoryName(dir)))
+            {
+                Directory.Delete(Path.GetDirectoryName(dir)!, recursive: true);
+            }
+        }
     }
 
     [Fact]
