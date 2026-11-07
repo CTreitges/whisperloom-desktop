@@ -9,8 +9,23 @@ public enum MouseKind
     Wheel,
 }
 
+/// <summary>Mauszeiger beim Drücken: verrät, ob die Geste auf Text begann.</summary>
+public enum PressCursor
+{
+    /// <summary>Eigener Zeiger des Programms bzw. keine Auskunft.</summary>
+    Unknown,
+
+    /// <summary>System-Textzeiger (I-Beam): Druck auf Text.</summary>
+    Text,
+
+    /// <summary>Anderer System-Zeiger (Pfeil, Hand, Größe ändern …): Titelleiste, Datei, Scrollbalken – kein Text.</summary>
+    Other,
+}
+
 /// <summary>Ein Maus-Ereignis aus dem Hook (Bildschirm-Pixel). <paramref name="Own"/> = von uns selbst injiziert.</summary>
-public readonly record struct MouseInput(MouseKind Kind, int X, int Y, bool Ctrl, long TimeMs, bool Own = false);
+/// <param name="Cursor">Mauszeiger beim Ereignis (nur bei <see cref="MouseKind.LeftDown"/> erhoben).</param>
+public readonly record struct MouseInput(MouseKind Kind, int X, int Y, bool Ctrl, long TimeMs, bool Own = false,
+    PressCursor Cursor = PressCursor.Unknown);
 
 public enum MouseAction
 {
@@ -26,7 +41,8 @@ public enum MouseAction
     Dismiss,
 }
 
-public sealed record MouseDecision(bool Swallow, MouseAction Action = MouseAction.None, int X = 0, int Y = 0)
+/// <param name="TextCursor">Nur bei <see cref="MouseAction.SelectionGesture"/>: die Geste begann mit dem Textzeiger.</param>
+public sealed record MouseDecision(bool Swallow, MouseAction Action = MouseAction.None, int X = 0, int Y = 0, bool TextCursor = false)
 {
     public static readonly MouseDecision Pass = new(false);
 }
@@ -44,7 +60,8 @@ public readonly record struct ScreenRect(int Left, int Top, int Right, int Botto
 /// <list type="bullet">
 /// <item>Strg+Rechtsklick: Drücken und Loslassen werden geschluckt; ob es eine Markierung gibt, klärt der UI-Thread (UIA bzw.
 /// Strg+C) und spielt sonst den Rechtsklick nach – das normale Kontextmenü erscheint.</item>
-/// <item>Markier-Geste: Ziehen um mindestens <see cref="DragPixels"/> oder Doppelklick.</item>
+/// <item>Markier-Geste: Ziehen um mindestens <see cref="DragPixels"/> oder Doppelklick – nicht, wenn beim Drücken ein anderer
+/// System-Zeiger als der Textzeiger sichtbar war (<see cref="PressCursor.Other"/>, TP-WBUTTON).</item>
 /// <item>Sichtbarer Knopf bzw. Wähler (<see cref="Transient"/>): Klick daneben oder Mausrad schließt.</item>
 /// </list>
 /// </summary>
@@ -55,7 +72,7 @@ public sealed class MouseGestures
     public const int DoubleClickPixels = 4;
 
     private bool _rightSwallowed;
-    private (int X, int Y, long T)? _leftDown;
+    private (int X, int Y, long T, PressCursor Cursor)? _leftDown;
     private (int X, int Y, long T)? _lastClick;
 
     public bool CtrlRightClick { get; set; }
@@ -84,7 +101,7 @@ public sealed class MouseGestures
             case MouseKind.Wheel:
                 return Transient.Count > 0 ? new MouseDecision(false, MouseAction.Dismiss) : MouseDecision.Pass;
             case MouseKind.LeftDown:
-                _leftDown = (e.X, e.Y, e.TimeMs);
+                _leftDown = (e.X, e.Y, e.TimeMs, e.Cursor);
                 return Outside(e);
             case MouseKind.LeftUp:
                 return OnLeftUp(e);
@@ -105,7 +122,13 @@ public sealed class MouseGestures
         var doubleClick = !dragged && _lastClick is { } c && e.TimeMs - c.T <= DoubleClickMs
                           && Math.Abs(e.X - c.X) <= DoubleClickPixels && Math.Abs(e.Y - c.Y) <= DoubleClickPixels;
         _lastClick = dragged || doubleClick ? null : (e.X, e.Y, e.TimeMs);
-        return dragged || doubleClick ? new MouseDecision(false, MouseAction.SelectionGesture, e.X, e.Y) : MouseDecision.Pass;
+        // Mit Pfeil, Hand o. Ä. begonnen (Titelleiste, Datei, Scrollbalken): keine Markierung, auch wenn ein Textfeld mit alter
+        // Markierung den Fokus hat (TP-WBUTTON).
+        if (!(dragged || doubleClick) || d.Cursor == PressCursor.Other)
+        {
+            return MouseDecision.Pass;
+        }
+        return new MouseDecision(false, MouseAction.SelectionGesture, e.X, e.Y, TextCursor: d.Cursor == PressCursor.Text);
     }
 
     private MouseDecision Outside(MouseInput e) =>
