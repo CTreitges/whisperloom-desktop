@@ -6,7 +6,15 @@ namespace WhisperLoom.App.Setup;
 /// </summary>
 public interface IAutostart
 {
+    /// <summary>Reine Existenzprüfung: Eintrag vorhanden, egal welche Datei er startet.</summary>
     bool IsEnabled { get; }
+
+    /// <summary>
+    /// Eintrag vorhanden, startet aber eine andere Datei als diese App (z. B. einen alten Dev-Build nach der Installation).
+    /// Fehlt der Eintrag, ist das false. Standard false (kein Pfadvergleich): Linux vergleicht noch nicht, nur Windows
+    /// (Fund 2026-11-04 betraf den Run-Eintrag); so bleibt die Erweiterung additiv.
+    /// </summary>
+    bool PointsElsewhere => false;
 
     /// <summary>Schreibt den Eintrag (überschreibt einen alten, z. B. nach Umzug der App).</summary>
     /// <exception cref="IOException">Eintrag nicht schreibbar.</exception>
@@ -35,6 +43,46 @@ public static class Autostart
             return new Platform.Linux.LinuxAutostart(Platform.Linux.LinuxAutostart.DefaultDirectory(), exe);
         }
         return null;
+    }
+
+    /// <summary>
+    /// Beim App-Start: Ein vorhandener Eintrag, der eine andere Datei startet, wird auf diese App umgeschrieben; ein eigener
+    /// oder fehlender Eintrag bleibt, wie er ist (der Schalter bleibt Sache des Benutzers). Nur für eine installierte App
+    /// (<paramref name="installed"/>): sonst holte ein Dev-Build den Eintrag der Installation zu sich.
+    /// </summary>
+    /// <returns>"repaired", "unchanged" oder "failed" (Eintrag nicht schreibbar); nur Metadaten fürs Log.</returns>
+    public static string Repair(IAutostart? autostart, bool installed)
+    {
+        if (autostart is null || !installed)
+        {
+            return "unchanged";
+        }
+        try
+        {
+            if (!autostart.PointsElsewhere)
+            {
+                return "unchanged";
+            }
+            autostart.Enable();
+            return "repaired";
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            return "failed";
+        }
+    }
+
+    /// <summary>Deinstallation (Velopack-Hook): Eintrag entfernen; ein Fehler darf die Deinstallation nicht aufhalten.</summary>
+    public static void RemoveOnUninstall(IAutostart? autostart)
+    {
+        try
+        {
+            autostart?.Disable();
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            // Der Eintrag bleibt dann stehen; die Deinstallation läuft weiter.
+        }
     }
 
     /// <summary>

@@ -77,6 +77,9 @@ public sealed partial class CustomProviderRow : ObservableObject
     /// <summary>Rückfrage „Löschen?“ sichtbar (löscht auch den Key, HIG: destruktiv nur nach Bestätigung).</summary>
     [ObservableProperty] private bool _deletePending;
 
+    /// <summary>Eintrag aufgeklappt; ein neu angelegter steht gleich offen (TP-WSETUP).</summary>
+    [ObservableProperty] private bool _isExpanded;
+
     public string Name
     {
         get => Entry.Name;
@@ -214,12 +217,21 @@ public sealed partial class ConnectionsPageViewModel : SettingsPageViewModel
     /// gelöscht — sonst erbte ihn der neue Eintrag und schickte ihn an seine Adresse (Prüfrunde 1 K-1).
     /// </summary>
     [RelayCommand]
-    private async Task Add()
+    private Task Add() => AddEntryAsync(n => Loc.Instance.Format("Provider_NewName", n), keyOptional: false);
+
+    /// <summary>
+    /// TP-WSETUP: „Eigenen Server hinzufügen“ oben auf der Seite – ein aufgeklappter Eintrag „Eigener Server“, OpenAI-kompatibel,
+    /// Key optional (faster-whisper-server, speaches, LocalAI …); danach Adresse eintragen und unter Erkennung wählen.
+    /// </summary>
+    [RelayCommand]
+    private Task AddServer() => AddEntryAsync(n => n == 1 ? Loc.Instance["Setup_OwnServerName"] : $"{Loc.Instance["Setup_OwnServerName"]} {n}", keyOptional: true);
+
+    private async Task AddEntryAsync(Func<int, string> name, bool keyOptional)
     {
         var ids = Rows.Select(r => r.Entry.Id).ToHashSet(StringComparer.Ordinal);
         var n = 1;
         while (ids.Contains($"anbieter-{n}")) n++;
-        var entry = new CustomProvider { Id = $"anbieter-{n}", Name = Loc.Instance.Format("Provider_NewName", n), Protocol = "openai" };
+        var entry = new CustomProvider { Id = $"anbieter-{n}", Name = name(n), Protocol = "openai", KeyOptional = keyOptional };
         try
         {
             await Session.SecretStore.DeleteAsync(SecretNames.ForProvider(ProvidersSettings.CustomPrefix + entry.Id), CancellationToken.None);
@@ -231,6 +243,7 @@ public sealed partial class ConnectionsPageViewModel : SettingsPageViewModel
         }
         Error = "";
         var row = Row(entry);
+        row.IsExpanded = true; // neu angelegt: Felder gleich offen
         Rows.Add(row);
         OnPropertyChanged(nameof(IsEmpty));
         await row.Key.LoadAsync();
