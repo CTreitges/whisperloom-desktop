@@ -15,7 +15,8 @@ public enum UpdateOutcome
 }
 
 /// <summary>
-/// Auto-Update der laufenden App: prüft beim Start und danach täglich, installiert erst nach Bestätigung. Nur höhere
+/// Auto-Update der laufenden App: prüft beim Start, danach täglich und kurz nach einer Änderung von Kanal oder
+/// Vorab-Schalter (<see cref="RequestCheckAsync"/>), installiert erst nach Bestätigung. Nur höhere
 /// Versionen; Downgrades und Kanalwechsel gehen ausschließlich über die Versionsliste (mit Rückfrage).
 /// <c>policy.updatesEnabled=false</c> (IT-Verteilung) schaltet jede Prüfung ab; die Richtlinie wird je Runde neu
 /// gelesen, ein späteres <c>provision</c> wirkt also ohne Neustart.
@@ -33,15 +34,76 @@ public sealed class UpdateService(
 {
     public static readonly TimeSpan Interval = TimeSpan.FromDays(1);
 
+    /// <summary>Wartezeit nach einer Änderung von Kanal oder Vorab-Schalter, bis die Sofortprüfung startet (Entprellung).</summary>
+    public static readonly TimeSpan RequestDelay = TimeSpan.FromSeconds(2);
+
     private readonly Func<TimeSpan, CancellationToken, Task> _delay = delay ?? Task.Delay;
+
+    /// <summary>Eine Runde zur Zeit: tägliche Prüfung und Sofortprüfung laufen nie parallel (zwei Nachfragen).</summary>
+    private readonly SemaphoreSlim _round = new(1, 1);
+
+    private CancellationToken _lifetime;
+    private int _requests;
 
     /// <summary>Prüft sofort und dann alle <see cref="Interval"/>, bis <paramref name="ct"/> abbricht.</summary>
     public async Task RunAsync(CancellationToken ct)
     {
+        _lifetime = ct;
         while (true)
         {
-            await CheckOnceAsync(ct);
+            await GuardedCheckAsync(ct);
             await _delay(Interval, ct);
+        }
+    }
+
+    /// <summary>
+    /// Sofortprüfung nach geändertem Kanal oder Vorab-Schalter (TP-WUPDATE): wartet <see cref="RequestDelay"/>; kommt in
+    /// der Zeit eine weitere Anfrage, gilt nur die letzte (schnelles Umschalten = eine Prüfung). Läuft gerade eine Runde,
+    /// folgt die Prüfung danach. Bei <c>updatesEnabled=false</c> geschieht nichts. Die Runde fragt wie immer vor der
+    /// Installation nach. Fehler und Abbruch enden still; der Task dient Tests.
+    /// </summary>
+    public async Task RequestCheckAsync()
+    {
+        if (policy().UpdatesEnabled == false)
+        {
+            return;
+        }
+        var mine = Interlocked.Increment(ref _requests);
+        var ct = _lifetime;
+        try
+        {
+            await _delay(RequestDelay, ct);
+            await _round.WaitAsync(ct);
+            try
+            {
+                // In der Wartezeit (auch auf eine laufende Runde) neu angefragt: nur die neueste Anfrage prüft.
+                if (Volatile.Read(ref _requests) == mine)
+                {
+                    log.Event("update.request", ("reason", "settings"));
+                    await CheckOnceAsync(ct);
+                }
+            }
+            finally
+            {
+                _round.Release();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // App beendet sich; keine Prüfung mehr.
+        }
+    }
+
+    private async Task GuardedCheckAsync(CancellationToken ct)
+    {
+        await _round.WaitAsync(ct);
+        try
+        {
+            await CheckOnceAsync(ct);
+        }
+        finally
+        {
+            _round.Release();
         }
     }
 

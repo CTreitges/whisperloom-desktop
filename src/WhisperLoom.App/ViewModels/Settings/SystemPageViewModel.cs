@@ -34,6 +34,7 @@ public sealed partial class SystemPageViewModel(SettingsViewModel session) : Set
             OnPropertyChanged();
             OnPropertyChanged(nameof(IsPrereleaseChannel));
             Session.Touch();
+            RequestUpdateCheck();
         }
     }
 
@@ -52,6 +53,20 @@ public sealed partial class SystemPageViewModel(SettingsViewModel session) : Set
             Session.Desktop.UpdatePrereleaseAuto = value;
             OnPropertyChanged();
             Session.Touch();
+            RequestUpdateCheck();
+        }
+    }
+
+    /// <summary>
+    /// TP-WUPDATE: geänderter Kanal oder Schalter wirkt sofort, nicht erst nach Neustart oder 24 h. Erst nach dem Speichern
+    /// melden, damit die Prüfung den neuen Stand liest; der Dienst entprellt und prüft nie parallel. Im Assistenten (ohne
+    /// Sofort-Speichern) nicht.
+    /// </summary>
+    private void RequestUpdateCheck()
+    {
+        if (Session.AutoSave)
+        {
+            _ = Session.Pending.ContinueWith(_ => UpdateCheckRequests.Request(), TaskScheduler.Default);
         }
     }
 
@@ -72,5 +87,9 @@ public sealed partial class SystemPageViewModel(SettingsViewModel session) : Set
     }
 
     private static IReadOnlyList<Choice> BuildChannels() =>
-        [.. Channels.All.Select(c => new Choice(c.Key(), Loc.Instance["Channel_" + c.Key()], Loc.Instance["Channel_" + c.Key() + "_Desc"]))];
+        [.. Channels.All.Select(c => new Choice(c.Key(), Loc.Instance["Channel_" + c.Key()], Loc.Instance[DescriptionKey(c)]))];
+
+    /// <summary>Test schließt Betas ein (TP-WUPDATE); der Text sagt das.</summary>
+    private static string DescriptionKey(ChannelKind channel) =>
+        channel == ChannelKind.Test ? "Updates.Channel_test_Desc" : "Channel_" + channel.Key() + "_Desc";
 }

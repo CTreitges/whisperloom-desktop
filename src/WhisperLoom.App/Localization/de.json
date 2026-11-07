@@ -1042,5 +1042,6 @@
   "Setup_OwnServerIntro": "Eigener Whisper- oder OpenAI-kompatibler Server (faster-whisper-server, speaches, LocalAI, LM Studio …), im eigenen Netz oder im Internet. Key optional.",
   "Setup_OwnServerAdd": "Eigenen Server hinzufügen",
   "Setup_OwnServerNext": "Adresse eintragen, dann unter Erkennung bzw. Text als Anbieter wählen.",
-  "Setup_OwnServerName": "Eigener Server"
+  "Setup_OwnServerName": "Eigener Server",
+  "Updates.Channel_test_Desc": "Test-Builds zum Ausprobieren, dazu Betas und stabile Versionen"
 }

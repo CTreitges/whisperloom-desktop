@@ -50,7 +50,13 @@ public sealed class UpdateChannelTest : IDisposable
         Assert.Equal([UpdateChannel.Stable], UpdateChannels.AutoChannels(UpdateChannel.Test, prereleaseAuto: false));
         Assert.Equal([UpdateChannel.Stable], UpdateChannels.AutoChannels(UpdateChannel.Stable, prereleaseAuto: true));
         Assert.Equal([UpdateChannel.Stable, UpdateChannel.Beta], UpdateChannels.AutoChannels(UpdateChannel.Beta, prereleaseAuto: true));
-        Assert.Equal([UpdateChannel.Stable, UpdateChannel.Test], UpdateChannels.AutoChannels(UpdateChannel.Test, prereleaseAuto: true));
+    }
+
+    [Fact]
+    public void Kanal_Test_schliesst_Beta_ein()
+    {
+        // TP-WUPDATE: Test ⊇ Beta ⊇ Stabil (Entscheidung 2026-11-06); vorher fehlte Beta, 1.2.0-beta.1 kam nicht an.
+        Assert.Equal([UpdateChannel.Stable, UpdateChannel.Beta, UpdateChannel.Test], UpdateChannels.AutoChannels(UpdateChannel.Test, prereleaseAuto: true));
     }
 
     [Theory]
@@ -162,7 +168,7 @@ public sealed class UpdateChannelTest : IDisposable
         var code = await UpdateCommand.RunAsync(client, PolicySettings.None, new AppLog(_dir), output, error, CancellationToken.None,
             new UpdatePreferences(UpdateChannel.Test, false));
         Assert.Equal(0, code);
-        Assert.Equal([FakeUpdateClient.Stable, FakeUpdateClient.Test], client.Checked);
+        Assert.Equal([FakeUpdateClient.Stable, FakeUpdateClient.Beta, FakeUpdateClient.Test], client.Checked); // Test ⊇ Beta (TP-WUPDATE)
         Assert.Contains("1.1.0-test.7.feat-x", output.ToString());
     }
 
