@@ -14,6 +14,20 @@
   -->
   <ds:SettingsPage TitleKey="Page_connections" IntroKey="PageIntro_connections">
     <StackPanel Spacing="{DynamicResource Loom.Space.5}">
+      <!-- TP-WSETUP: der eigene Server ganz oben und unter seinem Namen, statt nur als „Eigene Anbieter“ weiter unten. -->
+      <ds:SettingsGroup x:Name="OwnServerGroup" TitleKey="Setup_OwnServerTitle" IntroKey="Setup_OwnServerIntro">
+        <StackPanel Margin="16,4,16,12" Spacing="{DynamicResource Loom.Space.2}">
+          <Button x:Name="AddOwnServerButton" Classes="accent" HorizontalAlignment="Left" Command="{Binding AddServerCommand}"
+                  AutomationProperties.Name="{Binding [Setup_OwnServerAdd], Source={x:Static l:Loc.Instance}}">
+            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Loom.Space.2}">
+              <ds:LoomIcon Data="{DynamicResource Loom.Icon.Add}" Width="16" Height="16" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding [Setup_OwnServerAdd], Source={x:Static l:Loc.Instance}}" />
+            </StackPanel>
+          </Button>
+          <TextBlock Text="{Binding [Setup_OwnServerNext], Source={x:Static l:Loc.Instance}}" Classes="caption" TextWrapping="Wrap" />
+        </StackPanel>
+      </ds:SettingsGroup>
+
       <ds:SettingsGroup TitleKey="G_CustomProviders" IntroKey="G_CustomProviders_Intro">
         <StackPanel>
           <ds:SettingRow Path="providers.custom" Stacked="True" Bare="True">
@@ -28,7 +42,7 @@
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:CustomProviderRow">
-                    <Expander Classes="item">
+                    <Expander Classes="item" IsExpanded="{Binding IsExpanded}">
                       <Expander.Header>
                         <StackPanel Spacing="2">
                           <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap" />
