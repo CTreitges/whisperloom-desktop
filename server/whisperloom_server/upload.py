@@ -23,6 +23,13 @@ MAX_TEILE = len(EINZELFELDER) + sum(LISTENFELDER.values())
 MAX_BEGRIFF_ZEICHEN = 49
 MAX_BEGRIFF_WOERTER = 5
 _SPRACHE = re.compile(r"[a-z]{2,3}")
+# TP-WPROXY (OWASP A03): Einzelfeld `language` als ISO 639-1/-3 mit optionaler Region (pt-BR) oder „auto“.
+_EINZELSPRACHE = re.compile(r"auto|[a-z]{2,3}(-[A-Za-z]{2})?")
+# temperature: Dezimalzahl ohne Vorzeichen und Exponent, Bereich 0–1 laut OpenAI-API (CreateTranscriptionRequest:
+# „The sampling temperature, between 0 and 1.“; https://github.com/openai/openai-openapi, manual_spec/openapi.yaml,
+# abgerufen 2026-11-06). Annahme: Die übrigen OpenAI-kompatiblen STT-Anbieter erlauben mindestens diesen Bereich.
+_TEMPERATUR = re.compile(r"\d{1,2}(\.\d{1,6})?")
+MAX_TEMPERATUR = 1.0
 _BEGRIFF_VERBOTEN = re.compile(r"[<>,\r\n]")  # OpenAI lehnt <, > und Umbrüche ab; Komma trennt Begriffe
 _GRENZE = re.compile(r"boundary=\"?([0-9A-Za-z'()+_,./:=?-]{1,70})\"?", re.IGNORECASE)
 _WAV_KOPF = 44
@@ -44,10 +51,19 @@ def _listenwert_ok(name: str, wert: str, bisher: list[str]) -> bool:
             and not _BEGRIFF_VERBOTEN.search(wert))
 
 
+def _einzelwert_ok(name: str, wert: str) -> bool:
+    if name == "language":
+        return _EINZELSPRACHE.fullmatch(wert) is not None
+    if name == "temperature":
+        return _TEMPERATUR.fullmatch(wert) is not None and float(wert) <= MAX_TEMPERATUR
+    return True
+
+
 def multipart_lesen(typ: str, body: bytes) -> tuple[dict[str, str | list[str]], bytes]:
     """→ (Textfelder, Datei). Nur STT_FELDER: Einzelfelder höchstens einmal, Listenfelder (LISTENFELDER) als Liste mit
-    höchstens der erlaubten Anzahl verschiedener, gültiger Werte; `language` und `languages[]` nicht zugleich; genau eine
-    nicht leere Datei `file`. Sonst ValueError (bzw. UnicodeError bei Text, der kein UTF-8 ist)."""
+    höchstens der erlaubten Anzahl verschiedener, gültiger Werte; `language` und `temperature`
+    im erlaubten Format (_einzelwert_ok); `language` und `languages[]` nicht zugleich; genau eine nicht leere Datei
+    `file`. Sonst ValueError (bzw. UnicodeError bei Text, der kein UTF-8 ist)."""
     treffer = _GRENZE.search(typ) if typ.lower().startswith("multipart/form-data") else None
     if treffer is None:
         raise ValueError("typ")
@@ -78,7 +94,10 @@ def multipart_lesen(typ: str, body: bytes) -> tuple[dict[str, str | list[str]], 
                 raise ValueError("liste")
             liste.append(wert)
         else:
-            felder[name] = inhalt.decode("utf-8")
+            wert = inhalt.decode("utf-8")
+            if not _einzelwert_ok(name, wert):
+                raise ValueError("wert")  # ohne den Wert: er landet weder in der Meldung noch im Log
+            felder[name] = wert
     if not datei:
         raise ValueError("datei")
     if "language" in felder and "languages[]" in felder:
