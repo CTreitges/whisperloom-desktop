@@ -1043,5 +1043,6 @@
   "Setup_OwnServerAdd": "Eigenen Server hinzufügen",
   "Setup_OwnServerNext": "Adresse eintragen, dann unter Erkennung bzw. Text als Anbieter wählen.",
   "Setup_OwnServerName": "Eigener Server",
-  "Updates.Channel_test_Desc": "Test-Builds zum Ausprobieren, dazu Betas und stabile Versionen"
+  "Updates.Channel_test_Desc": "Test-Builds zum Ausprobieren, dazu Betas und stabile Versionen",
+  "Settings.SaveFailed": "Nicht gespeichert: Die Einstellungsdatei ließ sich nicht schreiben. Die nächste Änderung versucht es erneut."
 }

@@ -58,6 +58,26 @@ public sealed partial class SettingsShellViewModel : ObservableObject, IDisposab
 
     public bool IsSearching => SearchText.Trim().Length > 0;
 
+    /// <summary>
+    /// Rückmeldung nach dem Sofort-Speichern (TP-WSETTINGS): kurz „Gespeichert“, danach leer; ein Fehler bleibt stehen, bis
+    /// wieder gespeichert wurde. Leer = nichts zeigen (die Ansicht sagt den Text als Live-Region an, sobald er erscheint).
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSaved))]
+    private string _saveNotice = "";
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSaved))]
+    private bool _saveFailed;
+
+    /// <summary>„Gespeichert“ steht gerade da (Häkchen sichtbar).</summary>
+    public bool IsSaved => !SaveFailed && SaveNotice.Length > 0;
+
+    /// <summary>So lange steht „Gespeichert“ da (Tests kürzen es).</summary>
+    internal TimeSpan SavedVisibleFor { get; set; } = TimeSpan.FromSeconds(2.5);
+
+    private int _saveVersion;
+
     public ObservableCollection<SearchResult> Results { get; } = [];
 
     /// <summary>Statuszeile über den Treffern: Anzahl bzw. nächster Schritt, wenn nichts passt (B33).</summary>
@@ -99,8 +119,49 @@ public sealed partial class SettingsShellViewModel : ObservableObject, IDisposab
 
     private void OnImported() => Avalonia.Threading.Dispatcher.UIThread.Post(Reload);
 
+    /// <summary>
+    /// Jedes Sofort-Speichern setzt <see cref="SettingsViewModel.SaveStatus"/>: „Gespeichert“ zeigen und später ausblenden, sonst
+    /// den Fehler. Danach leert die Hülle den Status wieder, damit das nächste „Gespeichert“ erneut gemeldet wird (gleicher Wert
+    /// löst sonst kein PropertyChanged aus).
+    /// </summary>
+    private void OnSessionChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(SettingsViewModel.SaveStatus) || sender is not SettingsViewModel session || session.SaveStatus.Length == 0)
+        {
+            return;
+        }
+        var status = session.SaveStatus;
+        session.SaveStatus = "";
+        var version = ++_saveVersion;
+        var saved = status == Loc.Instance["Settings_Saved"];
+        SaveFailed = !saved;
+        SaveNotice = saved ? status : FailureText(session, status);
+        if (saved)
+        {
+            _ = HideSavedAsync(version);
+        }
+    }
+
+    /// <summary>
+    /// Die Arbeitskopie meldet bei jedem Schreibfehler „Gespeichert, aber der Verlauf ließ sich nicht löschen“. Das stimmt nur, wenn
+    /// der Verlauf tatsächlich ausgeschaltet wurde (dann gilt der neue Stand). Ist er beim aktuellen Stand der App noch an, wurde
+    /// gar nichts gespeichert, und die Hülle sagt das (TP-WSETTINGS).
+    /// </summary>
+    private static string FailureText(SettingsViewModel session, string status) =>
+        status == Loc.Instance["Settings_HistoryClearError"] && session.Current.History.Enabled ? Loc.Instance["Settings.SaveFailed"] : status;
+
+    private async Task HideSavedAsync(int version)
+    {
+        await Task.Delay(SavedVisibleFor);
+        if (version == _saveVersion)
+        {
+            SaveNotice = "";
+        }
+    }
+
     public void Dispose()
     {
+        Session.PropertyChanged -= OnSessionChanged;
         Session.Sync.Applied -= OnImported;
         if (Session.Company is { } company)
         {
@@ -132,6 +193,7 @@ public sealed partial class SettingsShellViewModel : ObservableObject, IDisposab
         if (Session is not null)
         {
             Session.Sync.Applied -= OnImported;
+            Session.PropertyChanged -= OnSessionChanged;
             if (Session.Company is { } previous)
             {
                 previous.Changed -= OnManagementChanged;
@@ -139,6 +201,7 @@ public sealed partial class SettingsShellViewModel : ObservableObject, IDisposab
         }
         session.AutoSave = true;
         session.Sync.Applied += OnImported;
+        session.PropertyChanged += OnSessionChanged;
         if (session.Company is { } company)
         {
             company.Changed += OnManagementChanged;

@@ -26,9 +26,20 @@
     <DataTemplate DataType="vm:CompanyPageViewModel"><vs:CompanyPage /></DataTemplate>
   </Window.DataTemplates>
 
-  <Grid ColumnDefinitions="220,*" ds:Managed.Context="{Binding Managed}">
+  <!-- TP-WSETTINGS: Breite der Seitenleiste wächst mit der Textgröße (Code-Behind, SidebarWidth), damit Seitennamen nur an Wortgrenzen umbrechen. -->
+  <Grid x:Name="Root" ColumnDefinitions="220,*" ds:Managed.Context="{Binding Managed}">
     <Border Grid.Column="0" Background="{DynamicResource Loom.Sidebar}" BorderBrush="{DynamicResource Loom.CardEdge}" BorderThickness="0,0,1,0">
       <DockPanel>
+        <!-- TP-WSETTINGS: Rückmeldung nach dem Sofort-Speichern – kurz „Gespeichert“, ein Fehler bleibt stehen; Live-Region für Screenreader. -->
+        <Grid x:Name="SaveNoticeBar" DockPanel.Dock="Bottom" Margin="12,8,12,12" MinHeight="20" ColumnDefinitions="Auto,*"
+              ColumnSpacing="{DynamicResource Loom.Space.2}">
+          <ds:LoomIcon x:Name="SavedIcon" Data="{DynamicResource Loom.Icon.Check}" Width="16" Height="16" VerticalAlignment="Top"
+                       Foreground="{DynamicResource Loom.TextSecondary}" IsVisible="{Binding IsSaved}" />
+          <ds:LoomIcon x:Name="SaveErrorIcon" Data="{DynamicResource Loom.Icon.Error}" Width="16" Height="16" VerticalAlignment="Top"
+                       Foreground="{DynamicResource Loom.Error}" IsVisible="{Binding SaveFailed}" />
+          <TextBlock x:Name="SaveNoticeText" Grid.Column="1" Text="{Binding SaveNotice}" Classes="caption" Classes.error="{Binding SaveFailed}"
+                     TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+        </Grid>
         <StackPanel DockPanel.Dock="Top" Margin="12,16,12,12" Spacing="{DynamicResource Loom.Space.1}">
           <TextBlock x:Name="SearchLabel" Text="{Binding [Search_Name], Source={x:Static l:Loc.Instance}}" FontWeight="SemiBold"
                      Foreground="{DynamicResource Loom.Text}" TextWrapping="Wrap" />
