@@ -114,7 +114,8 @@ public sealed partial class InputFlow
     }
 
     /// <summary>Linke Maustaste nach Ziehen bzw. Doppelklick losgelassen: schwebenden Knopf zeigen, wenn wohl Text markiert ist.</summary>
-    public async Task OnSelectionGestureAsync(PixelPoint at)
+    /// <param name="textCursor">Die Geste begann mit dem Textzeiger (I-Beam); zählt nur, wenn UI Automation nichts sagt.</param>
+    public async Task OnSelectionGestureAsync(PixelPoint at, bool textCursor = false)
     {
         if (Selection is not { } s || !_controller.Settings.Selection.FloatingButton || _busy || _mode != Mode.None
             || _controller.State != DictationState.Idle)
@@ -128,7 +129,7 @@ public sealed partial class InputFlow
         }
         // Erst kurz warten: manche Programme setzen die Markierung erst nach dem Loslassen.
         await Task.Delay(120);
-        if (_foreground() != target || _mode != Mode.None || !await s.Reader.MaySelectAsync(CancellationToken.None))
+        if (_foreground() != target || _mode != Mode.None || !await s.Reader.MaySelectAsync(textCursor, CancellationToken.None))
         {
             return;
         }

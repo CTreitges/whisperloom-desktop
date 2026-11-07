@@ -32,6 +32,24 @@ public sealed class WindowsAutostart(string keyPath, string exePath) : IAutostar
         }
     }
 
+    /// <summary>
+    /// Wert vorhanden, startet aber eine andere Datei. Verglichen wird der Pfad ohne Anführungszeichen, ohne Groß-/Kleinschreibung
+    /// (Windows-Pfade); ein leerer oder nicht als Text gespeicherter Wert gilt ebenfalls als fremd.
+    /// </summary>
+    public bool PointsElsewhere
+    {
+        get
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(_keyPath);
+            var value = key?.GetValue(ValueName, null, RegistryValueOptions.DoNotExpandEnvironmentNames);
+            if (value is null)
+            {
+                return false;
+            }
+            return value is not string command || !string.Equals(command.Trim().Trim('"'), _exePath, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
     public void Enable()
     {
         try

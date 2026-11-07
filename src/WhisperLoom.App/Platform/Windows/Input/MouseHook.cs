@@ -113,7 +113,9 @@ public sealed class MouseHook(MouseGestures gestures, Action<MouseDecision> onAc
             return CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
         }
         var data = Marshal.PtrToStructure<MsLlHookStruct>(lParam);
-        var input = new MouseInput(kind, data.X, data.Y, IsKeyDown(Hotkey.VkControl), data.Time, data.ExtraInfo == InjectionMarker);
+        // Zeiger nur beim Linksdruck erheben: ob die Geste auf Text beginnt (TP-WBUTTON).
+        var cursor = kind == MouseKind.LeftDown ? PressCursorProbe.Current() : PressCursor.Unknown;
+        var input = new MouseInput(kind, data.X, data.Y, IsKeyDown(Hotkey.VkControl), data.Time, data.ExtraInfo == InjectionMarker, cursor);
         MouseDecision decision;
         lock (_gate)
         {

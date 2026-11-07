@@ -88,11 +88,13 @@ public sealed partial class SetupViewModel
     {
         settings.Local.PropertyChanged += OnLocalChanged;
         settings.PropertyChanged += OnSettingsChanged;
+        settings.Errors.PropertyChanged += OnErrorsChanged;
     }
 
     private void Detach(SettingsViewModel settings)
     {
         settings.Local.PropertyChanged -= OnLocalChanged;
         settings.PropertyChanged -= OnSettingsChanged;
+        settings.Errors.PropertyChanged -= OnErrorsChanged;
     }
 }

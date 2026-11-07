@@ -373,15 +373,42 @@ public sealed class SelectionFlowTest : IDisposable
     }
 
     [AvaloniaFact]
+    public async Task Knopf_nicht_nach_Geste_ohne_echte_Markierung()
+    {
+        // TP-WBUTTON: Fehlauslöser aus dem Alltag – Fenster ziehen bzw. Doppelklick im Explorer (keine UIA-Auskunft), Klick in
+        // ein Textfeld ohne Markierung, Markierung nur aus Leerzeichen.
+        _uia.Next = null;
+        await _flow.OnSelectionGestureAsync(new PixelPoint(1, 1));
+        Assert.Null(_picker.ButtonAt);
+
+        _uia.Next = new UiaSelection(false, "");
+        await _flow.OnSelectionGestureAsync(new PixelPoint(1, 1));
+        Assert.Null(_picker.ButtonAt);
+
+        _uia.Next = new UiaSelection(true, "");
+        await _flow.OnSelectionGestureAsync(new PixelPoint(1, 1), textCursor: true);
+        Assert.Null(_picker.ButtonAt);
+
+        _uia.Next = new UiaSelection(true, "  \n ");
+        await _flow.OnSelectionGestureAsync(new PixelPoint(1, 1), textCursor: true);
+        Assert.Null(_picker.ButtonAt);
+        Assert.DoesNotContain("ctrl-c", _rig.Steps);
+
+        _uia.Next = new UiaSelection(true, "Wort"); // echte Markierung
+        await _flow.OnSelectionGestureAsync(new PixelPoint(1, 1), textCursor: true);
+        Assert.NotNull(_picker.ButtonAt);
+    }
+
+    [AvaloniaFact]
     public async Task Knopf_verschwindet_bei_Taste_und_nach_Ablauf()
     {
-        _uia.Next = new UiaSelection(false, ""); // keine Auskunft: Knopf erscheint, Klick erfasst per Strg+C
-        await _flow.OnSelectionGestureAsync(new PixelPoint(5, 5));
+        _uia.Next = new UiaSelection(false, ""); // keine Auskunft, Geste auf Text: Knopf erscheint, Klick erfasst per Strg+C
+        await _flow.OnSelectionGestureAsync(new PixelPoint(5, 5), textCursor: true);
         Assert.NotNull(_picker.ButtonAt);
         await _flow.HandleAsync(HotkeyAction.Dismiss);
         Assert.Null(_picker.ButtonAt);
 
-        await _flow.OnSelectionGestureAsync(new PixelPoint(5, 5));
+        await _flow.OnSelectionGestureAsync(new PixelPoint(5, 5), textCursor: true);
         _f.Now += InputFlow.ButtonDuration + TimeSpan.FromSeconds(1);
         _flow.Tick();
         Assert.Null(_picker.ButtonAt);

@@ -243,7 +243,14 @@ public sealed partial class SetupViewModel : ObservableObject
     }
 
     [RelayCommand(CanExecute = nameof(CanNext))]
-    public void Next() => Go(Index + 1);
+    public void Next()
+    {
+        if (Current == SetupStep.Recognition && BlockedByServer())
+        {
+            return;
+        }
+        Go(Index + 1);
+    }
 
     [RelayCommand(CanExecute = nameof(CanBack))]
     public void Back() => Go(Index - 1);
@@ -280,6 +287,11 @@ public sealed partial class SetupViewModel : ObservableObject
         StopMic();
         Join?.Deactivate();
         Status = "";
+        if (Steps.Contains(SetupStep.Recognition) && BlockedByServer())
+        {
+            Status = ServerError; // eigener Server ohne gültige Adresse: nichts speichern
+            return;
+        }
         if (NeedsPromptEnabled(Settings))
         {
             Settings.PromptEnabled = true;
@@ -290,7 +302,8 @@ public sealed partial class SetupViewModel : ObservableObject
             Status = Settings.SaveStatus; // z. B. Anbieter von IT nicht freigegeben: Assistent bleibt offen
             return;
         }
-        if (_autostart is not null && AutostartEnabled != _autostart.IsEnabled)
+        // Auch bei gleichem Schalter schreiben, wenn der vorhandene Eintrag eine andere Datei startet (alter Dev-Build o. Ä.).
+        if ((_autostart is not null && AutostartEnabled != _autostart.IsEnabled) || (AutostartEnabled && _autostart is { PointsElsewhere: true }))
         {
             try
             {
@@ -347,6 +360,7 @@ public sealed partial class SetupViewModel : ObservableObject
         if (e.PropertyName == nameof(LocalViewModel.Engine))
         {
             OnPropertyChanged(nameof(RecognitionFooter));
+            RaiseServer();
         }
     }
 
@@ -357,6 +371,10 @@ public sealed partial class SetupViewModel : ObservableObject
         {
             Loc.Instance.SetLanguage(Settings.UiLanguage.Value);
             RaiseTexts();
+        }
+        else if (e.PropertyName is nameof(SettingsViewModel.SttProvider) or nameof(SettingsViewModel.SttBaseUrl))
+        {
+            RaiseServer();
         }
     }
 

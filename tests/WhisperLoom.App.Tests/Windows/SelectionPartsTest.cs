@@ -80,7 +80,7 @@ public sealed class SelectionPartsTest
         Assert.Equal(SelectionRead.Password, await reader.ReadAsync(42, false, CancellationToken.None));
         Assert.Equal(0, uia.Calls);
         Assert.Empty(rig.Steps);
-        Assert.False(await reader.MaySelectAsync(CancellationToken.None));
+        Assert.False(await reader.MaySelectAsync(textCursor: true, CancellationToken.None));
     }
 
     [Fact]
@@ -111,12 +111,49 @@ public sealed class SelectionPartsTest
     {
         var (rig, uia, reader) = Reader();
         uia.Next = new UiaSelection(true, "Wort");
-        Assert.True(await reader.MaySelectAsync(CancellationToken.None));
+        Assert.True(await reader.MaySelectAsync(textCursor: false, CancellationToken.None));
         uia.Next = new UiaSelection(true, "");
-        Assert.False(await reader.MaySelectAsync(CancellationToken.None));
-        uia.Next = null; // keine Auskunft
-        Assert.True(await reader.MaySelectAsync(CancellationToken.None));
+        Assert.False(await reader.MaySelectAsync(textCursor: true, CancellationToken.None));
+        uia.Next = null; // keine Auskunft, Geste begann auf Text (I-Beam)
+        Assert.True(await reader.MaySelectAsync(textCursor: true, CancellationToken.None));
         Assert.Empty(rig.Steps);
+    }
+
+    [Fact]
+    public async Task Knopf_Vorpruefung_ohne_Auskunft_nur_wenn_die_Geste_auf_Text_begann()
+    {
+        // TP-WBUTTON: Explorer, Desktop, Titelleisten und viele Browser-Flächen haben kein TextPattern. Früher hieß „keine
+        // Auskunft“ Knopf zeigen – nach jedem Fenster-Ziehen und Doppelklick.
+        var (rig, uia, reader) = Reader();
+        uia.Next = null; // kein fokussiertes Element
+        Assert.False(await reader.MaySelectAsync(textCursor: false, CancellationToken.None));
+        uia.Next = new UiaSelection(false, ""); // kein TextPattern
+        Assert.False(await reader.MaySelectAsync(textCursor: false, CancellationToken.None));
+        Assert.True(await reader.MaySelectAsync(textCursor: true, CancellationToken.None));
+        Assert.Empty(rig.Steps);
+    }
+
+    [Fact]
+    public async Task Knopf_Vorpruefung_Markierung_nur_aus_Leerzeichen_ist_keine()
+    {
+        var (_, uia, reader) = Reader();
+        foreach (var blank in new[] { " ", "   ", "\t", "\r\n", " \n " })
+        {
+            uia.Next = new UiaSelection(true, blank);
+            Assert.False(await reader.MaySelectAsync(textCursor: true, CancellationToken.None), $"„{blank}“");
+        }
+        uia.Next = new UiaSelection(true, " Wort ");
+        Assert.True(await reader.MaySelectAsync(textCursor: true, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Strg_C_mit_nur_Leerzeichen_ist_leer()
+    {
+        var (rig, uia, reader) = Reader();
+        uia.Next = new UiaSelection(false, "");
+        rig.Keys.Selection = "  \r\n ";
+
+        Assert.Equal(SelectionRead.Empty, await reader.ReadAsync(42, false, CancellationToken.None));
     }
 
     private sealed class HangingSource : ISelectionTextSource
@@ -208,7 +245,55 @@ public sealed class SelectionPartsTest
 
     // --- Maus-Hook: Zustandsmaschine (Callback ohne blockierende Arbeit) ----------------------------------------------
 
-    private static MouseInput M(MouseKind kind, int x = 10, int y = 10, bool ctrl = false, long t = 0, bool own = false) => new(kind, x, y, ctrl, t, own);
+    private static MouseInput M(MouseKind kind, int x = 10, int y = 10, bool ctrl = false, long t = 0, bool own = false,
+        PressCursor cursor = PressCursor.Unknown) => new(kind, x, y, ctrl, t, own, cursor);
+
+    [Fact]
+    public void Ziehen_oder_Doppelklick_mit_Pfeil_ist_keine_Markier_Geste()
+    {
+        // TP-WBUTTON: Fenster an der Titelleiste ziehen, Datei ziehen, Scrollbalken, Doppelklick auf Titelleiste bzw. Datei.
+        var g = new MouseGestures { FloatingButton = true };
+        g.OnMouse(M(MouseKind.LeftDown, 10, 10, t: 0, cursor: PressCursor.Other));
+        Assert.Equal(MouseDecision.Pass, g.OnMouse(M(MouseKind.LeftUp, 300, 200, t: 400)));
+
+        g.OnMouse(M(MouseKind.LeftDown, 100, 100, t: 1000, cursor: PressCursor.Other));
+        Assert.Equal(MouseDecision.Pass, g.OnMouse(M(MouseKind.LeftUp, 100, 100, t: 1050)));
+        g.OnMouse(M(MouseKind.LeftDown, 100, 100, t: 1200, cursor: PressCursor.Other));
+        Assert.Equal(MouseDecision.Pass, g.OnMouse(M(MouseKind.LeftUp, 100, 100, t: 1250)));
+    }
+
+    [Fact]
+    public void Zeiger_beim_Druecken_Textzeiger_anderer_System_Zeiger_eigener()
+    {
+        var other = new HashSet<IntPtr> { 11, 12 };
+        Assert.Equal(PressCursor.Text, PressCursorProbe.Classify(10, true, 10, other));
+        Assert.Equal(PressCursor.Other, PressCursorProbe.Classify(12, true, 10, other));
+        Assert.Equal(PressCursor.Unknown, PressCursorProbe.Classify(99, true, 10, other)); // eigener Zeiger des Programms
+        Assert.Equal(PressCursor.Unknown, PressCursorProbe.Classify(10, false, 10, other)); // Zeiger versteckt (Tippen)
+        Assert.Equal(PressCursor.Unknown, PressCursorProbe.Classify(IntPtr.Zero, true, 10, other));
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.NotEqual(IntPtr.Zero, PressCursorProbe.SystemTextCursor()); // echter geteilter I-Beam-Handle
+            Assert.True(Enum.IsDefined(PressCursorProbe.Current())); // echter Aufruf, ohne Ausnahme
+        }
+    }
+
+    [Fact]
+    public void Markier_Geste_meldet_ob_sie_auf_Text_begann()
+    {
+        var g = new MouseGestures { FloatingButton = true };
+        g.OnMouse(M(MouseKind.LeftDown, 10, 10, t: 0, cursor: PressCursor.Text));
+        Assert.Equal(new MouseDecision(false, MouseAction.SelectionGesture, 60, 12, TextCursor: true), g.OnMouse(M(MouseKind.LeftUp, 60, 12, t: 300)));
+
+        g.OnMouse(M(MouseKind.LeftDown, 10, 10, t: 1000, cursor: PressCursor.Unknown)); // eigener Zeiger des Programms
+        Assert.Equal(new MouseDecision(false, MouseAction.SelectionGesture, 60, 12), g.OnMouse(M(MouseKind.LeftUp, 60, 12, t: 1300)));
+
+        // Doppelklick auf ein Wort: Textzeiger beim zweiten Drücken.
+        g.OnMouse(M(MouseKind.LeftDown, 200, 200, t: 2000, cursor: PressCursor.Text));
+        Assert.Equal(MouseDecision.Pass, g.OnMouse(M(MouseKind.LeftUp, 200, 200, t: 2050)));
+        g.OnMouse(M(MouseKind.LeftDown, 200, 200, t: 2200, cursor: PressCursor.Text));
+        Assert.True(g.OnMouse(M(MouseKind.LeftUp, 200, 200, t: 2250)).TextCursor);
+    }
 
     [Fact]
     public void Strg_Rechtsklick_schluckt_Druecken_und_Loslassen()

@@ -94,17 +94,24 @@ public sealed class SelectionReader(
     }
 
     /// <summary>
-    /// Für den schwebenden Knopf, ohne die Zwischenablage anzufassen: nie im Passwortfeld; mit TextPattern nur bei einer
-    /// Markierung; ohne TextPattern (keine Auskunft) erscheint er – ein Klick erfasst dann per Strg+C.
+    /// Für den schwebenden Knopf, ohne die Zwischenablage anzufassen: nie im Passwortfeld; mit TextPattern nur bei einer nicht
+    /// leeren Markierung (nicht nur Leerzeichen); ohne TextPattern (keine Auskunft) nur, wenn die Geste mit dem Textzeiger begann –
+    /// ein Klick erfasst dann per Strg+C. Früher hieß „keine Auskunft“ immer Knopf (TP-WBUTTON: Fenster ziehen, Explorer).
     /// </summary>
-    public async Task<bool> MaySelectAsync(CancellationToken ct)
+    /// <param name="textCursor">Mauszeiger beim Drücken war der Textzeiger (I-Beam).</param>
+    public async Task<bool> MaySelectAsync(bool textCursor, CancellationToken ct)
     {
         if (await focus.ProbeAsync(ct).ConfigureAwait(false) == FocusKind.Password)
         {
             return false;
         }
         var fromUia = await QueryAsync(ct).ConfigureAwait(false);
-        return fromUia is not { IsPassword: true } && (fromUia is not { HasTextPattern: true } || !string.IsNullOrWhiteSpace(fromUia.Text));
+        return fromUia switch
+        {
+            { IsPassword: true } => false,
+            { HasTextPattern: true } => !string.IsNullOrWhiteSpace(fromUia.Text),
+            _ => textCursor,
+        };
     }
 
     private async Task<UiaSelection?> QueryAsync(CancellationToken ct)
