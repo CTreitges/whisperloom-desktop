@@ -80,7 +80,6 @@ public sealed partial class DictationController
         {
             job.Skip.Skip();
         }
-        _log.Event("refine.skipped");
         return true;
     }
 
@@ -165,14 +164,24 @@ public sealed partial class DictationController
         {
             return await _pipeline.RunAsync(request, job.Cts.Token);
         }
+        var started = false;
         try
         {
             // Aus dem Thread der Pipeline: nur Zähler und Merker, kein PropertyChanged (Tray und Fenster hängen daran).
-            return await skippable.RunAsync(request, job.Skip, () =>
+            var result = await skippable.RunAsync(request, job.Skip, () =>
             {
+                started = true;
                 job.Refining = true;
                 Interlocked.Increment(ref _refining);
             }, job.Cts.Token);
+            // Genau einmal je Diktat und nur bei echtem Überspringen (TS-WTRAY): die Verbesserung hatte begonnen, der Ausweg
+            // war gesetzt, und das Ergebnis kam ohne KI. Esc und Doppeldruck auf dasselbe Diktat zählen einmal; ohne Verbesserung
+            // (Stufe aus), wenn sie vor dem Ausweg fertig war oder wirklich scheiterte (Skipped = Fehlergrund), nichts.
+            if (started && job.Skip.IsSkipped && !result.Result.Refined && result.Result.Skipped is null)
+            {
+                _log.Event("refine.skipped");
+            }
+            return result;
         }
         finally
         {

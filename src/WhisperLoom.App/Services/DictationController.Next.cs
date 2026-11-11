@@ -23,7 +23,7 @@ public sealed record StopOutcome(string Code, string? ErrorKey = null, RefinedTe
 /// Die laufenden Diktate laufen im Hintergrund zu Ende; ihre Ausgaben kommen streng in Diktat-Reihenfolge. Ein zweiter Druck
 /// innerhalb von <see cref="DoublePressWindow"/> nach dem Druck, der die neue Aufnahme gestartet hat, verwirft diese Aufnahme
 /// und überspringt die laufende Verbesserung (Rohtext). OS-neutral: Windows-Kürzel und Linux-<c>toggle</c> landen hier
-/// (das Tray-Menü sperrt seinen Eintrag, solange sein eigener Aufruf läuft).
+/// (das Tray-Menü ebenso, sein Eintrag lässt parallele Aufrufe zu, TS-WTRAY).
 /// </summary>
 public sealed partial class DictationController
 {
@@ -71,7 +71,7 @@ public sealed partial class DictationController
             // Auch ein Diktat, das noch erkannt wird: seine Verbesserung endet sofort, wenn sie beginnt.
             job.Skip.Skip();
         }
-        _log.Event("refine.skipped");
+        // refine.skipped loggt das Diktat selbst, wenn seine Verbesserung wirklich übersprungen wurde (TS-WTRAY).
         State = Settled;
         return true;
     }

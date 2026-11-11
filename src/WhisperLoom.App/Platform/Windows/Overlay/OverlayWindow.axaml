@@ -78,7 +78,7 @@
       <Grid x:Name="PendingRow" ColumnDefinitions="Auto,*" IsVisible="{Binding PreviousPending}">
         <ds:LoomIcon Data="{DynamicResource Loom.Icon.Processing}" Width="16" Height="16" Foreground="{DynamicResource Loom.Accent}" VerticalAlignment="Top" Margin="0,2,0,0" />
         <TextBlock x:Name="PendingHint" Grid.Column="1" Margin="8,0,0,0" TextWrapping="Wrap" Foreground="{DynamicResource Loom.Text}"
-                   Text="{Binding [Next_PendingHint], Source={x:Static l:Loc.Instance}}" />
+                   Text="{Binding PendingHint}" />
       </Grid>
       <ds:StagePicker x:Name="StagePickerView" DataContext="{Binding StagePicker}" IsVisible="{Binding $parent[Window].((o:OverlayViewModel)DataContext).IsStagePickerOpen}" />
       <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto">
