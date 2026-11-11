@@ -346,7 +346,8 @@ public sealed partial class DictationController : ObservableObject
                 ("status", "ok"),
                 ("durationMs", result.DurationMs),
                 ("processingMs", watch.ElapsedMilliseconds),
-                ("stt", result.SttLabel),
+                // Anbieter-ID statt Label: das Label hat Leerraum und würde verworfen (WLD-INT-15).
+                ("stt", result.SttId),
                 ("sttFallback", result.UsedSttFallback),
                 ("stage", refinement.Mode.Key()),
                 ("model", result.Result.Model),

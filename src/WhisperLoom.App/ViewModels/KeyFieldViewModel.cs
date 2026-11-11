@@ -106,7 +106,9 @@ public sealed partial class KeyFieldViewModel : ObservableObject
         IsReplacing = false;
         if (value.Length > 0 && await StoreAsync(value))
         {
-            Status = Loc.Instance["Key_Saved"];
+            // Fest-Ziel der Firma: gespeichert, aber unter Verwaltung nicht genutzt (W3-REST Befund 3, wie die CLI).
+            Status = Loc.Instance[_store is Management.CompanySecretStore company && company.OwnKeyUnusedHere(Name)
+                ? "Key_SavedCompanyTarget" : "Key_Saved"];
         }
     }
 

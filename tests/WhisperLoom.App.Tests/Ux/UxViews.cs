@@ -27,6 +27,7 @@ internal static class UxViews
         new("settings-recognition", Settings, Pages + "RecognitionPage.axaml", t => PageAsync("recognition", t)),
         new("settings-recognition-local", Settings, Pages + "RecognitionPage.axaml", t => PageAsync("recognition", t, new PageSetup(LocalDemo))),
         new("settings-recognition-managed", Settings, Pages + "RecognitionPage.axaml", t => PageAsync("recognition", t, new PageSetup(Arrange: Managed))),
+        new("settings-recognition-keytarget", Settings, Pages + "RecognitionPage.axaml", t => PageAsync("recognition", t, CompanyTargetKey())),
         new("settings-text", Settings, Pages + "TextPage.axaml", t => PageAsync("text", t)),
         new("settings-text-local", Settings, Pages + "TextPage.axaml", t => PageAsync("text", t, new PageSetup(LocalDemo))),
         new("settings-output", Settings, Pages + "OutputPage.axaml", t => PageAsync("output", t, new PageSetup(WithProfiles))),

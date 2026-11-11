@@ -136,6 +136,9 @@ public partial class SettingsWindow : Window
         }
     }
 
+    /// <summary>„Hilfe“ in der Seitenleiste: Abschnitt der aktuellen Seite, wie F1 und das „?“ der Seite.</summary>
+    private void OnHelpNav(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => Help.HelpLauncher.OpenForPage(Shell?.SelectedPage);
+
     private void OnClearSearch(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         if (Shell is { } shell)

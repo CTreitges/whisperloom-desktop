@@ -118,6 +118,25 @@ public sealed class AppPipelineTest : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    /// WLD-INT-15: Das Label „Eigener Server (OpenAI-kompatibel)“ enthält Leerraum und würde vom Log verworfen — die Zeile
+    /// nennt die feste Anbieter-ID, genau einmal je Diktat.
+    /// </summary>
+    [Fact]
+    public async Task DiktatLoggtDieAnbieterIdStattDesLabels()
+    {
+        _settings.Refine.Stage = "off";
+        Assert.Contains(' ', ProviderChoice.Find("custom")!.Name);
+        using var f = new ControllerFixture(_settings, pipeline: _pipeline);
+
+        f.Controller.Start();
+        Assert.Equal("done", await f.Controller.StopAsync());
+
+        var line = Assert.Single(f.LogText.Split('\n'), l => l.Contains(" dictation ", StringComparison.Ordinal));
+        Assert.Contains(" stt=custom ", line, StringComparison.Ordinal);
+        Assert.DoesNotContain("(verworfen)", line, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void AnbieterlisteKommtAusDemKatalog()
     {

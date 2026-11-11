@@ -38,6 +38,8 @@ public sealed class LocalStt : ILocalStt, IAsyncDisposable
 
     public string Label => "Lokal";
 
+    public string Id => "local";
+
     /// <summary>Leerlauf bis zum Ende des Begleitprozesses; null = aus den Einstellungen (Minuten).</summary>
     public TimeSpan? IdleTimeout { get; init; }
 

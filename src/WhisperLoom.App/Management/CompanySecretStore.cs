@@ -121,6 +121,13 @@ public sealed class CompanySecretStore(ISecretStore user, ISecretStore company, 
     public static bool CompanyChoseTarget(WhisperLoomSettings s, PolicySettings p, string access) =>
         TargetFixed(p, access) && !s.Management.Overrides.Contains(Section(access) + ".baseUrl");
 
+    /// <summary>
+    /// Unter Verwaltung wählt die Firma das Ziel von <paramref name="access"/> (<see cref="CompanyChoseTarget"/>): der eigene Key
+    /// wird nicht genutzt und beim Verlassen verworfen — wie die Warnung von <c>key set</c> (W3-REST Befund 3).
+    /// </summary>
+    public bool OwnKeyUnusedHere(string access) =>
+        SecretNames.All.Contains(access) && IsManaged(settings().Management) && CompanyChoseTarget(settings(), policy(), access);
+
     /// <summary>An einen Firmen-Server angebunden (auch wartend, gesperrt oder widerrufen).</summary>
     public static bool IsManaged(ManagementSettings m) => m.ServerUrl.Length > 0 && m.State is "pending" or "approved" or "blocked" or "revoked";
 

@@ -41,7 +41,7 @@ public sealed class UxSidebarWordBreakTest
             UxStage.Settle(scene.Window);
             var names = scene.Window.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("sideItem"))
                 .SelectMany(b => b.GetVisualDescendants().OfType<TextBlock>()).ToList();
-            Assert.Equal(8, names.Count);
+            Assert.Equal(9, names.Count); // acht Seiten + „Hilfe“ (TS-WKLEIN)
             var broken = names.Select(MidWordBreak).OfType<string>().ToList();
             Assert.True(broken.Count == 0, $"{scale:P0} {theme} {lang}: " + string.Join(", ", broken));
         }

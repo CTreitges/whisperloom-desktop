@@ -9,6 +9,12 @@ public interface ITranscriptionBackend
     /// <summary>Kurzname für die Anzeige ("OpenAI", "Lokal").</summary>
     string Label { get; }
 
+    /// <summary>
+    /// WLD-INT-15 (additiv): fester Bezeichner für das Log (Anbieter-ID wie <c>custom</c>, <c>openai</c>, <c>local</c>) —
+    /// ohne Leerraum, anders als <see cref="Label"/>. Ohne eigene Angabe gilt das Label.
+    /// </summary>
+    string Id => Label;
+
     /// <param name="audio">Mono PCM16, 16 kHz.</param>
     /// <param name="language">ISO-Code ("de", "en", …), "auto" oder "de+en" (<see cref="Settings.WhisperLoomSettings.LanguageDeEn"/>).</param>
     /// <exception cref="ApiNotConfiguredException">Zugang unvollständig, ohne Anfrage.</exception>

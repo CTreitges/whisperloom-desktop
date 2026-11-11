@@ -33,6 +33,7 @@ public sealed class FakeDictationPipeline : IDictationPipeline
 {
     public const string ModelLabel = "Fake-LLM";
     public const string SttLabel = "Fake-STT";
+    public const string SttId = "fake";
 
     /// <summary>Was die Fake-Erkennung „hört“.</summary>
     public string RawText { get; set; } = "Das ist ein Testdiktat.";
@@ -68,7 +69,7 @@ public sealed class FakeDictationPipeline : IDictationPipeline
         // Wie die echte Pipeline ohne gemeldete Sprache: "auto" gilt hier als Deutsch, "de+en" ebenso.
         var language = request.Language == "auto" ? "de" : DictationPipeline.EffectiveLanguage(request.Language, null);
         var result = Refine(RawText, request.Refinement);
-        return new DictationResult(RawText, language, request.Audio.DurationMs, result, SttLabel);
+        return new DictationResult(RawText, language, request.Audio.DurationMs, result, SttLabel, SttId: SttId);
     }
 
     public async Task<RefinedText> RefineAsync(string raw, string language, Refinement refinement, CancellationToken ct)

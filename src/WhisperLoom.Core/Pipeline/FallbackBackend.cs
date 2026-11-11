@@ -10,6 +10,8 @@ public sealed class OnlineBackend(HttpClient http, ApiAccess access, string prom
 {
     public string Label => access.Provider.Name;
 
+    public string Id => access.Provider.Id;
+
     public Task<TranscriptResult> TranscribeAsync(AudioBuffer audio, string language, CancellationToken ct) =>
         new ApiTranscriber(http, access, prompt).TranscribeAsync(WavUpload.FromBuffer(audio), language, ct);
 }
@@ -34,6 +36,9 @@ public sealed class FallbackBackend(ITranscriptionBackend primary, ITranscriptio
 
     /// <summary>Womit zuletzt erkannt wurde — nach einem Ausfall der Fallback.</summary>
     public string Label => _usedFallback ? fallback.Label : primary.Label;
+
+    /// <summary>Anbieter-ID dazu, für das Log.</summary>
+    public string Id => _usedFallback ? fallback.Id : primary.Id;
 
     /// <summary>Name des Fallback-Anbieters für den Hinweis.</summary>
     public string FallbackLabel => fallback.Label;
