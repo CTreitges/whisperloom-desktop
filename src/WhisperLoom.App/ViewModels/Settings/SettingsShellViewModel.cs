@@ -76,6 +76,9 @@ public sealed partial class SettingsShellViewModel : ObservableObject, IDisposab
     /// <summary>So lange steht „Gespeichert“ da (Tests kürzen es).</summary>
     internal TimeSpan SavedVisibleFor { get; set; } = TimeSpan.FromSeconds(2.5);
 
+    /// <summary>Zeitquelle für <see cref="SavedVisibleFor"/>; Tests setzen eine steuerbare Uhr (TS-WFLAKY).</summary>
+    internal TimeProvider Time { get; set; } = TimeProvider.System;
+
     private int _saveVersion;
 
     public ObservableCollection<SearchResult> Results { get; } = [];
@@ -152,7 +155,8 @@ public sealed partial class SettingsShellViewModel : ObservableObject, IDisposab
 
     private async Task HideSavedAsync(int version)
     {
-        await Task.Delay(SavedVisibleFor);
+        // Doku: learn.microsoft.com/dotnet/api/system.threading.tasks.task.delay (Overload TimeSpan, TimeProvider; abgerufen 2026-11-11)
+        await Task.Delay(SavedVisibleFor, Time);
         if (version == _saveVersion)
         {
             SaveNotice = "";

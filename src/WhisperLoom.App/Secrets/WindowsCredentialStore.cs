@@ -43,6 +43,21 @@ internal sealed class WindowsCredentialStore(string prefix) : ISecretStore
         }
     }
 
+    /// <summary>TS-WLINUX: vorhanden ja/nein; der Blob wird nie in einen String gewandelt.</summary>
+    public Task<bool> ExistsAsync(string name, CancellationToken ct)
+    {
+        SecretStoreNames.Check(name);
+        if (!CredRead(prefix + name, CredTypeGeneric, 0, out var ptr))
+        {
+            var error = Marshal.GetLastWin32Error();
+            return error == ErrorNotFound
+                ? Task.FromResult(false)
+                : throw new IOException($"Credential Manager: Lesen fehlgeschlagen (Fehler {error}).");
+        }
+        CredFree(ptr);
+        return Task.FromResult(true);
+    }
+
     public Task SetAsync(string name, string value, CancellationToken ct)
     {
         SecretStoreNames.Check(name);

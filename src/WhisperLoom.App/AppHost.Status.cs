@@ -69,7 +69,8 @@ public sealed partial class AppHost
             bool? present;
             try
             {
-                present = await Secrets.GetAsync(name, CancellationToken.None) is not null;
+                // TS-WLINUX: nur prüfen, ob ein Wert da ist; der Wert selbst verlässt die Ablage nicht.
+                present = await Secrets.ExistsAsync(name, CancellationToken.None);
             }
             catch (IOException)
             {
