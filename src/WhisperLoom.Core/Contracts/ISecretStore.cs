@@ -19,6 +19,12 @@ public interface ISecretStore
 
     /// <summary>Löscht den Wert; nichts gespeichert ist kein Fehler.</summary>
     Task DeleteAsync(string name, CancellationToken ct);
+
+    /// <summary>
+    /// Ist ein Wert gespeichert (TS-WLINUX, für <c>status</c>)? Ablagen, die das ohne den Wert prüfen können, überschreiben
+    /// das; der Standard liest den Wert und wirft ihn weg.
+    /// </summary>
+    async Task<bool> ExistsAsync(string name, CancellationToken ct) => await GetAsync(name, ct).ConfigureAwait(false) is not null;
 }
 
 /// <summary>Die Namen der Keys (je Zugang einer, wie die Key-Felder in <c>Prefs.kt</c>).</summary>

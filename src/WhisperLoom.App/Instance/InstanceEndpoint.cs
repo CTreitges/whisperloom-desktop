@@ -86,14 +86,16 @@ internal sealed class InstanceEndpoint
     /// Ordner für den Socket, nur für den aktuellen Benutzer: $XDG_RUNTIME_DIR (systemd legt ihn mit 700 an),
     /// sonst /tmp/whisperloom-&lt;user&gt; mit 700.
     /// </summary>
-    private static string RuntimeDir()
+    private static string RuntimeDir() => RuntimeDir(Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR"),
+        Path.Combine(Path.GetTempPath(), $"whisperloom-{Environment.UserName}"), "", false);
+
+    internal static string RuntimeDir(string? xdgRuntime, string candidate, string fallback, bool isRoot)
     {
-        var runtime = Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR");
-        if (!string.IsNullOrEmpty(runtime) && Directory.Exists(runtime))
+        if (!string.IsNullOrEmpty(xdgRuntime) && Directory.Exists(xdgRuntime))
         {
-            return runtime;
+            return xdgRuntime;
         }
-        var dir = Path.Combine(Path.GetTempPath(), $"whisperloom-{Environment.UserName}");
+        var dir = candidate;
         if (!OperatingSystem.IsWindows())
         {
             Directory.CreateDirectory(dir, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
