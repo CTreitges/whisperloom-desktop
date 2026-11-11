@@ -67,7 +67,7 @@ public sealed class DictationPipeline(
         {
             // Nur lange Stille (PauseCut): nichts senden, Ergebnis wie „nichts erkannt“.
             return new DictationResult("", EffectiveLanguage(request.Language, null), duration,
-                new RefinedText(request.Refinement, ""), backend.Label, false);
+                new RefinedText(request.Refinement, ""), backend.Label, false, backend.Id);
         }
         var result = await backend.TranscribeAsync(audio, request.Language, ct).ConfigureAwait(false);
         var sttNote = SttFallbackNote(backend);
@@ -75,13 +75,13 @@ public sealed class DictationPipeline(
         var language = EffectiveLanguage(request.Language, result.DetectedLanguage);
         if (string.IsNullOrWhiteSpace(result.Text))
         {
-            return new DictationResult("", language, duration, new RefinedText(request.Refinement, "", Note: sttNote), backend.Label, usedFallback);
+            return new DictationResult("", language, duration, new RefinedText(request.Refinement, "", Note: sttNote), backend.Label, usedFallback, backend.Id);
         }
         // Die Online-Erkennung hat das Netz gerade bewiesen.
         var refined = await RefineCoreAsync(s, keys, result.Text, language, request.Refinement,
             SettingsAccess.EngineOf(s) != Engine.Offline, skip, onRefineStart, ct).ConfigureAwait(false);
         var note = string.Join(" · ", new[] { sttNote, refined.Note }.OfType<string>());
-        return new DictationResult(result.Text, language, duration, refined with { Note = note.Length == 0 ? null : note }, backend.Label, usedFallback);
+        return new DictationResult(result.Text, language, duration, refined with { Note = note.Length == 0 ? null : note }, backend.Label, usedFallback, backend.Id);
     }
 
     /// <summary>Neu verarbeiten aus dem Rohtext (Verlauf), ohne Netz-Nachweis. Wirft nur bei Abbruch.</summary>

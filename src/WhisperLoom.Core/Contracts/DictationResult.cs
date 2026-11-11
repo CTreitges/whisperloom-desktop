@@ -34,13 +34,17 @@ public sealed record RefinedText(
 /// <param name="Language">Wirksame Sprache (bei "auto" die erkannte).</param>
 /// <param name="SttLabel">Womit erkannt wurde, als Anzeige (nach einem Ausfall der Fallback-Anbieter).</param>
 /// <param name="UsedSttFallback">Der erste Erkenner ist gescheitert, der Fallback hat geliefert.</param>
+/// <param name="SttId">
+/// WLD-INT-15 (additiv): Anbieter-ID dazu (<see cref="ITranscriptionBackend.Id"/>), fürs Log; null = unbekannt.
+/// </param>
 public sealed record DictationResult(
     string Raw,
     string Language,
     long DurationMs,
     RefinedText Result,
     string SttLabel,
-    bool UsedSttFallback = false)
+    bool UsedSttFallback = false,
+    string? SttId = null)
 {
     /// <summary>Was ausgegeben wird.</summary>
     public string Text => Result.Text;

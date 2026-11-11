@@ -257,7 +257,7 @@ public sealed partial class DictationController
                 Fail("Error_Output", "OutputFailed");
             }
             _log.Event("rewrite", ("status", "ok"), ("durationMs", spoken.DurationMs), ("processingMs", watch.ElapsedMilliseconds),
-                ("stt", spoken.SttLabel), ("model", refined.Model), ("selectionChars", selection.Length), ("output", _output.Kind));
+                ("stt", spoken.SttId), ("model", refined.Model), ("selectionChars", selection.Length), ("output", _output.Kind));
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
