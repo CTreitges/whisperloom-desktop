@@ -5,6 +5,7 @@ using WhisperLoom.App.Output;
 using WhisperLoom.Core.Contracts;
 using WhisperLoom.Core.Contracts.Settings;
 using WhisperLoom.Core.History;
+using WhisperLoom.Core.Pipeline;
 using WhisperLoom.Core.Settings;
 
 namespace WhisperLoom.App.Services;
@@ -92,39 +93,11 @@ public sealed partial class DictationController : ObservableObject
     /// <summary>Aufnahmedauer ohne Pausen.</summary>
     public TimeSpan Elapsed => State == DictationState.Recording ? _recorded + (_now() - _segmentStart) : _recorded;
 
-    /// <summary>Gespeicherte Stufe wie <c>Prefs.refineMode</c>: Altwert „paragraphs“ und „prompt“ ohne Freischaltung → Glätten.</summary>
-    public static RefineMode StageOf(RefineSettings refine)
-    {
-        if (refine.Stage == "paragraphs")
-        {
-            return RefineMode.Polish;
-        }
-        var mode = RefineModes.FromKey(refine.Stage);
-        return mode switch
-        {
-            RefineMode.Prompt when !refine.PromptEnabled => RefineMode.Polish,
-            RefineMode.Readable => RefineMode.Polish,
-            _ => mode,
-        };
-    }
+    /// <summary>Gespeicherte Stufe wie <c>Prefs.refineMode</c>; einzige Auflösung im Core (TS-WSTUFEN).</summary>
+    public static RefineMode StageOf(RefineSettings refine) => SettingsAccess.DictationStage(refine);
 
-    /// <summary>Wirksame Verarbeitung der Stufe (<see cref="Refinement.Of"/>, Weg Diktat).</summary>
-    public static Refinement RefinementOf(RefineSettings refine)
-    {
-        var stage = StageOf(refine);
-        var paragraphs = stage switch
-        {
-            RefineMode.Polish => refine.ParagraphsPolish,
-            RefineMode.Beautify => refine.ParagraphsBeautify,
-            _ => true,
-        };
-        return Refinement.Of(
-            RefineWay.Dictation,
-            stage,
-            RefineKeys.CleanupFromKey(refine.PolishCleanup),
-            paragraphs,
-            RefineKeys.FormFromKey(refine.SummarizeForm));
-    }
+    /// <summary>Wirksame Verarbeitung der Stufe (Weg Diktat); einzige Auflösung im Core (TS-WSTUFEN).</summary>
+    public static Refinement RefinementOf(RefineSettings refine) => SettingsAccess.DictationRefinement(refine);
 
     /// <summary>Umschalten (Tray, IPC <c>toggle</c>): während der Verarbeitung startet die nächste Aufnahme (W3-NEXT).</summary>
     /// <returns>Kurzer Status für die CLI.</returns>
@@ -352,6 +325,8 @@ public sealed partial class DictationController : ObservableObject
                 ("stage", refinement.Mode.Key()),
                 ("model", result.Result.Model),
                 ("refineSkipped", result.Result.Skipped is not null),
+                // TS-WSTUFEN: warum ohne KI, als Fehlerklasse (z. B. RefineTruncatedException), nie die Meldung selbst.
+                ("refineErrorClass", result.Result.SkippedClass),
                 ("output", _output.Kind));
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)

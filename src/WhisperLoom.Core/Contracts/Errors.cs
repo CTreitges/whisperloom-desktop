@@ -10,6 +10,12 @@ public class ApiNotConfiguredException(string message = "Anbieter nicht eingeric
 /// <summary>Das Sprachmodell hat geantwortet, aber nicht das Verlangte getan. Aufrufer fällt auf den Rohtext zurück.</summary>
 public class RefineRejectedException(string message) : Exception(message);
 
+/// <summary>
+/// TS-WSTUFEN (additiv): Das Modell hat an seiner Längengrenze aufgehört (<c>done_reason</c> bzw. <c>finish_reason</c>
+/// „length“) — nur der Anfang des Texts. Eigene Klasse, damit das Log den Grund als Fehlerklasse nennen kann.
+/// </summary>
+public class RefineTruncatedException(string message) : RefineRejectedException(message);
+
 /// <summary>Der Server hat mit einem Fehlerstatus geantwortet. Der Antwort-Körper wird nicht übernommen.</summary>
 public class ApiHttpException(int statusCode, string message) : Exception(message)
 {

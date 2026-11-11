@@ -33,11 +33,34 @@ public static class OllamaApi
     {
         var json = new JsonObject { ["model"] = model, ["stream"] = false };
         if (model.Trim().ToLowerInvariant().StartsWith("gpt-oss", StringComparison.Ordinal)) json["think"] = "low";
-        json["options"] = new JsonObject { ["temperature"] = 0 };
+        json["options"] = new JsonObject { ["temperature"] = 0, ["num_ctx"] = NumCtx(systemPrompt, userText) };
         json["messages"] = new JsonArray(
             new JsonObject { ["role"] = "system", ["content"] = systemPrompt },
             new JsonObject { ["role"] = "user", ["content"] = userText });
         return json.ToJsonString();
+    }
+
+    /// <summary>Kleinster gesendeter Kontext: der Ollama-Standard bei unter 24 GiB VRAM (4k).</summary>
+    public const int MinNumCtx = 4096;
+
+    /// <summary>Größter gesendeter Kontext: genug für sehr lange Diktate, ohne kleine Rechner zu überlasten.</summary>
+    public const int MaxNumCtx = 16384;
+
+    /// <summary>
+    /// <c>options.num_ctx</c> passend zur Länge (TS-WSTUFEN, WLD-P1b-9): ohne kürzt Ollama still auf seinen Standard-Kontext.
+    /// Schätzung ≈ 3 Zeichen je Token (vorsichtig für Deutsch): Eingabe <c>⌈(System+Nutzer)/3⌉</c>, Antwort höchstens doppelt
+    /// so lang wie das Diktat (<c>⌈2·Nutzer/3⌉</c>, wie <c>TextCleanup.MaxGrowth</c>), dazu 256 Token Reserve. Gerundet auf die
+    /// nächste Zweierpotenz zwischen <see cref="MinNumCtx"/> und <see cref="MaxNumCtx"/>: wenige Stufen, denn ein anderes
+    /// num_ctx lässt Ollama das Modell neu laden.
+    /// </summary>
+    // Doku: https://docs.ollama.com/api/chat (options.num_ctx „Context length size (number of tokens)“) und
+    // https://docs.ollama.com/context-length (Standard nach VRAM: < 24 GiB → 4k), abgerufen 2026-11-11.
+    public static int NumCtx(string systemPrompt, string userText)
+    {
+        var need = (systemPrompt.Length + userText.Length + 2) / 3 + (2 * userText.Length + 2) / 3 + 256;
+        var ctx = MinNumCtx;
+        while (ctx < need && ctx < MaxNumCtx) ctx *= 2;
+        return ctx;
     }
 
     /// <summary>Antworttext aus /api/chat — null, wenn keiner da ist.</summary>

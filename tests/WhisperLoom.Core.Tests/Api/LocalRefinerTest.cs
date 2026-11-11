@@ -131,7 +131,9 @@ public sealed class LocalRefinerTest : IAsyncLifetime
     {
         _doneReason = "length";
         _antwort = "Termin termin";
-        var e = await Assert.ThrowsAsync<RefineRejectedException>(() => Refine(string.Join(" ", Enumerable.Repeat("termin", 1_000))));
+        // TS-WSTUFEN: eigene Unterklasse, damit das Log den Grund nennt; Aufrufer fangen weiter RefineRejectedException.
+        var e = await Assert.ThrowsAnyAsync<RefineRejectedException>(() => Refine(string.Join(" ", Enumerable.Repeat("termin", 1_000))));
+        Assert.IsType<RefineTruncatedException>(e);
         Assert.Equal(TextRefiner.MsgTruncated, e.Message);
     }
 
