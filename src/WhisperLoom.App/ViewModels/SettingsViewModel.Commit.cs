@@ -206,8 +206,15 @@ public sealed partial class SettingsViewModel
             await _controller.ApplySettingsAsync(result);
             SaveStatus = Loc.Instance["Settings_Saved"];
         }
-        catch (IOException)
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
+            // Hat die App den Stand nicht übernommen, scheiterte schon das Schreiben der Datei: dann gilt nichts, und die
+            // nächste Änderung muss diese mitschreiben (Basis bleibt). Sonst scheiterte erst das Löschen des Verlaufs (TS-WFLAKY).
+            if (!ReferenceEquals(_controller.Settings, result))
+            {
+                SaveStatus = Loc.Instance["Settings.SaveFailed"];
+                return false;
+            }
             SaveStatus = Loc.Instance["Settings_HistoryClearError"];
         }
         return true;
