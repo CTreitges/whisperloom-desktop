@@ -6,5 +6,11 @@
     <LangVersion>latest</LangVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <Deterministic>true</Deterministic>
+    <!-- Review N-19: feste Paketstände samt transitiver Pakete und Hashes (packages.lock.json); CI stellt im locked mode
+         wieder her. Nach einer Versionsänderung in Directory.Packages.props die Lockfiles per dotnet restore mit
+         force-evaluate neu schreiben und mitcommitten.
+         Doku: learn.microsoft.com/nuget/consume-packages/package-references-in-project-files#locking-dependencies
+         (abgerufen 2026-11-11). -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
   </PropertyGroup>
 </Project>
