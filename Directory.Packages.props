@@ -19,6 +19,8 @@
     <!-- Installer, Auto-Update und Pakete (Windows-Setup, AppImage); vpk-Tool in dotnet-tools.json gleich halten.
          Doku: docs.velopack.io/getting-started/csharp, nuget.org/packages/Velopack (abgerufen 2026-11-01). -->
     <PackageVersion Include="Velopack" Version="1.2.161" />
+    <!-- Steuerbare Uhr für Tests (TS-WFLAKY). Doku: learn.microsoft.com/dotnet/api/microsoft.extensions.time.testing.faketimeprovider (abgerufen 2026-11-11). -->
+    <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.0.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
     <!-- xUnit v3 auf 3.2.x: Avalonia.Headless.XUnit 12.1.4 ist gegen xunit.v3.extensibility.core 3.2.2 gebaut. -->
     <PackageVersion Include="xunit.v3" Version="3.2.2" />
