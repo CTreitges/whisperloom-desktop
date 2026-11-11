@@ -24,6 +24,9 @@ public sealed class SelectionCapture(IClipboardAdapter clipboard, IKeySender key
     /// <summary>Pause vor dem zweiten Versuch, die Zwischenablage wiederherzustellen (ein anderes Programm hält sie kurz).</summary>
     public static readonly TimeSpan RestoreRetryDelay = TimeSpan.FromMilliseconds(150);
 
+    /// <summary>Nachfrist nach der Wartezeit: kopiert das Ziel noch, wird die alte Zwischenablage zurückgeschrieben (N-7).</summary>
+    public static readonly TimeSpan DefaultLateCopyGrace = TimeSpan.FromMilliseconds(500);
+
     // Konsolen (Strg+C = Abbruch) und Editoren mit eingebettetem Terminal; alle kopieren mit Strg+Einfg.
     private static readonly HashSet<string> CtrlInsertPrograms = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -64,6 +67,7 @@ public sealed class SelectionCapture(IClipboardAdapter clipboard, IKeySender key
         {
             if (watch.Elapsed >= wait)
             {
+                await UndoLateCopyAsync(snapshot, before, ct).ConfigureAwait(false);
                 return Capture.Nothing;
             }
             await Task.Delay(20, ct).ConfigureAwait(false);
@@ -82,6 +86,24 @@ public sealed class SelectionCapture(IClipboardAdapter clipboard, IKeySender key
             return new Capture(null, "Rewrite_RestoreFailed");
         }
         return string.IsNullOrWhiteSpace(text) ? Capture.Nothing : new Capture(text);
+    }
+
+    /// <summary>
+    /// Review N-7: Kopiert das Ziel erst nach der Wartezeit, läge die Markierung statt der alten Zwischenablage dort. Eine
+    /// Nachfrist lang beobachten und bei einer Änderung den Snapshot zurückschreiben; die Markierung gilt weiter als nicht da.
+    /// </summary>
+    private async Task UndoLateCopyAsync(ClipboardSnapshot snapshot, uint before, CancellationToken ct)
+    {
+        var watch = Stopwatch.StartNew();
+        while (watch.Elapsed < DefaultLateCopyGrace)
+        {
+            await Task.Delay(20, ct).ConfigureAwait(false);
+            if (clipboard.SequenceNumber != before)
+            {
+                await RestoreAsync(snapshot, ct).ConfigureAwait(false);
+                return;
+            }
+        }
     }
 
     /// <summary>Zwei Versuche; scheitern beide, liegt die Markierung in der Zwischenablage (Toast statt Umschreiben).</summary>
