@@ -72,8 +72,9 @@ public sealed partial class OverlayViewModel : ObservableObject
     /// <summary>Rückruf für „Verwerfen“ nach einem Fehler: Overlay zu, gemerktes Audio weg; null = kein Knopf.</summary>
     public Action? DismissError { get; set; }
 
-    /// <summary>Die Textverbesserung läuft (erst dann wirkt „Ohne KI einfügen“).</summary>
+    /// <summary>Die Textverbesserung läuft (erst dann wirkt „Ohne KI einfügen“ und Esc).</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PendingHint), nameof(KeysTemplate))]
     private bool _canSkip;
 
     /// <summary>Diktat einer Anweisung zum Umschreiben der Markierung (markierung.html Befund 7): eigene Zustandswörter.</summary>
@@ -86,6 +87,12 @@ public sealed partial class OverlayViewModel : ObservableObject
     /// <summary>Ein voriges Diktat wird noch verarbeitet, während diese Aufnahme läuft (W3-NEXT): Hinweis mit Esc.</summary>
     [ObservableProperty]
     private bool _previousPending;
+
+    /// <summary>
+    /// Text des Hinweises aufs vorige Diktat: „Esc = sofort ohne KI“ nur, solange seine Verbesserung läuft; in der Erkennung
+    /// wirkt Esc nicht (TS-WTRAY, Review W3-NEXT).
+    /// </summary>
+    public string PendingHint => Loc.Instance[CanSkip ? "Next_PendingHint" : "Next_PendingHintRecognizing"];
 
     /// <summary>Lokalisierungs-Schlüssel des Fehlers (<c>Error_*</c>).</summary>
     [ObservableProperty]
@@ -144,13 +151,13 @@ public sealed partial class OverlayViewModel : ObservableObject
 
     /// <summary>
     /// Tastenwege des Zustands als Tastenkappen (Befund 2), nur die, die wirklich wirken: in Aufnahme und Pause Enter und
-    /// Rücktaste (Overlay-Tasten des Hooks), beim Verarbeiten Esc. Nach einem Fehler sind die Overlay-Tasten frei, beim
-    /// Umschreiben wirkt Esc nicht: keine Zeile.
+    /// Rücktaste (Overlay-Tasten des Hooks), beim Verarbeiten Esc – aber erst, wenn die Verbesserung läuft (vorher ohne Esc,
+    /// TS-WTRAY). Nach einem Fehler sind die Overlay-Tasten frei, beim Umschreiben wirkt Esc nicht: keine Zeile.
     /// </summary>
     public string? KeysTemplate => State switch
     {
         OverlayState.Recording or OverlayState.Paused => Loc.Instance[CanPickStage ? "Overlay_Keys" : "Overlay_KeysNoStage"],
-        OverlayState.Processing when !IsRewrite => Loc.Instance["Overlay_KeysProcessing"],
+        OverlayState.Processing when !IsRewrite => Loc.Instance[CanSkip ? "Overlay_KeysProcessing" : "Overlay_KeysRecognizing"],
         _ => null,
     };
 
@@ -162,7 +169,7 @@ public sealed partial class OverlayViewModel : ObservableObject
 
     private void RaiseTexts()
     {
-        foreach (var name in new[] { nameof(StateText), nameof(AccessibleName), nameof(Detail), nameof(StageText), nameof(PauseText), nameof(KeysTemplate), nameof(Keys) })
+        foreach (var name in new[] { nameof(StateText), nameof(AccessibleName), nameof(Detail), nameof(StageText), nameof(PauseText), nameof(KeysTemplate), nameof(Keys), nameof(PendingHint) })
         {
             OnPropertyChanged(name);
         }

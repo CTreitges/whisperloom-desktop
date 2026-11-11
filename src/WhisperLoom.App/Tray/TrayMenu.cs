@@ -44,7 +44,14 @@ public sealed class TrayMenu
         _controller = controller;
         _onRecent = onRecent;
         _pastes = pastes ?? (() => true);
-        _toggle = new NativeMenuItem { Command = new AsyncRelayCommand(() => controller.ToggleAsync()) };
+        // Wie die Taste (W3-NEXT, TS-WTRAY): Der Stopp-Aufruf läuft bis zur Ausgabe; ohne parallele Ausführung sperrte sich der
+        // Eintrag so lange, und „nächstes Diktat während der Verarbeitung“ ging übers Tray nicht. Ob gestartet, gestoppt oder
+        // übersprungen wird, entscheidet allein ToggleAsync.
+        // Doku: learn.microsoft.com/dotnet/communitytoolkit/mvvm/asyncrelaycommand (AsyncRelayCommandOptions, abgerufen 2026-11-11).
+        _toggle = new NativeMenuItem
+        {
+            Command = new AsyncRelayCommand(() => controller.ToggleAsync(), AsyncRelayCommandOptions.AllowConcurrentExecutions),
+        };
         // „Erneut senden“ nach einem wiederholbaren Fehler (W2-OUT): nur sichtbar, solange Audio im Speicher liegt.
         _retry = new NativeMenuItem { Command = new AsyncRelayCommand(() => controller.RetryAsync()) };
         _selection = new NativeMenuItem { Command = new AsyncRelayCommand(() => onSelection?.Invoke() ?? Task.CompletedTask) };

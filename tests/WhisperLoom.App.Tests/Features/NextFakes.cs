@@ -35,6 +35,20 @@ internal sealed class GatedRefinePipeline : IDictationPipeline, ISkippablePipeli
     }
 
     private readonly ConcurrentDictionary<int, bool> _fail = new();
+    private readonly ConcurrentDictionary<int, TaskCompletionSource> _recognitionGates = new();
+    private readonly ConcurrentDictionary<int, bool> _recognizing = new();
+
+    /// <summary>Die Erkennung wartet, bis der Test sie mit <see cref="ReleaseRecognition"/> freigibt (TS-WTRAY).</summary>
+    public bool HoldRecognition { get; init; }
+
+    /// <summary>Keine Verbesserung geplant (Stufe aus): nach der Erkennung sofort der Rohtext, ohne Beginn der Verbesserung.</summary>
+    public bool NoRefine { get; init; }
+
+    /// <summary>Diktat <paramref name="n"/> wird gerade erkannt (nur mit <see cref="HoldRecognition"/>).</summary>
+    public bool Recognizing(int n) => _recognizing.ContainsKey(n);
+
+    public void ReleaseRecognition(int n) =>
+        _recognitionGates.GetOrAdd(n, _ => new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)).TrySetResult();
 
     public Task<DictationResult> RunAsync(DictationRequest request, CancellationToken ct) =>
         throw new InvalidOperationException("ohne Ausweg aufgerufen");
@@ -44,6 +58,17 @@ internal sealed class GatedRefinePipeline : IDictationPipeline, ISkippablePipeli
         var n = Interlocked.Increment(ref _runs);
         var raw = $"Diktat {n}";
         await Task.Yield();
+        if (HoldRecognition)
+        {
+            _recognizing[n] = true;
+            await _recognitionGates.GetOrAdd(n, _ => new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)).Task.WaitAsync(ct);
+            _recognizing.TryRemove(n, out _);
+        }
+        if (NoRefine)
+        {
+            _finished[n] = true;
+            return new DictationResult(raw, "de", request.Audio.DurationMs, new RefinedText(request.Refinement, raw), "Fake-STT");
+        }
         onRefineStart?.Invoke();
         _refining[n] = true;
         var gate = Gate(n).Task;

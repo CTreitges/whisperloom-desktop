@@ -3,6 +3,7 @@ using Avalonia.Headless.XUnit;
 using WhisperLoom.App.Features.Profiles;
 using WhisperLoom.App.Features.Reinsert;
 using WhisperLoom.App.Localization;
+using WhisperLoom.App.Services;
 using WhisperLoom.App.Tray;
 using WhisperLoom.Core.Contracts;
 using WhisperLoom.Core.Contracts.Settings;
@@ -78,6 +79,50 @@ public sealed class TrayMenuTest
         pastes = true;
         tray.Refresh();
         Assert.StartsWith("Einfügen – ", recent.Menu!.Items.OfType<NativeMenuItem>().Single().Header, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// TS-WTRAY (W3-NEXT-Folge): Der Tray-Eintrag „Aufnahme starten“ sperrte sich, solange sein eigener Aufruf (Stopp bis zur
+    /// Ausgabe) lief. Jetzt wirkt er während der Verarbeitung wie die Taste: über das echte Command-Objekt startet er die nächste
+    /// Aufnahme (derselbe Einstieg <c>ToggleAsync</c>), beide Diktate kommen in Reihenfolge.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task Diktat_im_Tray_startet_waehrend_der_Verarbeitung_die_naechste_Aufnahme()
+    {
+        Loc.Instance.SetLanguage("de");
+        var pipeline = new GatedRefinePipeline();
+        using var f = new ControllerFixture(new WhisperLoomSettings
+        {
+            Engine = "online",
+            Refine = new RefineSettings { Stage = "polish" },
+            Polish = new PolishSettings { TrailingSpace = false },
+        }, pipeline: pipeline);
+        var tray = new TrayMenu(f.Controller, _ => { });
+        var toggle = tray.Menu.Items.OfType<NativeMenuItem>().First();
+        var command = toggle.Command!;
+
+        command.Execute(null); // Aufnahme 1
+        Assert.Equal(DictationState.Recording, f.Controller.State);
+        f.Now += TimeSpan.FromSeconds(1);
+        command.Execute(null); // Stopp: der Aufruf läuft, bis Diktat 1 ausgegeben ist
+        await Waits.For(() => pipeline.Refining(1));
+        Assert.Equal(DictationState.Processing, f.Controller.State);
+        Assert.Equal("Aufnahme starten", toggle.Header);
+
+        Assert.True(command.CanExecute(null)); // das Menü fragt CanExecute, bevor es den Eintrag auslöst
+        command.Execute(null);
+        Assert.Equal(DictationState.Recording, f.Controller.State);
+        Assert.Equal(1, f.Controller.Pending);
+        Assert.Contains("recording.start next=True", f.LogText, StringComparison.Ordinal);
+
+        f.Now += DictationController.DoublePressWindow + TimeSpan.FromMilliseconds(100);
+        Assert.True(command.CanExecute(null));
+        command.Execute(null); // Stopp von Diktat 2
+        await Waits.For(() => pipeline.Refining(2));
+        pipeline.Release(1);
+        pipeline.Release(2);
+        await Waits.For(() => f.Controller.State == DictationState.Idle);
+        Assert.Equal(["[KI] Diktat 1", "[KI] Diktat 2"], f.Sink.Written);
     }
 
     private static HistoryEntry Entry(DateTimeOffset at) =>
