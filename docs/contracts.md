@@ -102,6 +102,7 @@ Tests nutzen das Präfix `WhisperLoom-Test-<id>:` und löschen ihre Einträge.
 | `Task<string?> GetAsync(name, ct)` | null = nichts gespeichert. |
 | `Task SetAsync(name, value, ct)` | Ersetzt; `ArgumentException` bei unbekanntem Namen oder leerem Wert. |
 | `Task DeleteAsync(name, ct)` | Nichts gespeichert ist kein Fehler. |
+| `Task<bool> ExistsAsync(name, ct)` | TS-WLINUX, additiv: vorhanden ja/nein ohne den Wert (`status`). Standard über `GetAsync`; Secret Service per D-Bus `SearchItems`. |
 
 Namen: `SecretNames.Stt`, `SttFallback`, `Llm`, `LlmFallback`. Werte erscheinen nie in Logs, Exporten oder Meldungen.
 **Abweichung vom Goal** (dort `WhisperLoom:<anbieter>`): je Zugang statt je Anbieter, wie die Key-Felder in

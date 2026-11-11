@@ -30,38 +30,47 @@ public sealed class CompanySecretStore(ISecretStore user, ISecretStore company, 
 
     public string Kind => user.Kind;
 
-    public async Task<string?> GetAsync(string name, CancellationToken ct)
+    public Task<string?> GetAsync(string name, CancellationToken ct) => ResolveAsync(name, (store, n) => store.GetAsync(n, ct));
+
+    /// <summary>TS-WLINUX: dieselben Regeln wie <see cref="GetAsync"/>, aber die inneren Ablagen prüfen nur „vorhanden“.</summary>
+    public Task<bool> ExistsAsync(string name, CancellationToken ct) => ResolveAsync(name, (store, n) => store.ExistsAsync(n, ct));
+
+    /// <summary>Wendet die Firmen-Regeln an; <paramref name="read"/> liest bzw. prüft in der gewählten Ablage (default = nichts).</summary>
+    private async Task<T?> ResolveAsync<T>(string name, Func<ISecretStore, string, Task<T>> read)
     {
         var s = settings();
         var m = s.Management;
         if (name == CompanyProvider.EntryId)
         {
             return CompanyProvider.IsActive(m) && m.State == "approved"
-                ? await user.GetAsync(SecretNames.Device, ct).ConfigureAwait(false)
-                : null;
+                ? await read(user, SecretNames.Device).ConfigureAwait(false)
+                : default;
         }
         if (IsManaged(m) && m.State == "approved" && m.KeyMode == "distribute"
-            && (SecretNames.All.Contains(name) || SecretNames.IsProviderKey(name))
-            && await company.GetAsync(name, ct).ConfigureAwait(false) is { } key)
+            && (SecretNames.All.Contains(name) || SecretNames.IsProviderKey(name)))
         {
-            return OnTarget(s, name) ? key : null;
+            var key = await read(company, name).ConfigureAwait(false);
+            if (!EqualityComparer<T>.Default.Equals(key, default))
+            {
+                return OnTarget(s, name) ? key : default;
+            }
         }
         if (!SecretNames.All.Contains(name) || !IsManaged(m))
         {
-            return await user.GetAsync(name, ct).ConfigureAwait(false);
+            return await read(user, name).ConfigureAwait(false);
         }
         var p = policy();
         if (TargetFixed(p, name) || p.IsLocked("secrets." + name))
         {
-            return null;
+            return default;
         }
         // W2-FIX K-1 (Tiefe): Vorgabe oder Frei vom Server zählt nicht als Wahl des Nutzers. Der eigene Key geht nur an das
         // Ziel, für das er gespeichert wurde, oder an ein Ziel, das der Nutzer selbst überschrieben hat.
         if (!own.Allows(s, name) && !UserChoseTarget(s, name))
         {
-            return null;
+            return default;
         }
-        return await user.GetAsync(name, ct).ConfigureAwait(false);
+        return await read(user, name).ConfigureAwait(false);
     }
 
     /// <summary>Eigener Key unter Verwaltung: Ziel festhalten, das gerade gilt (CLI, Provisioning).</summary>
