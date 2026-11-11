@@ -339,6 +339,7 @@
   "Key_Deleted": "Key deleted.",
   "Key_Replace": "Replace …",
   "Key_Saved": "Key saved.",
+  "Key_SavedCompanyTarget": "Key saved, but your company sets the target: while managed, this key is not used and is deleted when you leave.",
   "Key_StoreError": "Key storage not reachable",
   "Language_Label": "Language",
   "Language_auto": "Automatic",

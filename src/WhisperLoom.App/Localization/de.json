@@ -339,6 +339,7 @@
   "Key_Deleted": "Key gelöscht.",
   "Key_Replace": "Ersetzen …",
   "Key_Saved": "Key gespeichert.",
+  "Key_SavedCompanyTarget": "Key gespeichert, aber das Ziel legt die Firma fest: Unter Verwaltung wird dieser Key nicht genutzt und beim Verlassen gelöscht.",
   "Key_StoreError": "Key-Ablage nicht erreichbar",
   "Language_Label": "Sprache",
   "Language_auto": "Automatisch",
