@@ -80,7 +80,7 @@ public sealed class TextRefiner(
             onTemperatureRejected?.Invoke(withoutTemperature);
         }
         var choice = JsonNode.Parse(body)?["choices"]?[0];
-        if (Text(choice?["finish_reason"]) == Length) throw new RefineRejectedException(MsgTruncated);
+        if (Text(choice?["finish_reason"]) == Length) throw new RefineTruncatedException(MsgTruncated);
         return Text(choice?["message"]?["content"]);
     }
 
@@ -94,7 +94,7 @@ public sealed class TextRefiner(
         var body = await Http.PostAsync(http, OllamaApi.ChatUrl(access.BaseUrl), access.ApiKey,
             Encoding.UTF8.GetBytes(OllamaApi.ChatPayload(access.Model, system, user)), "application/json",
             new HttpCallOptions(access.ReadTimeoutMs, ConnectTimeoutMs: connectTimeoutMs), ct).ConfigureAwait(false);
-        if (Text(JsonNode.Parse(body)?["done_reason"]) == Length) throw new RefineRejectedException(MsgTruncated);
+        if (Text(JsonNode.Parse(body)?["done_reason"]) == Length) throw new RefineTruncatedException(MsgTruncated);
         return OllamaApi.ParseChat(body);
     }
 

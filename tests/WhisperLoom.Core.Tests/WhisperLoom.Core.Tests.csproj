@@ -18,5 +18,7 @@
   <ItemGroup>
     <!-- Format-Fixtures (docs/settings-format.md), dieselben Dateien nutzt Android (WLD-P5c). -->
     <None Include="../fixtures/settings-v1*.json" Link="fixtures/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <!-- TS-WSTUFEN: Erwartung der Diktat-Stufe aus dem alten App-Code. -->
+    <None Include="../fixtures/dictation-stage-golden.txt" Link="fixtures/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

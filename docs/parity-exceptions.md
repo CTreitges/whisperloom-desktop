@@ -55,3 +55,13 @@ Christof 02.11.2026 (Vorfall: das nächste Diktat sollte starten, eingefügt wur
 |---|---|---|
 | Taste während der Verbesserung = Verbesserung überspringen, Rohtext einfügen | Taste (Halten oder Umschalten, Linux `toggle`) startet sofort die nächste Aufnahme; das laufende Diktat wird fertig verbessert und eingefügt. Ausgaben streng in Diktat-Reihenfolge, jedes ins eigene Ziel, eigener Verlaufseintrag | Am Desktop folgt das nächste Diktat oft Sekunden nach dem Stopp; der Druck meint dann „weiter diktieren“, nicht „überspringen“ |
 | — | Überspringen per Doppeldruck (zweiter Druck < 400 ms nach dem Druck, der die neue Aufnahme gestartet hat: Aufnahme verworfen, nichts gesendet) oder Esc (nur Windows, nur solange eine Verbesserung läuft, Esc wird dann geschluckt) | Der Ausweg bleibt, ohne die häufige Bedienung zu stören; Linux hat keinen globalen Hook, dort nur der Doppeldruck über `toggle` |
+
+## Verhalten: Stufen-Auflösung und Ollama-Kontext (TS-WSTUFEN)
+
+Entscheidung Christof 11.11.2026: Das sichtbare Verhalten der App gilt. Android bleibt in einem eigenen Todo.
+
+| Android | Desktop | Begründung |
+|---|---|---|
+| `Prefs.refineMode`: gespeichertes „readable“ ergibt `RefineMode.READABLE` | `SettingsAccess.DictationStage` (einzige Auflösung, App und Core) ergibt bei „readable“ Glätten (`Polish`); „Lesbar“ entsteht nur über die Bereinigung `PolishCleanup.Readable` | Die App zeigte schon immer Glätten. Das wirksame `Refinement` ist in allen 432 Kombinationen gleich (Tabellentest `DictationStageTableTest`), weil `Refinement.Of` beide Werte gleich behandelt |
+| Ollama `/api/chat` ohne `options.num_ctx` | `options.num_ctx` passend zur Länge: Zweierpotenz ≥ ⌈(System+Nutzer)/3⌉ + ⌈2·Nutzer/3⌉ + 256, mindestens 4096, höchstens 16384 (`OllamaApi.NumCtx`) | Ohne den Wert kürzt Ollama still auf seinen Standard-Kontext (unter 24 GiB VRAM 4k). Lange Diktate gingen dann abgeschnitten an das Modell |
+| `done_reason`/`finish_reason` „length“ → `RefineRejectedException` | `RefineTruncatedException` (Unterklasse); das Diktat-Log nennt `refineErrorClass=RefineTruncatedException` | Das Log zeigte bisher nur `refineSkipped=True` ohne Grund. Es bleibt bei Metadaten, ohne Text |

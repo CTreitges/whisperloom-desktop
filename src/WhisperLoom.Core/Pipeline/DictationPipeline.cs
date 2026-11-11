@@ -205,6 +205,7 @@ public sealed class DictationPipeline(
         string? ai = null;
         string? skipped = null;
         string? note = null;
+        string? skippedClass = null;
         if (plan.Route is RefineRoute.Raw r)
         {
             skipped = r.Hint is { } hint ? RefinePlan.Message(hint) : null;
@@ -224,12 +225,13 @@ public sealed class DictationPipeline(
             catch (Exception e)
             {
                 skipped = string.IsNullOrEmpty(e.Message) ? e.GetType().Name : e.Message;
+                skippedClass = e.GetType().Name;
             }
         }
         // Ohne KI = Rohtext, den keine KI bearbeitet hat: volle Regeln.
         var options = PolishRules.For(s.Polish, language, ai is null ? RefineMode.Off : refinement.Mode, refinement.Paragraphs);
         var text = polisher.Polish(ai ?? raw, options);
-        return new RefinedText(refinement, text, ai is null ? null : plan.ModelLabel(), skipped, ai is null ? null : note);
+        return new RefinedText(refinement, text, ai is null ? null : plan.ModelLabel(), skipped, ai is null ? null : note, skippedClass);
     }
 
     /// <summary>

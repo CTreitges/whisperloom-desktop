@@ -22,6 +22,7 @@ Die Verträge trennen Core-Text, Core-API und App-Shell, damit diese Teile paral
   | `ApiHttpException` (`StatusCode`) | Server antwortete mit Fehlerstatus |
   | `ApiNetworkException` | DNS, Verbindung, TLS, Zeitlimit |
   | `RefineRejectedException` | Modell hat geantwortet statt bearbeitet, abgeschnitten oder leer |
+  | `RefineTruncatedException` (Unterklasse von `RefineRejectedException`, TS-WSTUFEN) | Modell hat an seiner Längengrenze aufgehört (`done_reason`/`finish_reason` „length“) |
   | `LocalNotAvailableException` | Begleitprozess, lokales Modell oder Ollama fehlt |
 
   Falsche Argumente: `ArgumentException`-Familie.
@@ -129,7 +130,7 @@ Ablagefehler: `IOException`.
 | `AudioBuffer` | `ReadOnlyMemory<short> Samples`, `SampleRate` (16 000), `DurationMs`, `IsEmpty`. |
 | `DictationRequest` | `Audio`, `Language`, `Refinement`. |
 | `DictationResult` | `Raw`, `Language` (wirksam), `DurationMs`, `Result` (`RefinedText`), `SttLabel`, `UsedSttFallback`, `Text`. |
-| `RefinedText` | `Refinement`, `Text`, `Model?`, `Skipped?`, `Note?`, `Refined` (= Model gesetzt). Port von `Refined`. |
+| `RefinedText` | `Refinement`, `Text`, `Model?`, `Skipped?`, `Note?`, `SkippedClass?` (Fehlerklasse zu `Skipped`, fürs Log; TS-WSTUFEN, additiv), `Refined` (= Model gesetzt). Port von `Refined`. |
 | `TranscriptResult` | `Text`, `DetectedLanguage?`. |
 | `ProviderInfo`, `ModelOption` | Katalogdaten eines Anbieters (Port der Daten von `Provider`/`ModelOption`), keine Keys. |
 | `ApiStyle` | `OpenAi`, `Ollama`, `ElevenLabs`. |

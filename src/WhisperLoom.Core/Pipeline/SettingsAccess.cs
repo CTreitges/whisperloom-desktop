@@ -23,27 +23,40 @@ public static class SettingsAccess
 
     public static Engine? EngineOf(WhisperLoomSettings s) => Engines.FromKey(s.Engine);
 
-    /// <summary>Stufe des Diktats: "paragraphs" → Glätten, „Prompt“ nur eingeschaltet (sonst Glätten), Unbekanntes → aus.</summary>
-    public static RefineMode DictationStage(WhisperLoomSettings s)
+    /// <summary>
+    /// Die einzige Auflösung der gespeicherten Diktat-Stufe (App und Core, TS-WSTUFEN): "paragraphs" → Glätten,
+    /// „Prompt“ nur eingeschaltet (sonst Glätten), „readable“ → Glätten (nie wählbar, siehe <see cref="RefineMode"/>;
+    /// „Lesbar“ entsteht nur über die Bereinigung), Unbekanntes → aus.
+    /// </summary>
+    public static RefineMode DictationStage(RefineSettings refine)
     {
-        var mode = s.Refine.Stage == LegacyParagraphs ? RefineMode.Polish : RefineModes.FromKey(s.Refine.Stage);
-        return mode == RefineMode.Prompt && !s.Refine.PromptEnabled ? RefineMode.Polish : mode;
+        var mode = refine.Stage == LegacyParagraphs ? RefineMode.Polish : RefineModes.FromKey(refine.Stage);
+        return mode switch
+        {
+            RefineMode.Prompt when !refine.PromptEnabled => RefineMode.Polish,
+            RefineMode.Readable => RefineMode.Polish,
+            _ => mode,
+        };
+    }
+
+    /// <summary>Wirksame Verarbeitung der Diktat-Stufe (<see cref="Refinement.Of"/>, Weg Diktat).</summary>
+    public static Refinement DictationRefinement(RefineSettings refine)
+    {
+        var stage = DictationStage(refine);
+        var paragraphs = stage switch
+        {
+            RefineMode.Polish => refine.ParagraphsPolish,
+            RefineMode.Beautify => refine.ParagraphsBeautify,
+            _ => true,
+        };
+        return Refinement.Of(RefineWay.Dictation, stage, RefineKeys.CleanupFromKey(refine.PolishCleanup), paragraphs,
+            RefineKeys.FormFromKey(refine.SummarizeForm));
     }
 
     /// <summary>Die wirksame Verarbeitung des Wegs (<see cref="Refinement.Of"/>).</summary>
     public static Refinement RefinementFor(WhisperLoomSettings s, RefineWay way)
     {
-        if (way == RefineWay.Dictation)
-        {
-            var stage = DictationStage(s);
-            var paragraphs = stage switch
-            {
-                RefineMode.Polish or RefineMode.Readable => s.Refine.ParagraphsPolish,
-                RefineMode.Beautify => s.Refine.ParagraphsBeautify,
-                _ => true,
-            };
-            return Refinement.Of(way, stage, RefineKeys.CleanupFromKey(s.Refine.PolishCleanup), paragraphs, RefineKeys.FormFromKey(s.Refine.SummarizeForm));
-        }
+        if (way == RefineWay.Dictation) return DictationRefinement(s.Refine);
         var shareStage = RefineModes.FromKey(s.Share.Stage);
         if (!RefineModes.Settings.Contains(shareStage)) shareStage = RefineMode.Off;
         return Refinement.Of(way, shareStage, RefineKeys.CleanupFromKey(s.Share.PolishCleanup), true, RefineKeys.FormFromKey(s.Share.SummarizeForm));

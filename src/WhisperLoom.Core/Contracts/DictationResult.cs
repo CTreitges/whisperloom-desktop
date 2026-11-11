@@ -14,19 +14,24 @@ public sealed record TranscriptResult(string Text, string? DetectedLanguage = nu
 /// <param name="Model">Womit verbessert wurde, als Anzeige; null = ohne KI.</param>
 /// <param name="Skipped">Warum ohne KI, obwohl eine Stufe gewählt war; null = nicht gescheitert.</param>
 /// <param name="Note">Hinweis, der den Text nicht betrifft (z. B. online gescheitert, lokal verbessert).</param>
+/// <param name="SkippedClass">
+/// TS-WSTUFEN (additiv): Fehlerklasse zu <paramref name="Skipped"/>, fürs Log (z. B. <see cref="RefineTruncatedException"/>);
+/// null = nicht an einem Fehler gescheitert.
+/// </param>
 public sealed record RefinedText(
     Refinement Refinement,
     string Text,
     string? Model = null,
     string? Skipped = null,
-    string? Note = null)
+    string? Note = null,
+    string? SkippedClass = null)
 {
     /// <summary>Mit KI bearbeitet.</summary>
     public bool Refined => Model is not null;
 
     /// <summary>Ohne Text: ein Log darf nie ein Diktat zeigen.</summary>
     public override string ToString() =>
-        $"RefinedText(refinement={Refinement}, text={Text.Length} Zeichen, model={Model}, skipped={Skipped}, note={Note})";
+        $"RefinedText(refinement={Refinement}, text={Text.Length} Zeichen, model={Model}, skipped={Skipped}, note={Note}, skippedClass={SkippedClass})";
 }
 
 /// <summary>Ein fertiges Diktat (Port von <c>Dictation</c>): Rohtext der Erkennung und was daraus wurde.</summary>
