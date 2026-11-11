@@ -29,8 +29,14 @@ public interface IAccessChecker
 /// W2: Einträge (<c>custom:&lt;id&gt;</c>, <c>local:&lt;name&gt;</c>) gehen immer an ihre eigene Adresse, nie an die übergebene.
 /// </summary>
 // Doku: platform.openai.com/docs/api-reference/models/list, docs.anthropic.com/en/api/models-list (abgerufen 2026-10-30).
-public sealed class HttpAccessChecker(Func<HttpClient> client, Func<ProviderDirectory>? providers = null) : IAccessChecker
+/// <param name="client">Liefert den Client je Prüfung; geteilt, außer <paramref name="ownsClient"/>.</param>
+/// <param name="ownsClient">Jeder gelieferte Client gehört der Prüfung und wird danach freigegeben (WLD-INT-17).</param>
+public sealed class HttpAccessChecker(Func<HttpClient> client, Func<ProviderDirectory>? providers = null, bool ownsClient = false) : IAccessChecker
 {
+    /// <summary>Für eine Fabrik, die je Prüfung einen neuen Client baut (Einstellungen: Proxy kann wechseln).</summary>
+    public static HttpAccessChecker PerCheck(Func<HttpClient> create, Func<ProviderDirectory>? providers = null) =>
+        new(create, providers, ownsClient: true);
+
     public async Task<AccessResult> CheckAsync(string providerId, string baseUrl, string? key, CancellationToken ct)
     {
         var provider = (providers?.Invoke() ?? ProviderDirectory.Catalog).Find(providerId);
@@ -68,7 +74,9 @@ public sealed class HttpAccessChecker(Func<HttpClient> client, Func<ProviderDire
         {
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
             timeout.CancelAfter(TimeSpan.FromSeconds(15));
-            using var response = await client().SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false);
+            var http = client();
+            using var owned = ownsClient ? http : null;
+            using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false);
             var status = (int)response.StatusCode;
             return response.StatusCode switch
             {
