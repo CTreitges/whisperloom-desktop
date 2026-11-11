@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Avalonia.Styling;
 using WhisperLoom.App.Features.Profiles;
+using WhisperLoom.App.Management;
 using WhisperLoom.App.Platform.Sidecar;
 using WhisperLoom.App.Services;
 using WhisperLoom.App.Tests.Management;
@@ -29,7 +30,8 @@ internal static class UxSettingsScenes
         Action<ControllerFixture>? Arrange = null,
         bool Company = false,
         bool Joined = false,
-        Func<SettingsWindow, Task>? Act = null);
+        Func<SettingsWindow, Task>? Act = null,
+        Func<ControllerFixture, ISecretStore, ISecretStore>? Store = null);
 
     public static async Task<UxScene> PageAsync(string page, ThemeVariant theme, PageSetup? setup = null)
     {
@@ -48,7 +50,7 @@ internal static class UxSettingsScenes
         var store = new MemorySecretStore();
         store.Values[SecretNames.Stt] = "test-key-not-real-9";
         store.Values["custom:labor"] = "test-key-not-real-8";
-        var vm = new SettingsViewModel(f.Controller, store, new FakeAccessChecker(), ["USB-Mikrofon"]) { Company = rig?.Service };
+        var vm = new SettingsViewModel(f.Controller, setup.Store?.Invoke(f, store) ?? store, new FakeAccessChecker(), ["USB-Mikrofon"]) { Company = rig?.Service };
         await vm.LoadKeysAsync();
         SettingsShellViewModel.LastPage = page;
         var window = new SettingsWindow(new SettingsShellViewModel(vm)) { Width = Width, Height = 660, RequestedThemeVariant = theme };
@@ -93,6 +95,28 @@ internal static class UxSettingsScenes
             },
         };
     }
+
+    /// <summary>
+    /// TS-WKLEIN: Firma legt den Anbieter der Erkennung fest (Fest-Ziel), der Nutzer speichert trotzdem einen eigenen Key —
+    /// das Key-Feld zeigt den Hinweis statt „Key gespeichert.“.
+    /// </summary>
+    public static PageSetup CompanyTargetKey() => new(
+        Arrange: f =>
+        {
+            f.Controller.Settings.Management.ServerUrl = "https://wl.example.com";
+            f.Controller.Settings.Management.State = "approved";
+            f.Controller.Settings.Management.TenantName = "Beispiel GmbH";
+            f.Controller.Policy = new PolicySettings { Locked = ["stt.providerId"] };
+        },
+        Store: (f, user) => new CompanySecretStore(user, new MemorySecretStore(), () => f.Controller.Settings, () => f.Controller.Policy,
+            () => new Dictionary<string, KeyTarget>(), new OwnKeyTargets(f.DataDir)),
+        Act: async w =>
+        {
+            var key = w.Settings!.SttKey;
+            key.ReplaceCommand.Execute(null);
+            key.NewValue = "test-key-not-real-10";
+            await key.SaveKeyCommand.ExecuteAsync(null);
+        });
 
     /// <summary>Eigener Anbieter, eigenes Whisper-Modell und lokaler Server (Seiten „Anbieter“ und „Lokale Modelle“).</summary>
     public static WhisperLoomSettings LocalDemo()

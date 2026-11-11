@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless;
@@ -56,6 +57,34 @@ public sealed class HelpEntryTest : IDisposable
             Assert.Equal(HelpCatalog.PageTopics[page], _opened[^1]);
         }
         Assert.Equal(SettingsUi.PageIds.Count, _opened.Count);
+        window.Close();
+    }
+
+    /// <summary>
+    /// TS-WKLEIN (Christof 05.11.: „?“ schlecht sichtbar): „Hilfe“ steht mit Text als erster Eintrag links in der Navigation,
+    /// vor der ersten Seite, und öffnet den Abschnitt der aktuellen Seite.
+    /// </summary>
+    [AvaloniaFact]
+    public void Help_is_the_first_labelled_entry_of_the_settings_sidebar()
+    {
+        using var f = new ControllerFixture();
+        var window = Settings(f);
+        var help = window.FindControl<Button>("HelpNavButton")!;
+        var first = (Control)window.FindControl<ListBox>("PageList")!.ContainerFromIndex(0)!;
+
+        Assert.True(help.IsEffectivelyVisible);
+        Assert.Equal("Hilfe", AutomationProperties.GetName(help));
+        Assert.Contains(help.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Hilfe" && t.IsEffectivelyVisible);
+        var helpTop = help.TranslatePoint(default, window)!.Value;
+        var firstTop = first.TranslatePoint(default, window)!.Value;
+        Assert.True(helpTop.Y + help.Bounds.Height <= firstTop.Y, $"Hilfe {helpTop.Y} vor Diktat {firstTop.Y}");
+        Assert.True(helpTop.X < window.FindControl<ContentControl>("PageHost")!.TranslatePoint(default, window)!.Value.X); // links
+
+        SettingsUi.Show(window, "connections");
+        help.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+        Assert.Equal(["providers"], _opened);
+        Loc.Instance.SetLanguage("en");
+        Assert.Equal("Help", AutomationProperties.GetName(help));
         window.Close();
     }
 

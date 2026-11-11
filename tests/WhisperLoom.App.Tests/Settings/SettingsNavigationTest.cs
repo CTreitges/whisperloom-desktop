@@ -72,6 +72,10 @@ public sealed class SettingsNavigationTest
         window.KeyPress(Key.F, RawInputModifiers.Control, PhysicalKey.F, "f");
         Assert.Same(window.FindControl<TextBox>("SearchBox"), Focused(window));
 
+        // TS-WKLEIN: „Hilfe“ ist der erste Eintrag der Seitenleiste und damit der nächste Tab-Stopp.
+        window.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
+        Assert.Same(window.FindControl<Button>("HelpNavButton"), Focused(window));
+
         window.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
         var sidebar = window.FindControl<ListBox>("PageList")!;
         Assert.True(Focused(window) is Visual v && (v == sidebar || v.FindAncestorOfType<ListBox>() == sidebar), $"Fokus: {Focused(window)}");

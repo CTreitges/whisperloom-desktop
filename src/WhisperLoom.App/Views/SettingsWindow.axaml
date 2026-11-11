@@ -59,6 +59,19 @@
           </TextBox>
         </StackPanel>
 
+        <!-- TS-WKLEIN (Christof 05.11.: „?“ schlecht sichtbar): Hilfe als erster Eintrag der Seitenleiste, mit Text; öffnet den Abschnitt der Seite. -->
+        <Button x:Name="HelpNavButton" DockPanel.Dock="Top" Classes="sideNav" Click="OnHelpNav"
+                AutomationProperties.Name="{Binding [Help_SidebarEntry], Source={x:Static l:Loc.Instance}}"
+                ToolTip.Tip="{Binding [Help_PageButton_Tip], Source={x:Static l:Loc.Instance}}">
+          <Border Classes="sideItem">
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Loom.Space.3}">
+              <ds:LoomIcon Data="{DynamicResource Loom.Icon.Help}" Width="20" Height="20" VerticalAlignment="Top" />
+              <TextBlock Grid.Column="1" Text="{Binding [Help_SidebarEntry], Source={x:Static l:Loc.Instance}}" VerticalAlignment="Center" TextWrapping="Wrap" />
+            </Grid>
+          </Border>
+        </Button>
+        <Border DockPanel.Dock="Top" Classes="accountGap" Margin="12,8,12,8" />
+
         <ListBox x:Name="PageList" Classes="sidebar" ItemsSource="{Binding Pages}" SelectedItem="{Binding SelectedPage}"
                  AutomationProperties.Name="{Binding [Sidebar_Name], Source={x:Static l:Loc.Instance}}">
           <ListBox.Styles>
