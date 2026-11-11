@@ -31,6 +31,21 @@ internal sealed class FileSecretStore(string filePath, string prefix) : ISecretS
         }
     }
 
+    /// <summary>TS-WLINUX: vorhanden ja/nein; der Wert bleibt in dieser Methode.</summary>
+    public async Task<bool> ExistsAsync(string name, CancellationToken ct)
+    {
+        SecretStoreNames.Check(name);
+        await Gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            return Read().ContainsKey(prefix + name);
+        }
+        finally
+        {
+            Gate.Release();
+        }
+    }
+
     public async Task SetAsync(string name, string value, CancellationToken ct)
     {
         SecretStoreNames.Check(name);

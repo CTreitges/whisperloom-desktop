@@ -122,6 +122,35 @@ internal sealed class SecretToolStore(string prefix, IProcessRunner runner) : IS
             : throw new IOException($"Secret Service: Lesen fehlgeschlagen (Exit {r.ExitCode}).");
     }
 
+    /// <summary>
+    /// TS-WLINUX: Vorhanden-Prüfung ohne den Wert — <c>SearchItems</c> des Secret Service liefert nur Objektpfade
+    /// (entsperrte, gesperrte). <c>secret-tool search</c> taugt nicht, es gibt den Wert mit aus. Ohne <c>gdbus</c>
+    /// (libglib2.0-bin) Rückfall auf <see cref="GetAsync"/>.
+    /// </summary>
+    // Doku: specifications.freedesktop.org/secret-service-spec/latest/org.freedesktop.Secret.Service.html — SearchItems
+    // (a{ss}) → (ao unlocked, ao locked); docs.gtk.org/gio/gdbus.html (abgerufen 2026-11-11).
+    public async Task<bool> ExistsAsync(string name, CancellationToken ct)
+    {
+        SecretStoreNames.Check(name);
+        var query = $"{{'service': {GVariantString(_service)}, 'account': {GVariantString(name)}}}";
+        ProcessResult r;
+        try
+        {
+            r = await runner.RunAsync("gdbus", ["call", "--session", "--dest", "org.freedesktop.secrets", "--object-path",
+                "/org/freedesktop/secrets", "--method", "org.freedesktop.Secret.Service.SearchItems", query], null, ct).ConfigureAwait(false);
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            return await GetAsync(name, ct).ConfigureAwait(false) is not null;
+        }
+        return r.ExitCode == 0
+            ? r.StdOut.Contains("'/", StringComparison.Ordinal)
+            : throw new IOException($"Secret Service: Prüfen fehlgeschlagen (Exit {r.ExitCode}).");
+    }
+
+    /// <summary>GVariant-Textform eines Strings: einfache Anführungszeichen, <c>\</c> und <c>'</c> maskiert.</summary>
+    private static string GVariantString(string s) => "'" + s.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("'", "\\'", StringComparison.Ordinal) + "'";
+
     public async Task SetAsync(string name, string value, CancellationToken ct)
     {
         SecretStoreNames.Check(name);

@@ -84,23 +84,75 @@ internal sealed class InstanceEndpoint
 
     /// <summary>
     /// Ordner für den Socket, nur für den aktuellen Benutzer: $XDG_RUNTIME_DIR (systemd legt ihn mit 700 an),
-    /// sonst /tmp/whisperloom-&lt;user&gt; mit 700.
+    /// sonst /tmp/whisperloom-&lt;user&gt; mit 700, gehört der jemand anderem: ~/.cache/whisperloom-run mit 700.
     /// </summary>
-    private static string RuntimeDir() => RuntimeDir(Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR"),
-        Path.Combine(Path.GetTempPath(), $"whisperloom-{Environment.UserName}"), "", false);
+    private static string RuntimeDir()
+    {
+        var cache = Environment.GetEnvironmentVariable("XDG_CACHE_HOME");
+        if (string.IsNullOrEmpty(cache))
+        {
+            cache = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".cache");
+        }
+        return RuntimeDir(Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR"),
+            Path.Combine(Path.GetTempPath(), $"whisperloom-{Environment.UserName}"), Path.Combine(cache, "whisperloom-run"),
+            !OperatingSystem.IsWindows() && geteuid() == 0);
+    }
 
+    /// <summary>
+    /// TS-WLINUX: <paramref name="candidate"/> (<c>/tmp/whisperloom-&lt;user&gt;</c>) nur, wenn er dem Prozess gehört;
+    /// sonst <paramref name="fallback"/> im eigenen Home. Root beweist mit chmod keinen Besitz und nimmt nie <c>/tmp</c>.
+    /// </summary>
+    /// <exception cref="IOException">Auch der Ausweichordner ist nicht privat; die Meldung nennt Ordner und Ausweg.</exception>
     internal static string RuntimeDir(string? xdgRuntime, string candidate, string fallback, bool isRoot)
     {
         if (!string.IsNullOrEmpty(xdgRuntime) && Directory.Exists(xdgRuntime))
         {
             return xdgRuntime;
         }
-        var dir = candidate;
-        if (!OperatingSystem.IsWindows())
+        if (OperatingSystem.IsWindows())
         {
-            Directory.CreateDirectory(dir, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
-            File.SetUnixFileMode(dir, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            return candidate;
         }
-        return dir;
+        if (!isRoot && IsPrivateDir(candidate))
+        {
+            return candidate;
+        }
+        if (IsPrivateDir(fallback))
+        {
+            return fallback;
+        }
+        throw new IOException($"Socket-Ordner {candidate} und {fallback} gehören nicht dem aktuellen Benutzer oder sind nicht "
+            + "auf 700 setzbar. XDG_RUNTIME_DIR auf einen eigenen Ordner setzen oder die Ordner entfernen.");
     }
+
+    /// <summary>
+    /// Legt <paramref name="dir"/> mit 700 an bzw. setzt ihn auf 700. Ein Symlink zählt nie (könnte auf einen fremden
+    /// Ordner zeigen); chmod gelingt nur dem Besitzer, ein fremder Ordner scheitert also hier.
+    /// </summary>
+    [System.Runtime.Versioning.UnsupportedOSPlatform("windows")]
+    private static bool IsPrivateDir(string dir)
+    {
+        try
+        {
+            Directory.CreateDirectory(dir, OwnerOnly);
+            if (new DirectoryInfo(dir).LinkTarget is not null)
+            {
+                return false;
+            }
+            File.SetUnixFileMode(dir, OwnerOnly);
+            return File.GetUnixFileMode(dir) == OwnerOnly;
+        }
+        catch (Exception e) when (e is UnauthorizedAccessException or IOException)
+        {
+            return false;
+        }
+    }
+
+    private const UnixFileMode OwnerOnly = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
+
+    // Doku: man7.org/linux/man-pages/man2/geteuid.2.html — kann nicht fehlschlagen (abgerufen 2026-11-11).
+#pragma warning disable SYSLIB1054 // DllImport reicht hier; LibraryImport bräuchte AllowUnsafeBlocks.
+    [System.Runtime.InteropServices.DllImport("libc", SetLastError = false)]
+    private static extern uint geteuid();
+#pragma warning restore SYSLIB1054
 }
