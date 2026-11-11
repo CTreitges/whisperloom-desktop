@@ -166,6 +166,38 @@ public sealed class ManagementSyncTest
     }
 
     [Fact]
+    public async Task Provisioning_mit_abgelehntem_Code_verwirft_ihn_und_sendet_ihn_nicht_erneut()
+    {
+        // Review N-3: Ein endgültig abgelehnter Firmencode blieb im Klartext in settings.json und ging bei jedem Abgleich raus.
+        using var r = new ManagementRig();
+        r.Settings.Management.ServerUrl = FakeManagementServer.Url;
+        r.Settings.Management.Code = "ZZZZ-ZZZZ-ZZZZ-ZZZZ";
+        Assert.Equal(SyncOutcome.Failed, await r.Service.SyncAsync(CancellationToken.None));
+        Assert.Equal("code_invalid", r.Service.LastError);
+        Assert.Equal("", r.Settings.Management.Code);
+        Assert.DoesNotContain("ZZZZ-ZZZZ", File.ReadAllText(r.F.Store.FilePath));
+
+        var enrolls = r.Server.Requests.Count(q => q.Path == "/api/v1/enroll");
+        await r.Service.SyncAsync(CancellationToken.None);
+        Assert.Equal(enrolls, r.Server.Requests.Count(q => q.Path == "/api/v1/enroll"));
+    }
+
+    [Fact]
+    public async Task Provisioning_offline_behaelt_den_Code_fuer_den_naechsten_Abgleich()
+    {
+        using var r = new ManagementRig();
+        r.Settings.Management.ServerUrl = FakeManagementServer.Url;
+        r.Settings.Management.Code = FakeManagementServer.Code;
+        r.Server.Offline = true;
+        Assert.Equal(SyncOutcome.Offline, await r.Service.SyncAsync(CancellationToken.None));
+        Assert.Equal(FakeManagementServer.Code, r.Settings.Management.Code);
+
+        r.Server.Offline = false;
+        Assert.Equal(SyncOutcome.Pending, await r.Service.SyncAsync(CancellationToken.None));
+        Assert.Equal("", r.Settings.Management.Code);
+    }
+
+    [Fact]
     public async Task Abgleich_ohne_Firma_tut_nichts()
     {
         using var r = new ManagementRig();

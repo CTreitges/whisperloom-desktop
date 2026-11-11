@@ -70,11 +70,16 @@ public sealed partial class ManagementService
             catch (ArgumentException e)
             {
                 LastError = e.Message;
+                await DropCodeAsync().ConfigureAwait(false);
                 return SyncOutcome.Failed;
             }
             catch (ManagementException e)
             {
                 LastError = e.Error;
+                if (FinalEnrollErrors.Contains(e.Error))
+                {
+                    await DropCodeAsync().ConfigureAwait(false);
+                }
                 return SyncOutcome.Failed;
             }
             catch (ManagementOfflineException)
@@ -84,6 +89,26 @@ public sealed partial class ManagementService
             }
         }
         return m.State is "none" ? SyncOutcome.NotManaged : await RevokeAsync(ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Fehler, bei denen ein erneuter Versuch mit demselben Code nichts ändert (<c>docs/server-api.md</c> §1.2 „nicht
+    /// wiederholen“ bzw. Code unbekannt). Offline, Rate-Limit, Wartung und Serverfehler behalten den Code.
+    /// </summary>
+    private static readonly HashSet<string> FinalEnrollErrors = new(StringComparer.Ordinal)
+    {
+        "code_invalid", "invalid_request", "not_found", "payload_too_large",
+    };
+
+    /// <summary>
+    /// Review N-3: Ein endgültig abgelehnter Firmencode aus dem Provisioning bliebe sonst im Klartext in settings.json und
+    /// ginge bei jedem Abgleich erneut an den Server.
+    /// </summary>
+    private async Task DropCodeAsync()
+    {
+        var settings = Copy(target.Settings);
+        settings.Management.Code = "";
+        await target.SaveStateAsync(settings).ConfigureAwait(false);
     }
 
     private async Task<SyncOutcome> FetchConfigAsync(string serverUrl, string token, CancellationToken ct)
