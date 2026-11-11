@@ -44,6 +44,9 @@ internal sealed class GatedRefinePipeline : IDictationPipeline, ISkippablePipeli
     /// <summary>Keine Verbesserung geplant (Stufe aus): nach der Erkennung sofort der Rohtext, ohne Beginn der Verbesserung.</summary>
     public bool NoRefine { get; init; }
 
+    /// <summary>Die Verbesserung scheitert wirklich (Fehlergrund im Ergebnis), auch wenn danach noch übersprungen wird.</summary>
+    public string? RefineFailure { get; init; }
+
     /// <summary>Diktat <paramref name="n"/> wird gerade erkannt (nur mit <see cref="HoldRecognition"/>).</summary>
     public bool Recognizing(int n) => _recognizing.ContainsKey(n);
 
@@ -80,6 +83,10 @@ internal sealed class GatedRefinePipeline : IDictationPipeline, ISkippablePipeli
         if (_fail.ContainsKey(n))
         {
             throw new ApiNetworkException("Fake-Netzfehler");
+        }
+        if (RefineFailure is { } failure)
+        {
+            return new DictationResult(raw, "de", request.Audio.DurationMs, new RefinedText(request.Refinement, raw, null, failure), "Fake-STT");
         }
         var text = skip.IsSkipped ? raw : "[KI] " + raw;
         return new DictationResult(raw, "de", request.Audio.DurationMs,

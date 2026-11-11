@@ -176,8 +176,8 @@ public sealed partial class DictationController
             }, job.Cts.Token);
             // Genau einmal je Diktat und nur bei echtem Überspringen (TS-WTRAY): die Verbesserung hatte begonnen, der Ausweg
             // war gesetzt, und das Ergebnis kam ohne KI. Esc und Doppeldruck auf dasselbe Diktat zählen einmal; ohne Verbesserung
-            // (Stufe aus) oder wenn sie vor dem Ausweg fertig war, nichts.
-            if (started && job.Skip.IsSkipped && !result.Result.Refined)
+            // (Stufe aus), wenn sie vor dem Ausweg fertig war oder wirklich scheiterte (Skipped = Fehlergrund), nichts.
+            if (started && job.Skip.IsSkipped && !result.Result.Refined && result.Result.Skipped is null)
             {
                 _log.Event("refine.skipped");
             }

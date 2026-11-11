@@ -167,6 +167,23 @@ public sealed class NextReviewDetailsTest : IDisposable
         Assert.Equal(1, SkippedLogs(f));
     }
 
+    /// <summary>Prüfer-Fund: Die Verbesserung scheiterte wirklich (z. B. 401), Esc kam erst danach – das ist kein Überspringen.</summary>
+    [AvaloniaFact]
+    public async Task Gescheiterte_Verbesserung_mit_spaetem_Esc_loggt_nichts()
+    {
+        var pipeline = new GatedRefinePipeline { RefineFailure = "Fake-401" };
+        var f = Fixture(pipeline);
+        f.Controller.Start();
+        f.Now += TimeSpan.FromSeconds(1);
+        var stop = f.Controller.StopAsync();
+        await Waits.For(() => pipeline.Refining(1));
+
+        Assert.True(f.Controller.SkipRefine());
+        await stop.Within();
+        Assert.Equal(["Diktat 1"], f.Sink.Written);
+        Assert.Equal(0, SkippedLogs(f));
+    }
+
     [AvaloniaFact]
     public async Task Ohne_Ueberspringen_kein_Eintrag()
     {
