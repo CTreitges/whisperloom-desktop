@@ -55,6 +55,26 @@ public sealed class SelectionCaptureTest
     }
 
     [Fact]
+    public async Task A_late_copy_after_the_wait_is_undone_and_the_clipboard_restored()
+    {
+        // Review N-7: Kopiert das Ziel erst nach der Wartezeit, blieb die Markierung in der Zwischenablage, die alte war weg.
+        // Nachfrist = SelectionCapture.DefaultLateCopyGrace (500 ms) nach den 50 ms Wartezeit.
+        var capture = new SelectionCapture(_rig.Clipboard, _rig.Keys, _rig.Windows, TimeSpan.FromMilliseconds(50));
+        var late = Task.Run(async () =>
+        {
+            await Task.Delay(200);
+            _rig.Clipboard.Text = "Markierter Text";
+            _rig.Clipboard.SequenceNumber++;
+        });
+
+        Assert.Null((await capture.CaptureAsync(42, false, CancellationToken.None)).Text);
+        await late;
+
+        Assert.Equal("alt", _rig.Clipboard.Text);
+        Assert.Contains("restore", _rig.Steps);
+    }
+
+    [Fact]
     public async Task Consoles_get_ctrl_insert_instead_of_ctrl_c()
     {
         _rig.Keys.Selection = "ls -la";
