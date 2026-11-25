@@ -94,6 +94,9 @@ public sealed class BundledTextEngine : ILocalRefiner, IAsyncDisposable
         }
     }
 
+    /// <summary>Vorladen gescheitert (Modell fehlt, Prozess startet nicht): für das Log der App; der Nutzer sieht nichts Neues.</summary>
+    internal Action<Exception>? WarmUpFailed { get; set; }
+
     /// <summary>Vorladen während der Aufnahme: startet den Begleitprozess, Fehler zeigen sich erst beim Verbessern.</summary>
     public async Task WarmUpAsync(CancellationToken ct)
     {
@@ -102,9 +105,13 @@ public sealed class BundledTextEngine : ILocalRefiner, IAsyncDisposable
             await EnsureServerAsync(ct).ConfigureAwait(false);
             ScheduleIdleStop(LocalSettings.Of(_settings()).IdleMinutes);
         }
-        catch (Exception e) when (e is LocalNotAvailableException or OperationCanceledException)
+        catch (OperationCanceledException)
         {
-            // Beim Verbessern kommt die Meldung (Rohtext + Hinweis).
+        }
+        catch (LocalNotAvailableException e)
+        {
+            // Beim Verbessern kommt die Meldung (Rohtext + Hinweis); hier nur fürs Log (Kompass 01a2145a-bb06).
+            WarmUpFailed?.Invoke(e);
         }
     }
 

@@ -55,14 +55,15 @@ public sealed class SidecarRelease(HttpClient http, string dir)
     /// <summary>Pfad der ausführbaren Datei der Variante (ob installiert oder nicht).</summary>
     public string ExePath(SidecarVariant variant) => Path.Combine(Dir, $"{Tag}-{Os}-{Key(variant)}", ExeName);
 
-    public bool IsInstalled(SidecarVariant variant) => File.Exists(ExePath(variant));
+    /// <summary>Exe und alle Dateien des Archivs vorhanden (<see cref="InstallMarker"/>).</summary>
+    public bool IsInstalled(SidecarVariant variant) => InstallMarker.IsComplete(ExePath(variant), legacyNeedsLibraries: false);
 
     /// <summary>Installiert die Variante, falls nötig, und liefert den Pfad der ausführbaren Datei.</summary>
     /// <exception cref="DownloadException">Download, Prüfsumme oder Platz.</exception>
     public async Task<string> EnsureAsync(SidecarVariant variant, DownloadProgress? progress, CancellationToken ct)
     {
         var exe = ExePath(variant);
-        if (File.Exists(exe)) return exe;
+        if (InstallMarker.IsComplete(exe, legacyNeedsLibraries: false)) return exe;
         if (RuntimeInformation.OSArchitecture != Architecture.X64)
         {
             throw new DownloadException("Begleitprozess gibt es nur für x64", false);
@@ -70,7 +71,7 @@ public sealed class SidecarRelease(HttpClient http, string dir)
         await InstallGate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            if (File.Exists(exe)) return exe; // inzwischen von einem anderen Aufrufer installiert
+            if (InstallMarker.IsComplete(exe, legacyNeedsLibraries: false)) return exe; // inzwischen von einem anderen Aufrufer installiert
             var archive = await ArchiveAsync(variant, ct).ConfigureAwait(false);
             var store = new ModelStore(Dir);
             if (!await new ModelDownloader(http).DownloadAsync(archive, store, progress, ct).ConfigureAwait(false))
@@ -170,6 +171,7 @@ public sealed class SidecarRelease(HttpClient http, string dir)
         {
             File.SetUnixFileMode(exe, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
         }
+        InstallMarker.Write(tmp);
         if (Directory.Exists(target)) Directory.Delete(target, recursive: true);
         Directory.Move(tmp, target);
     }
