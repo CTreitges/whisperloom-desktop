@@ -237,7 +237,16 @@ public sealed partial class InputFlow
         _sink.Arm(target, mode == Mode.Rewrite ? false : match?.Profile.PressEnter, InsertModeOf(match),
             trailingSpace: mode != Mode.Rewrite && _controller.Settings.Polish.TrailingSpace, leadingSpace: mode != Mode.Rewrite,
             guard: mode == Mode.Rewrite ? new TextOutput.InsertGuard(_selectionElement) : null); // W2-FIX M-4
-        var started = _controller.Start();
+        string started;
+        _starting = true;
+        try
+        {
+            started = _controller.Start();
+        }
+        finally
+        {
+            _starting = false;
+        }
         if (started != "recording")
         {
             _controller.ActiveProfile = null;
@@ -336,6 +345,7 @@ public sealed partial class InputFlow
             Overlay.CanRetry = false;
             _ui.HideOverlay();
         }
+        CloseProcessingForOutsideStart(e);
         // Ein Diktat von außen (CLI/IPC, Tray) schließt den Wähler und gibt seine Tasten frei (Review W2-SEL).
         if (e.PropertyName == nameof(DictationController.State) && _mode == Mode.Picker && _controller.State != DictationState.Idle)
         {
