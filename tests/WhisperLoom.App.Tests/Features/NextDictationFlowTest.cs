@@ -96,6 +96,76 @@ public sealed class NextDictationFlowTest : IDisposable
         await Waits.For(() => HistoryCount() == 2);
     }
 
+    // (a2) Start von außen (Tray, CLI) während „Wird verarbeitet …“ eines Kürzel-Diktats (Kandidat 39, TS-WTRAY)
+
+    [AvaloniaFact]
+    public async Task Tray_Start_waehrend_der_Verarbeitung_schliesst_das_Overlay_im_Zustand_Verarbeitung()
+    {
+        var send1 = await ToggleDictationAsync(1);
+        Assert.True(_ui.Overlay);
+        Assert.Equal(OverlayState.Processing, _flow.Overlay.State);
+
+        Assert.Equal("recording", await _f.Controller.ToggleAsync()); // Tray-Eintrag bzw. CLI „toggle“
+        Assert.Equal(DictationState.Recording, _f.Controller.State);
+        Assert.False(_ui.Overlay); // Overlay zeigte sonst „Verarbeitung“, obwohl Aufnahme 2 läuft
+
+        _pipeline.Release(1);
+        await send1.Within();
+        Assert.Equal("[KI] Diktat 1", _rig.Keys.Target); // Diktat 1 fügt weiter in sein eigenes Ziel ein
+        Assert.False(_ui.Overlay);
+        Assert.Equal("none", _flow.ModeName);
+        Assert.Equal(DictationState.Recording, _f.Controller.State);
+        _f.Controller.Cancel();
+    }
+
+    [AvaloniaFact]
+    public async Task Fehler_von_Diktat_1_nach_Tray_Start_erreicht_den_Nutzer_als_Hinweis()
+    {
+        // Prüfer-Befund 1 (PR #60): Das Overlay ist nach dem Tray-Start zu; ein Fehler von Diktat 1 darf nicht nur im
+        // versteckten Overlay landen, sondern kommt als Fehler-Hinweis (wie bei „nächstes Diktat per Kürzel“).
+        var send1 = await ToggleDictationAsync(1);
+        Assert.Equal("recording", await _f.Controller.ToggleAsync());
+        _pipeline.FailWithNetwork(1);
+        await send1.Within();
+        Assert.Contains(_ui.HintStyles, h => h.Tone == WhisperLoom.App.Platform.Windows.Pill.HintTone.Error);
+        Assert.False(_ui.Overlay); // Aufnahme 2 läuft ungestört weiter
+        Assert.Equal(DictationState.Recording, _f.Controller.State);
+        _f.Controller.Cancel();
+    }
+
+    [AvaloniaFact]
+    public async Task Tray_Start_waehrend_der_Verarbeitung_eines_Halte_Diktats_schliesst_die_Pille()
+    {
+        await _flow.HandleAsync(HotkeyAction.HoldStart);
+        _f.Now += TimeSpan.FromSeconds(1);
+        var end1 = _flow.HandleAsync(HotkeyAction.HoldEnd);
+        await Waits.For(() => _pipeline.Refining(1));
+        Assert.True(_ui.Pill);
+        Assert.True(_ui.PillProcessing);
+
+        Assert.Equal("recording", await _f.Controller.ToggleAsync());
+        Assert.False(_ui.Pill);
+
+        _pipeline.Release(1);
+        await end1.Within();
+        Assert.Equal("[KI] Diktat 1", _rig.Keys.Target);
+        Assert.False(_ui.Pill);
+        _f.Controller.Cancel();
+    }
+
+    [AvaloniaFact]
+    public async Task Eigenes_Kuerzel_waehrend_der_Verarbeitung_behaelt_sein_Overlay()
+    {
+        var send1 = await ToggleDictationAsync(1);
+        await _flow.HandleAsync(HotkeyAction.Toggle); // Aufnahme 2 per Kürzel: das Overlay gehört ihr
+        Assert.True(_ui.Overlay);
+        Assert.Equal(OverlayState.Recording, _flow.Overlay.State);
+        _pipeline.Release(1);
+        await send1.Within();
+        Assert.True(_ui.Overlay);
+        await _flow.HandleAsync(HotkeyAction.OverlayDiscard);
+    }
+
     // (b) Halten
 
     [AvaloniaFact]

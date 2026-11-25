@@ -31,7 +31,9 @@ public sealed class RefineSkip
             {
                 return await task.ConfigureAwait(false);
             }
-            catch (Exception) when (IsSkipped && !ct.IsCancellationRequested)
+            // Ein Fehler, den der Ausweg nicht verursacht haben kann (Fehlerstatus des Servers, unbrauchbare Antwort), bleibt
+            // ein Fehler, auch wenn Esc schon gesetzt ist (Prüfer-Fund D3, TS-WTRAY); sonst stünde kein Fehlergrund im Ergebnis.
+            catch (Exception e) when (IsSkipped && !ct.IsCancellationRequested && !AnsweredFailure(e))
             {
                 return null;
             }
@@ -40,5 +42,18 @@ public sealed class RefineSkip
         _ = task.ContinueWith(t => _ = t.Exception, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
         ct.ThrowIfCancellationRequested();
         return null;
+    }
+
+    /// <summary>Die Gegenseite hat geantwortet (auch eingepackt, z. B. lokaler Server): kein Abbruch durch den Ausweg.</summary>
+    private static bool AnsweredFailure(Exception e)
+    {
+        for (var x = e; x is not null; x = x.InnerException)
+        {
+            if (x is Contracts.ApiHttpException or Contracts.RefineRejectedException)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 }

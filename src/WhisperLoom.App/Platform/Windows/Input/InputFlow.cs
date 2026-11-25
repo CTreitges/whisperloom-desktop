@@ -336,6 +336,7 @@ public sealed partial class InputFlow
             Overlay.CanRetry = false;
             _ui.HideOverlay();
         }
+        CloseProcessingForOutsideStart(e);
         // Ein Diktat von außen (CLI/IPC, Tray) schließt den Wähler und gibt seine Tasten frei (Review W2-SEL).
         if (e.PropertyName == nameof(DictationController.State) && _mode == Mode.Picker && _controller.State != DictationState.Idle)
         {

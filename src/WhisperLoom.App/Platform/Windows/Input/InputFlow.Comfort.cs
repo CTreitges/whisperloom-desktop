@@ -49,6 +49,30 @@ public sealed partial class InputFlow
     }
 
     /// <summary>
+    /// Aufnahme von außen (Tray, CLI/IPC <c>toggle</c>), während ein Kürzel-Diktat „Wird verarbeitet …“ zeigt (Kandidat 39,
+    /// TS-WTRAY): Overlay bzw. Pille im Zustand Verarbeitung gehören nicht zu dieser Aufnahme und schließen. Das laufende Diktat
+    /// fügt sein Ergebnis weiter in sein eigenes Ziel ein; die neue Aufnahme geht wie jede Tray-Aufnahme in die Zwischenablage.
+    /// Das geschlossene Overlay gehört dann keinem Diktat mehr (<see cref="_run"/>): ein Fehler des laufenden Diktats bzw. von
+    /// „Erneut senden“ kommt wie bei <see cref="Superseded"/> als Fehler-Hinweis, nicht im versteckten Overlay (Prüfer-Befund,
+    /// PR #60). Bei eigenen Starts (<see cref="Begin"/> setzt den Modus erst danach) ist das Overlay schon zu bzw. öffnet
+    /// gleich neu, und <see cref="Begin"/> zählt den Lauf ohnehin weiter: dort ändert sich nichts.
+    /// </summary>
+    private void CloseProcessingForOutsideStart(System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(DictationController.State) || _mode != Mode.None || _controller.State != DictationState.Recording)
+        {
+            return;
+        }
+        if (Overlay.State == OverlayState.Processing)
+        {
+            _run++;
+            _ui.HideOverlay();
+        }
+        // Ohne eigenen Modus zeigt die Pille höchstens noch die Verarbeitung eines gehaltenen Diktats.
+        _ui.HidePill();
+    }
+
+    /// <summary>
     /// Hat nach <paramref name="run"/> schon das nächste Diktat per Kürzel begonnen (W3-NEXT; auch wenn es inzwischen selbst
     /// verarbeitet wird), gehören Overlay, Pille und gemerktes Ziel ihm: vom fertigen Diktat bleibt nur ein Fehler-Hinweis.
     /// </summary>
