@@ -196,17 +196,44 @@ public sealed class BundledTextEngine : ILocalRefiner, IAsyncDisposable
         }
     }
 
-    private void ScheduleIdleStop(int minutes)
+    /// <summary>
+    /// Ende nach Leerlauf (TS-WBERICHT Hinweis 6): Hat ein Verbessern oder Vorladen den Prozess übernommen, während dieser
+    /// Timer am Gate wartete (<see cref="EnsureServerAsync"/> bricht ihn ab bzw. ein neuer Timer ersetzt ihn), läuft er weiter.
+    /// </summary>
+    private async Task StopIfIdleAsync(CancellationTokenSource idle)
+    {
+        await _gate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            if (ReferenceEquals(_idle, idle) && !idle.IsCancellationRequested)
+            {
+                await StopCoreAsync().ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <summary>Tests: Gate der Übernahme, aktueller Leerlauf-Timer und seine Aufgabe.</summary>
+    internal SemaphoreSlim Gate => _gate;
+
+    internal CancellationTokenSource? Idle => _idle;
+
+    internal Task IdleTask { get; private set; } = Task.CompletedTask;
+
+    internal void ScheduleIdleStop(int minutes)
     {
         var idle = new CancellationTokenSource();
         Interlocked.Exchange(ref _idle, idle)?.Cancel();
         var delay = IdleTimeout ?? TimeSpan.FromMinutes(minutes > 0 ? minutes : LocalSettings.DefaultIdleMinutes);
-        _ = Task.Run(async () =>
+        IdleTask = Task.Run(async () =>
         {
             try
             {
                 await Task.Delay(delay, idle.Token).ConfigureAwait(false);
-                await StopAsync().ConfigureAwait(false);
+                await StopIfIdleAsync(idle).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {

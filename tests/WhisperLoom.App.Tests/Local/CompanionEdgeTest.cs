@@ -102,6 +102,51 @@ public sealed class CompanionEdgeTest : IDisposable
         Assert.False(await arm.IsReadyAsync(CancellationToken.None));
     }
 
+    /// <summary>
+    /// Hinweis 6: Der Leerlauf läuft ab, während ein Diktat den Gate hält (<c>EnsureServerAsync</c>) und den laufenden
+    /// Prozess übernimmt (<c>_idle?.Cancel()</c>). Danach darf der Timer nicht mehr stoppen. Messbar ohne Prozess: ein Stopp
+    /// geht über <c>StopCoreAsync</c>, das den Leerlauf-Timer leert.
+    /// </summary>
+    private static async Task TakeoverDuringIdleStop(SemaphoreSlim gate, Action schedule, Func<CancellationTokenSource?> idle, Func<Task> idleTask)
+    {
+        await gate.WaitAsync(TestContext.Current.CancellationToken); // ein Diktat hält den Gate
+        schedule(); // Leerlauf 1 ms: läuft ab und wartet dann am Gate
+        await Task.Delay(500, TestContext.Current.CancellationToken);
+        var timer = idle();
+        Assert.NotNull(timer);
+        timer.Cancel(); // Übernahme wie in EnsureServerAsync
+        gate.Release();
+        await idleTask().WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        Assert.Same(timer, idle()); // kein Stopp nach der Übernahme
+    }
+
+    [Fact]
+    public async Task Stt_Leerlauf_stoppt_nicht_nach_Uebernahme()
+    {
+        var s = SttSettings();
+        await using var stt = new LocalStt(_dir, () => s, _http) { IdleTimeout = TimeSpan.FromMilliseconds(1) };
+        await TakeoverDuringIdleStop(stt.Gate, () => stt.ScheduleIdleStop(0), () => stt.Idle, () => stt.IdleTask);
+    }
+
+    [Fact]
+    public async Task Stt_Leerlauf_ohne_Uebernahme_stoppt()
+    {
+        var s = SttSettings();
+        await using var stt = new LocalStt(_dir, () => s, _http) { IdleTimeout = TimeSpan.FromMilliseconds(1) };
+        stt.ScheduleIdleStop(0);
+        await stt.IdleTask.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        Assert.Null(stt.Idle);
+    }
+
+    [Fact]
+    public async Task Text_Leerlauf_stoppt_nicht_nach_Uebernahme()
+    {
+        var s = new WhisperLoomSettings { Engine = "offline" };
+        LocalSettings.Set(s, new LocalSettings { TextEngine = "bundled" });
+        await using var engine = new BundledTextEngine(_dir, () => s, CoreText.Prompts, new TextCleanup([]), _http) { IdleTimeout = TimeSpan.FromMilliseconds(1) };
+        await TakeoverDuringIdleStop(engine.Gate, () => engine.ScheduleIdleStop(0), () => engine.Idle, () => engine.IdleTask);
+    }
+
     // Textmodell (llama-server)
 
     private BundledTextEngine Text(Architecture arch = Architecture.X64)
