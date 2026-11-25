@@ -150,6 +150,60 @@ public sealed class BundledTextEngineTest : IAsyncLifetime
         Assert.False(bad.IsInstalled(SidecarVariant.Cpu));
     }
 
+    /// <summary>
+    /// Kompass 01a2145a-bb06: Nur die Exe im Ordner (Bibliotheken fehlen, wie im Test-Cache vom 18.11.) gilt nicht als
+    /// installiert; <c>EnsureAsync</c> lädt neu. Vollständig installiert lädt ein zweiter Aufruf nichts.
+    /// </summary>
+    [Fact]
+    public async Task Release_repairs_a_folder_with_only_the_exe_and_keeps_a_complete_one()
+    {
+        var (name, archive) = FakeArchive();
+        _server.Files["/rel/" + name] = archive;
+        var key = (SidecarRelease.Os, SidecarVariant.Cpu);
+        var release = new LlamaRelease(_http, Path.Combine(_dir, "repair"))
+        {
+            BaseUrl = _server.Url("/rel/"),
+            Files = new Dictionary<(string, SidecarVariant), (string, long, string)> { [key] = (name, archive.Length, Sha(archive)) },
+        };
+        var exe = release.ExePath(SidecarVariant.Cpu);
+        var lib = Path.Combine(Path.GetDirectoryName(exe)!, OperatingSystem.IsWindows() ? "llama.dll" : "libllama.so.0");
+        Directory.CreateDirectory(Path.GetDirectoryName(exe)!);
+        await File.WriteAllTextAsync(exe, "nur die Exe", TestContext.Current.CancellationToken);
+        Assert.False(release.IsInstalled(SidecarVariant.Cpu));
+
+        Assert.Equal(exe, await release.EnsureAsync(SidecarVariant.Cpu, null, CancellationToken.None));
+        Assert.True(File.Exists(lib));
+        Assert.True(release.IsInstalled(SidecarVariant.Cpu));
+
+        var requests = _server.Paths.Count;
+        await release.EnsureAsync(SidecarVariant.Cpu, null, CancellationToken.None);
+        Assert.Equal(requests, _server.Paths.Count); // vollständig: kein neuer Download
+    }
+
+    [Fact]
+    public async Task Failed_warm_up_reaches_the_log_and_stays_silent_for_the_user()
+    {
+        // Kompass 01a2145a-bb06: Startfehler beim Vorladen wurden still verschluckt (LlamaServerTest sah nur Server = null).
+        await using var engine = Engine(Settings()); // Modell nicht installiert
+        var failures = new List<Exception>();
+        engine.WarmUpFailed = failures.Add;
+        await engine.WarmUpAsync(CancellationToken.None); // wirft weiterhin nicht
+        Assert.IsType<LocalNotAvailableException>(Assert.Single(failures));
+        Assert.Null(engine.Server);
+    }
+
+    [Fact]
+    public void Release_older_install_without_marker_with_libraries_stays_installed()
+    {
+        // Installationen vor dem Marker (Nutzer offline): Exe und Bibliotheken da, kein Neuladen nötig.
+        var release = new LlamaRelease(_http, Path.Combine(_dir, "legacy"));
+        var exe = release.ExePath(SidecarVariant.Cpu);
+        Directory.CreateDirectory(Path.GetDirectoryName(exe)!);
+        File.WriteAllText(exe, "exe");
+        File.WriteAllText(Path.Combine(Path.GetDirectoryName(exe)!, "llama.dll"), "lib");
+        Assert.True(release.IsInstalled(SidecarVariant.Cpu));
+    }
+
     [Theory]
     [InlineData("libllama.so.0.6.0", true)]
     [InlineData("..", false)]

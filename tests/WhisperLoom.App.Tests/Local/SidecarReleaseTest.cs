@@ -74,6 +74,37 @@ public sealed class SidecarReleaseTest : IAsyncLifetime
         Assert.Equal(before, _server.Paths.Count);
     }
 
+    /// <summary>
+    /// Kompass 01a2145a-bb06: Fehlt nach der Installation eine Datei aus dem Archiv (von außen gelöscht), gilt die Variante
+    /// nicht mehr als installiert, und <c>EnsureAsync</c> lädt und entpackt neu, statt sie zu liefern.
+    /// </summary>
+    [Fact]
+    public async Task FehlendeArchivDateiWirdRepariert()
+    {
+        var release = Release();
+        var ct = TestContext.Current.CancellationToken;
+        var exe = await release.EnsureAsync(SidecarVariant.Cpu, null, ct);
+        var license = Path.Combine(Path.GetDirectoryName(exe)!, "LICENSE-whisper.cpp.txt");
+        File.Delete(license);
+        Assert.False(release.IsInstalled(SidecarVariant.Cpu));
+        await release.EnsureAsync(SidecarVariant.Cpu, null, ct);
+        Assert.True(File.Exists(license));
+        Assert.True(release.IsInstalled(SidecarVariant.Cpu));
+    }
+
+    /// <summary>whisper-server kommt unter Windows als eine Datei: eine ältere Installation ohne Liste mit nur der Exe bleibt gültig.</summary>
+    [Fact]
+    public async Task AeltereInstallationNurMitExeBleibtInstalliert()
+    {
+        var release = Release();
+        var exe = release.ExePath(SidecarVariant.Cpu);
+        Directory.CreateDirectory(Path.GetDirectoryName(exe)!);
+        await File.WriteAllBytesAsync(exe, _exe, TestContext.Current.CancellationToken);
+        Assert.True(release.IsInstalled(SidecarVariant.Cpu));
+        await release.EnsureAsync(SidecarVariant.Cpu, null, TestContext.Current.CancellationToken);
+        Assert.Empty(_server.Paths); // kein Download
+    }
+
     /// <summary>Einstellungen und Diktat installieren gleichzeitig: genau ein Download, beide bekommen die Exe.</summary>
     [Fact]
     public async Task ParalleleInstallationLaedtNurEinmal()

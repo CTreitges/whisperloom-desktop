@@ -44,19 +44,20 @@ public sealed class LlamaRelease(HttpClient http, string dir)
 
     public string ExePath(SidecarVariant variant) => Path.Combine(Dir, $"{Tag}-{SidecarRelease.Os}-{SidecarRelease.Key(variant)}", ExeName);
 
-    public bool IsInstalled(SidecarVariant variant) => File.Exists(ExePath(variant));
+    /// <summary>Exe und alle Dateien des Archivs vorhanden (<see cref="InstallMarker"/>).</summary>
+    public bool IsInstalled(SidecarVariant variant) => InstallMarker.IsComplete(ExePath(variant), legacyNeedsLibraries: true);
 
     /// <summary>Installiert die Variante, falls nötig, und liefert den Pfad der ausführbaren Datei.</summary>
     /// <exception cref="DownloadException">Download, Prüfsumme oder Platz.</exception>
     public async Task<string> EnsureAsync(SidecarVariant variant, DownloadProgress? progress, CancellationToken ct)
     {
         var exe = ExePath(variant);
-        if (File.Exists(exe)) return exe;
+        if (InstallMarker.IsComplete(exe, legacyNeedsLibraries: true)) return exe;
         if (RuntimeInformation.OSArchitecture != Architecture.X64) throw new DownloadException("Textmodell-Server gibt es nur für x64", false);
         await InstallGate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            if (File.Exists(exe)) return exe;
+            if (InstallMarker.IsComplete(exe, legacyNeedsLibraries: true)) return exe;
             var (file, bytes, sha) = Files[(SidecarRelease.Os, variant)];
             var archive = new OfflineModel("llama-server", "llama-server", file, BaseUrl + file, bytes, sha);
             var store = new ModelStore(Dir);
@@ -147,6 +148,7 @@ public sealed class LlamaRelease(HttpClient http, string dir)
                 }
             }
         }
+        InstallMarker.Write(tmp);
         if (Directory.Exists(target)) Directory.Delete(target, recursive: true);
         Directory.Move(tmp, target);
     }

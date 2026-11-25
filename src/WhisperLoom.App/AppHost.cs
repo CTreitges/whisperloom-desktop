@@ -285,6 +285,12 @@ public sealed partial class AppHost
         }, recorder, output);
         host.Clipboard = clipboard;
         host.Local = local;
+        if (local is not null)
+        {
+            // Vorladen gescheitert: nur Metadaten ins Log (Fehlerklasse), der Nutzer sieht die Meldung erst beim Verbessern.
+            var log = host.Log;
+            local.Bundled.WarmUpFailed = e => log.Event("warmup.failed", ("engine", "bundled"), ("errorClass", e.GetType().Name));
+        }
         if (local is not null && pipeline is not null)
         {
             LocalWarmUp.Attach(host.Controller, pipeline.ShouldWarmUpLocalAsync, local.Text);
