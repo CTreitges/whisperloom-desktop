@@ -21,6 +21,9 @@ public sealed class LlamaRelease(HttpClient http, string dir)
 
     public const string MsgExtract = "Textmodell-Server konnte nicht entpackt werden";
 
+    /// <summary>Wartezeit vor dem ersten Wiederholen eines gescheiterten Downloads (verdoppelt sich); Tests stellen sie kurz.</summary>
+    internal int DownloadBackoffMs { get; set; } = 2_000;
+
     /// <summary>Archiv je Betriebssystem und Variante: Name, Größe, SHA-256.</summary>
     public static readonly IReadOnlyDictionary<(string Os, SidecarVariant Variant), (string File, long Bytes, string Sha256)> Assets =
         new Dictionary<(string, SidecarVariant), (string, long, string)>
@@ -60,7 +63,7 @@ public sealed class LlamaRelease(HttpClient http, string dir)
             var (file, bytes, sha) = Files[(SidecarRelease.Os, variant)];
             var archive = new OfflineModel("llama-server", "llama-server", file, BaseUrl + file, bytes, sha);
             var store = new ModelStore(Dir);
-            if (!await new ModelDownloader(http).DownloadAsync(archive, store, progress, ct).ConfigureAwait(false))
+            if (!await new ModelDownloader(http, backoffMs: DownloadBackoffMs).DownloadAsync(archive, store, progress, ct).ConfigureAwait(false))
             {
                 throw new OperationCanceledException(ct);
             }

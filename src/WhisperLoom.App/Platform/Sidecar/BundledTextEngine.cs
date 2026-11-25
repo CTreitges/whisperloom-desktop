@@ -27,7 +27,7 @@ public sealed class BundledTextEngine : ILocalRefiner, IAsyncDisposable
     private readonly Func<long> _deviceRam;
     private LlamaServerProcess? _server;
     private CancellationTokenSource? _idle;
-    private readonly VulkanBlock _vulkan;
+    private VulkanBlock? _vulkanBlock;
 
     /// <param name="testModel">Nur Tests und Smokes (<c>--test-text-model</c>): GGUF-Datei statt Katalog-Modell.</param>
     /// <param name="deviceRam">Gesamter Arbeitsspeicher; Standard <see cref="TextModelCatalog.DeviceRamBytes"/>.</param>
@@ -38,9 +38,7 @@ public sealed class BundledTextEngine : ILocalRefiner, IAsyncDisposable
         _prompts = prompts;
         _cleanup = cleanup;
         _http = new HttpClient(new SocketsHttpHandler { UseProxy = false }) { Timeout = Timeout.InfiniteTimeSpan };
-        _deviceRam = deviceRam ?? TextModelCatalog.DeviceRamBytes;
-        _vulkan = new VulkanBlock(() => Now());
-        TestModel = testModel;
+        _deviceRam = deviceRam ?? TextModelCatalog.DeviceRamBytes;        TestModel = testModel;
         Models = new ModelStore(Path.Combine(localDir, "text-models"));
         Release = new LlamaRelease(downloadHttp ?? _http, Path.Combine(localDir, "llama-server"));
     }
@@ -54,8 +52,10 @@ public sealed class BundledTextEngine : ILocalRefiner, IAsyncDisposable
     /// <summary>Leerlauf bis zum Ende des Begleitprozesses; null = aus den Einstellungen (Minuten).</summary>
     public TimeSpan? IdleTimeout { get; init; }
 
-    /// <summary>Uhr der zeitlich begrenzten Vulkan-Sperre (Tests stellen sie vor).</summary>
-    internal Func<DateTimeOffset> Now { get; init; } = () => DateTimeOffset.UtcNow;
+    /// <summary>Uhr der zeitlich begrenzten Vulkan-Sperre (Tests: <c>FakeTimeProvider</c>).</summary>
+    internal TimeProvider Time { get; init; } = TimeProvider.System;
+
+    private VulkanBlock _vulkan => _vulkanBlock ??= new VulkanBlock(Time);
 
     /// <summary>Architektur des Rechners (Tests: arm64).</summary>
     internal Func<System.Runtime.InteropServices.Architecture> Arch { get; init; } = () => System.Runtime.InteropServices.RuntimeInformation.OSArchitecture;

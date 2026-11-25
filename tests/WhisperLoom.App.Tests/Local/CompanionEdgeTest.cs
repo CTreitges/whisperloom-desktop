@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using Microsoft.Extensions.Time.Testing;
 using WhisperLoom.App.Platform.Sidecar;
 using WhisperLoom.Core.Api;
 using WhisperLoom.Core.Contracts;
@@ -18,7 +19,7 @@ public sealed class CompanionEdgeTest : IDisposable
     private readonly string _dir = Directory.CreateTempSubdirectory("wl-companion-").FullName;
     private readonly CountingHandler _net = new();
     private readonly HttpClient _http;
-    private DateTimeOffset _now = new(2026, 11, 25, 20, 0, 0, TimeSpan.Zero);
+    private readonly FakeTimeProvider _time = new(new DateTimeOffset(2026, 11, 25, 20, 0, 0, TimeSpan.Zero));
 
     public CompanionEdgeTest() => _http = new HttpClient(_net);
 
@@ -54,7 +55,7 @@ public sealed class CompanionEdgeTest : IDisposable
     }
 
     private LocalStt Stt(WhisperLoomSettings s, Architecture arch = Architecture.X64) =>
-        new(_dir, () => s, _http) { Now = () => _now, Arch = () => arch };
+        new(_dir, () => s, _http) { Time = _time, Arch = () => arch };
 
     [Fact]
     public async Task Stt_Downloadfehler_sperrt_Vulkan_nur_zehn_Minuten()
@@ -65,11 +66,11 @@ public sealed class CompanionEdgeTest : IDisposable
         Assert.Equal(2, _net.Requests); // Vulkan, dann CPU
         Assert.True(stt.VulkanBlocked);
 
-        _now += TimeSpan.FromMinutes(9);
+        _time.Advance(TimeSpan.FromMinutes(9));
         await Assert.ThrowsAsync<LocalNotAvailableException>(() => stt.EnsureServerAsync(CancellationToken.None));
         Assert.Equal(3, _net.Requests); // innerhalb der Sperre nur CPU
 
-        _now += TimeSpan.FromMinutes(2);
+        _time.Advance(TimeSpan.FromMinutes(2));
         Assert.False(stt.VulkanBlocked);
         await Assert.ThrowsAsync<LocalNotAvailableException>(() => stt.EnsureServerAsync(CancellationToken.None));
         Assert.Equal(5, _net.Requests); // nach Ablauf wieder Vulkan, dann CPU
@@ -87,9 +88,30 @@ public sealed class CompanionEdgeTest : IDisposable
         }
         await Assert.ThrowsAsync<LocalNotAvailableException>(() => stt.EnsureServerAsync(CancellationToken.None));
         Assert.True(stt.VulkanBlocked);
-        _now += TimeSpan.FromHours(2);
+        _time.Advance(TimeSpan.FromHours(2));
         Assert.True(stt.VulkanBlocked);
         Assert.Equal(0, _net.Requests);
+    }
+
+    [Fact]
+    public void Nicht_wiederholbarer_Downloadfehler_sperrt_Vulkan_fuer_die_Sitzung()
+    {
+        // Prüfsumme, Manifest, Archiv ohne Exe: ein neuer Versuch hilft nicht (Prüfer-Befund 3, PR #61).
+        var block = new VulkanBlock(_time);
+        block.Failed(new DownloadException(ModelDownloader.MsgChecksum, false, DownloadException.Kinds.Checksum));
+        _time.Advance(TimeSpan.FromHours(2));
+        Assert.True(block.Active);
+    }
+
+    [Fact]
+    public void Wiederholbarer_Downloadfehler_sperrt_Vulkan_zehn_Minuten()
+    {
+        var block = new VulkanBlock(_time);
+        block.Failed(new DownloadException(ModelDownloader.MsgNet, true, DownloadException.Kinds.Network));
+        _time.Advance(TimeSpan.FromMinutes(9));
+        Assert.True(block.Active);
+        _time.Advance(TimeSpan.FromMinutes(2));
+        Assert.False(block.Active);
     }
 
     [Fact]
@@ -155,9 +177,10 @@ public sealed class CompanionEdgeTest : IDisposable
         LocalSettings.Set(s, new LocalSettings { TextEngine = "bundled", Backend = "auto" });
         var engine = new BundledTextEngine(_dir, () => s, CoreText.Prompts, new TextCleanup([]), _http, deviceRam: () => 32L << 30)
         {
-            Now = () => _now,
+            Time = _time,
             Arch = () => arch,
         };
+        engine.Release.DownloadBackoffMs = 1; // sonst 2 + 4 + 8 s Wartezeit je gescheitertem Download
         Directory.CreateDirectory(engine.Models.Dir);
         using var f = File.Create(engine.Models.File(TextModelCatalog.Default.File));
         f.SetLength(TextModelCatalog.Default.File.Bytes);
@@ -172,7 +195,7 @@ public sealed class CompanionEdgeTest : IDisposable
         var both = _net.Requests; // Vulkan und CPU (je mit den Wiederholungen des Downloads)
         Assert.True(both > 0);
         Assert.True(engine.VulkanBlocked);
-        _now += TimeSpan.FromMinutes(11);
+        _time.Advance(TimeSpan.FromMinutes(11));
         Assert.False(engine.VulkanBlocked);
         await Assert.ThrowsAsync<LocalNotAvailableException>(() => engine.EnsureServerAsync(CancellationToken.None));
         Assert.Equal(2 * both, _net.Requests); // wieder beide Varianten, nicht nur die CPU

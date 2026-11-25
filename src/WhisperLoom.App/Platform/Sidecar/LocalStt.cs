@@ -22,7 +22,7 @@ public sealed class LocalStt : ILocalStt, IAsyncDisposable
     private readonly SemaphoreSlim _gate = new(1, 1);
     private WhisperServerProcess? _server;
     private CancellationTokenSource? _idle;
-    private readonly VulkanBlock _vulkan;
+    private VulkanBlock? _vulkanBlock;
 
     /// <param name="localDir">Ordner für Modelle und Binaries, Standard <c>&lt;Datenordner&gt;/local</c>.</param>
     /// <param name="downloadHttp">Client für Downloads (mit Proxy der Einstellungen); null = ohne Nachladen.</param>
@@ -30,9 +30,7 @@ public sealed class LocalStt : ILocalStt, IAsyncDisposable
     public LocalStt(string localDir, Func<WhisperLoomSettings> settings, HttpClient? downloadHttp = null, Func<WhisperLoomSettings, string>? prompt = null)
     {
         _settings = settings;
-        _prompt = prompt ?? (_ => "");
-        _vulkan = new VulkanBlock(() => Now());
-        _http = new HttpClient(new SocketsHttpHandler { UseProxy = false }) { Timeout = Timeout.InfiniteTimeSpan };
+        _prompt = prompt ?? (_ => "");        _http = new HttpClient(new SocketsHttpHandler { UseProxy = false }) { Timeout = Timeout.InfiniteTimeSpan };
         Models = new ModelStore(Path.Combine(localDir, "models"));
         Release = new SidecarRelease(downloadHttp ?? _http, Path.Combine(localDir, "whisper-server"));
     }
@@ -44,8 +42,10 @@ public sealed class LocalStt : ILocalStt, IAsyncDisposable
     /// <summary>Leerlauf bis zum Ende des Begleitprozesses; null = aus den Einstellungen (Minuten).</summary>
     public TimeSpan? IdleTimeout { get; init; }
 
-    /// <summary>Uhr der zeitlich begrenzten Vulkan-Sperre (Tests stellen sie vor).</summary>
-    internal Func<DateTimeOffset> Now { get; init; } = () => DateTimeOffset.UtcNow;
+    /// <summary>Uhr der zeitlich begrenzten Vulkan-Sperre (Tests: <c>FakeTimeProvider</c>).</summary>
+    internal TimeProvider Time { get; init; } = TimeProvider.System;
+
+    private VulkanBlock _vulkan => _vulkanBlock ??= new VulkanBlock(Time);
 
     /// <summary>Architektur des Rechners (Tests: arm64).</summary>
     internal Func<System.Runtime.InteropServices.Architecture> Arch { get; init; } = () => System.Runtime.InteropServices.RuntimeInformation.OSArchitecture;
