@@ -119,6 +119,21 @@ public sealed class NextDictationFlowTest : IDisposable
     }
 
     [AvaloniaFact]
+    public async Task Fehler_von_Diktat_1_nach_Tray_Start_erreicht_den_Nutzer_als_Hinweis()
+    {
+        // Prüfer-Befund 1 (PR #60): Das Overlay ist nach dem Tray-Start zu; ein Fehler von Diktat 1 darf nicht nur im
+        // versteckten Overlay landen, sondern kommt als Fehler-Hinweis (wie bei „nächstes Diktat per Kürzel“).
+        var send1 = await ToggleDictationAsync(1);
+        Assert.Equal("recording", await _f.Controller.ToggleAsync());
+        _pipeline.FailWithNetwork(1);
+        await send1.Within();
+        Assert.Contains(_ui.HintStyles, h => h.Tone == WhisperLoom.App.Platform.Windows.Pill.HintTone.Error);
+        Assert.False(_ui.Overlay); // Aufnahme 2 läuft ungestört weiter
+        Assert.Equal(DictationState.Recording, _f.Controller.State);
+        _f.Controller.Cancel();
+    }
+
+    [AvaloniaFact]
     public async Task Tray_Start_waehrend_der_Verarbeitung_eines_Halte_Diktats_schliesst_die_Pille()
     {
         await _flow.HandleAsync(HotkeyAction.HoldStart);
