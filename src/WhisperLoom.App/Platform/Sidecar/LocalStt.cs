@@ -22,7 +22,7 @@ public sealed class LocalStt : ILocalStt, IAsyncDisposable
     private readonly SemaphoreSlim _gate = new(1, 1);
     private WhisperServerProcess? _server;
     private CancellationTokenSource? _idle;
-    private bool _vulkanFailed;
+    private readonly VulkanBlock _vulkan;
 
     /// <param name="localDir">Ordner für Modelle und Binaries, Standard <c>&lt;Datenordner&gt;/local</c>.</param>
     /// <param name="downloadHttp">Client für Downloads (mit Proxy der Einstellungen); null = ohne Nachladen.</param>
@@ -31,6 +31,7 @@ public sealed class LocalStt : ILocalStt, IAsyncDisposable
     {
         _settings = settings;
         _prompt = prompt ?? (_ => "");
+        _vulkan = new VulkanBlock(() => Now());
         _http = new HttpClient(new SocketsHttpHandler { UseProxy = false }) { Timeout = Timeout.InfiniteTimeSpan };
         Models = new ModelStore(Path.Combine(localDir, "models"));
         Release = new SidecarRelease(downloadHttp ?? _http, Path.Combine(localDir, "whisper-server"));
@@ -42,6 +43,15 @@ public sealed class LocalStt : ILocalStt, IAsyncDisposable
 
     /// <summary>Leerlauf bis zum Ende des Begleitprozesses; null = aus den Einstellungen (Minuten).</summary>
     public TimeSpan? IdleTimeout { get; init; }
+
+    /// <summary>Uhr der zeitlich begrenzten Vulkan-Sperre (Tests stellen sie vor).</summary>
+    internal Func<DateTimeOffset> Now { get; init; } = () => DateTimeOffset.UtcNow;
+
+    /// <summary>Architektur des Rechners (Tests: arm64).</summary>
+    internal Func<System.Runtime.InteropServices.Architecture> Arch { get; init; } = () => System.Runtime.InteropServices.RuntimeInformation.OSArchitecture;
+
+    /// <summary>Vulkan wird gerade übersprungen (nächster Start nur mit CPU).</summary>
+    internal bool VulkanBlocked => _vulkan.Active;
 
     public ModelStore Models { get; }
 
@@ -59,7 +69,8 @@ public sealed class LocalStt : ILocalStt, IAsyncDisposable
     public Task<bool> IsReadyAsync(CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
-        return Task.FromResult(Model().Error is null);
+        // Vertrag „prüft Modell und Startbarkeit“ (docs/contracts.md): den Begleitprozess gibt es nur für x64 (Hinweis 10).
+        return Task.FromResult(Model().Error is null && Arch() == System.Runtime.InteropServices.Architecture.X64);
     }
 
     public async Task<TranscriptResult> TranscribeAsync(AudioBuffer audio, string language, CancellationToken ct)
@@ -91,7 +102,7 @@ public sealed class LocalStt : ILocalStt, IAsyncDisposable
             if (_server is { HasExited: false } running && running.Model == path) return running;
             await StopCoreAsync().ConfigureAwait(false);
             var cpuOnly = LocalSettings.Of(_settings()).Backend == "cpu";
-            if (!cpuOnly && !_vulkanFailed)
+            if (!cpuOnly && !_vulkan.Active)
             {
                 try
                 {
@@ -99,7 +110,7 @@ public sealed class LocalStt : ILocalStt, IAsyncDisposable
                 }
                 catch (Exception e) when (IsStartFailure(e) && !ct.IsCancellationRequested)
                 {
-                    _vulkanFailed = true; // für diese Sitzung: CPU
+                    _vulkan.Failed(e); // Startfehler: Sitzung auf CPU; Download/Netz: 10 min
                 }
             }
             try
