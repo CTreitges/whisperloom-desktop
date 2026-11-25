@@ -66,12 +66,17 @@ public sealed class RangeServer : IAsyncDisposable
         {
             return await listener.AcceptTcpClientAsync(stop);
         }
+        catch (Exception e) when (e is OperationCanceledException or SocketException or ObjectDisposedException)
+        {
+            return null;
+        }
         // InvalidOperationException („Not listening“): DisposeAsync hat den Listener zwischen der Schleifenprüfung und
         // diesem Aufruf gestoppt — ein Accept auf einen nicht gestarteten Listener wirft sie, auch bei schon
-        // abgebrochenem Token (RangeServerTest).
+        // abgebrochenem Token. Nur beim Beenden abgefangen (DisposeAsync bricht vor dem Stopp ab); bei laufendem Server
+        // ist sie ein echter Fehler (RangeServerTest).
         // Doku: learn.microsoft.com/dotnet/api/system.net.sockets.tcplistener.accepttcpclientasync (per Context7,
         // abgerufen 2026-11-25).
-        catch (Exception e) when (e is OperationCanceledException or SocketException or ObjectDisposedException or InvalidOperationException)
+        catch (InvalidOperationException) when (stop.IsCancellationRequested)
         {
             return null;
         }
