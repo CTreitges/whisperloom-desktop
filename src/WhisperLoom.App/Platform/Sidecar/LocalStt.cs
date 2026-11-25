@@ -22,7 +22,7 @@ public sealed class LocalStt : ILocalStt, IAsyncDisposable
     private readonly SemaphoreSlim _gate = new(1, 1);
     private WhisperServerProcess? _server;
     private CancellationTokenSource? _idle;
-    private bool _vulkanFailed;
+    private VulkanBlock? _vulkanBlock;
 
     /// <param name="localDir">Ordner für Modelle und Binaries, Standard <c>&lt;Datenordner&gt;/local</c>.</param>
     /// <param name="downloadHttp">Client für Downloads (mit Proxy der Einstellungen); null = ohne Nachladen.</param>
@@ -30,8 +30,7 @@ public sealed class LocalStt : ILocalStt, IAsyncDisposable
     public LocalStt(string localDir, Func<WhisperLoomSettings> settings, HttpClient? downloadHttp = null, Func<WhisperLoomSettings, string>? prompt = null)
     {
         _settings = settings;
-        _prompt = prompt ?? (_ => "");
-        _http = new HttpClient(new SocketsHttpHandler { UseProxy = false }) { Timeout = Timeout.InfiniteTimeSpan };
+        _prompt = prompt ?? (_ => "");        _http = new HttpClient(new SocketsHttpHandler { UseProxy = false }) { Timeout = Timeout.InfiniteTimeSpan };
         Models = new ModelStore(Path.Combine(localDir, "models"));
         Release = new SidecarRelease(downloadHttp ?? _http, Path.Combine(localDir, "whisper-server"));
     }
@@ -42,6 +41,17 @@ public sealed class LocalStt : ILocalStt, IAsyncDisposable
 
     /// <summary>Leerlauf bis zum Ende des Begleitprozesses; null = aus den Einstellungen (Minuten).</summary>
     public TimeSpan? IdleTimeout { get; init; }
+
+    /// <summary>Uhr der zeitlich begrenzten Vulkan-Sperre (Tests: <c>FakeTimeProvider</c>).</summary>
+    internal TimeProvider Time { get; init; } = TimeProvider.System;
+
+    private VulkanBlock _vulkan => _vulkanBlock ??= new VulkanBlock(Time);
+
+    /// <summary>Architektur des Rechners (Tests: arm64).</summary>
+    internal Func<System.Runtime.InteropServices.Architecture> Arch { get; init; } = () => System.Runtime.InteropServices.RuntimeInformation.OSArchitecture;
+
+    /// <summary>Vulkan wird gerade übersprungen (nächster Start nur mit CPU).</summary>
+    internal bool VulkanBlocked => _vulkan.Active;
 
     public ModelStore Models { get; }
 
@@ -59,7 +69,8 @@ public sealed class LocalStt : ILocalStt, IAsyncDisposable
     public Task<bool> IsReadyAsync(CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
-        return Task.FromResult(Model().Error is null);
+        // Vertrag „prüft Modell und Startbarkeit“ (docs/contracts.md): den Begleitprozess gibt es nur für x64 (Hinweis 10).
+        return Task.FromResult(Model().Error is null && Arch() == System.Runtime.InteropServices.Architecture.X64);
     }
 
     public async Task<TranscriptResult> TranscribeAsync(AudioBuffer audio, string language, CancellationToken ct)
@@ -91,7 +102,7 @@ public sealed class LocalStt : ILocalStt, IAsyncDisposable
             if (_server is { HasExited: false } running && running.Model == path) return running;
             await StopCoreAsync().ConfigureAwait(false);
             var cpuOnly = LocalSettings.Of(_settings()).Backend == "cpu";
-            if (!cpuOnly && !_vulkanFailed)
+            if (!cpuOnly && !_vulkan.Active)
             {
                 try
                 {
@@ -99,7 +110,7 @@ public sealed class LocalStt : ILocalStt, IAsyncDisposable
                 }
                 catch (Exception e) when (IsStartFailure(e) && !ct.IsCancellationRequested)
                 {
-                    _vulkanFailed = true; // für diese Sitzung: CPU
+                    _vulkan.Failed(e); // Startfehler: Sitzung auf CPU; Download/Netz: 10 min
                 }
             }
             try
@@ -168,17 +179,44 @@ public sealed class LocalStt : ILocalStt, IAsyncDisposable
         }
     }
 
-    private void ScheduleIdleStop(int minutes)
+    /// <summary>
+    /// Ende nach Leerlauf (TS-WBERICHT Hinweis 6): Hat ein Diktat den Prozess übernommen, während dieser Timer am Gate
+    /// wartete (<see cref="EnsureServerAsync"/> bricht ihn ab bzw. ein neuer Timer ersetzt ihn), läuft der Prozess weiter.
+    /// </summary>
+    private async Task StopIfIdleAsync(CancellationTokenSource idle)
+    {
+        await _gate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            if (ReferenceEquals(_idle, idle) && !idle.IsCancellationRequested)
+            {
+                await StopCoreAsync().ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <summary>Tests: Gate der Übernahme, aktueller Leerlauf-Timer und seine Aufgabe.</summary>
+    internal SemaphoreSlim Gate => _gate;
+
+    internal CancellationTokenSource? Idle => _idle;
+
+    internal Task IdleTask { get; private set; } = Task.CompletedTask;
+
+    internal void ScheduleIdleStop(int minutes)
     {
         var idle = new CancellationTokenSource();
         Interlocked.Exchange(ref _idle, idle)?.Cancel();
         var delay = IdleTimeout ?? TimeSpan.FromMinutes(minutes > 0 ? minutes : LocalSettings.DefaultIdleMinutes);
-        _ = Task.Run(async () =>
+        IdleTask = Task.Run(async () =>
         {
             try
             {
                 await Task.Delay(delay, idle.Token).ConfigureAwait(false);
-                await StopAsync().ConfigureAwait(false);
+                await StopIfIdleAsync(idle).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {

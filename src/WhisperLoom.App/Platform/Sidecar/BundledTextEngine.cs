@@ -27,7 +27,7 @@ public sealed class BundledTextEngine : ILocalRefiner, IAsyncDisposable
     private readonly Func<long> _deviceRam;
     private LlamaServerProcess? _server;
     private CancellationTokenSource? _idle;
-    private bool _vulkanFailed;
+    private VulkanBlock? _vulkanBlock;
 
     /// <param name="testModel">Nur Tests und Smokes (<c>--test-text-model</c>): GGUF-Datei statt Katalog-Modell.</param>
     /// <param name="deviceRam">Gesamter Arbeitsspeicher; Standard <see cref="TextModelCatalog.DeviceRamBytes"/>.</param>
@@ -38,8 +38,7 @@ public sealed class BundledTextEngine : ILocalRefiner, IAsyncDisposable
         _prompts = prompts;
         _cleanup = cleanup;
         _http = new HttpClient(new SocketsHttpHandler { UseProxy = false }) { Timeout = Timeout.InfiniteTimeSpan };
-        _deviceRam = deviceRam ?? TextModelCatalog.DeviceRamBytes;
-        TestModel = testModel;
+        _deviceRam = deviceRam ?? TextModelCatalog.DeviceRamBytes;        TestModel = testModel;
         Models = new ModelStore(Path.Combine(localDir, "text-models"));
         Release = new LlamaRelease(downloadHttp ?? _http, Path.Combine(localDir, "llama-server"));
     }
@@ -52,6 +51,17 @@ public sealed class BundledTextEngine : ILocalRefiner, IAsyncDisposable
 
     /// <summary>Leerlauf bis zum Ende des Begleitprozesses; null = aus den Einstellungen (Minuten).</summary>
     public TimeSpan? IdleTimeout { get; init; }
+
+    /// <summary>Uhr der zeitlich begrenzten Vulkan-Sperre (Tests: <c>FakeTimeProvider</c>).</summary>
+    internal TimeProvider Time { get; init; } = TimeProvider.System;
+
+    private VulkanBlock _vulkan => _vulkanBlock ??= new VulkanBlock(Time);
+
+    /// <summary>Architektur des Rechners (Tests: arm64).</summary>
+    internal Func<System.Runtime.InteropServices.Architecture> Arch { get; init; } = () => System.Runtime.InteropServices.RuntimeInformation.OSArchitecture;
+
+    /// <summary>Vulkan wird gerade übersprungen (nächster Start nur mit CPU).</summary>
+    internal bool VulkanBlocked => _vulkan.Active;
 
     /// <summary>Der laufende Begleitprozess (null = keiner).</summary>
     public LlamaServerProcess? Server => _server;
@@ -76,7 +86,8 @@ public sealed class BundledTextEngine : ILocalRefiner, IAsyncDisposable
     public Task<bool> IsReadyAsync(CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
-        return Task.FromResult(Model().Error is null);
+        // Vertrag „prüft Modell und Startbarkeit“ (docs/contracts.md): llama-server gibt es nur für x64 (Hinweis 10).
+        return Task.FromResult(Model().Error is null && Arch() == System.Runtime.InteropServices.Architecture.X64);
     }
 
     public async Task<string> RefineAsync(string raw, string language, Refinement refinement, CancellationToken ct)
@@ -119,7 +130,7 @@ public sealed class BundledTextEngine : ILocalRefiner, IAsyncDisposable
             _idle?.Cancel();
             if (_server is { HasExited: false } running && running.Model == path) return running;
             await StopCoreAsync().ConfigureAwait(false);
-            if (LocalSettings.Of(_settings()).Backend != "cpu" && !_vulkanFailed)
+            if (LocalSettings.Of(_settings()).Backend != "cpu" && !_vulkan.Active)
             {
                 try
                 {
@@ -127,7 +138,7 @@ public sealed class BundledTextEngine : ILocalRefiner, IAsyncDisposable
                 }
                 catch (Exception e) when (IsStartFailure(e) && !ct.IsCancellationRequested)
                 {
-                    _vulkanFailed = true;
+                    _vulkan.Failed(e); // Startfehler: Sitzung auf CPU; Download/Netz: 10 min
                 }
             }
             try
@@ -185,17 +196,44 @@ public sealed class BundledTextEngine : ILocalRefiner, IAsyncDisposable
         }
     }
 
-    private void ScheduleIdleStop(int minutes)
+    /// <summary>
+    /// Ende nach Leerlauf (TS-WBERICHT Hinweis 6): Hat ein Verbessern oder Vorladen den Prozess übernommen, während dieser
+    /// Timer am Gate wartete (<see cref="EnsureServerAsync"/> bricht ihn ab bzw. ein neuer Timer ersetzt ihn), läuft er weiter.
+    /// </summary>
+    private async Task StopIfIdleAsync(CancellationTokenSource idle)
+    {
+        await _gate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            if (ReferenceEquals(_idle, idle) && !idle.IsCancellationRequested)
+            {
+                await StopCoreAsync().ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <summary>Tests: Gate der Übernahme, aktueller Leerlauf-Timer und seine Aufgabe.</summary>
+    internal SemaphoreSlim Gate => _gate;
+
+    internal CancellationTokenSource? Idle => _idle;
+
+    internal Task IdleTask { get; private set; } = Task.CompletedTask;
+
+    internal void ScheduleIdleStop(int minutes)
     {
         var idle = new CancellationTokenSource();
         Interlocked.Exchange(ref _idle, idle)?.Cancel();
         var delay = IdleTimeout ?? TimeSpan.FromMinutes(minutes > 0 ? minutes : LocalSettings.DefaultIdleMinutes);
-        _ = Task.Run(async () =>
+        IdleTask = Task.Run(async () =>
         {
             try
             {
                 await Task.Delay(delay, idle.Token).ConfigureAwait(false);
-                await StopAsync().ConfigureAwait(false);
+                await StopIfIdleAsync(idle).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
